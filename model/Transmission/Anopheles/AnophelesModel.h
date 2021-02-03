@@ -436,6 +436,8 @@ public:
         timeStep_N_v0 & stream;
     }
 
+    size_t species;
+    
     MosquitoParams mosq;
 
     // sum_i N_i * α_i for i in NHH types: total availability of non-human hosts
@@ -603,6 +605,9 @@ public:
     
     /** Variables tracking data to be reported. */
     double timeStep_N_v0;
+
+    /** Human population size (redundant) */
+    int populationSize;
 
     /** Active Non-Human hosts instances in the simulation. */
     map<string,Nhh> nhhInstances;

@@ -435,7 +435,7 @@ SimTime VectorModel::initIterate()
     bool needIterate = false;
     for (size_t i = 0; i < speciesIndex.size(); ++i)
     {
-        needIterate = needIterate || speciesFitters[i]->fit(*species[i]);
+        needIterate = needIterate || speciesFitters[i]->fit(*species[i], laggedKappa, initialisationEIR);
     }
 
     if (needIterate)

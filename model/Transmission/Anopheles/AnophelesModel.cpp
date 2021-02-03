@@ -41,8 +41,10 @@ using WithinHost::Genotypes;
 
 // -----  Initialisation of model, done before human warmup  ------
 
-void AnophelesModel::initialise(size_t species, MosquitoParams mosqParams)
+void AnophelesModel::initialise(size_t speciesInit, MosquitoParams mosqParams)
 {
+    species = speciesInit;
+
     mosq = mosqParams;
 
     N_v_length = mosq.EIPDuration + mosq.restDuration;
@@ -63,8 +65,10 @@ void AnophelesModel::initialise(size_t species, MosquitoParams mosqParams)
     uninfected_v[SimTime::zero()] = numeric_limits<double>::quiet_NaN(); // index not used
 }
 
-void AnophelesModel::initAvailability(size_t species, const vector<NhhParams> &nhhs, int populationSize)
+void AnophelesModel::initAvailability(size_t species, const vector<NhhParams> &nhhs, int populationSizeInit)
 {
+    populationSize = populationSizeInit;
+
     // A: Host seeking
     // Proportion of host-seeking parous mosquitoes (those who have laid eggs)
     // which laid eggs that day:

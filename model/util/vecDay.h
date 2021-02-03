@@ -72,7 +72,7 @@ struct vecDay {
     inline const_ref_t operator[](SimTime n) const{ return v[n.inDays()]; }
     
     /// Access
-    const vec_t& internal()const{ return v; }
+    vec_t& internal() { return v; }
     
     /// Checkpointing
     template<class S>
