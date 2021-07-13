@@ -67,6 +67,7 @@
 using namespace std;
 
 #include <iostream>
+#define GSL_SQRT_DBL_EPSILON 0.1
 #include "CalcNvO.h"
 
 
@@ -88,6 +89,8 @@ struct SvDiffParams
 	int eta;
 	int mt;
 	int thetap;
+	double minNv0guess;
+	double maxNv0guess;
 };
 
 
@@ -533,7 +536,8 @@ double CalcInitMosqEmergeRate(double* FMosqEmergeRateVector, int* daysInYearPtr,
 	char Svpname[15] = "SvPO";
 
 
-
+	double minNv0guess;
+	double maxNv0guess;
 
 	/********************************************************************
 	 ***********************  BEGIN CODE HERE ***************************
@@ -596,12 +600,21 @@ double CalcInitMosqEmergeRate(double* FMosqEmergeRateVector, int* daysInYearPtr,
 	Xtp = gsl_matrix_calloc(eta, eta);
 	inv1Xtp = gsl_matrix_calloc(eta, eta);
 
-
 	// Set Kvi and Xii from Fortran arrays.
 	CalcCGSLVectorFromFortranArray(Kvi, FHumanInfectivityInitVector, thetap);
 	CalcCGSLVectorFromFortranArray(Xii, FEIRInitVector, thetap);
 	CalcCGSLVectorFromFortranArray(Nv0guess, FMosqEmergeRateInitEstimateVector, thetap);
 
+	// Normalize Nv0guess
+	minNv0guess = gsl_vector_min(Nv0guess);
+	maxNv0guess = gsl_vector_max(Nv0guess);
+
+/*	for (i=0; i<thetap; i++){
+		temp = gsl_vector_get(Nv0guess, i);
+		gsl_vector_set(Nv0guess, i, (temp - minNv0guess) / (maxNv0guess - minNv0guess));
+		//printf("Nv0guess: %f %f %f %f\n", minNv0guess, maxNv0guess, temp, gsl_vector_get(Nv0guess, i));
+	}
+*/
 	// We now try to print these parameters to file to make sure that 
 	// they show what we want them to show.
 	if(ifprintparameters) {
@@ -714,6 +727,8 @@ double CalcInitMosqEmergeRate(double* FMosqEmergeRateVector, int* daysInYearPtr,
 		pararootfind.eta = eta;
 		pararootfind.mt = mt;
 		pararootfind.thetap = thetap;
+		pararootfind.minNv0guess = minNv0guess;
+		pararootfind.maxNv0guess = maxNv0guess;
 
 		// Set root-finding function.
 		// frootfind = {&CalcSvDiff_rf, thetap, &pararootfind};
@@ -727,13 +742,19 @@ double CalcInitMosqEmergeRate(double* FMosqEmergeRateVector, int* daysInYearPtr,
 
 		// Set type of root-finding algorithm.
 		Trootfind = gsl_multiroot_fsolver_hybrids;
+		//Trootfind = gsl_multiroot_fsolver_broyden;
 		// Allocate memory for root-finding workspace.
 		srootfind = gsl_multiroot_fsolver_alloc(Trootfind, thetap);
 
 		printf("About to set root-finding solver \n");
 		// Initialize root-finding.
+		
+		//gsl_vector_add_constant(srootfind->dx, 100.0);
+
 		gsl_multiroot_fsolver_set(srootfind, &frootfind, xrootfind);
 		printf("Set root-finding \n");
+
+		//gsl_vector_add_constant(srootfind->dx, 100.0);
 
 		// Print initial state (to screen):
 		PrintRootFindingStateTS(iter, srootfind, thetap, fnamerootfindoutput);
@@ -748,7 +769,10 @@ double CalcInitMosqEmergeRate(double* FMosqEmergeRateVector, int* daysInYearPtr,
 				break;
 			}
 
-			status = gsl_multiroot_test_residual(srootfind->f, EpsAbsRF);
+			//printf("\tResidual %f\n", srootfind->f);
+			//printf("\t\tEpsAbsRF %f\n", EpsAbsRF);
+			//status = gsl_multiroot_test_residual(srootfind->f, EpsAbsRF);
+			status = gsl_multiroot_test_delta(srootfind->dx, srootfind->x, EpsAbsRF, 1.0);
 		}
 		while (status == GSL_CONTINUE && iter < maxiterRF);
 
@@ -1084,6 +1108,8 @@ int CalcSvDiff_rf(const gsl_vector* x, void* p, gsl_vector* f){
 	int eta = (params->eta);
 	int mt = (params->mt);
 	int thetap = (params->thetap);
+	double minNv0guess = (params->minNv0guess);
+	double maxNv0guess = (params->maxNv0guess);
 
 	// It would be cleaner to read in the name of this file as an input
 	// parameter but for now, we leave it out of the root-finding
@@ -1094,6 +1120,11 @@ int CalcSvDiff_rf(const gsl_vector* x, void* p, gsl_vector* f){
 	gsl_vector* Nv0 = gsl_vector_calloc(thetap);
 	gsl_vector_memcpy(Nv0, x);
 
+	/*for (int i=0; i<thetap; i++){
+		double temp = gsl_vector_get(Nv0, i);
+		gsl_vector_set(Nv0, i, temp * (maxNv0guess - minNv0guess) + minNv0guess);
+		//printf("Nv0: %f %f\n", temp, gsl_vector_get(Nv0, i));
+	}*/
 
 	counterSvDiff++;
 	printf("In CalcSvDiff_rf for the %d th time \n", counterSvDiff);
@@ -1103,14 +1134,27 @@ int CalcSvDiff_rf(const gsl_vector* x, void* p, gsl_vector* f){
 	CalcSvDiff(f, SvfromEIR, Upsilon, Nv0, inv1Xtp, 
 			eta, mt, thetap, fnametestentopar);
 
-	// SvDiff1norm = gsl_blas_dasum(f);
-	SvDiff1norm = gsl_blas_dnrm2(f);
+	long double sum = 0.0;
+	long double c = 0.0;
+
+	// Kahan summation algorithm
+	for (int i=0; i<thetap; i++){
+		long double y = fabs(gsl_vector_get(f, i));
+		long double t = sum + y;
+		c = (t - sum) - y;
+		sum = t;
+	}
+
+
+	SvDiff1norm = sum; //gsl_blas_dasum(f);
+
+	//SvDiff1norm = gsl_blas_dnrm2(f);
 	
 	// gsl_vector_set_all(f, 2.3);
 
 	// printf("The $l^1$ norm of SvDiff is %e \n", SvDiff1norm);
 
-	printf("The $l^2$ norm of SvDiff is %e \n", SvDiff1norm);
+	printf("The $l^2$ norm of SvDiff is %.15e \n", SvDiff1norm);
 
 	
 	gsl_vector_free(Nv0);
@@ -1187,6 +1231,18 @@ void CalcSvDiff(gsl_vector* SvDiff, gsl_vector* SvfromEIR,
 	// Subtract SvfromEIR from SvfromNv0
 	gsl_vector_memcpy(SvDiff,SvfromNv0);
 	gsl_vector_sub(SvDiff, SvfromEIR);
+	for (i=0; i<thetap; i++){
+		temp = gsl_vector_get(SvDiff, i);
+		gsl_vector_set(SvDiff, i, fabs(temp));
+		//printf("%f ", log(fabs(temp)));
+	}
+	printf("\n");
+	gsl_vector_add_constant(SvDiff, -gsl_vector_sum(SvDiff)/thetap);
+	for (i=0; i<thetap; i++){
+		temp = gsl_vector_get(SvDiff, i);
+		printf("%f ", temp);
+	}
+	printf("\n");
 
 	for (i=0; i<thetap; i++){
 		gsl_vector_free(Lambda[i]);
@@ -1231,7 +1287,7 @@ void CalcLambda(gsl_vector** Lambda, gsl_vector* Nv0, int eta,
 	double temp;
 	
 	// Prints intermediate results in calculating Upsilon.
-	int ifPrintLambda = 0; 
+	int ifPrintLambda = 1; 
 	
 	
 	for(t=0; t < thetap; t++){
@@ -1242,7 +1298,14 @@ void CalcLambda(gsl_vector** Lambda, gsl_vector* Nv0, int eta,
 	
 	// We should try to print some of these vectors out to see what they  look like.
 	if (ifPrintLambda){
-		PrintLambda(Lambda, eta, fntestentopar);		
+		PrintLambda(Lambda, eta, fntestentopar);
+		FILE* fpp = fopen(fntestentopar, "a");
+
+	
+		fprintf(fpp, "Nv0 = \n");
+		gsl_vector_fprintf(fpp, Nv0, "%f");
+	
+		fclose(fpp);	
 	}
 }
 /********************************************************************/
@@ -1835,18 +1898,30 @@ void PrintRootFindingStateTS(size_t iter, gsl_multiroot_fsolver* srootfind,
     
 	double svdiffsum;
 	double Nv0_0;
+	double dx;
 
 	FILE* fpp = fopen(fnrootfindingstate, "a");
 
+	double sum = 0.0, c = 0.0, t = 0.0;
+	// Kahan summation algorithm
+	for (int i=0; i<thetap; i++){
+		long double y = fabs(gsl_vector_get(srootfind->f, i));
+		long double t = sum + y;
+		c = (t - sum) - y;
+		sum = t;
+	}
+
 	// Calculate the $l^1$ norm of f.
-	svdiffsum = gsl_blas_dasum(srootfind->f);
+	svdiffsum = sum;//gsl_blas_dasum(srootfind->f);
 
 	// Get the 0th element of Nv0.
 	Nv0_0 = gsl_vector_get(srootfind->x, 0);
 
+	dx = gsl_vector_get(srootfind->dx, 0);
+
 	// Print to screen:
-	printf("iter = %5u Nv0(1) = % .3f ||f||_1 = % .3f \n", iter, Nv0_0, svdiffsum);
-	fprintf(fpp, "iter = %5u Nv0(1) = % .3f ||f||_1 = % .3f \n", iter, Nv0_0, svdiffsum);
+	printf("iter = %5u Nv0(1) = % .3f dx(1) = %.15f ||f||_1 = % .3f \n", iter, Nv0_0, dx, svdiffsum);
+	fprintf(fpp, "iter = %5u Nv0(1) = % .3f dx(1) = %.15f ||f||_1 = % .3f \n", iter, Nv0_0, dx, svdiffsum);
 	fclose(fpp);
 }
 

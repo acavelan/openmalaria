@@ -169,17 +169,23 @@ public:
         vector<double> EIR;
         EIR.resize(365);
 
-        for(unsigned int i=0; i<initialisationEIR.size(); i++)
+        for(unsigned int i=0; i<initialisationEIR.size()-1; i++)
         {
-            EIR[i*5] = initialisationEIR[i];
-            EIR[i*5+1] = initialisationEIR[i];
-            EIR[i*5+2] = initialisationEIR[i];
-            EIR[i*5+3] = initialisationEIR[i];
-            EIR[i*5+4] = initialisationEIR[i];
+            EIR[i*5] =   initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 0;
+            EIR[i*5+1] = initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 1;
+            EIR[i*5+2] = initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 2;
+            EIR[i*5+3] = initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 3;
+            EIR[i*5+4] = initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 4;
         }
 
-        // for(const auto &i : initialisationEIR)
-        //     cout << i << endl;
+        EIR[72*5] =   initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 0;
+        EIR[72*5+1] = initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 1;
+        EIR[72*5+2] = initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 2;
+        EIR[72*5+3] = initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 3;
+        EIR[72*5+4] = initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 4;
+
+/*        for(unsigned int i=0; i<365; i++)
+            cout << i << "\t= " << EIR[i] <<  " " << endl;*/
 
         CalcInitMosqEmergeRate(mosqEmergerateVector, &daysInYear,
             &mosqRestDuration, &EIPDuration, &nHostTypesInit,

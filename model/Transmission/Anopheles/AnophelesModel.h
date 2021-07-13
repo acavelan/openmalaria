@@ -475,6 +475,7 @@ public:
      * fcEir must have odd length and is ordered: [a0, a1, b1, ..., an, bn].
      * FSCoeffic[0] needs checkpointing, the rest doesn't. */
     vector<double> FSCoeffic;
+    double targetEIR;
 
     /** S_v used to force an EIR during vector init.
      * 
