@@ -89,8 +89,9 @@ struct SvDiffParams
 	int eta;
 	int mt;
 	int thetap;
-	double minNv0guess;
-	double maxNv0guess;
+	gsl_vector* fx;
+	gsl_vector* fxh;
+	gsl_vector* Nv0;
 };
 
 
@@ -98,197 +99,6 @@ struct SvDiffParams
 /***************************************************************************
  ************************ START SUBROUTINES HERE ***************************
  ***************************************************************************/
-
-
-/****************************************************************************/
-/* testFortranCInteractions() passes test arrays and matrices between C and
- * Fortran to see if we can get the communication to work correctly. For now
- * we aim to pass an array from Fortran to C, add 1 to all elements of the 
- * array, and read the new array in Fortran, while saving a copy of the
- * original array in C. 
- *
- * We also pass two matrices from Fortran to C:
- * A is a (defined) 2 x 3 matrix
- * B is a (defined) 3 x 2 matrix.
- * In C, we then evaluate:
- * C = AB (2 x 2)
- * D = A + B^T (2 x 3)
- *
- * We see if C returns to Fortran what we would expect.
- */
-
-double TestFortranCInteractions(int* AnnualPeriodPtr, int* nsporePtr,
-				   int* FTestArray, int* testArraySizePtr, 
-				   double* FAMatrix, int* AMatrixColLengthPtr, int* AMatrixRowLengthPtr, 
-				   double* FBMatrix, int* BMatrixColLengthPtr, int* BMatrixRowLengthPtr, 
-				   double* FCMatrix, int* CMatrixColLengthPtr, int* CMatrixRowLengthPtr, 
-				   double* FDMatrix, int* DMatrixColLengthPtr, int* DMatrixRowLengthPtr){
- 
-
-    // Initialize variables.
-
-    int AnnualPeriod;
-	int nspore;
-	int i;
-	int j;
-
-	int testArraySize;
-	int AMatrixRowLength;
-	int AMatrixColLength;
-	int BMatrixRowLength;
-	int BMatrixColLength;
-	int CMatrixRowLength;
-	int CMatrixColLength;
-	int DMatrixRowLength;
-	int DMatrixColLength;
-	
-
-	double MosqEmergeRate;
-	double temp;
-
-	// Dereference pointers.
-	AnnualPeriod = *AnnualPeriodPtr;
-	nspore = *nsporePtr;
-
-	testArraySize = *testArraySizePtr;
-	AMatrixRowLength = *AMatrixRowLengthPtr;
-	AMatrixColLength = *AMatrixColLengthPtr;
-	BMatrixRowLength = *BMatrixRowLengthPtr;
-	BMatrixColLength = *BMatrixColLengthPtr;
-	CMatrixRowLength = *CMatrixRowLengthPtr;
-	CMatrixColLength = *CMatrixColLengthPtr;
-	DMatrixRowLength = *DMatrixRowLengthPtr;
-	DMatrixColLength = *DMatrixColLengthPtr;
-
-
-	/* We initialize copyTestArray and dynamically allocate memory to it. 
-	 * This seems to work as we would like it to.
-	 */
-	int* copyTestArray;
-	copyTestArray = (int *)malloc(testArraySize*sizeof(int));
-
-
-	// We now initialize CAMatrix through CDMatrix.
-	// I think we should always initialize gsl matrices to 0.
-	gsl_matrix* CAMatrix = gsl_matrix_calloc(AMatrixColLength, AMatrixRowLength); 
-	gsl_matrix* CBMatrix = gsl_matrix_calloc(BMatrixColLength, BMatrixRowLength); 
-	gsl_matrix* CCMatrix = gsl_matrix_calloc(CMatrixColLength, CMatrixRowLength); 
-	gsl_matrix* CDMatrix = gsl_matrix_calloc(DMatrixColLength, DMatrixRowLength); 
-
-	// We allocate space for the transpose of B.
-	// We're switching RowLength and ColLength - but we should be careful not
-	// to get confused.
-	gsl_matrix* CBTMatrix = gsl_matrix_calloc(BMatrixRowLength, BMatrixColLength);
-
-
-
-	/* We copy testArray to copyTestArray.
-	 * We add 1 to each element of testArray.
-	 * We print both testArray and copyTestArray.
-	 */ 
-	for( i = 0; i < testArraySize; i++) {
-		copyTestArray[i] = FTestArray[i];
-		FTestArray[i]=FTestArray[i]+1;
-		printf("FTestArray[%d] = %d\n", i, FTestArray[i]);
-		printf("copyTestArray[%d] = %d\n", i, copyTestArray[i]);
-	}
-
-
-
-	/* We now try to define CAMatrix and CBMatrix as gsl matrices from the 
-	 * Fortran arrays, FAMatrix and BFMatrix.
-	 */ 
-	CalcCGSLMatrixFromFortranArray(CAMatrix, FAMatrix, AMatrixColLength, AMatrixRowLength);
-	CalcCGSLMatrixFromFortranArray(CBMatrix, FBMatrix, BMatrixColLength, BMatrixRowLength);
-
-
-	/* Print out FAMatrix and CAMatrix in C to see what they look like.
-	 * We add 1 to the indices so that they refer to the actual rows and columns.
-	 */
-	for( i=0; i<AMatrixColLength; i++) {
-		for( j=0; j<AMatrixRowLength; j++) {
-			printf("FAMatrix([%d],[%d]) = [%f]\n", i+1, j+1, FAMatrix[j*AMatrixColLength+i]);
-			temp = gsl_matrix_get(CAMatrix, i, j);
-			printf("CAMatrix([%d],[%d]) = [%f]\n", i+1, j+1, temp);
-		}
-	}
-
-	/* Print out FBMatrix and CBMatrix in C to see what they look like.
-	 * We add 1 to the indices so that they refer to the actual rows and columns.
-	 */
-	for( i=0; i<BMatrixColLength; i++) {
-		for( j=0; j<BMatrixRowLength; j++) {
-			printf("FBMatrix([%d],[%d]) = [%f]\n", i+1, j+1, FBMatrix[j*BMatrixColLength+i]);
-			temp = gsl_matrix_get(CBMatrix, i, j);
-			printf("CBMatrix([%d],[%d]) = [%f]\n", i+1, j+1, temp);
-		}
-	}
-	/* Let's see what happens? Here comes the test...
-	 * So far so good. It works as we would like it to.
-	 */ 
-
-	// Now we evaluate C = AB.
-
-	// This routine sets C = 1*A*B + 0*C.
-	// The first two terms tell it not to take the transpose of A and B.
-	gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, CAMatrix, CBMatrix, 0.0, CCMatrix);
-
-	// Now: D = A+B^T.
-
-	// Evaluate transpose
-	gsl_matrix_transpose_memcpy(CBTMatrix, CBMatrix);
-	// First copy A into D.
-	gsl_matrix_memcpy(CDMatrix, CAMatrix);
-	// Add transpose(B) to D and save in D.
-	gsl_matrix_add(CDMatrix, CBTMatrix);
-
-
-	/* Save C and D matrices as Fortran arrays */ 
-	CalcFortranArrayFromCGSLMatrix(CCMatrix, FCMatrix, CMatrixColLength, CMatrixRowLength);
-	CalcFortranArrayFromCGSLMatrix(CDMatrix, FDMatrix, DMatrixColLength, DMatrixRowLength);
-
-
-	/* Print out FCMatrix and CCMatrix in C to see what they look like.
-	 * We add 1 to the indices so that they refer to the actual rows and columns.
-	 */
-	for( i=0; i<CMatrixColLength; i++) {
-		for( j=0; j<CMatrixRowLength; j++) {
-			printf("FCMatrix([%d],[%d]) = [%f]\n", i+1, j+1, FCMatrix[j*CMatrixColLength+i]);
-			temp = gsl_matrix_get(CCMatrix, i, j);
-			printf("CCMatrix([%d],[%d]) = [%f]\n", i+1, j+1, temp);
-		}
-	}
-
-	/* Print out FDMatrix and CDMatrix in C to see what they look like.
-	 * We add 1 to the indices so that they refer to the actual rows and columns.
-	 */
-	for( i=0; i<DMatrixColLength; i++) {
-		for( j=0; j<DMatrixRowLength; j++) {
-			printf("FDMatrix([%d],[%d]) = [%f]\n", i+1, j+1, FDMatrix[j*DMatrixColLength+i]);
-			temp = gsl_matrix_get(CDMatrix, i, j);
-			printf("CDMatrix([%d],[%d]) = [%f]\n", i+1, j+1, temp);
-		}
-	}
-
-
-	//getchar();
-
-
-	MosqEmergeRate = AnnualPeriod*nspore;
-
-	// Deallocate memory for gsl matrices.
-	free(copyTestArray);
-	gsl_matrix_free(CAMatrix);
-	gsl_matrix_free(CBMatrix);
-	gsl_matrix_free(CCMatrix);
-	gsl_matrix_free(CDMatrix);
-
-
-	return MosqEmergeRate;
-}
-/***************************************************************************/
-
-
 
 
 
@@ -492,14 +302,14 @@ double CalcInitMosqEmergeRate(double* FMosqEmergeRateVector, int* daysInYearPtr,
 
 
 	// We define variables that we will need for the root-finding algorithm here.
-	const gsl_multiroot_fsolver_type* Trootfind;
-	gsl_multiroot_fsolver* srootfind;
+	const gsl_multiroot_fdfsolver_type* Trootfind;
+	gsl_multiroot_fdfsolver* srootfind;
 
 	int status; 
 	size_t iter=0;
 
 	struct SvDiffParams pararootfind;
-	gsl_multiroot_function frootfind;
+	gsl_multiroot_function_fdf frootfind;
 	gsl_vector* xrootfind;
 
 	// Maximum $l^1$ distance of error of root-finding algorithm
@@ -534,10 +344,6 @@ double CalcInitMosqEmergeRate(double* FMosqEmergeRateVector, int* daysInYearPtr,
 	char Nvpname[15] = "NvPO";
 	char Ovpname[15] = "OvPO";
 	char Svpname[15] = "SvPO";
-
-
-	double minNv0guess;
-	double maxNv0guess;
 
 	/********************************************************************
 	 ***********************  BEGIN CODE HERE ***************************
@@ -605,16 +411,6 @@ double CalcInitMosqEmergeRate(double* FMosqEmergeRateVector, int* daysInYearPtr,
 	CalcCGSLVectorFromFortranArray(Xii, FEIRInitVector, thetap);
 	CalcCGSLVectorFromFortranArray(Nv0guess, FMosqEmergeRateInitEstimateVector, thetap);
 
-	// Normalize Nv0guess
-	minNv0guess = gsl_vector_min(Nv0guess);
-	maxNv0guess = gsl_vector_max(Nv0guess);
-
-/*	for (i=0; i<thetap; i++){
-		temp = gsl_vector_get(Nv0guess, i);
-		gsl_vector_set(Nv0guess, i, (temp - minNv0guess) / (maxNv0guess - minNv0guess));
-		//printf("Nv0guess: %f %f %f %f\n", minNv0guess, maxNv0guess, temp, gsl_vector_get(Nv0guess, i));
-	}
-*/
 	// We now try to print these parameters to file to make sure that 
 	// they show what we want them to show.
 	if(ifprintparameters) {
@@ -705,13 +501,13 @@ double CalcInitMosqEmergeRate(double* FMosqEmergeRateVector, int* daysInYearPtr,
 
 		// We first test CalcSvDiff(). - It works.
 
-		CalcSvDiff(SvDiff, SvfromEIR, Upsilon, Nv0guess, inv1Xtp, 
-			eta, mt, thetap, fnametestentopar);
-		if (ifprintSvDiff){
-			PrintVector(fnametestentopar, SvDiffname, SvDiff, thetap);
-		}
-		SvDiff1norm = gsl_blas_dasum(SvDiff);
-		printf("The $l^1$ norm of SvDiff is %e \n", SvDiff1norm);
+		// CalcSvDiff(SvDiff, SvfromEIR, Upsilon, Nv0guess, inv1Xtp, 
+		// 	eta, mt, thetap, fnametestentopar);
+		// if (ifprintSvDiff){
+		// 	PrintVector(fnametestentopar, SvDiffname, SvDiff, thetap);
+		// }
+		// SvDiff1norm = gsl_blas_dasum(SvDiff);
+		// printf("The $l^1$ norm of SvDiff is %e \n", SvDiff1norm);
 
 
 
@@ -727,12 +523,16 @@ double CalcInitMosqEmergeRate(double* FMosqEmergeRateVector, int* daysInYearPtr,
 		pararootfind.eta = eta;
 		pararootfind.mt = mt;
 		pararootfind.thetap = thetap;
-		pararootfind.minNv0guess = minNv0guess;
-		pararootfind.maxNv0guess = maxNv0guess;
+		
+		pararootfind.fx = gsl_vector_calloc(thetap);
+		pararootfind.fxh = gsl_vector_calloc(thetap);
+		pararootfind.Nv0 = gsl_vector_calloc(thetap);
 
 		// Set root-finding function.
 		// frootfind = {&CalcSvDiff_rf, thetap, &pararootfind};
-		frootfind.f = &CalcSvDiff_rf;
+		frootfind.f = &CalcSvDiff_f;
+		frootfind.df = &CalcSvDiff_df;
+		frootfind.fdf = &CalcSvDiff_fdf;
 		frootfind.n = thetap;
 		frootfind.params = &pararootfind;
 
@@ -741,27 +541,23 @@ double CalcInitMosqEmergeRate(double* FMosqEmergeRateVector, int* daysInYearPtr,
 		gsl_vector_memcpy(xrootfind, Nv0guess);
 
 		// Set type of root-finding algorithm.
-		Trootfind = gsl_multiroot_fsolver_hybrids;
-		//Trootfind = gsl_multiroot_fsolver_broyden;
+		//Trootfind = gsl_multiroot_fsolver_hybrids;
+		Trootfind = gsl_multiroot_fdfsolver_hybridsj;
 		// Allocate memory for root-finding workspace.
-		srootfind = gsl_multiroot_fsolver_alloc(Trootfind, thetap);
+		srootfind = gsl_multiroot_fdfsolver_alloc(Trootfind, thetap);
 
 		printf("About to set root-finding solver \n");
 		// Initialize root-finding.
-		
-		//gsl_vector_add_constant(srootfind->dx, 100.0);
-
-		gsl_multiroot_fsolver_set(srootfind, &frootfind, xrootfind);
+	
+		gsl_multiroot_fdfsolver_set(srootfind, &frootfind, xrootfind);
 		printf("Set root-finding \n");
-
-		//gsl_vector_add_constant(srootfind->dx, 100.0);
 
 		// Print initial state (to screen):
 		PrintRootFindingStateTS(iter, srootfind, thetap, fnamerootfindoutput);
 
 		do{
 			iter++;
-			status = gsl_multiroot_fsolver_iterate(srootfind);
+			status = gsl_multiroot_fdfsolver_iterate(srootfind);
 			PrintRootFindingStateTS(iter, srootfind, thetap, fnamerootfindoutput);
 
 			// Check to see if solver is stuck
@@ -771,8 +567,8 @@ double CalcInitMosqEmergeRate(double* FMosqEmergeRateVector, int* daysInYearPtr,
 
 			//printf("\tResidual %f\n", srootfind->f);
 			//printf("\t\tEpsAbsRF %f\n", EpsAbsRF);
-			//status = gsl_multiroot_test_residual(srootfind->f, EpsAbsRF);
-			status = gsl_multiroot_test_delta(srootfind->dx, srootfind->x, EpsAbsRF, 1.0);
+			status = gsl_multiroot_test_residual(srootfind->f, EpsAbsRF);
+			//status = gsl_multiroot_test_delta(srootfind->dx, srootfind->x, EpsAbsRF, 1.0);
 		}
 		while (status == GSL_CONTINUE && iter < maxiterRF);
 
@@ -822,8 +618,9 @@ double CalcInitMosqEmergeRate(double* FMosqEmergeRateVector, int* daysInYearPtr,
 			PrintVector(fnametestentopar, Svpname, Svp, thetap);
 		}
 
-
-		//getchar();
+		gsl_vector_free(pararootfind.fx);
+		gsl_vector_free(pararootfind.fxh);
+		gsl_vector_free(pararootfind.Nv0);
 
 	}
 	else{
@@ -857,7 +654,7 @@ double CalcInitMosqEmergeRate(double* FMosqEmergeRateVector, int* daysInYearPtr,
 			gsl_vector_free(xp[i]);
 		}
 
-		gsl_multiroot_fsolver_free(srootfind);
+		gsl_multiroot_fdfsolver_free(srootfind);
 	}
 
 	free(Upsilon);
@@ -1089,10 +886,10 @@ void CalcUpsilonOneHost(gsl_matrix** Upsilon, double* PAPtr,
  * f is an OUT parameter.
  * All other parameters are IN parameters.
  */  
-int CalcSvDiff_rf(const gsl_vector* x, void* p, gsl_vector* f){
+int CalcSvDiff_f(const gsl_vector* x, void* p, gsl_vector* f){
 
 	// Add a static variable to keep track of how often we are in this routine.
-	static int counterSvDiff = 0;
+	static int counterSvDiff_f = 0;
 
 	// The $l^1$ norm of Svdiff.
 	double SvDiff1norm;
@@ -1108,8 +905,6 @@ int CalcSvDiff_rf(const gsl_vector* x, void* p, gsl_vector* f){
 	int eta = (params->eta);
 	int mt = (params->mt);
 	int thetap = (params->thetap);
-	double minNv0guess = (params->minNv0guess);
-	double maxNv0guess = (params->maxNv0guess);
 
 	// It would be cleaner to read in the name of this file as an input
 	// parameter but for now, we leave it out of the root-finding
@@ -1117,24 +912,19 @@ int CalcSvDiff_rf(const gsl_vector* x, void* p, gsl_vector* f){
 	char fnametestentopar[30] = "output_ento_para.txt";	
 
 	// Recreate a new Nv0 so that we're not restricted by const problems.
-	gsl_vector* Nv0 = gsl_vector_calloc(thetap);
-	gsl_vector_memcpy(Nv0, x);
+	//gsl_vector* Nv0 = gsl_vector_calloc(thetap);
+	//gsl_vector_memcpy(Nv0, x);
 
-	/*for (int i=0; i<thetap; i++){
-		double temp = gsl_vector_get(Nv0, i);
-		gsl_vector_set(Nv0, i, temp * (maxNv0guess - minNv0guess) + minNv0guess);
-		//printf("Nv0: %f %f\n", temp, gsl_vector_get(Nv0, i));
-	}*/
-
-	counterSvDiff++;
-	printf("In CalcSvDiff_rf for the %d th time \n", counterSvDiff);
+	counterSvDiff_f++;
+	printf("In CalcSvDiff_f for the %d th time \n", counterSvDiff_f);
 
 	// To set f, we simply call CalcSvDiff. It's probably easier than rewriting
 	// this code.
-	CalcSvDiff(f, SvfromEIR, Upsilon, Nv0, inv1Xtp, 
+	// x = Nv0
+	CalcSvDiff(f, SvfromEIR, Upsilon, x, inv1Xtp, 
 			eta, mt, thetap, fnametestentopar);
 
-	long double sum = 0.0;
+	/*long double sum = 0.0;
 	long double c = 0.0;
 
 	// Kahan summation algorithm
@@ -1146,24 +936,124 @@ int CalcSvDiff_rf(const gsl_vector* x, void* p, gsl_vector* f){
 	}
 
 
-	SvDiff1norm = sum; //gsl_blas_dasum(f);
+	SvDiff1norm = sum;*/
+	SvDiff1norm = gsl_blas_dasum(f);
 
 	//SvDiff1norm = gsl_blas_dnrm2(f);
 	
 	// gsl_vector_set_all(f, 2.3);
 
-	// printf("The $l^1$ norm of SvDiff is %e \n", SvDiff1norm);
+	printf("The $l^1$ norm of SvDiff is %e \n", SvDiff1norm);
 
-	printf("The $l^2$ norm of SvDiff is %.15e \n", SvDiff1norm);
+	printf("Svdiff: ");
+	for (int i=0; i<10; i++){
+		double temp = gsl_vector_get(f, i);
+		printf("%f ", fabs(temp));
+	}
+	printf("\n");
+	// printf("The $l^2$ norm of SvDiff is %.15e \n", SvDiff1norm);
 
 	
-	gsl_vector_free(Nv0);
+	//gsl_vector_free(Nv0);
 	return GSL_SUCCESS;
 }
 /********************************************************************/
 
 
+int CalcSvDiff_df(const gsl_vector* x, void* p, gsl_matrix* df)
+{
+	static int counterSvDiff_df = 0;
+	const double h = 1.0;
 
+	// Cast the incoming pointer, p, to point at a structure of type
+	// SvDiffParams.
+	struct SvDiffParams* params = (struct SvDiffParams *) p;
+
+	char fnametestentopar[30] = "output_ento_para.txt";	
+
+	// Assign parameters from params to variables defined in this routine.
+	gsl_vector* SvfromEIR = (params->SvfromEIR);
+	gsl_matrix** Upsilon = (params->Upsilon);
+	gsl_matrix* inv1Xtp = (params->inv1Xtp);
+	int eta = (params->eta);
+	int mt = (params->mt);
+	int thetap = (params->thetap);
+
+	counterSvDiff_df++;
+	printf("In CalcSvDiff_df for the %d th time \n", counterSvDiff_df);
+
+/*	gsl_vector* fx = gsl_vector_calloc(thetap);
+	gsl_vector* fxh = gsl_vector_calloc(thetap);
+	gsl_vector* Nv0 = gsl_vector_calloc(thetap);*/
+
+	gsl_vector* fx = params->fx;
+	gsl_vector* fxh = params->fxh;
+	gsl_vector* Nv0 = params->Nv0;
+
+	printf("Nv0: ");
+	for (int i=0; i<10; i++){
+		double temp = gsl_vector_get(x, i);
+		printf("%f ", fabs(temp));
+	}
+	printf("\n");
+	
+	gsl_vector_memcpy(Nv0, x);
+
+	CalcSvDiff(fx, SvfromEIR, Upsilon, Nv0, inv1Xtp, eta, mt, thetap, fnametestentopar);
+	
+	printf("Svdiff: ");
+	for (int i=0; i<10; i++){
+		double temp = gsl_vector_get(fx, i);
+		printf("%f ", fabs(temp));
+	}
+	printf("\n");
+	
+	for (int i=0; i<thetap; i++)
+	{
+		double xi = gsl_vector_get(x, i);
+    	double dx = h * fabs (xi);
+
+    	if(dx < h) dx = h;
+
+		//gsl_vector_memcpy(Nv0, x);
+		gsl_vector_set(Nv0, i, xi + dx);
+		CalcSvDiff(fxh, SvfromEIR, Upsilon, Nv0, inv1Xtp, eta, mt, thetap, fnametestentopar);
+		gsl_vector_set(Nv0, i, xi);
+		//gsl_vector_sub(fxh, fx);
+		//gsl_vector_scale(fxh, 1.0/dx);
+
+		for (int j = 0; j < thetap; j++)
+        {
+        	double g1 = gsl_vector_get (fxh, j);
+        	double g0 = gsl_vector_get (fx, j);
+        	gsl_matrix_set (df, j, i, (g1 - g0) / dx);
+       	}
+
+       	printf("df(%d) ", i);
+		for (int j=0; j<10; j++)
+			printf("%.15f ", gsl_matrix_get(df, j, i));
+		printf("\n");
+
+		//gsl_matrix_set_row(df, i, fxh);
+	}
+	printf("\n");
+
+/*	gsl_vector_free(fx);
+	gsl_vector_free(fxh);
+	gsl_vector_free(Nv0);*/
+
+	return GSL_SUCCESS;
+}
+
+int CalcSvDiff_fdf(const gsl_vector* x, void* p, gsl_vector* f, gsl_matrix* df)
+{
+	static int counterSvDiff_fdf = 0;
+	counterSvDiff_fdf++;
+	printf("In CalcSvDiff_fdf for the %d th time \n", counterSvDiff_fdf);
+	CalcSvDiff_f(x, p, f);
+	CalcSvDiff_df(x, p, df);
+	return GSL_SUCCESS;
+}
 
 
 
@@ -1183,12 +1073,12 @@ int CalcSvDiff_rf(const gsl_vector* x, void* p, gsl_vector* f){
  * All other parameters are IN parameters.
  */  
 void CalcSvDiff(gsl_vector* SvDiff, gsl_vector* SvfromEIR, 
-			gsl_matrix** Upsilon, gsl_vector* Nv0, gsl_matrix* inv1Xtp, 
+			gsl_matrix** Upsilon, const gsl_vector* Nv0, gsl_matrix* inv1Xtp, 
 			int eta, int mt, int thetap, char fntestentopar[]){
 
 
 	int i;
-	int indexSv;
+	int indexSv, indexOv, indexNv;
 	int ifprintSvfromNv0 = 0;
 
 	char SvfromNv0name[15] = "SvfromNv0";
@@ -1209,6 +1099,8 @@ void CalcSvDiff(gsl_vector* SvDiff, gsl_vector* SvfromEIR,
 	// the given Nv0.
 	// $S_v$.
 	gsl_vector* SvfromNv0 = gsl_vector_calloc(thetap);
+	gsl_vector* NvfromNv0 = gsl_vector_calloc(thetap);
+	gsl_vector* OvfromNv0 = gsl_vector_calloc(thetap);
 
 	// Calculate the forcing term for each time in the period.
 	CalcLambda(Lambda, Nv0, eta, thetap, fntestentopar);
@@ -1216,33 +1108,57 @@ void CalcSvDiff(gsl_vector* SvDiff, gsl_vector* SvfromEIR,
 	// Calculate the periodic orbit for the given Nv0.
 	CalcXP(xp, Upsilon, Lambda, inv1Xtp, eta, thetap, fntestentopar);
 
+
+
 	// Extract the number of infectious mosquitoes from the full periodic
 	// orbit.
 	indexSv = 2*mt;
+	indexOv = mt;
+	indexNv = 0;
 	for (i=0; i<thetap; i++){
 		temp = gsl_vector_get(xp[i], indexSv);
 		gsl_vector_set(SvfromNv0, i, temp);
+		temp = gsl_vector_get(xp[i], indexOv);
+		gsl_vector_set(OvfromNv0, i, temp);
+		temp = gsl_vector_get(xp[i], indexNv);
+		gsl_vector_set(NvfromNv0, i, temp);
 	}
+
+	FILE* fpp = fopen("Nv.txt", "w");
+	// fprintf(fpp, "Nv0 = \n");
+	gsl_vector_fprintf(fpp, NvfromNv0, "%f");
+	fclose(fpp);	
+
+	fpp = fopen("Ov.txt", "w");
+	// fprintf(fpp, "Nv0 = \n");
+	gsl_vector_fprintf(fpp, OvfromNv0, "%f");
+	fclose(fpp);
+
+	fpp = fopen("Sv.txt", "w");
+	// fprintf(fpp, "Nv0 = \n");
+	gsl_vector_fprintf(fpp, SvfromNv0, "%f");
+	fclose(fpp);
 
 	if(ifprintSvfromNv0){
 		PrintVector(fntestentopar, SvfromNv0name, SvfromNv0, thetap);
 	}
 
+
 	// Subtract SvfromEIR from SvfromNv0
 	gsl_vector_memcpy(SvDiff,SvfromNv0);
 	gsl_vector_sub(SvDiff, SvfromEIR);
-	for (i=0; i<thetap; i++){
-		temp = gsl_vector_get(SvDiff, i);
-		gsl_vector_set(SvDiff, i, fabs(temp));
-		//printf("%f ", log(fabs(temp)));
-	}
-	printf("\n");
-	gsl_vector_add_constant(SvDiff, -gsl_vector_sum(SvDiff)/thetap);
-	for (i=0; i<thetap; i++){
-		temp = gsl_vector_get(SvDiff, i);
-		printf("%f ", temp);
-	}
-	printf("\n");
+	
+	// for (i=0; i<thetap; i++){
+	// 	temp = gsl_vector_get(SvDiff, i);
+	// 	gsl_vector_set(SvDiff, i, temp);
+	// }
+
+	// gsl_vector_add_constant(SvDiff, -gsl_vector_sum(SvDiff)/thetap);
+	// for (i=0; i<thetap; i++){
+	// 	temp = gsl_vector_get(SvDiff, i);
+	// 	printf("%f ", temp);
+	// }
+	// printf("\n");
 
 	for (i=0; i<thetap; i++){
 		gsl_vector_free(Lambda[i]);
@@ -1251,6 +1167,9 @@ void CalcSvDiff(gsl_vector* SvDiff, gsl_vector* SvfromEIR,
 
 	free(Lambda);
 	free(xp);
+
+	gsl_vector_free(OvfromNv0);
+	gsl_vector_free(NvfromNv0);
 	gsl_vector_free(SvfromNv0);
 }
 /********************************************************************/
@@ -1280,7 +1199,7 @@ void CalcSvDiff(gsl_vector* SvDiff, gsl_vector* SvfromEIR,
  * Lambda is an OUT parameter.
  * All other parameters are IN parameters.
  */ 
-void CalcLambda(gsl_vector** Lambda, gsl_vector* Nv0, int eta,
+void CalcLambda(gsl_vector** Lambda, const gsl_vector* Nv0, int eta,
 				int thetap, char fntestentopar[]){
 
 	int t;
@@ -1356,19 +1275,19 @@ void CalcXP(gsl_vector** xp, gsl_matrix** Upsilon,
 	char x0pname[15] = "x0p";
 	
 
-	printf("Entered CalcXP() \n");
+	//printf("Entered CalcXP() \n");
 
 	// Evaluate the initial condition of the periodic orbit.
 	// Please refer to paper [add reference to paper and equation
 	// number here] for the expression for $x_0$.
 	for(i=0; i < thetap; i++){
-		FuncX(mtemp, Upsilon, thetap, i+1, eta);
+		FuncX(mtemp, Upsilon, thetap+1, i+1, eta);
 		gsl_blas_dgemv(CblasNoTrans, 1.0, mtemp, Lambda[i], 1.0, vtemp);
 		// gsl_vector_add(vtempsum, vtemp);
 	}
 	gsl_blas_dgemv(CblasNoTrans, 1.0, inv1Xtp, vtemp, 0.0, x0p);
 
-	printf("Calculated initial condition for periodic orbit. \n");
+	//printf("Calculated initial condition for periodic orbit. \n");
 	if (ifPrintx0p){
 		PrintVector(fntestentopar, x0pname, x0p, eta);
 	}
@@ -1394,8 +1313,12 @@ void CalcXP(gsl_vector** xp, gsl_matrix** Upsilon,
 	// }
 
 	xp[0] = gsl_vector_calloc(eta);
-	FuncX(mtemp, Upsilon, 0, 0, eta);
-	gsl_blas_dgemv(CblasNoTrans, 1.0, mtemp, x0p, 1.0, xp[0]);
+// 	FuncX(mtemp, Upsilon, 0, 0, eta);
+// 	gsl_blas_dgemv(CblasNoTrans, 1.0, mtemp, x0p, 1.0, xp[0]);
+// WRONG ABOVE, PLUS LAMBDA
+
+	gsl_blas_dgemv(CblasNoTrans, 1.0, Upsilon[364], x0p, 0.0, xp[0]);
+	gsl_vector_add(xp[0], Lambda[0]);
 
 	// for(t=1; t<thetap; t++){
 	// 	xp[t] = gsl_vector_calloc(eta);
@@ -1406,13 +1329,15 @@ void CalcXP(gsl_vector** xp, gsl_matrix** Upsilon,
 	// x(t+1) = Upsilon(t)*x(t) + Lambda(t)
 	for(t=1; t<thetap; t++){
 		xp[t] = gsl_vector_calloc(eta);
-		gsl_blas_dgemv(CblasNoTrans, 1.0, Upsilon[t], xp[t-1], 1.0, xp[t]);
+		gsl_blas_dgemv(CblasNoTrans, 1.0, Upsilon[t-1], xp[t-1], 0.0, xp[t]);
 		gsl_vector_add(xp[t], Lambda[t]);
 	}
-		
 
-
-	printf("Calculated periodic orbit. \n");
+	//NEED HERE
+	// xp[364] = gsl_vector_calloc(eta);
+	// gsl_vector_memcpy(xp[364], x0p);
+                                                                                                                           
+	//printf("Calculated periodic orbit. \n");
 
 	// We should try to print some of these vectors out to see what they  look like.
 	if (ifPrintXP){
@@ -1536,8 +1461,8 @@ void FuncX(gsl_matrix* X, gsl_matrix** Upsilon, int t, int s, int eta){
 
 	gsl_matrix_set_identity(X);
 
-	for (i=s; i<t; i++){
-		gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, Upsilon[i], X, 0.0, temp);
+	for (i=s+1; i<t; i++){
+		gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, Upsilon[i-1], X, 0.0, temp);
 		gsl_matrix_memcpy(X, temp);
 	}
 	gsl_matrix_free(temp);
@@ -1682,13 +1607,12 @@ void CalcInv1minusA(gsl_matrix* inv1A, gsl_matrix* A, int n, char fntestentopar[
 void CalSvfromEIRdata(gsl_vector* Sv, double PAi, double PBi, double Ni, 
 					  gsl_vector* Xii){
 
-	double temp;
+	//double temp;
 	
 	// Sv(t) = Xii(t)*(Ni/(PAi*PBi))
-	temp = Ni/(PAi*PBi);
+	//temp = Ni/(PAi*PBi);
 	gsl_vector_memcpy(Sv, Xii);
-	gsl_vector_scale(Sv, temp);	
-
+	//gsl_vector_scale(Sv, temp);	
 }
 /********************************************************************/
 
@@ -1893,16 +1817,16 @@ void CalcFortranArrayFromCGSLVector(gsl_vector* CVector, double* FArray,
  * All parameters are IN parameters.
  */
 
-void PrintRootFindingStateTS(size_t iter, gsl_multiroot_fsolver* srootfind, 
+void PrintRootFindingStateTS(size_t iter, gsl_multiroot_fdfsolver* srootfind, 
 							 int thetap, char fnrootfindingstate[]){
     
 	double svdiffsum;
-	double Nv0_0;
+	double Nv0_0, Nv0_1;
 	double dx;
 
 	FILE* fpp = fopen(fnrootfindingstate, "a");
 
-	double sum = 0.0, c = 0.0, t = 0.0;
+/*	double sum = 0.0, c = 0.0, t = 0.0;
 	// Kahan summation algorithm
 	for (int i=0; i<thetap; i++){
 		long double y = fabs(gsl_vector_get(srootfind->f, i));
@@ -1912,16 +1836,18 @@ void PrintRootFindingStateTS(size_t iter, gsl_multiroot_fsolver* srootfind,
 	}
 
 	// Calculate the $l^1$ norm of f.
-	svdiffsum = sum;//gsl_blas_dasum(srootfind->f);
+	svdiffsum = sum;//*/
+	svdiffsum = gsl_blas_dasum(srootfind->f);
 
 	// Get the 0th element of Nv0.
 	Nv0_0 = gsl_vector_get(srootfind->x, 0);
+	Nv0_1 = gsl_vector_get(srootfind->x, 364);
 
 	dx = gsl_vector_get(srootfind->dx, 0);
 
 	// Print to screen:
-	printf("iter = %5u Nv0(1) = % .3f dx(1) = %.15f ||f||_1 = % .3f \n", iter, Nv0_0, dx, svdiffsum);
-	fprintf(fpp, "iter = %5u Nv0(1) = % .3f dx(1) = %.15f ||f||_1 = % .3f \n", iter, Nv0_0, dx, svdiffsum);
+	printf("iter = %5lu Nv0(1) = % .3f Nv0(364) = % .3f  dx(1) = %.15f ||f||_1 = % .3f\n", iter, Nv0_0, Nv0_1, dx, svdiffsum);
+	fprintf(fpp, "iter = %5lu Nv0(1) = % .3f Nv0(364) = % .3f  dx(1) = %.15f ||f||_1 = % .3f\n", iter, Nv0_0, Nv0_1, dx, svdiffsum);
 	fclose(fpp);
 }
 
@@ -2085,7 +2011,7 @@ void PrintXP(gsl_vector** xp, int eta, int thetap, char fntestentopar[]){
 	int t;
 	char xpname[15] = "xp";
 	char xpvecname[15];
-	char timestring[5];
+	char timestring[20];
 	// double temp;
 
 	FILE* fpp = fopen(fntestentopar, "a");

@@ -61,13 +61,17 @@ void CalcUpsilonOneHost(gsl_matrix** Upsilon, double* PAPtr,
 		double muvA, double thetad, double PBi, double PCi, double PDi, 
 		double PEi, gsl_vector* Kvi, char fntestentopar[]);
 
-int CalcSvDiff_rf(const gsl_vector* x, void* p, gsl_vector* f);
+int CalcSvDiff_f(const gsl_vector* x, void* p, gsl_vector* f);
+
+int CalcSvDiff_df(const gsl_vector* x, void* p, gsl_matrix* df);
+
+int CalcSvDiff_fdf(const gsl_vector* x, void* p, gsl_vector* f, gsl_matrix* df);
 
 void CalcSvDiff(gsl_vector* SvDiff, gsl_vector* SvfromEIR, 
-			gsl_matrix** Upsilon, gsl_vector* Nv0, gsl_matrix* inv1Xtp, 
+			gsl_matrix** Upsilon, const gsl_vector* Nv0, gsl_matrix* inv1Xtp, 
 			int eta, int mt, int thetap, char fntestentopar[]);
 
-void CalcLambda(gsl_vector** Lambda, gsl_vector* Nv0, int eta,
+void CalcLambda(gsl_vector** Lambda, const gsl_vector* Nv0, int eta,
 				int thetap, char fntestentopar[]);
 
 void CalcXP(gsl_vector** xp, gsl_matrix** Upsilon, 
@@ -100,7 +104,7 @@ void CalcCGSLVectorFromFortranArray(gsl_vector* CVector, double* FArray,
 void CalcFortranArrayFromCGSLVector(gsl_vector* CVector, double* FArray, 
 				int Length);
 
-void PrintRootFindingStateTS(size_t iter, gsl_multiroot_fsolver* srootfind, 
+void PrintRootFindingStateTS(size_t iter, gsl_multiroot_fdfsolver* srootfind, 
 							 int thetap, char fnrootfindingstate[]);
 
 void PrintParameters(char fntestentopar[], int thetap, int tau, int thetas, 

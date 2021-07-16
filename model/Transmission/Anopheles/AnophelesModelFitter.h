@@ -104,6 +104,8 @@ public:
     //     // cout << "EIRRotateAngle: " << EIRRotateAngle << " rAngle = " << rAngle << ", angle = " << shiftAngle << " scalefactor: " <<
     //     // scaleFactor << " , factor: " << factor << endl;
 
+    //     // cout << "factor: " << factor << endl;
+
     //     // Compute forced_sv from the Fourrier Coeffs
     //     // shiftAngle rotate the vector to correct the offset between simulated and input EIR
     //     // shiftAngle is the offset between the
@@ -139,9 +141,11 @@ public:
         // double mosqProbResting = mosq.getMosqProbResting().getMean(); //PerHostAnophParams::get(species).ProbMosqbResting;
         // double mosqProbOvipositing = mosq.getMosqProbOvipositing().getValue(); //PerHostAnophParams::get(species).ProbMosqbOvipositing;
 
-        vector<double> Kvi(daysInYear, laggedKappa[0]);
-        double *FHumanInfectivityInitVector = Kvi.data();
-        double *FEIRInitVector = initialisationEIR.data();// m.ini m.getEIR().internal().data();
+
+        //vector<double> Kvi(daysInYear, laggedKappa[0]);
+
+        //double *FHumanInfectivityInitVector = laggedKappa.data(); //Kvi.data();
+        double *FEIRInitVector = m.forcedS_v.internal().data(); //initialisationEIR.data();// m.ini m.getEIR().internal().data(); m.forcedS_v.internal().data(); //
 
         // Copy of mosqEmergeRate
         std::vector<double> & Nv0guessRef = m.mosqEmergeRate.internal();
@@ -155,37 +159,61 @@ public:
         cout << "nMalHostTypesInit: " << nMalHostTypesInit << endl;
         cout << "popSizeInit: " << popSizeInit << endl;
         cout << "hostAvailabilityRateInit: " << hostAvailabilityRateInit << endl;
+        cout << "mosqSeekingDeathRate: " << m.mosq.seekingDeathRate << endl;
         cout << "mosqSeekingDuration: " << m.mosq.seekingDuration << endl;
         cout << "mosqProbBiting: " << m.mosq.probBiting << endl;
         cout << "mosqProbFindRestSite: " << m.mosq.probFindRestSite << endl;
         cout << "mosqProbResting: " << m.mosq.probResting << endl;
         cout << "mosqProbOvipositing: " << m.mosq.probOvipositing << endl;
 
-        cout << "FHumanInfectivityInitVector: " << Kvi.size() << endl;
+        cout << "FHumanInfectivityInitVector: " << laggedKappa.size() << endl;
         cout << "FEIRInitVector: " << initialisationEIR.size() << endl;
         cout << "FMosqEmergeRateInitEstimateVector: " << NvOguess.size() << endl;
         cout << "initNv0FromSv: " << m.initNv0FromSv << endl;
 
-        vector<double> EIR;
-        EIR.resize(365);
+        cout << "Nv0 size: " << m.mosqEmergeRate.internal().size() << endl;
+        // vector<double> EIR;
+        // EIR.resize(365);
 
-        for(unsigned int i=0; i<initialisationEIR.size()-1; i++)
+        // for(unsigned int i=0; i<initialisationEIR.size()-1; i++)
+        // {
+        //     EIR[i*5] =   initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 0;
+        //     EIR[i*5+1] = initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 1;
+        //     EIR[i*5+2] = initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 2;
+        //     EIR[i*5+3] = initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 3;
+        //     EIR[i*5+4] = initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 4;
+        // }
+
+        // EIR[72*5] =   initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 0;
+        // EIR[72*5+1] = initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 1;
+        // EIR[72*5+2] = initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 2;
+        // EIR[72*5+3] = initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 3;
+        // EIR[72*5+4] = initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 4;
+
+        vector<double> Kvi;
+        Kvi.resize(365);
+
+        for(unsigned int i=0; i<laggedKappa.size()-1; i++)
         {
-            EIR[i*5] =   initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 0;
-            EIR[i*5+1] = initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 1;
-            EIR[i*5+2] = initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 2;
-            EIR[i*5+3] = initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 3;
-            EIR[i*5+4] = initialisationEIR[i]+((initialisationEIR[i+1]-initialisationEIR[i]) / 5) * 4;
+            Kvi[i*5] =   laggedKappa[i]+((laggedKappa[i+1]-laggedKappa[i]) / 5) * 0;
+            Kvi[i*5+1] = laggedKappa[i]+((laggedKappa[i+1]-laggedKappa[i]) / 5) * 1;
+            Kvi[i*5+2] = laggedKappa[i]+((laggedKappa[i+1]-laggedKappa[i]) / 5) * 2;
+            Kvi[i*5+3] = laggedKappa[i]+((laggedKappa[i+1]-laggedKappa[i]) / 5) * 3;
+            Kvi[i*5+4] = laggedKappa[i]+((laggedKappa[i+1]-laggedKappa[i]) / 5) * 4;
         }
 
-        EIR[72*5] =   initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 0;
-        EIR[72*5+1] = initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 1;
-        EIR[72*5+2] = initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 2;
-        EIR[72*5+3] = initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 3;
-        EIR[72*5+4] = initialisationEIR[72]+((initialisationEIR[72]-initialisationEIR[71]) / 5) * 4;
+        Kvi[72*5] =   laggedKappa[72]+((laggedKappa[72]-laggedKappa[71]) / 5) * 0;
+        Kvi[72*5+1] = laggedKappa[72]+((laggedKappa[72]-laggedKappa[71]) / 5) * 1;
+        Kvi[72*5+2] = laggedKappa[72]+((laggedKappa[72]-laggedKappa[71]) / 5) * 2;
+        Kvi[72*5+3] = laggedKappa[72]+((laggedKappa[72]-laggedKappa[71]) / 5) * 3;
+        Kvi[72*5+4] = laggedKappa[72]+((laggedKappa[72]-laggedKappa[71]) / 5) * 4;
 
-/*        for(unsigned int i=0; i<365; i++)
-            cout << i << "\t= " << EIR[i] <<  " " << endl;*/
+
+        // for(unsigned int i=0; i<365; i++)
+        //     cout << i << "\t= " << EIR[i] <<  " " << endl;
+
+        for(unsigned int i=0; i<365; i++)
+            cout << Kvi[i] <<  endl;
 
         CalcInitMosqEmergeRate(mosqEmergerateVector, &daysInYear,
             &mosqRestDuration, &EIPDuration, &nHostTypesInit,
@@ -193,8 +221,8 @@ public:
             &hostAvailabilityRateInit, &m.mosq.seekingDeathRate,
             &m.mosq.seekingDuration, &m.mosq.probBiting,
             &m.mosq.probFindRestSite, &m.mosq.probResting,
-            &m.mosq.probOvipositing, FHumanInfectivityInitVector,
-            EIR.data(), FMosqEmergeRateInitEstimateVector);//, m.initNv0FromSv);
+            &m.mosq.probOvipositing, Kvi.data(),
+            FEIRInitVector, FMosqEmergeRateInitEstimateVector);//, m.initNv0FromSv);
 
         return false;
     }
