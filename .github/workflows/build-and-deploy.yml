@@ -14,7 +14,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ ubuntu-20.04 ]
+        # os: [] for testing with act
         include:
           - os: ubuntu-20.04
             compiler: g++
@@ -34,7 +34,7 @@ jobs:
       
       - if: startsWith(matrix.os,'ubuntu')
         run: |
-          apt update
+          sudo apt update
           sudo apt install -y build-essential git cmake libgsl-dev libxerces-c-dev xsdcxx || true
       
       - if: startsWith(matrix.os,'macos')
