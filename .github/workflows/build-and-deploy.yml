@@ -17,19 +17,19 @@ jobs:
       matrix:
         # os: [] for testing with act
         include:
-          - os: ubuntu-20.04
-            compiler: g++
-            target: Linux
+          # - os: ubuntu-20.04
+          #   compiler: g++
+          #   target: Linux
           
-          - os: ubuntu-18.04
-            compiler: g++
-            target: Linux
+          # - os: ubuntu-18.04
+          #   compiler: g++
+          #   target: Linux
           
           - os: macos-11
             compiler: clang
           
-          - os: macos-10.15
-            compiler: clang
+          # - os: macos-10.15
+          #   compiler: clang
     steps:
       - uses: actions/checkout@v2
       
@@ -40,9 +40,9 @@ jobs:
       
       - if: startsWith(matrix.os,'macos')
         run: |
-          HOMEBREW_NO_AUTO_UPDATE=1 brew uninstall xsd || true
           HOMEBREW_NO_AUTO_UPDATE=1 brew install git coreutils cmake gcc gsl xerces-c xsd || true
-      
+          HOMEBREW_NO_AUTO_UPDATE=1 brew link --overwrite xsd
+          
       - name: Compile
         run: |
           echo "Event: ${{ github.event_name }}"
