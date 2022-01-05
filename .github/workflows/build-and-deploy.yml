@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [] #for testing with act
+        # os: [] #for testing with act
         include:
           - os: ubuntu-20.04
             compiler: g++
