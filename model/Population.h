@@ -73,9 +73,6 @@ public:
     void flushReports();
     
     /** Return the number of humans. */
-    inline size_t size() const {
-        return populationSize;
-    }
     inline vector<Host::Human> &getHumans() {
         return population;
     }
