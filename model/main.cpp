@@ -197,6 +197,8 @@ int main(int argc, char* argv[])
         estEndTime = humanWarmupLength + transmission->expectedInitDuration() + (sim::endDate() - sim::startDate()) + sim::oneTS();
         assert( estEndTime + sim::never() < sim::zero() );
         
+        int lastPercent = -1; // last _integer_ percentage value
+        
         if (startedFromCheckpoint)
         {
             Continuous.init( monitoring, true );
@@ -207,26 +209,19 @@ int main(int argc, char* argv[])
             Continuous.init( monitoring, false );
             population::createInitialHumans(*population);
             transmission->init2(population->humans);
-        }
         
-        int lastPercent = -1; // last _integer_ percentage value
-        
-        /** Warm-up phase: 
-         * Run the simulation using the equilibrium inoculation rates over one
-         * complete lifespan (sim::maxHumanAge()) to reach immunological
-         * equilibrium in all age classes. Don't report any events. */
-        if(!startedFromCheckpoint)
-        {
+            /** Warm-up phase: 
+             * Run the simulation using the equilibrium inoculation rates over one
+             * complete lifespan (sim::maxHumanAge()) to reach immunological
+             * equilibrium in all age classes. Don't report any events. */
             endTime = humanWarmupLength;
             if (util::CommandLine::option(util::CommandLine::VERBOSE)) cout << "Starting Warmup..." << endl;
             loop(humanWarmupLength, *population, *transmission, endTime, estEndTime, lastPercent);
             if (util::CommandLine::option(util::CommandLine::VERBOSE)) cout << "Finishing Warmup..." << endl;
-        }
 
-        /** Transmission init phase:
-         * Fit the emergence rate to the input EIR */
-        if(!startedFromCheckpoint)
-        {
+
+            /** Transmission init phase:
+             * Fit the emergence rate to the input EIR */
             SimTime iterate = transmission->initIterate();
             while(iterate > sim::zero())
             {
@@ -238,17 +233,14 @@ int main(int argc, char* argv[])
                 if (util::CommandLine::option(util::CommandLine::VERBOSE)) cout << "Finishing EIR Calibration..." << endl;
                 iterate = transmission->initIterate();
             }
-        }
 
-        /** Main phase:
-         * This procedure starts with the current state of the simulation 
-         * It continues updating assuming:
-         * (i)         the default (exponential) demographic model
-         * (ii)        the entomological input defined by the EIRs in intEIR()
-         * (iii)       the intervention packages defined in Intervention()
-         * (iv)        the survey times defined in Survey() */
-        if(!startedFromCheckpoint)
-        {
+            /** Main phase:
+             * This procedure starts with the current state of the simulation 
+             * It continues updating assuming:
+             * (i)         the default (exponential) demographic model
+             * (ii)        the entomological input defined by the EIRs in intEIR()
+             * (iii)       the intervention packages defined in Intervention()
+             * (iv)        the survey times defined in Survey() */
             // reset endTime and estEndTime to their exact value after initIterate()
             estEndTime = endTime = endTime + (sim::endDate() - sim::startDate()) + sim::oneTS();
             sim::s_interv = sim::zero();
