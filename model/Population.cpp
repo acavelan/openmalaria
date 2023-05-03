@@ -82,7 +82,7 @@ void Population::regularize()
     int cumPop = 0;
 
     for (auto it = humans.begin(); it != humans.end();) {
-        bool isDead = it->remove;
+        bool isDead = it->toRemove;
 
         // if (Actual number of people so far > target population size for this age)
         // "outmigrate" some to maintain population shape

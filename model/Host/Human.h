@@ -97,13 +97,14 @@ public:
   
   SimTime dateOfBirth = sim::never();        // date of birth; humans are always born at the end of a time step
 
-  bool remove;    // TODO: we only need this because dead-person replacement can be delayed by 2 steps
+  bool toRemove;    // TODO: we only need this because dead-person replacement can be delayed by 2 steps
   
   /** Vaccines */
   interventions::PerHumanVaccine vaccine;
   
   /** Made persistant to save a lookup each time step (significant performance improvement) */
   mon::AgeGroup monitoringAgeGroup;
+  
   /** Cache, updated when human is added to or removed from a sub-population */
   uint32_t cohortSet;
   
@@ -124,13 +125,6 @@ public:
     //TODO(optimisation): it might be better to instead store for each
     // ComponentId of interest the set of humans who are members
     std::map<interventions::ComponentId,SimTime> subPopExp;
-
-private:
-    /// Hacky constructor for use in testing. Test code must do further initialisation as necessary.
-    /// Param 'dummy' isn't used but is just to allow overloading against usual constructor
-    Human(SimTime dateOfBirth, int dummy);
-  
-    friend class ::UnittestUtil;
 };
 
 namespace human
