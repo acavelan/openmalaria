@@ -173,8 +173,8 @@ namespace human
             }
         }
         // ageYears1 used only in PerHost::relativeAvailabilityAge(); difference to age0 should be minor
-        double EIR = transmission.getEIR( human, age0, ageYears1,
-                EIR_per_genotype );
+        double EIR = transmission.getEIR( human, age0, ageYears1, EIR_per_genotype );
+        
         int nNewInfs = human.infIncidence->numNewInfections( human, EIR );
         
         // ageYears1 used when medicating drugs (small effect) and in immunity model (which was parameterised for it)

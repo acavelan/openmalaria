@@ -28,10 +28,6 @@ namespace Host {
 
 /// (Some) heterogeneity parameters of humans
 struct HumanHet {
-    static bool opt_trans_het, opt_comorb_het, opt_treat_het,
-    opt_trans_treat_het, opt_comorb_treat_het,
-    opt_comorb_trans_het, opt_triple_het;
-
     /* Human heterogeneity; affects:
      * comorbidityFactor (stored in PathogenesisModel)
      * treatmentSeekingFactor (stored in CaseManagementModel)
@@ -39,12 +35,66 @@ struct HumanHet {
     double comorbidityFactor;
     double treatmentSeekingFactor;
     double availabilityFactor;
+    
     HumanHet() : comorbidityFactor(1.0), treatmentSeekingFactor(1.0),
         availabilityFactor(1.0) {}
     
-    static void init();
+    static HumanHet sample(util::LocalRng& rng)
+    {
+        HumanHet het;
+        if(util::ModelOptions::option (util::TRANS_HET)){
+            het.availabilityFactor = 0.2;
+            if( rng.bernoulli(0.5) ){
+                het.availabilityFactor = 1.8;
+            }
+        }
+        if(util::ModelOptions::option (util::COMORB_HET)){
+            het.comorbidityFactor = 0.2;
+            if( rng.bernoulli(0.5) ){
+                het.comorbidityFactor = 1.8;
+            }
+        }
+        if(util::ModelOptions::option (util::TREAT_HET)){
+            het.treatmentSeekingFactor = 0.2;
+            if( rng.bernoulli(0.5) ){
+                het.treatmentSeekingFactor = 1.8;
+            }
+        }
+        if(util::ModelOptions::option (util::TRANS_TREAT_HET)){
+            het.treatmentSeekingFactor = 0.2;
+            het.availabilityFactor = 1.8;
+            if( rng.bernoulli(0.5) ){
+                het.treatmentSeekingFactor = 1.8;
+                het.availabilityFactor = 0.2;
+            }
+        }else if(util::ModelOptions::option (util::COMORB_TREAT_HET)){
+            if( rng.bernoulli(0.5) ){
+                het.comorbidityFactor = 1.8;
+                het.treatmentSeekingFactor = 0.2;
+            }else{
+                het.comorbidityFactor = 0.2;
+                het.treatmentSeekingFactor = 1.8;
+            }
+        }else if(util::ModelOptions::option (util::COMORB_TRANS_HET)){
+            het.availabilityFactor = 1.8;
+            het.comorbidityFactor = 1.8;
+            if( rng.bernoulli(0.5) ){
+                het.availabilityFactor = 0.2;
+                het.comorbidityFactor = 0.2;
+            }
+        }else if(util::ModelOptions::option (util::TRIPLE_HET)){
+            het.availabilityFactor = 1.8;
+            het.comorbidityFactor = 1.8;
+            het.treatmentSeekingFactor = 0.2;
+            if( rng.bernoulli(0.5) ){
+                het.availabilityFactor = 0.2;
+                het.comorbidityFactor = 0.2;
+                het.treatmentSeekingFactor = 1.8;
+            }
+        }
+        return het;
+    }
 
-    static HumanHet sample(util::LocalRng& rng);
 };
 
 }
