@@ -68,25 +68,6 @@ public:
   Human(const Human&) = delete;
   Human& operator=(const Human&) = delete;
   
-  /// Checkpointing
-  template<class S>
-  void operator& (S& stream) {
-      perHostTransmission & stream;
-      // In this case these pointers each refer to one element not stored/pointed
-      // from elsewhere, so this checkpointing technique works.
-      infIncidence & stream;
-      withinHostModel & stream;
-      clinicalModel & stream;
-      rng.checkpoint(stream);
-      DOB & stream;
-      _vaccine & stream;
-      monitoringAgeGroup & stream;
-      cohortSet & stream;
-      nextCtsDist & stream;
-      subPopExp & stream;
-  }
-  //@}
-  
   /** Add the human to an intervention component's sub-population for the given
    * duration. A duration of zero implies no effect. */
   void reportDeployment( interventions::ComponentId id, SimTime duration );
@@ -96,10 +77,9 @@ public:
   }
   
     /** Get human's age with respect to some time. */
-    inline SimTime age( SimTime time )const{ return time - DOB; }
+    inline SimTime age( SimTime time )const{ return time - dateOfBirth; }
     /** Date of birth. */
-    inline SimTime getDateOfBirth() const{ return DOB; }
-      
+
   /** Return true if human is a member of the sub-population.
    * 
    * @param id Sub-population identifier. */
@@ -109,24 +89,10 @@ public:
       else return it->second > sim::nowOrTs0();   // added: has expired?
   }
   
-  /// Return the index of next continuous intervention to be deployed
-  inline uint32_t getNextCtsDist()const{ return nextCtsDist; }
-  /// Increment then return index of next continuous intervention to deploy
-  inline uint32_t incrNextCtsDist() {
-      nextCtsDist += 1;
-      return nextCtsDist;
-  }
-  
-  //! Summarize the state of a human individual.
-  void summarize();
-  
   /** Act on "remove from sub-population on first ..." events.
    *
    * This is only for use during a human update. */
   void removeFirstEvent( interventions::SubPopRemove::RemoveAtCode code );
-  
-  inline interventions::PerHumanVaccine& getVaccine(){ return _vaccine; }
-  inline const interventions::PerHumanVaccine& getVaccine() const{ return _vaccine; }
   
   /// Initialise human-specific models
   static void init( const OM::Parameters& parameters, const scnXml::Scenario& scenario );
@@ -148,12 +114,12 @@ public:
  
   LocalRng rng;
   
-  SimTime DOB = sim::never();        // date of birth; humans are always born at the end of a time step
+  SimTime dateOfBirth = sim::never();        // date of birth; humans are always born at the end of a time step
 
   bool remove;    // TODO: we only need this because dead-person replacement can be delayed by 2 steps
   
   /** Vaccines */
-  interventions::PerHumanVaccine _vaccine;
+  interventions::PerHumanVaccine vaccine;
   
   /** Made persistant to save a lookup each time step (significant performance improvement) */
   mon::AgeGroup monitoringAgeGroup;
@@ -190,6 +156,25 @@ private:
 
 namespace human
 {
+    template<class S> void checkpoint(Human &human, S& stream)
+    {
+        human.perHostTransmission & stream;
+        // In this case these pointers each refer to one element not stored/pointed
+        // from elsewhere, so this checkpointing technique works.
+        human.infIncidence & stream;
+        human.withinHostModel & stream;
+        human.clinicalModel & stream;
+        human.rng.checkpoint(stream);
+        human.dateOfBirth & stream;
+        human.vaccine & stream;
+        human.monitoringAgeGroup & stream;
+        human.cohortSet & stream;
+        human.nextCtsDist & stream;
+        human.subPopExp & stream;
+    }
+
+    void summarize(Human &human);
+
     void update(Human &human, Transmission::TransmissionModel& transmission);
 }
 

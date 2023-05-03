@@ -86,7 +86,7 @@ void loop(const SimTime humanWarmupLength, Population &population, TransmissionM
         Continuous.update( population );
         if( sim::intervDate() == mon::nextSurveyDate() ){
             for(Host::Human &human : population.humans)
-                human.summarize();
+                Host::human::summarize(human);
             transmission.summarize();
             mon::concludeSurvey();
         }
@@ -107,7 +107,7 @@ void loop(const SimTime humanWarmupLength, Population &population, TransmissionM
         Host::NeonatalMortality::update (population.humans);
         
         for (Host::Human& human : population.humans)
-            if (human.getDateOfBirth() + sim::maxHumanAge() >= humanWarmupLength) // this is last time of possible update
+            if (human.dateOfBirth + sim::maxHumanAge() >= humanWarmupLength) // this is last time of possible update
                 Host::human::update(human, transmission);
        
         population.regularize();

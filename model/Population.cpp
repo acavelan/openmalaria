@@ -143,7 +143,7 @@ namespace population
             // Note: calling this constructor of Host::Human is slightly wasteful, but avoids the need for another
             // ctor and leaves less opportunity for uninitialized memory.
             humans.push_back( Host::Human (sim::zero()) );
-            humans.back() & stream;
+            Host::human::checkpoint(humans.back(), stream);
         }
         if (humans.size() != population.populationSize)
             throw util::checkpoint_error("Population: out of data (read " + to_string(humans.size()) + " humans)");
@@ -156,7 +156,7 @@ namespace population
         auto &humans = population.humans;
 
         for(Host::Human &human : humans)
-            human & stream;
+            Host::human::checkpoint(human, stream);
     }
 
     void ctsHosts (Population &population, ostream& stream){

@@ -62,13 +62,13 @@ void Human::init( const Parameters& parameters, const scnXml::Scenario& scenario
 Human::Human(SimTime dateOfBirth) :
     infIncidence(InfectionIncidenceModel::createModel()),
     rng(util::master_RNG),
-    DOB(dateOfBirth),
+    dateOfBirth(dateOfBirth),
     remove(false),
     cohortSet(0),
     nextCtsDist(0)
 {
-    // Initial humans are created at time 0 and may have DOB in past. Otherwise DOB must be now.
-    assert( DOB == sim::nowOrTs1() || (sim::now() == sim::zero() && DOB < sim::now()) );
+    // Initial humans are created at time 0 and may have dateOfBirth in past. Otherwise dateOfBirth must be now.
+    assert( dateOfBirth == sim::nowOrTs1() || (sim::now() == sim::zero() && dateOfBirth < sim::now()) );
     
     HumanHet het = HumanHet::sample(rng);
     withinHostModel = WithinHost::WHInterface::createWithinHostModel( rng, het.comorbidityFactor );
@@ -82,7 +82,7 @@ Human::Human(SimTime dateOfBirth, int dummy) :
     infIncidence(nullptr),
     clinicalModel(nullptr),
     rng(0, 0),
-    DOB(dateOfBirth),
+    dateOfBirth(dateOfBirth),
     remove(false),
     cohortSet(0),
     nextCtsDist(0)
@@ -91,24 +91,6 @@ Human::Human(SimTime dateOfBirth, int dummy) :
 
 // -----  Non-static functions: per-time-step update  -----
 vector<double> EIR_per_genotype;        // cache (not thread safe)
-
-void Human::summarize() {
-    if( surveyOnlyNewEp && clinicalModel->isExistingCase() ){
-        // This modifies the denominator to treat the health-system-memory
-        // period immediately after a bout as 'not at risk'.
-        return;
-    }
-    
-    mon::reportStatMHI( mon::MHR_HOSTS, *this, 1 );
-    mon::reportStatMHF( mon::MHF_AGE, *this, sim::inYears(age(sim::now())) );
-    bool patent = withinHostModel->summarize (*this);
-    infIncidence->summarize (*this);
-    
-    if( patent && mon::isReported() ){
-        // this should happen after all other reporting!
-        removeFirstEvent( interventions::SubPopRemove::ON_FIRST_INFECTION );
-    }
-}
 
 void Human::reportDeployment( ComponentId id, SimTime duration ){
     if( duration <= sim::zero() ) return; // nothing to do
@@ -139,6 +121,24 @@ void Human::removeFirstEvent( interventions::SubPopRemove::RemoveAtCode code ){
 
 namespace human
 {
+    void summarize(Human &human) {
+        if( surveyOnlyNewEp && human.clinicalModel->isExistingCase() ){
+            // This modifies the denominator to treat the health-system-memory
+            // period immediately after a bout as 'not at risk'.
+            return;
+        }
+        
+        mon::reportStatMHI( mon::MHR_HOSTS, human, 1 );
+        mon::reportStatMHF( mon::MHF_AGE, human, sim::inYears(human.age(sim::now())) );
+        bool patent = human.withinHostModel->summarize (human);
+        human.infIncidence->summarize (human);
+        
+        if( patent && mon::isReported() ){
+            // this should happen after all other reporting!
+            human.removeFirstEvent( interventions::SubPopRemove::ON_FIRST_INFECTION );
+        }
+    }
+
     void update(Human &human, Transmission::TransmissionModel& transmission)
     {
         // For integer age checks we use age0 to e.g. get 73 steps comparing less than 1 year old

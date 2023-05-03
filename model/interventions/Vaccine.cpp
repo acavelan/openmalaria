@@ -136,7 +136,7 @@ VaccineComponent::VaccineComponent( ComponentId component, const scnXml::Vaccine
 
 void VaccineComponent::deploy(Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const
 {
-    bool administered = human.getVaccine().possiblyVaccinate( human, id(), vaccLimits );
+    bool administered = human.vaccine.possiblyVaccinate( human, id(), vaccLimits );
     if( administered && VaccineComponent::reportComponent == id() ){
         mon::reportEventMHD( mon::MHD_VACCINATIONS, human, method );
     }

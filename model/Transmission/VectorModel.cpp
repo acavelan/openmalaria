@@ -490,7 +490,7 @@ void VectorModel::vectorUpdate(const vector<Host::Human> &population)
             sigma_df[s] += df;
             for (size_t g = 0; g < nGenotypes; ++g)
             {
-                const double tbvFac = human.getVaccine().getFactor(interventions::Vaccine::TBV, opt_vaccine_genotype? g : 0);
+                const double tbvFac = human.vaccine.getFactor(interventions::Vaccine::TBV, opt_vaccine_genotype? g : 0);
                 sigma_dif[s][g] += df * probTransmission[g] * tbvFac;
             }
             sigma_dff[s] += df * host.relMosqFecundity(s);
