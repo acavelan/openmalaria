@@ -43,10 +43,8 @@ namespace WithinHost {
 namespace Transmission {
     class TransmissionModel;
 }
-class Population;
-namespace Host {
 
-using util::LocalRng;
+namespace Host {
 
 /** Interface to all sub-models storing data per-human individual.
  *
@@ -93,7 +91,7 @@ public:
    * and clinical outcomes (morbidity, reporting). */
   unique_ptr<Clinical::ClinicalModel> clinicalModel;
  
-  LocalRng rng;
+  util::LocalRng rng;
   
   SimTime dateOfBirth = sim::never();        // date of birth; humans are always born at the end of a time step
 
@@ -104,7 +102,7 @@ public:
   
   /** Made persistant to save a lookup each time step (significant performance improvement) */
   mon::AgeGroup monitoringAgeGroup;
-  
+
   /** Cache, updated when human is added to or removed from a sub-population */
   uint32_t cohortSet;
   

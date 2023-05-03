@@ -158,7 +158,6 @@ int main(int argc, char* argv[])
         mon::initReporting( *scenario ); // Reporting init depends on diagnostics and monitoring
         
         // Init models used by humans
-        Host::HumanHet::init();
         Transmission::PerHost::init( model.getHuman().getAvailabilityToMosquitoes() );
         Host::InfectionIncidenceModel::init( parameters );
         WithinHost::WHInterface::init( parameters, *scenario );
