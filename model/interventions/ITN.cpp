@@ -671,7 +671,7 @@ void HumanITN::update(Host::Human& human){
         // First use is at age 0 relative to ts0()
         if( sim::ts0() >= disposalTime ){
             deployTime = sim::never();
-            human.removeFromSubPop(id());
+            human.subPopExp.erase(id());
             return;
         }
         

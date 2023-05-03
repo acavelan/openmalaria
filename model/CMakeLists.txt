@@ -22,6 +22,7 @@ set (Model_CPP
   checkpoint.cpp
   
   Host/Human.cpp
+  Host/HumanHet.cpp
   Host/InfectionIncidenceModel.cpp
   Host/NeonatalMortality.cpp
   
