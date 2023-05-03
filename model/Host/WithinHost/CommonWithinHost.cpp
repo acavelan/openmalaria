@@ -158,7 +158,7 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng,
         if( opt_vaccine_genotype )
         {
             double vaccineFactor = human.getVaccine().getFactor( interventions::Vaccine::PEV, genotype );
-            if(vaccineFactor == 1.0 || human.rng().bernoulli(vaccineFactor))
+            if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
                 infections.push_back(createInfection (rng, genotype));
             else
                 nNewInfsDiscarded++;
@@ -272,7 +272,7 @@ bool CommonWithinHost::summarize( Host::Human& human )const{
             for(auto inf = infections.begin(); inf != infections.end(); ++inf) {
                 uint32_t genotype = (*inf)->genotype();
                 mon::reportStatMHGI( mon::MHR_INFECTIONS, human, genotype, 1 );
-                if( diagnostics::monitoringDiagnostic().isPositive( human.rng(), (*inf)->getDensity(), std::numeric_limits<double>::quiet_NaN() ) ){
+                if( diagnostics::monitoringDiagnostic().isPositive( human.rng, (*inf)->getDensity(), std::numeric_limits<double>::quiet_NaN() ) ){
                     mon::reportStatMHGI( mon::MHR_PATENT_INFECTIONS, human, genotype, 1 );
                 }
             }
@@ -295,7 +295,7 @@ bool CommonWithinHost::summarize( Host::Human& human )const{
                 }while( inf != sortedInfs.end() && (*inf)->genotype() == genotype );
                 // we had at least one infection of this genotype
                 mon::reportStatMHGI( mon::MHR_INFECTED_GENOTYPE, human, genotype, 1 );
-                if( diagnostics::monitoringDiagnostic().isPositive(human.rng(), dens, std::numeric_limits<double>::quiet_NaN()) ){
+                if( diagnostics::monitoringDiagnostic().isPositive(human.rng, dens, std::numeric_limits<double>::quiet_NaN()) ){
                     mon::reportStatMHGI( mon::MHR_PATENT_GENOTYPE, human, genotype, 1 );
                     mon::reportStatMHGF( mon::MHF_LOG_DENSITY_GENOTYPE, human, genotype, log(dens) );
                 }
@@ -306,7 +306,7 @@ bool CommonWithinHost::summarize( Host::Human& human )const{
     // Some treatments (simpleTreat with steps=-1) clear infections immediately
     // (and are applied after update()), thus infections.size() may be 0 while
     // totalDensity > 0. Here we report the last calculated density.
-    if( diagnostics::monitoringDiagnostic().isPositive(human.rng(), totalDensity, std::numeric_limits<double>::quiet_NaN()) ){
+    if( diagnostics::monitoringDiagnostic().isPositive(human.rng, totalDensity, std::numeric_limits<double>::quiet_NaN()) ){
         mon::reportStatMHI( mon::MHR_PATENT_HOSTS, human, 1 );
         if(totalDensity == 0.0)
             mon::reportStatMHF( mon::MHF_LOG_DENSITY, human, 0.0);

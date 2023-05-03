@@ -77,55 +77,37 @@ public:
       infIncidence & stream;
       withinHostModel & stream;
       clinicalModel & stream;
-      m_rng.checkpoint(stream);
-      m_DOB & stream;
+      rng.checkpoint(stream);
+      DOB & stream;
       _vaccine & stream;
       monitoringAgeGroup & stream;
-      m_cohortSet & stream;
+      cohortSet & stream;
       nextCtsDist & stream;
-      m_subPopExp & stream;
+      subPopExp & stream;
   }
   //@}
   
-  ///@brief Deploy "intervention" functions
-  //@{
   /** Add the human to an intervention component's sub-population for the given
    * duration. A duration of zero implies no effect. */
   void reportDeployment( interventions::ComponentId id, SimTime duration );
   
   inline void removeFromSubPop( interventions::ComponentId id ){
-      m_subPopExp.erase( id );
+      subPopExp.erase( id );
   }
   
-  /// Resets immunity
-  void clearImmunity();
-  
-  /// Infect the human (with an imported infection).
-  void addInfection();
-  //@}
-  
-  /// @brief Small functions
-  //@{
-    bool remove() { return m_remove; }
-    
-    /// Get access to the RNG
-    inline LocalRng& rng() { return m_rng; }
-    
     /** Get human's age with respect to some time. */
-    inline SimTime age( SimTime time )const{ return time - m_DOB; }
+    inline SimTime age( SimTime time )const{ return time - DOB; }
     /** Date of birth. */
-    inline SimTime getDateOfBirth() const{ return m_DOB; }
-  
+    inline SimTime getDateOfBirth() const{ return DOB; }
+      
   /** Return true if human is a member of the sub-population.
    * 
    * @param id Sub-population identifier. */
   inline bool isInSubPop( interventions::ComponentId id )const{
-      auto it = m_subPopExp.find( id );
-      if( it == m_subPopExp.end() ) return false;       // no history of membership
+      auto it = subPopExp.find( id );
+      if( it == subPopExp.end() ) return false;       // no history of membership
       else return it->second > sim::nowOrTs0();   // added: has expired?
   }
-  /** Return the cohort set. */
-  inline uint32_t cohortSet()const{ return m_cohortSet; }
   
   /// Return the index of next continuous intervention to be deployed
   inline uint32_t getNextCtsDist()const{ return nextCtsDist; }
@@ -134,7 +116,6 @@ public:
       nextCtsDist += 1;
       return nextCtsDist;
   }
-  //@}
   
   //! Summarize the state of a human individual.
   void summarize();
@@ -144,29 +125,8 @@ public:
    * This is only for use during a human update. */
   void removeFirstEvent( interventions::SubPopRemove::RemoveAtCode code );
   
-  /// Flush any information pending reporting. Should only be called at destruction.
-  void flushReports ();
-  
-  ///@brief Access to sub-models
-  //@{
-  /// The WithinHostModel models parasite density and immunity
-  inline const WithinHost::WHInterface& getWithinHostModel () const{
-      return *withinHostModel;
-  }
-  
-  /// Get monitoring age group
-  inline mon::AgeGroup monAgeGroup() const{
-      return monitoringAgeGroup;
-  }
-  
   inline interventions::PerHumanVaccine& getVaccine(){ return _vaccine; }
   inline const interventions::PerHumanVaccine& getVaccine() const{ return _vaccine; }
-  
-  inline Clinical::ClinicalModel& getClinicalModel() {
-      return *clinicalModel;
-  }
-  //@}
-  
   
   /// Initialise human-specific models
   static void init( const OM::Parameters& parameters, const scnXml::Scenario& scenario );
@@ -186,11 +146,11 @@ public:
    * and clinical outcomes (morbidity, reporting). */
   unique_ptr<Clinical::ClinicalModel> clinicalModel;
  
-  LocalRng m_rng;
+  LocalRng rng;
   
-  SimTime m_DOB = sim::never();        // date of birth; humans are always born at the end of a time step
+  SimTime DOB = sim::never();        // date of birth; humans are always born at the end of a time step
 
-  bool m_remove;    // TODO: we only need this because dead-person replacement can be delayed by 2 steps
+  bool remove;    // TODO: we only need this because dead-person replacement can be delayed by 2 steps
   
   /** Vaccines */
   interventions::PerHumanVaccine _vaccine;
@@ -198,7 +158,7 @@ public:
   /** Made persistant to save a lookup each time step (significant performance improvement) */
   mon::AgeGroup monitoringAgeGroup;
   /** Cache, updated when human is added to or removed from a sub-population */
-  uint32_t m_cohortSet;
+  uint32_t cohortSet;
   
   /** The next continuous distribution in the series */
   uint32_t nextCtsDist;
@@ -210,15 +170,15 @@ public:
   /** This lists sub-populations of which the human is a member together with
    * expiry time.
    * 
-   * Definition: a human is in sub-population p if m_subPopExp.contains(p) and,
-   * for t=m_subPopExp[p], t > sim::now() (at the time of intervention
+   * Definition: a human is in sub-population p if subPopExp.contains(p) and,
+   * for t=subPopExp[p], t > sim::now() (at the time of intervention
    * deployment) or t > sim::ts0() (equiv t >= sim::ts1()) during human update.
    * 
    * NOTE: this discrepancy is because intervention deployment effectively
    * happens at the end of a time step and we want a duration of 1 time step to
    * mean 1 intervention deployment (that where the human becomes a member) and
    * 1 human update (the next). */
-  SubPopT m_subPopExp;
+  SubPopT subPopExp;
 
 private:
     /// Hacky constructor for use in testing. Test code must do further initialisation as necessary.

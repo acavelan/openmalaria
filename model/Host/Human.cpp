@@ -61,19 +61,19 @@ void Human::init( const Parameters& parameters, const scnXml::Scenario& scenario
 // Create new human
 Human::Human(SimTime dateOfBirth) :
     infIncidence(InfectionIncidenceModel::createModel()),
-    m_rng(util::master_RNG),
-    m_DOB(dateOfBirth),
-    m_remove(false),
-    m_cohortSet(0),
+    rng(util::master_RNG),
+    DOB(dateOfBirth),
+    remove(false),
+    cohortSet(0),
     nextCtsDist(0)
 {
     // Initial humans are created at time 0 and may have DOB in past. Otherwise DOB must be now.
-    assert( m_DOB == sim::nowOrTs1() || (sim::now() == sim::zero() && m_DOB < sim::now()) );
+    assert( DOB == sim::nowOrTs1() || (sim::now() == sim::zero() && DOB < sim::now()) );
     
-    HumanHet het = HumanHet::sample(m_rng);
-    withinHostModel = WithinHost::WHInterface::createWithinHostModel( m_rng, het.comorbidityFactor );
-    auto iiFactor = infIncidence->getAvailabilityFactor(m_rng, 1.0);
-    perHostTransmission.initialise (m_rng, het.availabilityFactor * iiFactor);
+    HumanHet het = HumanHet::sample(rng);
+    withinHostModel = WithinHost::WHInterface::createWithinHostModel( rng, het.comorbidityFactor );
+    auto iiFactor = infIncidence->getAvailabilityFactor(rng, 1.0);
+    perHostTransmission.initialise (rng, het.availabilityFactor * iiFactor);
     clinicalModel = Clinical::ClinicalModel::createClinicalModel (het.treatmentSeekingFactor);
 }
 
@@ -81,26 +81,16 @@ Human::Human(SimTime dateOfBirth, int dummy) :
     withinHostModel(nullptr),
     infIncidence(nullptr),
     clinicalModel(nullptr),
-    m_rng(0, 0),
-    m_DOB(dateOfBirth),
-    m_remove(false),
-    m_cohortSet(0),
+    rng(0, 0),
+    DOB(dateOfBirth),
+    remove(false),
+    cohortSet(0),
     nextCtsDist(0)
 {}
 
 
 // -----  Non-static functions: per-time-step update  -----
-
 vector<double> EIR_per_genotype;        // cache (not thread safe)
-
-void Human::addInfection(){
-    withinHostModel->importInfection(m_rng);
-}
-
-void Human::clearImmunity(){
-    withinHostModel->clearImmunity();
-}
-
 
 void Human::summarize() {
     if( surveyOnlyNewEp && clinicalModel->isExistingCase() ){
@@ -122,33 +112,29 @@ void Human::summarize() {
 
 void Human::reportDeployment( ComponentId id, SimTime duration ){
     if( duration <= sim::zero() ) return; // nothing to do
-    m_subPopExp[id] = sim::nowOrTs1() + duration;
-    m_cohortSet = mon::updateCohortSet( m_cohortSet, id, true );
+    subPopExp[id] = sim::nowOrTs1() + duration;
+    cohortSet = mon::updateCohortSet( cohortSet, id, true );
 }
 void Human::removeFirstEvent( interventions::SubPopRemove::RemoveAtCode code ){
     const vector<ComponentId>& removeAtList = interventions::removeAtIds[code];
     for( auto it = removeAtList.begin(), end = removeAtList.end(); it != end; ++it ){
-        auto expIt = m_subPopExp.find( *it );
-        if( expIt != m_subPopExp.end() ){
+        auto expIt = subPopExp.find( *it );
+        if( expIt != subPopExp.end() ){
             if( expIt->second > sim::nowOrTs0() ){
                 // removeFirstEvent() is used for onFirstBout, onFirstTreatment
                 // and onFirstInfection cohort options. Health system memory must
                 // be reset for this to work properly; in theory the memory should
                 // be independent for each cohort, but this is a usable approximation.
-                flushReports();     // reset HS memory
+                clinicalModel->flushReports();     // reset HS memory
                 
                 // report removal due to first infection/bout/treatment
                 mon::reportEventMHI( mon::MHR_SUB_POP_REM_FIRST_EVENT, *this, 1 );
             }
-            m_cohortSet = mon::updateCohortSet( m_cohortSet, expIt->first, false );
+            cohortSet = mon::updateCohortSet( cohortSet, expIt->first, false );
             // remove (affects reporting, restrictToSubPop and cumulative deployment):
-            m_subPopExp.erase( expIt );
+            subPopExp.erase( expIt );
         }
     }
-}
-
-void Human::flushReports (){
-    clinicalModel->flushReports();
 }
 
 namespace human
@@ -158,7 +144,7 @@ namespace human
         // For integer age checks we use age0 to e.g. get 73 steps comparing less than 1 year old
         SimTime age0 = human.age(sim::ts0());
         if (human.clinicalModel->isDead(age0)) {
-            human.m_remove = true;
+            human.remove = true;
             return;
         }
         
@@ -171,14 +157,14 @@ namespace human
         // monitoringAgeGroup is the group for the start of the time step.
         human.monitoringAgeGroup.update( age0 );
         // check sub-pop expiry
-        for( auto expIt = human.m_subPopExp.begin(), expEnd = human.m_subPopExp.end(); expIt != expEnd; ) {
+        for( auto expIt = human.subPopExp.begin(), expEnd = human.subPopExp.end(); expIt != expEnd; ) {
             if( !(expIt->second >= sim::ts0()) ){       // membership expired
                 // don't flush reports
                 // report removal due to expiry
                 mon::reportEventMHI( mon::MHR_SUB_POP_REM_TOO_OLD, human, 1 );
-                human.m_cohortSet = mon::updateCohortSet( human.m_cohortSet, expIt->first, false );
+                human.cohortSet = mon::updateCohortSet( human.cohortSet, expIt->first, false );
                 // erase element, but continue iteration
-                expIt = human.m_subPopExp.erase( expIt );
+                expIt = human.subPopExp.erase( expIt );
             }else{
                 ++expIt;
             }
@@ -189,7 +175,7 @@ namespace human
         int nNewInfs = human.infIncidence->numNewInfections( human, EIR );
         
         // ageYears1 used when medicating drugs (small effect) and in immunity model (which was parameterised for it)
-        human.withinHostModel->update(human, human.m_rng, nNewInfs, EIR_per_genotype, ageYears1);
+        human.withinHostModel->update(human, human.rng, nNewInfs, EIR_per_genotype, ageYears1);
         
         human.infIncidence->reportNumNewInfections(human, nNewInfs);
         
