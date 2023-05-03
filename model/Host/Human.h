@@ -53,8 +53,6 @@ using util::LocalRng;
  * Still contains some data, but most is now contained in sub-models. */
 class Human {
 public:
-  /// @brief Construction and destruction, checkpointing
-  //@{
   /** Initialise all variables of a human datatype.
    * 
    * @param dateOfBirth date of birth (usually start of next time step) */
@@ -67,14 +65,6 @@ public:
   /// Disable copying
   Human(const Human&) = delete;
   Human& operator=(const Human&) = delete;
-  
-  /** Add the human to an intervention component's sub-population for the given
-   * duration. A duration of zero implies no effect. */
-  void reportDeployment( interventions::ComponentId id, SimTime duration );
-  
-  inline void removeFromSubPop( interventions::ComponentId id ){
-      subPopExp.erase( id );
-  }
   
     /** Get human's age with respect to some time. */
     inline SimTime age( SimTime time )const{ return time - dateOfBirth; }
@@ -89,15 +79,6 @@ public:
       else return it->second > sim::nowOrTs0();   // added: has expired?
   }
   
-  /** Act on "remove from sub-population on first ..." events.
-   *
-   * This is only for use during a human update. */
-  void removeFirstEvent( interventions::SubPopRemove::RemoveAtCode code );
-  
-  /// Initialise human-specific models
-  static void init( const OM::Parameters& parameters, const scnXml::Scenario& scenario );
-    
-public:
   /** Contains per-species vector data (VectorModel only). */
   Transmission::PerHost perHostTransmission;
   
@@ -129,10 +110,6 @@ public:
   /** The next continuous distribution in the series */
   uint32_t nextCtsDist;
   
-  //TODO(optimisation): it might be better to instead store for each
-  // ComponentId of interest the set of humans who are members
-  typedef std::map<interventions::ComponentId,SimTime> SubPopT;
-
   /** This lists sub-populations of which the human is a member together with
    * expiry time.
    * 
@@ -144,7 +121,9 @@ public:
    * happens at the end of a time step and we want a duration of 1 time step to
    * mean 1 intervention deployment (that where the human becomes a member) and
    * 1 human update (the next). */
-  SubPopT subPopExp;
+    //TODO(optimisation): it might be better to instead store for each
+    // ComponentId of interest the set of humans who are members
+    std::map<interventions::ComponentId,SimTime> subPopExp;
 
 private:
     /// Hacky constructor for use in testing. Test code must do further initialisation as necessary.
@@ -156,24 +135,18 @@ private:
 
 namespace human
 {
-    template<class S> void checkpoint(Human &human, S& stream)
-    {
-        human.perHostTransmission & stream;
-        // In this case these pointers each refer to one element not stored/pointed
-        // from elsewhere, so this checkpointing technique works.
-        human.infIncidence & stream;
-        human.withinHostModel & stream;
-        human.clinicalModel & stream;
-        human.rng.checkpoint(stream);
-        human.dateOfBirth & stream;
-        human.vaccine & stream;
-        human.monitoringAgeGroup & stream;
-        human.cohortSet & stream;
-        human.nextCtsDist & stream;
-        human.subPopExp & stream;
-    }
+    void checkpoint(Human &human, istream &stream);
+    void checkpoint(Human &human, ostream &stream);
 
-    void summarize(Human &human);
+    /** Add the human to an intervention component's sub-population for the given
+     * duration. A duration of zero implies no effect. */
+    void reportDeployment(Human &human, interventions::ComponentId id, SimTime duration );
+
+    /** Act on "remove from sub-population on first ..." events.
+     * This is only for use during a human update. */
+    void removeFirstEvent(Human &human, interventions::SubPopRemove::RemoveAtCode code );
+
+    void summarize(Human &human, bool surveyOnlyNewEp);
 
     void update(Human &human, Transmission::TransmissionModel& transmission);
 }

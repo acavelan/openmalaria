@@ -20,8 +20,7 @@
  */
 
 #include "Host/Human.h"
-
-#include "Host/HumanHet.hpp"
+#include "Host/HumanHet.h"
 #include "Host/InfectionIncidenceModel.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -38,23 +37,6 @@
 namespace OM { namespace Host {
     using namespace OM::util;
     using interventions::ComponentId;
-    
-    bool surveyOnlyNewEp = false;
-
-// -----  Static functions  -----
-
-void Human::init( const Parameters& parameters, const scnXml::Scenario& scenario ){    // static
-    HumanHet::init();
-    surveyOnlyNewEp = scenario.getMonitoring().getSurveyOptions().getOnlyNewEpisode();
-    
-    const scnXml::Model& model = scenario.getModel();
-    // Init models used by humans:
-    Transmission::PerHost::init( model.getHuman().getAvailabilityToMosquitoes() );
-    InfectionIncidenceModel::init( parameters );
-    WithinHost::WHInterface::init( parameters, scenario );
-    Clinical::ClinicalModel::init( parameters, scenario );
-}
-
 
 // -----  Non-static functions: creation/destruction, checkpointing  -----
 
@@ -92,36 +74,69 @@ Human::Human(SimTime dateOfBirth, int dummy) :
 // -----  Non-static functions: per-time-step update  -----
 vector<double> EIR_per_genotype;        // cache (not thread safe)
 
-void Human::reportDeployment( ComponentId id, SimTime duration ){
-    if( duration <= sim::zero() ) return; // nothing to do
-    subPopExp[id] = sim::nowOrTs1() + duration;
-    cohortSet = mon::updateCohortSet( cohortSet, id, true );
-}
-void Human::removeFirstEvent( interventions::SubPopRemove::RemoveAtCode code ){
-    const vector<ComponentId>& removeAtList = interventions::removeAtIds[code];
-    for( auto it = removeAtList.begin(), end = removeAtList.end(); it != end; ++it ){
-        auto expIt = subPopExp.find( *it );
-        if( expIt != subPopExp.end() ){
-            if( expIt->second > sim::nowOrTs0() ){
-                // removeFirstEvent() is used for onFirstBout, onFirstTreatment
-                // and onFirstInfection cohort options. Health system memory must
-                // be reset for this to work properly; in theory the memory should
-                // be independent for each cohort, but this is a usable approximation.
-                clinicalModel->flushReports();     // reset HS memory
-                
-                // report removal due to first infection/bout/treatment
-                mon::reportEventMHI( mon::MHR_SUB_POP_REM_FIRST_EVENT, *this, 1 );
-            }
-            cohortSet = mon::updateCohortSet( cohortSet, expIt->first, false );
-            // remove (affects reporting, restrictToSubPop and cumulative deployment):
-            subPopExp.erase( expIt );
-        }
-    }
-}
-
 namespace human
 {
-    void summarize(Human &human) {
+    void checkpoint(Human &human, istream &stream)
+    {
+        human.perHostTransmission & stream;
+        human.infIncidence & stream;
+        human.withinHostModel & stream;
+        human.clinicalModel & stream;
+        human.rng.checkpoint(stream);
+        human.dateOfBirth & stream;
+        human.vaccine & stream;
+        human.monitoringAgeGroup & stream;
+        human.cohortSet & stream;
+        human.nextCtsDist & stream;
+        human.subPopExp & stream;
+    }
+
+    void checkpoint(Human &human, ostream &stream)
+    {
+        human.perHostTransmission & stream;
+        human.infIncidence & stream;
+        human.withinHostModel & stream;
+        human.clinicalModel & stream;
+        human.rng.checkpoint(stream);
+        human.dateOfBirth & stream;
+        human.vaccine & stream;
+        human.monitoringAgeGroup & stream;
+        human.cohortSet & stream;
+        human.nextCtsDist & stream;
+        human.subPopExp & stream;
+    }
+
+    void reportDeployment(Human &human, ComponentId id, SimTime duration )
+    {
+        if( duration <= sim::zero() ) return; // nothing to do
+        human.subPopExp[id] = sim::nowOrTs1() + duration;
+        human.cohortSet = mon::updateCohortSet( human.cohortSet, id, true );
+    }
+
+    void removeFirstEvent(Human &human, interventions::SubPopRemove::RemoveAtCode code )
+    {
+        const vector<ComponentId>& removeAtList = interventions::removeAtIds[code];
+        for( auto it = removeAtList.begin(), end = removeAtList.end(); it != end; ++it ){
+            auto expIt = human.subPopExp.find( *it );
+            if( expIt != human.subPopExp.end() ){
+                if( expIt->second > sim::nowOrTs0() ){
+                    // removeFirstEvent() is used for onFirstBout, onFirstTreatment
+                    // and onFirstInfection cohort options. Health system memory must
+                    // be reset for this to work properly; in theory the memory should
+                    // be independent for each cohort, but this is a usable approximation.
+                    human.clinicalModel->flushReports();     // reset HS memory
+                    
+                    // report removal due to first infection/bout/treatment
+                    mon::reportEventMHI( mon::MHR_SUB_POP_REM_FIRST_EVENT, human, 1 );
+                }
+                human.cohortSet = mon::updateCohortSet( human.cohortSet, expIt->first, false );
+                // remove (affects reporting, restrictToSubPop and cumulative deployment):
+                human.subPopExp.erase( expIt );
+            }
+        }
+    }
+
+    void summarize(Human &human, bool surveyOnlyNewEp) {
         if( surveyOnlyNewEp && human.clinicalModel->isExistingCase() ){
             // This modifies the denominator to treat the health-system-memory
             // period immediately after a bout as 'not at risk'.
@@ -135,7 +150,7 @@ namespace human
         
         if( patent && mon::isReported() ){
             // this should happen after all other reporting!
-            human.removeFirstEvent( interventions::SubPopRemove::ON_FIRST_INFECTION );
+            human::removeFirstEvent(human, interventions::SubPopRemove::ON_FIRST_INFECTION);
         }
     }
 
