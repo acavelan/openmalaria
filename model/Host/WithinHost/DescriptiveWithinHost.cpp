@@ -116,7 +116,7 @@ void DescriptiveWithinHostModel::update(Host::Human &human, LocalRng& rng,
         // If opt_vaccine_genotype is true the infection is discarded with probability 1-vaccineFactor
         if( opt_vaccine_genotype )
         {
-            double vaccineFactor = human.getVaccine().getFactor( interventions::Vaccine::PEV, genotype );
+            double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
                 infections.push_back(DescriptiveInfection (rng, genotype));
         }
@@ -154,7 +154,7 @@ void DescriptiveWithinHostModel::update(Host::Human &human, LocalRng& rng,
         // See MAX_DENS_CORRECTION in DescriptiveInfection.cpp.
         double infStepMaxDens = timeStepMaxDensity;
         double immSurvFact = immunitySurvivalFactor(ageInYears, inf->cumulativeExposureJ());
-        double bsvFactor = human.getVaccine().getFactor(interventions::Vaccine::BSV, opt_vaccine_genotype? inf->genotype() : 0);
+        double bsvFactor = human.vaccine.getFactor(interventions::Vaccine::BSV, opt_vaccine_genotype? inf->genotype() : 0);
 
         inf->determineDensities(rng, m_cumulative_h, infStepMaxDens, immSurvFact, _innateImmSurvFact, bsvFactor);
 
