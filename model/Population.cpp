@@ -82,8 +82,8 @@ void Population::regularize()
     int cumPop = 0;
 
     for (auto it = humans.begin(); it != humans.end();) {
-        bool isDead = it->remove();
-        
+        bool isDead = it->remove;
+
         // if (Actual number of people so far > target population size for this age)
         // "outmigrate" some to maintain population shape
         //NOTE: better to use age(sim::ts0())? Possibly, but the difference will not be very significant.
@@ -185,7 +185,7 @@ namespace population
         int patent = 0;
         for(Host::Human &human : population.humans) {
             auto diag = WithinHost::diagnostics::monitoringDiagnostic();
-            if( human.getWithinHostModel().diagnosticResult(human.rng(), diag) )
+            if( human.withinHostModel->diagnosticResult(human.rng, diag) )
                 ++patent;
         }
         stream << '\t' << patent;
@@ -194,7 +194,7 @@ namespace population
     void ctsImmunityh (Population &population, ostream& stream){
         double x = 0.0;
         for(const Host::Human &human : population.humans) {
-            x += human.getWithinHostModel().getCumulative_h();
+            x += human.withinHostModel->getCumulative_h();
         }
         x /= population.populationSize;
         stream << '\t' << x;
@@ -203,7 +203,7 @@ namespace population
     void ctsImmunityY (Population &population, ostream& stream){
         double x = 0.0;
         for(const Host::Human &human : population.humans) {
-            x += human.getWithinHostModel().getCumulative_Y();
+            x += human.withinHostModel->getCumulative_Y();
         }
         x /= population.populationSize;
         stream << '\t' << x;
@@ -213,7 +213,7 @@ namespace population
         vector<double> list;
         list.reserve( population.populationSize );
         for(const Host::Human &human : population.humans) {
-            list.push_back( human.getWithinHostModel().getCumulative_Y() );
+            list.push_back( human.withinHostModel->getCumulative_Y() );
         }
         sort( list.begin(), list.end() );
         double x;

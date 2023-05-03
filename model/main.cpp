@@ -277,7 +277,7 @@ int main(int argc, char* argv[])
         cerr << '\r' << flush;  // clean last line of progress-output
         
         for(Host::Human &human : population->humans)
-            human.flushReports();
+            human.clinicalModel->flushReports();
         mon::writeSurveyData();
         
     # ifdef OM_STREAM_VALIDATOR
