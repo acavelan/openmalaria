@@ -45,7 +45,7 @@ Human::Human(SimTime dateOfBirth) :
     infIncidence(InfectionIncidenceModel::createModel()),
     rng(util::master_RNG),
     dateOfBirth(dateOfBirth),
-    remove(false),
+    toRemove(false),
     cohortSet(0),
     nextCtsDist(0)
 {
@@ -58,18 +58,6 @@ Human::Human(SimTime dateOfBirth) :
     perHostTransmission.initialise (rng, het.availabilityFactor * iiFactor);
     clinicalModel = Clinical::ClinicalModel::createClinicalModel (het.treatmentSeekingFactor);
 }
-
-Human::Human(SimTime dateOfBirth, int dummy) :
-    withinHostModel(nullptr),
-    infIncidence(nullptr),
-    clinicalModel(nullptr),
-    rng(0, 0),
-    dateOfBirth(dateOfBirth),
-    remove(false),
-    cohortSet(0),
-    nextCtsDist(0)
-{}
-
 
 // -----  Non-static functions: per-time-step update  -----
 vector<double> EIR_per_genotype;        // cache (not thread safe)
@@ -159,7 +147,7 @@ namespace human
         // For integer age checks we use age0 to e.g. get 73 steps comparing less than 1 year old
         SimTime age0 = human.age(sim::ts0());
         if (human.clinicalModel->isDead(age0)) {
-            human.remove = true;
+            human.toRemove = true;
             return;
         }
         
