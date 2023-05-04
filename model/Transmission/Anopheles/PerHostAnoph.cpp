@@ -37,16 +37,6 @@ PerHostAnophParams::PerHostAnophParams (const scnXml::Mosq& mosq) {
     probMosqSurvivalResting.setParams( mosq.getMosqProbResting() );
 }
 
-void PerHostAnoph::initialise (LocalRng& rng, size_t species, double availabilityFactor)
-{
-    const PerHostAnophParams& base = PerHostAnophParams::get(species);
-    entoAvailability = base.entoAvailability.sample(rng) * availabilityFactor;
-    probMosqBiting = base.probMosqBiting.sample(rng);
-    auto pRest1 = base.probMosqFindRestSite.sample(rng);
-    auto pRest2 = base.probMosqSurvivalResting.sample(rng);
-    probMosqRest = pRest1 * pRest2;
-}
-
 }
 }
 }

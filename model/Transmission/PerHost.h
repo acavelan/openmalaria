@@ -33,7 +33,6 @@ namespace OM {
 namespace Transmission {
 
 using Anopheles::PerHostAnophParams;
-using Anopheles::PerHostAnoph;
 using util::AgeGroupInterpolator;
 using util::DecayFunction;
 using util::DecayFuncHet;
@@ -256,7 +255,9 @@ public:
     /// Checkpointing
     template<class S>
     void operator& (S& stream) {
-        speciesData & stream;
+        anophEntoAvailability & stream;
+        anophProbMosqBiting & stream;
+        anophProbMosqResting & stream;
         _relativeAvailabilityHet & stream;
         outsideTransmission & stream;
         checkpointIntervs( stream );
@@ -266,8 +267,6 @@ public:
 private:
     void checkpointIntervs( ostream& stream );
     void checkpointIntervs( istream& stream );
-    
-    vector<PerHostAnoph> speciesData;
     
     // Determines whether human is outside transmission
     bool outsideTransmission;
@@ -279,6 +278,19 @@ private:
     vector<unique_ptr<PerHostInterventionData>> activeComponents;
     
     static AgeGroupInterpolator relAvailAge;
+
+    /** Species availability rate of human to mosquitoes, including hetergeneity factor
+     * and base rate, but excluding age and intervention factors. */
+    vector<double> anophEntoAvailability;
+    
+    /** Species probability of mosquito successfully biting host (P_B_i) in the absense of
+     * interventions. */
+    vector<double> anophProbMosqBiting;
+    
+    /** Species probability of mosquito escaping human and finding a resting site, then
+     * resting without dying, after biting the human (P_C_i * P_D_i) in the
+     * absense of interventions. */
+    vector<double> anophProbMosqResting;
 };
 
 }
