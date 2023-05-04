@@ -21,7 +21,6 @@
 
 #include "Transmission/PerHost.h"
 #include "Transmission/VectorModel.h"
-#include "Transmission/Anopheles/PerHostAnoph.h"
 #include "interventions/InterventionManager.hpp"
 #include "util/errors.h"
 #include "util/checkpoint.h"
@@ -29,11 +28,18 @@
 namespace OM {
 namespace Transmission {
 using namespace OM::util;
-using Anopheles::PerHostAnophParams;
 
 // -----  PerHost static  -----
 
 AgeGroupInterpolator PerHost::relAvailAge;
+vector<PerHostAnophParams> PerHostAnophParams::params;
+
+PerHostAnophParams::PerHostAnophParams (const scnXml::Mosq& mosq) {
+    entoAvailability.setParams( 1.0, mosq.getAvailability() );
+    probMosqBiting.setParams( mosq.getMosqProbBiting() );
+    probMosqFindRestSite.setParams( mosq.getMosqProbFindRestSite() );
+    probMosqSurvivalResting.setParams( mosq.getMosqProbResting() );
+}
 
 void PerHost::init ( const scnXml::AgeGroupValues& availabilityToMosquitoes ) {
     relAvailAge.set( availabilityToMosquitoes, "availabilityToMosquitoes" );
