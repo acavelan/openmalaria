@@ -48,7 +48,8 @@ protected:
     /// Critical density for fever (clinical episodes)
     double _pyrogenThres;
     /// Determine the current pyrogenic threshold.
-    virtual void updatePyrogenThres(double totalDensity);
+    // virtual void updatePyrogenThres(double totalDensity);
+    virtual void updatePyrogenThres_simplified(double Y);
 
 public:
     PyrogenPathogenesis(double cF);
