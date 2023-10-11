@@ -89,18 +89,18 @@ void PyrogenPathogenesis::init( const Parameters& parameters ){
     Y_STAR_0 = parameters[Parameters::Y_STAR_0];
     Y_STAR_1 = parameters[Parameters::Y_STAR_1];
     alpha = parameters[Parameters::ALPHA];
-    w = parameters[Parameters::Y_STAR_HALF_LIFE] / sim::stepsPerYear();
+    w = log(2.0) / (parameters[Parameters::Y_STAR_HALF_LIFE] * sim::oneYear());
     ewt = exp(-w * sim::oneTS());
 }
 
 PyrogenPathogenesis::PyrogenPathogenesis(double cF) :
-     PathogenesisModel (cF), _pyrogenThres (Y_STAR_0)
+     PathogenesisModel (cF), _pyrogenThres (0) //_pyrogenThres (Y_STAR_0)
 {}
 
 
 double PyrogenPathogenesis::getPEpisode(double timeStepMaxDensity, double totalDensity) {
     updatePyrogenThres_simplified(totalDensity);
-    return timeStepMaxDensity / (timeStepMaxDensity + _pyrogenThres);
+    return timeStepMaxDensity / (timeStepMaxDensity + Y_STAR_0 + _pyrogenThres);
 }
 
 void PyrogenPathogenesis::summarize (const Host::Human& human) {
