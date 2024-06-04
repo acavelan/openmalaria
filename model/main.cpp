@@ -39,6 +39,7 @@
 #include "schema/scenario.h"
 
 #include <cerrno>
+#include <fstream>
 
 namespace OM {
     using mon::Continuous;
@@ -75,6 +76,10 @@ void run(Population &population, TransmissionModel &transmission, SimTime humanW
 
     if (util::CommandLine::option(util::CommandLine::VERBOSE)) cout << "Starting " << phase << "..." << endl;
 
+    std::ofstream ages("ages.txt");
+    std::ofstream immhf("immunity_h.txt");
+    std::ofstream immYf("immunity_Y.txt");
+
     while (sim::now() < endTime)
     {
         if (util::CommandLine::option(util::CommandLine::VERBOSE) && sim::intervDate() > 0)
@@ -109,7 +114,13 @@ void run(Population &population, TransmissionModel &transmission, SimTime humanW
         {
             if (human.getDOB() + sim::maxHumanAge() >= humanWarmupLength) // this is last time of possible update
                 Host::update(human, transmission);
+            ages << human.age(sim::ts1()) << " ";
+            immhf << human.withinHostModel->getCumulative_h() << " ";
+            immYf << human.withinHostModel->getCumulative_Y() << " ";
         }
+        ages << endl;
+        immhf << endl;
+        immYf << endl;
        
         population.update();
         
@@ -123,6 +134,8 @@ void run(Population &population, TransmissionModel &transmission, SimTime humanW
             print_progress(lastPercent, estEndTime);
         print_errno();
     }
+    immYf.close();
+    immhf.close();
 
     if (util::CommandLine::option(util::CommandLine::VERBOSE)) cout << "Finishing " << phase << "..." << endl;
 }
