@@ -52,7 +52,7 @@ double MuellerPathogenesis::getPEpisode(double, double totalDensity) {
 // ———  Pyrogenic threshold model  ———
 
 //Pyrogenic threshold at birth (Y*0)
-double initPyroThres;
+double minPyroThresh;
 // Ystar2: critical value in determining increase in pyrogenic threshold
 double Ystar2_13;
 double Ystar1_26;
@@ -64,7 +64,7 @@ double a = numeric_limits<double>::signaling_NaN(),
     b = numeric_limits<double>::signaling_NaN();
 
 void PyrogenPathogenesis::init( const Parameters& parameters ){
-    initPyroThres = parameters[Parameters::Y_STAR_0];
+    minPyroThresh = parameters[Parameters::Y_STAR_0];
     
     double delt = 1.0 / n;
     double smuY = -log(0.5) /
@@ -82,13 +82,13 @@ void PyrogenPathogenesis::init( const Parameters& parameters ){
 }
 
 PyrogenPathogenesis::PyrogenPathogenesis(double cF) :
-     PathogenesisModel (cF), _pyrogenThres (initPyroThres)
+     PathogenesisModel (cF), _pyrogenThres (0)
 {}
 
 
 double PyrogenPathogenesis::getPEpisode(double timeStepMaxDensity, double totalDensity) {
     updatePyrogenThres(totalDensity);
-    return timeStepMaxDensity / (timeStepMaxDensity + _pyrogenThres);
+    return timeStepMaxDensity / (timeStepMaxDensity + minPyroThresh + _pyrogenThres);
 }
 
 void PyrogenPathogenesis::summarize (const Host::Human& human) {
