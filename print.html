@@ -157,7 +157,7 @@ Links:</p>
 </ul>
 <p>This documentation was automatically generated from OpenMalaria schema (XSD) files.
 It is automatically kept up to date with schema files in the master branch of the repository.
-Contents were last updated on 2026-1-20.</p>
+Contents were last updated on 2026-2-12.</p>
 <h1><a class="header" href="#schema-48-documentation" id="schema-48-documentation">Schema 48 documentation</a></h1>
 <p>Generated from: <code>scenario_48.xsd</code>.</p>
 <p>Key:</p>
@@ -19245,7 +19245,7 @@ however, this parameter must be specified.</p>
 <h2><a class="header" href="#a-nameelt-fourierseriesa-fourier-approximation-to-pre-intervention-eir-1" id="a-nameelt-fourierseriesa-fourier-approximation-to-pre-intervention-eir-1"><a name="elt-fourierSeries"></a> Fourier approximation to pre-intervention EIR</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-entomology">entomology</a> → <a href="schema-current.html#elt-vector">vector</a> → <a href="schema-current.html#elt-anopheles-4">anopheles</a> → <a href="schema-current.html#elt-seasonality">seasonality</a> → <a href="schema-current.html#elt-fourierSeries">fourierSeries</a></p>
 <pre><code class="language-xml">&lt;fourierSeries
-    EIRRotateAngle=double
+  [ EIRRotateAngle=double ]
   &gt;
 IN THIS ORDER:
 | ( &lt;coeffic ... /&gt; )*
@@ -19292,6 +19292,7 @@ some natural number n.</p>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-entomology">entomology</a> → <a href="schema-current.html#elt-vector">vector</a> → <a href="schema-current.html#elt-anopheles-4">anopheles</a> → <a href="schema-current.html#elt-seasonality">seasonality</a> → <a href="schema-current.html#elt-monthlyValues">monthlyValues</a></p>
 <pre><code class="language-xml">&lt;monthlyValues
     smoothing=(&quot;none&quot; or &quot;fourier&quot;)
+  [ EIRRotateAngle=double ]
   &gt;
 IN THIS ORDER:
 | ( &lt;value ... /&gt; ){12,12}
@@ -19316,6 +19317,11 @@ sequence of values:</p>
 is fit to the sequence of monthly values and used to
 generate a smoothed list of daily values.</li>
 </ol>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-2" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-2">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<pre><code class="language-xml">EIRRotateAngle=double
+</code></pre>
+<p><strong>Units:</strong> Radians</p>
+<p>Rotation angle defining the origin of the Fourier approximation to ln (EIR)</p>
 <h2><a class="header" href="#a-nameelt-valuea-monthly-value-1" id="a-nameelt-valuea-monthly-value-1"><a name="elt-value"></a> Monthly value</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-entomology">entomology</a> → <a href="schema-current.html#elt-vector">vector</a> → <a href="schema-current.html#elt-anopheles-4">anopheles</a> → <a href="schema-current.html#elt-seasonality">seasonality</a> → <a href="schema-current.html#elt-monthlyValues">monthlyValues</a> → <a href="schema-current.html#elt-value">value</a></p>
 <pre><code class="language-xml">&lt;value&gt;
@@ -19350,7 +19356,7 @@ IN THIS ORDER:
 <h2><a class="header" href="#a-nameelt-mosqa-mosquito-feeding-cycle-parameters-1" id="a-nameelt-mosqa-mosquito-feeding-cycle-parameters-1"><a name="elt-mosq"></a> Mosquito feeding cycle parameters</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-entomology">entomology</a> → <a href="schema-current.html#elt-vector">vector</a> → <a href="schema-current.html#elt-anopheles-4">anopheles</a> → <a href="schema-current.html#elt-mosq">mosq</a></p>
 <pre><code class="language-xml">&lt;mosq
-    minInfectedThreshold=double
+  [ minInfectedThreshold=double ] DEFAULT VALUE 0
   &gt;
 IN ANY ORDER:
 |   &lt;mosqRestDuration ... /&gt; 
@@ -19387,6 +19393,7 @@ mosquito interaction of a single species of anopheles mosquito.</p>
 <pre><code class="language-xml">minInfectedThreshold=double
 </code></pre>
 <p><strong>Min:</strong> 0</p>
+<p><strong>Default value:</strong> 0</p>
 <p>If less than this many mosquitoes remain infected, transmission is interrupted.</p>
 <h2><a class="header" href="#a-nameelt-mosqrestdurationa-duration-of-the-resting-period-of-the-vector-1" id="a-nameelt-mosqrestdurationa-duration-of-the-resting-period-of-the-vector-1"><a name="elt-mosqRestDuration"></a> Duration of the resting period of the vector</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-entomology">entomology</a> → <a href="schema-current.html#elt-vector">vector</a> → <a href="schema-current.html#elt-anopheles-4">anopheles</a> → <a href="schema-current.html#elt-mosq">mosq</a> → <a href="schema-current.html#elt-mosqRestDuration">mosqRestDuration</a></p>
@@ -30248,7 +30255,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-766" id="attributes-766">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-2" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-2">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-3" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-3">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -40829,7 +40836,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-1042" id="attributes-1042">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-3" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-3">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-4" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-4">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -51030,7 +51037,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-1308" id="attributes-1308">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-4" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-4">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-5" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-5">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -60772,7 +60779,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-1573" id="attributes-1573">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-5" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-5">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-6" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-6">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -69933,7 +69940,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-1830" id="attributes-1830">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-6" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-6">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-7" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-7">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -79015,7 +79022,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-2084" id="attributes-2084">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-7" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-7">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-8" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-8">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -87679,7 +87686,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-2322" id="attributes-2322">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-8" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-8">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-9" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-9">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -96342,7 +96349,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-2560" id="attributes-2560">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-9" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-9">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-10" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-10">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -105004,7 +105011,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-2798" id="attributes-2798">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-10" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-10">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-11" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-11">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -113746,7 +113753,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-3036" id="attributes-3036">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-11" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-11">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-12" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-12">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -122295,7 +122302,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-3274" id="attributes-3274">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-12" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-12">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-13" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-13">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -130692,7 +130699,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-3508" id="attributes-3508">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-13" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-13">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-14" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-14">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -138847,7 +138854,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-3736" id="attributes-3736">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-14" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-14">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-15" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-15">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -146710,7 +146717,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-3958" id="attributes-3958">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-15" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-15">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-16" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-16">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -154498,7 +154505,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-4179" id="attributes-4179">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-16" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-16">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-17" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-17">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -162192,7 +162199,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-4397" id="attributes-4397">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-17" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-17">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-18" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-18">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -168561,7 +168568,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-4570" id="attributes-4570">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-18" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-18">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-19" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-19">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -174122,7 +174129,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-4721" id="attributes-4721">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-19" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-19">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-20" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-20">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -179204,7 +179211,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-4858" id="attributes-4858">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-20" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-20">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-21" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-21">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> radians</p>
@@ -184277,7 +184284,7 @@ series specified by the following coefficients. Note that
 the a0 term is not needed; the annualEIR attribute of the
 seasonality element should be used to scale EIR instead.</p>
 <h3><a class="header" href="#attributes-4994" id="attributes-4994">Attributes</a></h3>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-21" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-21">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-22" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-22">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> Radians</p>
@@ -189279,7 +189286,7 @@ scaled to 365 days.</p>
 <pre><code class="language-xml">b2=double
 </code></pre>
 <p>b2 parameter of Fourier approximation to ln(EIR)</p>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-22" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-22">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-23" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-23">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> radians</p>
@@ -193305,7 +193312,7 @@ scaled to 365 days.</p>
 <pre><code class="language-xml">b2=double
 </code></pre>
 <p>b2 parameter of Fourier approximation to ln(EIR)</p>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-23" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-23">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-24" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-24">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> radians</p>
@@ -197002,7 +197009,7 @@ scaled to 365 days.</p>
 <pre><code class="language-xml">b2=double
 </code></pre>
 <p>b2 parameter of Fourier approximation to ln(EIR)</p>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-24" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-24">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-25" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-25">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> radians</p>
@@ -200695,7 +200702,7 @@ scaled to 365 days.</p>
 <pre><code class="language-xml">b2=double
 </code></pre>
 <p>b2 parameter of Fourier approximation to ln(EIR)</p>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-25" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-25">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-26" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-26">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> radians</p>
@@ -204328,7 +204335,7 @@ scaled to 365 days.</p>
 <h4><a class="header" href="#b2-parameter-of-fourier-approximation-to-lneir-4" id="b2-parameter-of-fourier-approximation-to-lneir-4">b2 parameter of Fourier approximation to ln(EIR)</a></h4>
 <pre><code class="language-xml">b2=double
 </code></pre>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-26" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-26">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-27" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-27">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> radians</p>
@@ -207602,7 +207609,7 @@ scaled to 365 days.</p>
 <h4><a class="header" href="#b2-parameter-of-fourier-approximation-to-lneir-5" id="b2-parameter-of-fourier-approximation-to-lneir-5">b2 parameter of Fourier approximation to ln(EIR)</a></h4>
 <pre><code class="language-xml">b2=double
 </code></pre>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-27" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-27">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-28" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-28">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> radians</p>
@@ -210691,7 +210698,7 @@ scaled to 365 days.</p>
 <h4><a class="header" href="#b2-parameter-of-fourier-approximation-to-lneir-6" id="b2-parameter-of-fourier-approximation-to-lneir-6">b2 parameter of Fourier approximation to ln(EIR)</a></h4>
 <pre><code class="language-xml">b2=double
 </code></pre>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-28" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-28">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-29" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-29">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> radians</p>
@@ -213695,7 +213702,7 @@ scaled to 365 days.</p>
 <h4><a class="header" href="#b2-parameter-of-fourier-approximation-to-lneir-7" id="b2-parameter-of-fourier-approximation-to-lneir-7">b2 parameter of Fourier approximation to ln(EIR)</a></h4>
 <pre><code class="language-xml">b2=double
 </code></pre>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-29" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-29">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-30" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-30">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <p><strong>Units:</strong> radians</p>
@@ -216649,7 +216656,7 @@ these parameters.</p>
 <h4><a class="header" href="#b2-parameter-of-fourier-approximation-to-lneir-8" id="b2-parameter-of-fourier-approximation-to-lneir-8">b2 parameter of Fourier approximation to ln(EIR)</a></h4>
 <pre><code class="language-xml">b2=double
 </code></pre>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-30" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-30">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-31" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-31">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <h2><a class="header" href="#a-nameelt-mosqa-vector-species-8" id="a-nameelt-mosqa-vector-species-8"><a name="elt-mosq"></a> Vector Species</a></h2>
@@ -219301,7 +219308,7 @@ these parameters.</p>
 <h4><a class="header" href="#b2-parameter-of-fourier-approximation-to-lneir-9" id="b2-parameter-of-fourier-approximation-to-lneir-9">b2 parameter of Fourier approximation to ln(EIR)</a></h4>
 <pre><code class="language-xml">b2=double
 </code></pre>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-31" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-31">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-32" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-32">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <h2><a class="header" href="#a-nameelt-mosqa-vector-species-9" id="a-nameelt-mosqa-vector-species-9"><a name="elt-mosq"></a> Vector Species</a></h2>
@@ -221955,7 +221962,7 @@ to the ln of the EIR during the burn in period</p>
 <h4><a class="header" href="#b2-parameter-of-fourier-approximation-to-lneir-10" id="b2-parameter-of-fourier-approximation-to-lneir-10">b2 parameter of Fourier approximation to ln(EIR)</a></h4>
 <pre><code class="language-xml">b2=double
 </code></pre>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-32" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-32">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-33" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-33">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <h2><a class="header" href="#a-nameelt-mosqa-vector-species-10" id="a-nameelt-mosqa-vector-species-10"><a name="elt-mosq"></a> Vector Species</a></h2>
@@ -224538,7 +224545,7 @@ to the ln of the EIR during the burn in period</p>
 <h4><a class="header" href="#b2-parameter-of-fourier-approximation-to-lneir-11" id="b2-parameter-of-fourier-approximation-to-lneir-11">b2 parameter of Fourier approximation to ln(EIR)</a></h4>
 <pre><code class="language-xml">b2=double
 </code></pre>
-<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-33" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-33">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
+<h4><a class="header" href="#rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-34" id="rotation-angle-defining-the-origin-of-the-fourier-approximation-to-ln-eir-34">Rotation angle defining the origin of the Fourier approximation to ln (EIR)</a></h4>
 <pre><code class="language-xml">EIRRotateAngle=double
 </code></pre>
 <h2><a class="header" href="#a-nameelt-mosqa-vector-species-11" id="a-nameelt-mosqa-vector-species-11"><a name="elt-mosq"></a> Vector Species</a></h2>
