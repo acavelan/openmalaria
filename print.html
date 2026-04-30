@@ -157,7 +157,7 @@ Links:</p>
 </ul>
 <p>This documentation was automatically generated from OpenMalaria schema (XSD) files.
 It is automatically kept up to date with schema files in the master branch of the repository.
-Contents were last updated on 2026-2-12.</p>
+Contents were last updated on 2026-4-30.</p>
 <h1><a class="header" href="#schema-48-documentation" id="schema-48-documentation">Schema 48 documentation</a></h1>
 <p>Generated from: <code>scenario_48.xsd</code>.</p>
 <p>Key:</p>
@@ -14954,15 +14954,16 @@ where increase is this factor given. Must have increas ≥ -1.</p>
 <h2><a class="header" href="#a-nameelt-decaya-decay-1" id="a-nameelt-decaya-decay-1"><a name="elt-decay"></a> decay</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-vectorPop">vectorPop</a> → <a href="schema-current.html#elt-intervention">intervention</a> → <a href="schema-current.html#elt-description">description</a> → <a href="schema-current.html#elt-anopheles">anopheles</a> → <a href="schema-current.html#elt-seekingDeathRateIncrease">seekingDeathRateIncrease</a> → <a href="schema-current.html#elt-decay">decay</a></p>
 <pre><code class="language-xml">&lt;decay
-    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
   [ L=string ]
   [ k=double ] DEFAULT VALUE 1.0
   [ CV=double ] DEFAULT VALUE 0
   [ increasing=boolean ] DEFAULT VALUE false
   [ initialEfficacy=double ] DEFAULT VALUE 1
-  [ rho=double ]
-  [ halflife_short=string ]
-  [ halflife_long=string ]
+  [ initialConcentration=double ]
+  [ Emax=double ]
+  [ slope=double ]
+  [ IC50=double ]
   &gt;
 IN THIS ORDER:
 |   &lt;decay ... /&gt; 
@@ -14975,7 +14976,7 @@ IN THIS ORDER:
 <p>Specification of decay or survival of a parameter.</p>
 <h3><a class="header" href="#attributes-394" id="attributes-394">Attributes</a></h3>
 <h4><a class="header" href="#function-12" id="function-12">function</a></h4>
-<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
 </code></pre>
 <p><strong>Units:</strong> None
 <strong>Min:</strong> 0
@@ -14988,7 +14989,10 @@ linear: 1 - t/L for t less than L, otherwise 0
 exponential: exp( - t/L * log(2) )
 weibull: exp( -(t/L)^k * log(2) )
 hill: 1 / (1 + (t/L)^k)
-smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0</p>
+smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0
+emax: Emax * C(t)^slope / (C(t)^slope + IC50^slope),
+where C(t) = initialConcentration * f(t), and f(t) is the
+single nested decay function</p>
 <h4><a class="header" href="#l-24" id="l-24">L</a></h4>
 <pre><code class="language-xml">L=string
 </code></pre>
@@ -15037,30 +15041,38 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-12" id="rho-12">rho</a></h4>
-<pre><code class="language-xml">rho=double
+<h4><a class="header" href="#initialconcentration" id="initialconcentration">initialConcentration</a></h4>
+<pre><code class="language-xml">initialConcentration=double
 </code></pre>
-<p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-12" id="halflife_short-12">halflife_short</a></h4>
-<pre><code class="language-xml">halflife_short=string
+<p>emax: Initial concentration C(0). Must be &gt;= 0.
+Units are user-defined, but must be consistent with IC50.</p>
+<h4><a class="header" href="#emax" id="emax">Emax</a></h4>
+<pre><code class="language-xml">Emax=double
 </code></pre>
-<p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-12" id="halflife_long-12">halflife_long</a></h4>
-<pre><code class="language-xml">halflife_long=string
+<p>emax: Maximum efficacy (between 0 and 1). Dimensionless.</p>
+<h4><a class="header" href="#slope" id="slope">slope</a></h4>
+<pre><code class="language-xml">slope=double
 </code></pre>
-<p>biphasic: halflife of long lived component (default to years).</p>
+<p>emax: Hill slope (steepness) parameter. Must be &gt; 0.
+Dimensionless.</p>
+<h4><a class="header" href="#ic50" id="ic50">IC50</a></h4>
+<pre><code class="language-xml">IC50=double
+</code></pre>
+<p>emax: Concentration for half-maximal effect. Must be &gt; 0.
+Units must match initialConcentration.</p>
 <h2><a class="header" href="#a-nameelt-decay-2a-decay-1" id="a-nameelt-decay-2a-decay-1"><a name="elt-decay-2"></a> decay</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-nonHumanHostsModifications">nonHumanHostsModifications</a> → <a href="schema-current.html#elt-intervention-3">intervention</a> → <a href="schema-current.html#elt-decay-6">decay</a> → <a href="schema-current.html#elt-decay-2">decay</a></p>
 <pre><code class="language-xml">&lt;decay
-    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
   [ L=string ]
   [ k=double ] DEFAULT VALUE 1.0
   [ CV=double ] DEFAULT VALUE 0
   [ increasing=boolean ] DEFAULT VALUE false
   [ initialEfficacy=double ] DEFAULT VALUE 1
-  [ rho=double ]
-  [ halflife_short=string ]
-  [ halflife_long=string ]
+  [ initialConcentration=double ]
+  [ Emax=double ]
+  [ slope=double ]
+  [ IC50=double ]
   &gt;
 IN THIS ORDER:
 |   &lt;decay ... /&gt; 
@@ -15073,7 +15085,7 @@ IN THIS ORDER:
 <p>Specification of decay or survival of a parameter.</p>
 <h3><a class="header" href="#attributes-395" id="attributes-395">Attributes</a></h3>
 <h4><a class="header" href="#function-13" id="function-13">function</a></h4>
-<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
 </code></pre>
 <p><strong>Units:</strong> None
 <strong>Min:</strong> 0
@@ -15086,7 +15098,10 @@ linear: 1 - t/L for t less than L, otherwise 0
 exponential: exp( - t/L * log(2) )
 weibull: exp( -(t/L)^k * log(2) )
 hill: 1 / (1 + (t/L)^k)
-smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0</p>
+smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0
+emax: Emax * C(t)^slope / (C(t)^slope + IC50^slope),
+where C(t) = initialConcentration * f(t), and f(t) is the
+single nested decay function</p>
 <h4><a class="header" href="#l-26" id="l-26">L</a></h4>
 <pre><code class="language-xml">L=string
 </code></pre>
@@ -15135,18 +15150,25 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-13" id="rho-13">rho</a></h4>
-<pre><code class="language-xml">rho=double
+<h4><a class="header" href="#initialconcentration-1" id="initialconcentration-1">initialConcentration</a></h4>
+<pre><code class="language-xml">initialConcentration=double
 </code></pre>
-<p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-13" id="halflife_short-13">halflife_short</a></h4>
-<pre><code class="language-xml">halflife_short=string
+<p>emax: Initial concentration C(0). Must be &gt;= 0.
+Units are user-defined, but must be consistent with IC50.</p>
+<h4><a class="header" href="#emax-1" id="emax-1">Emax</a></h4>
+<pre><code class="language-xml">Emax=double
 </code></pre>
-<p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-13" id="halflife_long-13">halflife_long</a></h4>
-<pre><code class="language-xml">halflife_long=string
+<p>emax: Maximum efficacy (between 0 and 1). Dimensionless.</p>
+<h4><a class="header" href="#slope-1" id="slope-1">slope</a></h4>
+<pre><code class="language-xml">slope=double
 </code></pre>
-<p>biphasic: halflife of long lived component (default to years).</p>
+<p>emax: Hill slope (steepness) parameter. Must be &gt; 0.
+Dimensionless.</p>
+<h4><a class="header" href="#ic50-1" id="ic50-1">IC50</a></h4>
+<pre><code class="language-xml">IC50=double
+</code></pre>
+<p>emax: Concentration for half-maximal effect. Must be &gt; 0.
+Units must match initialConcentration.</p>
 <h2><a class="header" href="#a-nameelt-probdeathovipositinga-proportion-ovipositing-mosquitoes-killed-1" id="a-nameelt-probdeathovipositinga-proportion-ovipositing-mosquitoes-killed-1"><a name="elt-probDeathOvipositing"></a> Proportion ovipositing mosquitoes killed</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-vectorPop">vectorPop</a> → <a href="schema-current.html#elt-intervention">intervention</a> → <a href="schema-current.html#elt-description">description</a> → <a href="schema-current.html#elt-anopheles">anopheles</a> → <a href="schema-current.html#elt-probDeathOvipositing">probDeathOvipositing</a></p>
 <pre><code class="language-xml">&lt;probDeathOvipositing
@@ -15174,15 +15196,16 @@ this intervention.</p>
 <h2><a class="header" href="#a-nameelt-decay-3a-decay-1" id="a-nameelt-decay-3a-decay-1"><a name="elt-decay-3"></a> decay</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-vectorPop">vectorPop</a> → <a href="schema-current.html#elt-intervention">intervention</a> → <a href="schema-current.html#elt-description">description</a> → <a href="schema-current.html#elt-anopheles">anopheles</a> → <a href="schema-current.html#elt-probDeathOvipositing">probDeathOvipositing</a> → <a href="schema-current.html#elt-decay-3">decay</a></p>
 <pre><code class="language-xml">&lt;decay
-    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
   [ L=string ]
   [ k=double ] DEFAULT VALUE 1.0
   [ CV=double ] DEFAULT VALUE 0
   [ increasing=boolean ] DEFAULT VALUE false
   [ initialEfficacy=double ] DEFAULT VALUE 1
-  [ rho=double ]
-  [ halflife_short=string ]
-  [ halflife_long=string ]
+  [ initialConcentration=double ]
+  [ Emax=double ]
+  [ slope=double ]
+  [ IC50=double ]
   &gt;
 IN THIS ORDER:
 |   &lt;decay ... /&gt; 
@@ -15195,7 +15218,7 @@ IN THIS ORDER:
 <p>Specification of decay or survival of a parameter.</p>
 <h3><a class="header" href="#attributes-397" id="attributes-397">Attributes</a></h3>
 <h4><a class="header" href="#function-14" id="function-14">function</a></h4>
-<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
 </code></pre>
 <p><strong>Units:</strong> None
 <strong>Min:</strong> 0
@@ -15208,7 +15231,10 @@ linear: 1 - t/L for t less than L, otherwise 0
 exponential: exp( - t/L * log(2) )
 weibull: exp( -(t/L)^k * log(2) )
 hill: 1 / (1 + (t/L)^k)
-smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0</p>
+smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0
+emax: Emax * C(t)^slope / (C(t)^slope + IC50^slope),
+where C(t) = initialConcentration * f(t), and f(t) is the
+single nested decay function</p>
 <h4><a class="header" href="#l-28" id="l-28">L</a></h4>
 <pre><code class="language-xml">L=string
 </code></pre>
@@ -15257,18 +15283,25 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-14" id="rho-14">rho</a></h4>
-<pre><code class="language-xml">rho=double
+<h4><a class="header" href="#initialconcentration-2" id="initialconcentration-2">initialConcentration</a></h4>
+<pre><code class="language-xml">initialConcentration=double
 </code></pre>
-<p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-14" id="halflife_short-14">halflife_short</a></h4>
-<pre><code class="language-xml">halflife_short=string
+<p>emax: Initial concentration C(0). Must be &gt;= 0.
+Units are user-defined, but must be consistent with IC50.</p>
+<h4><a class="header" href="#emax-2" id="emax-2">Emax</a></h4>
+<pre><code class="language-xml">Emax=double
 </code></pre>
-<p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-14" id="halflife_long-14">halflife_long</a></h4>
-<pre><code class="language-xml">halflife_long=string
+<p>emax: Maximum efficacy (between 0 and 1). Dimensionless.</p>
+<h4><a class="header" href="#slope-2" id="slope-2">slope</a></h4>
+<pre><code class="language-xml">slope=double
 </code></pre>
-<p>biphasic: halflife of long lived component (default to years).</p>
+<p>emax: Hill slope (steepness) parameter. Must be &gt; 0.
+Dimensionless.</p>
+<h4><a class="header" href="#ic50-2" id="ic50-2">IC50</a></h4>
+<pre><code class="language-xml">IC50=double
+</code></pre>
+<p>emax: Concentration for half-maximal effect. Must be &gt; 0.
+Units must match initialConcentration.</p>
 <h2><a class="header" href="#a-nameelt-emergencereductiona-proportion-of-emerging-pupa-killed-1" id="a-nameelt-emergencereductiona-proportion-of-emerging-pupa-killed-1"><a name="elt-emergenceReduction"></a> Proportion of emerging pupa killed</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-vectorPop">vectorPop</a> → <a href="schema-current.html#elt-intervention">intervention</a> → <a href="schema-current.html#elt-description">description</a> → <a href="schema-current.html#elt-anopheles">anopheles</a> → <a href="schema-current.html#elt-emergenceReduction">emergenceReduction</a></p>
 <pre><code class="language-xml">&lt;emergenceReduction
@@ -15299,15 +15332,16 @@ value given here; thus, for example, using -1 will double emergence.</p>
 <h2><a class="header" href="#a-nameelt-decay-4a-decay-1" id="a-nameelt-decay-4a-decay-1"><a name="elt-decay-4"></a> decay</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-vectorPop">vectorPop</a> → <a href="schema-current.html#elt-intervention">intervention</a> → <a href="schema-current.html#elt-description">description</a> → <a href="schema-current.html#elt-anopheles">anopheles</a> → <a href="schema-current.html#elt-emergenceReduction">emergenceReduction</a> → <a href="schema-current.html#elt-decay-4">decay</a></p>
 <pre><code class="language-xml">&lt;decay
-    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
   [ L=string ]
   [ k=double ] DEFAULT VALUE 1.0
   [ CV=double ] DEFAULT VALUE 0
   [ increasing=boolean ] DEFAULT VALUE false
   [ initialEfficacy=double ] DEFAULT VALUE 1
-  [ rho=double ]
-  [ halflife_short=string ]
-  [ halflife_long=string ]
+  [ initialConcentration=double ]
+  [ Emax=double ]
+  [ slope=double ]
+  [ IC50=double ]
   &gt;
 IN THIS ORDER:
 |   &lt;decay ... /&gt; 
@@ -15320,7 +15354,7 @@ IN THIS ORDER:
 <p>Specification of decay or survival of a parameter.</p>
 <h3><a class="header" href="#attributes-399" id="attributes-399">Attributes</a></h3>
 <h4><a class="header" href="#function-15" id="function-15">function</a></h4>
-<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
 </code></pre>
 <p><strong>Units:</strong> None
 <strong>Min:</strong> 0
@@ -15333,7 +15367,10 @@ linear: 1 - t/L for t less than L, otherwise 0
 exponential: exp( - t/L * log(2) )
 weibull: exp( -(t/L)^k * log(2) )
 hill: 1 / (1 + (t/L)^k)
-smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0</p>
+smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0
+emax: Emax * C(t)^slope / (C(t)^slope + IC50^slope),
+where C(t) = initialConcentration * f(t), and f(t) is the
+single nested decay function</p>
 <h4><a class="header" href="#l-30" id="l-30">L</a></h4>
 <pre><code class="language-xml">L=string
 </code></pre>
@@ -15382,18 +15419,25 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-15" id="rho-15">rho</a></h4>
-<pre><code class="language-xml">rho=double
+<h4><a class="header" href="#initialconcentration-3" id="initialconcentration-3">initialConcentration</a></h4>
+<pre><code class="language-xml">initialConcentration=double
 </code></pre>
-<p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-15" id="halflife_short-15">halflife_short</a></h4>
-<pre><code class="language-xml">halflife_short=string
+<p>emax: Initial concentration C(0). Must be &gt;= 0.
+Units are user-defined, but must be consistent with IC50.</p>
+<h4><a class="header" href="#emax-3" id="emax-3">Emax</a></h4>
+<pre><code class="language-xml">Emax=double
 </code></pre>
-<p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-15" id="halflife_long-15">halflife_long</a></h4>
-<pre><code class="language-xml">halflife_long=string
+<p>emax: Maximum efficacy (between 0 and 1). Dimensionless.</p>
+<h4><a class="header" href="#slope-3" id="slope-3">slope</a></h4>
+<pre><code class="language-xml">slope=double
 </code></pre>
-<p>biphasic: halflife of long lived component (default to years).</p>
+<p>emax: Hill slope (steepness) parameter. Must be &gt; 0.
+Dimensionless.</p>
+<h4><a class="header" href="#ic50-3" id="ic50-3">IC50</a></h4>
+<pre><code class="language-xml">IC50=double
+</code></pre>
+<p>emax: Concentration for half-maximal effect. Must be &gt; 0.
+Units must match initialConcentration.</p>
 <h2><a class="header" href="#a-nameelt-probadditionaldeathsugarfeedinga-probability-of-death-while-host-searching-as-a-result-of-feeding-on-a-sugar-bait-used-to-dynamically-adjust-mu_va-1" id="a-nameelt-probadditionaldeathsugarfeedinga-probability-of-death-while-host-searching-as-a-result-of-feeding-on-a-sugar-bait-used-to-dynamically-adjust-mu_va-1"><a name="elt-probAdditionalDeathSugarFeeding"></a> Probability of death while host searching as a result of feeding on a sugar bait (used to dynamically adjust mu_vA)</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-vectorPop">vectorPop</a> → <a href="schema-current.html#elt-intervention">intervention</a> → <a href="schema-current.html#elt-description">description</a> → <a href="schema-current.html#elt-anopheles">anopheles</a> → <a href="schema-current.html#elt-probAdditionalDeathSugarFeeding">probAdditionalDeathSugarFeeding</a></p>
 <pre><code class="language-xml">&lt;probAdditionalDeathSugarFeeding
@@ -15435,15 +15479,16 @@ cause a small drop in performance.</p>
 <h2><a class="header" href="#a-nameelt-decay-5a-decay-1" id="a-nameelt-decay-5a-decay-1"><a name="elt-decay-5"></a> decay</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-vectorPop">vectorPop</a> → <a href="schema-current.html#elt-intervention">intervention</a> → <a href="schema-current.html#elt-description">description</a> → <a href="schema-current.html#elt-anopheles">anopheles</a> → <a href="schema-current.html#elt-probAdditionalDeathSugarFeeding">probAdditionalDeathSugarFeeding</a> → <a href="schema-current.html#elt-decay-5">decay</a></p>
 <pre><code class="language-xml">&lt;decay
-    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
   [ L=string ]
   [ k=double ] DEFAULT VALUE 1.0
   [ CV=double ] DEFAULT VALUE 0
   [ increasing=boolean ] DEFAULT VALUE false
   [ initialEfficacy=double ] DEFAULT VALUE 1
-  [ rho=double ]
-  [ halflife_short=string ]
-  [ halflife_long=string ]
+  [ initialConcentration=double ]
+  [ Emax=double ]
+  [ slope=double ]
+  [ IC50=double ]
   &gt;
 IN THIS ORDER:
 |   &lt;decay ... /&gt; 
@@ -15456,7 +15501,7 @@ IN THIS ORDER:
 <p>Specification of decay or survival of a parameter.</p>
 <h3><a class="header" href="#attributes-401" id="attributes-401">Attributes</a></h3>
 <h4><a class="header" href="#function-16" id="function-16">function</a></h4>
-<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
 </code></pre>
 <p><strong>Units:</strong> None
 <strong>Min:</strong> 0
@@ -15469,7 +15514,10 @@ linear: 1 - t/L for t less than L, otherwise 0
 exponential: exp( - t/L * log(2) )
 weibull: exp( -(t/L)^k * log(2) )
 hill: 1 / (1 + (t/L)^k)
-smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0</p>
+smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0
+emax: Emax * C(t)^slope / (C(t)^slope + IC50^slope),
+where C(t) = initialConcentration * f(t), and f(t) is the
+single nested decay function</p>
 <h4><a class="header" href="#l-32" id="l-32">L</a></h4>
 <pre><code class="language-xml">L=string
 </code></pre>
@@ -15518,18 +15566,25 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-16" id="rho-16">rho</a></h4>
-<pre><code class="language-xml">rho=double
+<h4><a class="header" href="#initialconcentration-4" id="initialconcentration-4">initialConcentration</a></h4>
+<pre><code class="language-xml">initialConcentration=double
 </code></pre>
-<p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-16" id="halflife_short-16">halflife_short</a></h4>
-<pre><code class="language-xml">halflife_short=string
+<p>emax: Initial concentration C(0). Must be &gt;= 0.
+Units are user-defined, but must be consistent with IC50.</p>
+<h4><a class="header" href="#emax-4" id="emax-4">Emax</a></h4>
+<pre><code class="language-xml">Emax=double
 </code></pre>
-<p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-16" id="halflife_long-16">halflife_long</a></h4>
-<pre><code class="language-xml">halflife_long=string
+<p>emax: Maximum efficacy (between 0 and 1). Dimensionless.</p>
+<h4><a class="header" href="#slope-4" id="slope-4">slope</a></h4>
+<pre><code class="language-xml">slope=double
 </code></pre>
-<p>biphasic: halflife of long lived component (default to years).</p>
+<p>emax: Hill slope (steepness) parameter. Must be &gt; 0.
+Dimensionless.</p>
+<h4><a class="header" href="#ic50-4" id="ic50-4">IC50</a></h4>
+<pre><code class="language-xml">IC50=double
+</code></pre>
+<p>emax: Concentration for half-maximal effect. Must be &gt; 0.
+Units must match initialConcentration.</p>
 <h2><a class="header" href="#a-nameelt-timed-2a-vector-population-intervention-deployment-1" id="a-nameelt-timed-2a-vector-population-intervention-deployment-1"><a name="elt-timed-2"></a> Vector population intervention deployment</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-vectorPop">vectorPop</a> → <a href="schema-current.html#elt-intervention">intervention</a> → <a href="schema-current.html#elt-timed-2">timed</a></p>
 <pre><code class="language-xml">&lt;timed&gt;
@@ -15654,15 +15709,16 @@ decay function.</p>
 <h2><a class="header" href="#a-nameelt-decayofavailabilitya-decay-of-availability-1" id="a-nameelt-decayofavailabilitya-decay-of-availability-1"><a name="elt-decayOfAvailability"></a> Decay of availability</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-vectorTrap">vectorTrap</a> → <a href="schema-current.html#elt-intervention-2">intervention</a> → <a href="schema-current.html#elt-description-2">description</a> → <a href="schema-current.html#elt-decayOfAvailability">decayOfAvailability</a></p>
 <pre><code class="language-xml">&lt;decayOfAvailability
-    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
   [ L=string ]
   [ k=double ] DEFAULT VALUE 1.0
   [ CV=double ] DEFAULT VALUE 0
   [ increasing=boolean ] DEFAULT VALUE false
   [ initialEfficacy=double ] DEFAULT VALUE 1
-  [ rho=double ]
-  [ halflife_short=string ]
-  [ halflife_long=string ]
+  [ initialConcentration=double ]
+  [ Emax=double ]
+  [ slope=double ]
+  [ IC50=double ]
   &gt;
 IN THIS ORDER:
 |   &lt;decay ... /&gt; 
@@ -15682,7 +15738,7 @@ way, between deployments).</p>
 <p>Specification of decay or survival of a parameter.</p>
 <h3><a class="header" href="#attributes-406" id="attributes-406">Attributes</a></h3>
 <h4><a class="header" href="#function-17" id="function-17">function</a></h4>
-<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
 </code></pre>
 <p><strong>Units:</strong> None
 <strong>Min:</strong> 0
@@ -15695,7 +15751,10 @@ linear: 1 - t/L for t less than L, otherwise 0
 exponential: exp( - t/L * log(2) )
 weibull: exp( -(t/L)^k * log(2) )
 hill: 1 / (1 + (t/L)^k)
-smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0</p>
+smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0
+emax: Emax * C(t)^slope / (C(t)^slope + IC50^slope),
+where C(t) = initialConcentration * f(t), and f(t) is the
+single nested decay function</p>
 <h4><a class="header" href="#l-34" id="l-34">L</a></h4>
 <pre><code class="language-xml">L=string
 </code></pre>
@@ -15744,18 +15803,25 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-17" id="rho-17">rho</a></h4>
-<pre><code class="language-xml">rho=double
+<h4><a class="header" href="#initialconcentration-5" id="initialconcentration-5">initialConcentration</a></h4>
+<pre><code class="language-xml">initialConcentration=double
 </code></pre>
-<p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-17" id="halflife_short-17">halflife_short</a></h4>
-<pre><code class="language-xml">halflife_short=string
+<p>emax: Initial concentration C(0). Must be &gt;= 0.
+Units are user-defined, but must be consistent with IC50.</p>
+<h4><a class="header" href="#emax-5" id="emax-5">Emax</a></h4>
+<pre><code class="language-xml">Emax=double
 </code></pre>
-<p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-17" id="halflife_long-17">halflife_long</a></h4>
-<pre><code class="language-xml">halflife_long=string
+<p>emax: Maximum efficacy (between 0 and 1). Dimensionless.</p>
+<h4><a class="header" href="#slope-5" id="slope-5">slope</a></h4>
+<pre><code class="language-xml">slope=double
 </code></pre>
-<p>biphasic: halflife of long lived component (default to years).</p>
+<p>emax: Hill slope (steepness) parameter. Must be &gt; 0.
+Dimensionless.</p>
+<h4><a class="header" href="#ic50-5" id="ic50-5">IC50</a></h4>
+<pre><code class="language-xml">IC50=double
+</code></pre>
+<p>emax: Concentration for half-maximal effect. Must be &gt; 0.
+Units must match initialConcentration.</p>
 <h2><a class="header" href="#a-nameelt-timed-3a-vector-trap-intervention-deployment-1" id="a-nameelt-timed-3a-vector-trap-intervention-deployment-1"><a name="elt-timed-3"></a> Vector trap intervention deployment</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-vectorTrap">vectorTrap</a> → <a href="schema-current.html#elt-intervention-2">intervention</a> → <a href="schema-current.html#elt-timed-3">timed</a></p>
 <pre><code class="language-xml">&lt;timed&gt;
@@ -15856,15 +15922,16 @@ IN THIS ORDER:
 <h2><a class="header" href="#a-nameelt-decay-6a-decay-1" id="a-nameelt-decay-6a-decay-1"><a name="elt-decay-6"></a> decay</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-nonHumanHostsModifications">nonHumanHostsModifications</a> → <a href="schema-current.html#elt-intervention-3">intervention</a> → <a href="schema-current.html#elt-decay-6">decay</a></p>
 <pre><code class="language-xml">&lt;decay
-    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
   [ L=string ]
   [ k=double ] DEFAULT VALUE 1.0
   [ CV=double ] DEFAULT VALUE 0
   [ increasing=boolean ] DEFAULT VALUE false
   [ initialEfficacy=double ] DEFAULT VALUE 1
-  [ rho=double ]
-  [ halflife_short=string ]
-  [ halflife_long=string ]
+  [ initialConcentration=double ]
+  [ Emax=double ]
+  [ slope=double ]
+  [ IC50=double ]
   &gt;
 IN THIS ORDER:
 |   &lt;decay ... /&gt; 
@@ -15877,7 +15944,7 @@ IN THIS ORDER:
 <p>Specification of decay or survival of a parameter.</p>
 <h3><a class="header" href="#attributes-409" id="attributes-409">Attributes</a></h3>
 <h4><a class="header" href="#function-18" id="function-18">function</a></h4>
-<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
 </code></pre>
 <p><strong>Units:</strong> None
 <strong>Min:</strong> 0
@@ -15890,7 +15957,10 @@ linear: 1 - t/L for t less than L, otherwise 0
 exponential: exp( - t/L * log(2) )
 weibull: exp( -(t/L)^k * log(2) )
 hill: 1 / (1 + (t/L)^k)
-smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0</p>
+smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0
+emax: Emax * C(t)^slope / (C(t)^slope + IC50^slope),
+where C(t) = initialConcentration * f(t), and f(t) is the
+single nested decay function</p>
 <h4><a class="header" href="#l-36" id="l-36">L</a></h4>
 <pre><code class="language-xml">L=string
 </code></pre>
@@ -15939,18 +16009,25 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-18" id="rho-18">rho</a></h4>
-<pre><code class="language-xml">rho=double
+<h4><a class="header" href="#initialconcentration-6" id="initialconcentration-6">initialConcentration</a></h4>
+<pre><code class="language-xml">initialConcentration=double
 </code></pre>
-<p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-18" id="halflife_short-18">halflife_short</a></h4>
-<pre><code class="language-xml">halflife_short=string
+<p>emax: Initial concentration C(0). Must be &gt;= 0.
+Units are user-defined, but must be consistent with IC50.</p>
+<h4><a class="header" href="#emax-6" id="emax-6">Emax</a></h4>
+<pre><code class="language-xml">Emax=double
 </code></pre>
-<p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-18" id="halflife_long-18">halflife_long</a></h4>
-<pre><code class="language-xml">halflife_long=string
+<p>emax: Maximum efficacy (between 0 and 1). Dimensionless.</p>
+<h4><a class="header" href="#slope-6" id="slope-6">slope</a></h4>
+<pre><code class="language-xml">slope=double
 </code></pre>
-<p>biphasic: halflife of long lived component (default to years).</p>
+<p>emax: Hill slope (steepness) parameter. Must be &gt; 0.
+Dimensionless.</p>
+<h4><a class="header" href="#ic50-6" id="ic50-6">IC50</a></h4>
+<pre><code class="language-xml">IC50=double
+</code></pre>
+<p>emax: Concentration for half-maximal effect. Must be &gt; 0.
+Units must match initialConcentration.</p>
 <h2><a class="header" href="#a-nameelt-description-3a-description-1" id="a-nameelt-description-3a-description-1"><a name="elt-description-3"></a> description</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-nonHumanHostsModifications">nonHumanHostsModifications</a> → <a href="schema-current.html#elt-intervention-3">intervention</a> → <a href="schema-current.html#elt-description-3">description</a></p>
 <pre><code class="language-xml">&lt;description&gt;
@@ -16551,15 +16628,16 @@ from commencing.</p>
 <h2><a class="header" href="#a-nameelt-decay-7a-decay-of-effect-1" id="a-nameelt-decay-7a-decay-of-effect-1"><a name="elt-decay-7"></a> Decay of effect</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-human">human</a> → <a href="schema-current.html#elt-component-2">component</a> → <a href="schema-current.html#elt-PEV">PEV</a> → <a href="schema-current.html#elt-decay-7">decay</a></p>
 <pre><code class="language-xml">&lt;decay
-    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
   [ L=string ]
   [ k=double ] DEFAULT VALUE 1.0
   [ CV=double ] DEFAULT VALUE 0
   [ increasing=boolean ] DEFAULT VALUE false
   [ initialEfficacy=double ] DEFAULT VALUE 1
-  [ rho=double ]
-  [ halflife_short=string ]
-  [ halflife_long=string ]
+  [ initialConcentration=double ]
+  [ Emax=double ]
+  [ slope=double ]
+  [ IC50=double ]
   &gt;
 IN THIS ORDER:
 |   &lt;decay ... /&gt; 
@@ -16575,7 +16653,7 @@ or https://github.com/SwissTPH/openmalaria/wiki/ModelDecayFunctions</p>
 <p>Specification of decay or survival of a parameter.</p>
 <h3><a class="header" href="#attributes-431" id="attributes-431">Attributes</a></h3>
 <h4><a class="header" href="#function-19" id="function-19">function</a></h4>
-<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
 </code></pre>
 <p><strong>Units:</strong> None
 <strong>Min:</strong> 0
@@ -16588,7 +16666,10 @@ linear: 1 - t/L for t less than L, otherwise 0
 exponential: exp( - t/L * log(2) )
 weibull: exp( -(t/L)^k * log(2) )
 hill: 1 / (1 + (t/L)^k)
-smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0</p>
+smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0
+emax: Emax * C(t)^slope / (C(t)^slope + IC50^slope),
+where C(t) = initialConcentration * f(t), and f(t) is the
+single nested decay function</p>
 <h4><a class="header" href="#l-38" id="l-38">L</a></h4>
 <pre><code class="language-xml">L=string
 </code></pre>
@@ -16637,18 +16718,25 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-19" id="rho-19">rho</a></h4>
-<pre><code class="language-xml">rho=double
+<h4><a class="header" href="#initialconcentration-7" id="initialconcentration-7">initialConcentration</a></h4>
+<pre><code class="language-xml">initialConcentration=double
 </code></pre>
-<p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-19" id="halflife_short-19">halflife_short</a></h4>
-<pre><code class="language-xml">halflife_short=string
+<p>emax: Initial concentration C(0). Must be &gt;= 0.
+Units are user-defined, but must be consistent with IC50.</p>
+<h4><a class="header" href="#emax-7" id="emax-7">Emax</a></h4>
+<pre><code class="language-xml">Emax=double
 </code></pre>
-<p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-19" id="halflife_long-19">halflife_long</a></h4>
-<pre><code class="language-xml">halflife_long=string
+<p>emax: Maximum efficacy (between 0 and 1). Dimensionless.</p>
+<h4><a class="header" href="#slope-7" id="slope-7">slope</a></h4>
+<pre><code class="language-xml">slope=double
 </code></pre>
-<p>biphasic: halflife of long lived component (default to years).</p>
+<p>emax: Hill slope (steepness) parameter. Must be &gt; 0.
+Dimensionless.</p>
+<h4><a class="header" href="#ic50-7" id="ic50-7">IC50</a></h4>
+<pre><code class="language-xml">IC50=double
+</code></pre>
+<p>emax: Concentration for half-maximal effect. Must be &gt; 0.
+Units must match initialConcentration.</p>
 <h2><a class="header" href="#a-nameelt-efficacyba-variance-parameter-for-vaccine-efficacy-1" id="a-nameelt-efficacyba-variance-parameter-for-vaccine-efficacy-1"><a name="elt-efficacyB"></a> Variance parameter for vaccine efficacy</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-human">human</a> → <a href="schema-current.html#elt-component-2">component</a> → <a href="schema-current.html#elt-PEV">PEV</a> → <a href="schema-current.html#elt-efficacyB">efficacyB</a></p>
 <pre><code class="language-xml">&lt;efficacyB
@@ -17046,15 +17134,16 @@ same effect as not specifying distr at all.
 <h2><a class="header" href="#a-nameelt-insecticidedecaya-decay-of-insecticide-1" id="a-nameelt-insecticidedecaya-decay-of-insecticide-1"><a name="elt-insecticideDecay"></a> Decay of insecticide</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-human">human</a> → <a href="schema-current.html#elt-component-2">component</a> → <a href="schema-current.html#elt-ITN">ITN</a> → <a href="schema-current.html#elt-insecticideDecay">insecticideDecay</a></p>
 <pre><code class="language-xml">&lt;insecticideDecay
-    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
   [ L=string ]
   [ k=double ] DEFAULT VALUE 1.0
   [ CV=double ] DEFAULT VALUE 0
   [ increasing=boolean ] DEFAULT VALUE false
   [ initialEfficacy=double ] DEFAULT VALUE 1
-  [ rho=double ]
-  [ halflife_short=string ]
-  [ halflife_long=string ]
+  [ initialConcentration=double ]
+  [ Emax=double ]
+  [ slope=double ]
+  [ IC50=double ]
   &gt;
 IN THIS ORDER:
 |   &lt;decay ... /&gt; 
@@ -17079,7 +17168,7 @@ rate for the respective variable.</p>
 <p>Specification of decay or survival of a parameter.</p>
 <h3><a class="header" href="#attributes-442" id="attributes-442">Attributes</a></h3>
 <h4><a class="header" href="#function-20" id="function-20">function</a></h4>
-<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
 </code></pre>
 <p><strong>Units:</strong> None
 <strong>Min:</strong> 0
@@ -17092,7 +17181,10 @@ linear: 1 - t/L for t less than L, otherwise 0
 exponential: exp( - t/L * log(2) )
 weibull: exp( -(t/L)^k * log(2) )
 hill: 1 / (1 + (t/L)^k)
-smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0</p>
+smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0
+emax: Emax * C(t)^slope / (C(t)^slope + IC50^slope),
+where C(t) = initialConcentration * f(t), and f(t) is the
+single nested decay function</p>
 <h4><a class="header" href="#l-40" id="l-40">L</a></h4>
 <pre><code class="language-xml">L=string
 </code></pre>
@@ -17141,30 +17233,38 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-20" id="rho-20">rho</a></h4>
-<pre><code class="language-xml">rho=double
+<h4><a class="header" href="#initialconcentration-8" id="initialconcentration-8">initialConcentration</a></h4>
+<pre><code class="language-xml">initialConcentration=double
 </code></pre>
-<p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-20" id="halflife_short-20">halflife_short</a></h4>
-<pre><code class="language-xml">halflife_short=string
+<p>emax: Initial concentration C(0). Must be &gt;= 0.
+Units are user-defined, but must be consistent with IC50.</p>
+<h4><a class="header" href="#emax-8" id="emax-8">Emax</a></h4>
+<pre><code class="language-xml">Emax=double
 </code></pre>
-<p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-20" id="halflife_long-20">halflife_long</a></h4>
-<pre><code class="language-xml">halflife_long=string
+<p>emax: Maximum efficacy (between 0 and 1). Dimensionless.</p>
+<h4><a class="header" href="#slope-8" id="slope-8">slope</a></h4>
+<pre><code class="language-xml">slope=double
 </code></pre>
-<p>biphasic: halflife of long lived component (default to years).</p>
+<p>emax: Hill slope (steepness) parameter. Must be &gt; 0.
+Dimensionless.</p>
+<h4><a class="header" href="#ic50-8" id="ic50-8">IC50</a></h4>
+<pre><code class="language-xml">IC50=double
+</code></pre>
+<p>emax: Concentration for half-maximal effect. Must be &gt; 0.
+Units must match initialConcentration.</p>
 <h2><a class="header" href="#a-nameelt-attritionofnetsa-attrition-of-nets-1" id="a-nameelt-attritionofnetsa-attrition-of-nets-1"><a name="elt-attritionOfNets"></a> Attrition of nets</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-human">human</a> → <a href="schema-current.html#elt-component-2">component</a> → <a href="schema-current.html#elt-ITN">ITN</a> → <a href="schema-current.html#elt-attritionOfNets">attritionOfNets</a></p>
 <pre><code class="language-xml">&lt;attritionOfNets
-    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
   [ L=string ]
   [ k=double ] DEFAULT VALUE 1.0
   [ CV=double ] DEFAULT VALUE 0
   [ increasing=boolean ] DEFAULT VALUE false
   [ initialEfficacy=double ] DEFAULT VALUE 1
-  [ rho=double ]
-  [ halflife_short=string ]
-  [ halflife_long=string ]
+  [ initialConcentration=double ]
+  [ Emax=double ]
+  [ slope=double ]
+  [ IC50=double ]
   &gt;
 IN THIS ORDER:
 |   &lt;decay ... /&gt; 
@@ -17191,7 +17291,7 @@ reported.</p>
 <p>Specification of decay or survival of a parameter.</p>
 <h3><a class="header" href="#attributes-443" id="attributes-443">Attributes</a></h3>
 <h4><a class="header" href="#function-21" id="function-21">function</a></h4>
-<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
 </code></pre>
 <p><strong>Units:</strong> None
 <strong>Min:</strong> 0
@@ -17204,7 +17304,10 @@ linear: 1 - t/L for t less than L, otherwise 0
 exponential: exp( - t/L * log(2) )
 weibull: exp( -(t/L)^k * log(2) )
 hill: 1 / (1 + (t/L)^k)
-smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0</p>
+smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0
+emax: Emax * C(t)^slope / (C(t)^slope + IC50^slope),
+where C(t) = initialConcentration * f(t), and f(t) is the
+single nested decay function</p>
 <h4><a class="header" href="#l-42" id="l-42">L</a></h4>
 <pre><code class="language-xml">L=string
 </code></pre>
@@ -17253,18 +17356,25 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-21" id="rho-21">rho</a></h4>
-<pre><code class="language-xml">rho=double
+<h4><a class="header" href="#initialconcentration-9" id="initialconcentration-9">initialConcentration</a></h4>
+<pre><code class="language-xml">initialConcentration=double
 </code></pre>
-<p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-21" id="halflife_short-21">halflife_short</a></h4>
-<pre><code class="language-xml">halflife_short=string
+<p>emax: Initial concentration C(0). Must be &gt;= 0.
+Units are user-defined, but must be consistent with IC50.</p>
+<h4><a class="header" href="#emax-9" id="emax-9">Emax</a></h4>
+<pre><code class="language-xml">Emax=double
 </code></pre>
-<p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-21" id="halflife_long-21">halflife_long</a></h4>
-<pre><code class="language-xml">halflife_long=string
+<p>emax: Maximum efficacy (between 0 and 1). Dimensionless.</p>
+<h4><a class="header" href="#slope-9" id="slope-9">slope</a></h4>
+<pre><code class="language-xml">slope=double
 </code></pre>
-<p>biphasic: halflife of long lived component (default to years).</p>
+<p>emax: Hill slope (steepness) parameter. Must be &gt; 0.
+Dimensionless.</p>
+<h4><a class="header" href="#ic50-9" id="ic50-9">IC50</a></h4>
+<pre><code class="language-xml">IC50=double
+</code></pre>
+<p>emax: Concentration for half-maximal effect. Must be &gt; 0.
+Units must match initialConcentration.</p>
 <h2><a class="header" href="#a-nameelt-anophelesparamsa-anophelesparams-1" id="a-nameelt-anophelesparamsa-anophelesparams-1"><a name="elt-anophelesParams"></a> anophelesParams</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-human">human</a> → <a href="schema-current.html#elt-component-2">component</a> → <a href="schema-current.html#elt-ITN">ITN</a> → <a href="schema-current.html#elt-anophelesParams">anophelesParams</a></p>
 <pre><code class="language-xml">&lt;anophelesParams
@@ -17987,15 +18097,16 @@ same effect as not specifying distr at all.
 <h2><a class="header" href="#a-nameelt-insecticidedecay-2a-decay-of-insecticide-1" id="a-nameelt-insecticidedecay-2a-decay-of-insecticide-1"><a name="elt-insecticideDecay-2"></a> Decay of insecticide</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-human">human</a> → <a href="schema-current.html#elt-component-2">component</a> → <a href="schema-current.html#elt-IRS">IRS</a> → <a href="schema-current.html#elt-insecticideDecay-2">insecticideDecay</a></p>
 <pre><code class="language-xml">&lt;insecticideDecay
-    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
   [ L=string ]
   [ k=double ] DEFAULT VALUE 1.0
   [ CV=double ] DEFAULT VALUE 0
   [ increasing=boolean ] DEFAULT VALUE false
   [ initialEfficacy=double ] DEFAULT VALUE 1
-  [ rho=double ]
-  [ halflife_short=string ]
-  [ halflife_long=string ]
+  [ initialConcentration=double ]
+  [ Emax=double ]
+  [ slope=double ]
+  [ IC50=double ]
   &gt;
 IN THIS ORDER:
 |   &lt;decay ... /&gt; 
@@ -18012,7 +18123,7 @@ type or https://github.com/SwissTPH/openmalaria/wiki/ModelDecayFunctions</p>
 <p>Specification of decay or survival of a parameter.</p>
 <h3><a class="header" href="#attributes-459" id="attributes-459">Attributes</a></h3>
 <h4><a class="header" href="#function-22" id="function-22">function</a></h4>
-<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
 </code></pre>
 <p><strong>Units:</strong> None
 <strong>Min:</strong> 0
@@ -18025,7 +18136,10 @@ linear: 1 - t/L for t less than L, otherwise 0
 exponential: exp( - t/L * log(2) )
 weibull: exp( -(t/L)^k * log(2) )
 hill: 1 / (1 + (t/L)^k)
-smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0</p>
+smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0
+emax: Emax * C(t)^slope / (C(t)^slope + IC50^slope),
+where C(t) = initialConcentration * f(t), and f(t) is the
+single nested decay function</p>
 <h4><a class="header" href="#l-44" id="l-44">L</a></h4>
 <pre><code class="language-xml">L=string
 </code></pre>
@@ -18074,18 +18188,25 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-22" id="rho-22">rho</a></h4>
-<pre><code class="language-xml">rho=double
+<h4><a class="header" href="#initialconcentration-10" id="initialconcentration-10">initialConcentration</a></h4>
+<pre><code class="language-xml">initialConcentration=double
 </code></pre>
-<p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-22" id="halflife_short-22">halflife_short</a></h4>
-<pre><code class="language-xml">halflife_short=string
+<p>emax: Initial concentration C(0). Must be &gt;= 0.
+Units are user-defined, but must be consistent with IC50.</p>
+<h4><a class="header" href="#emax-10" id="emax-10">Emax</a></h4>
+<pre><code class="language-xml">Emax=double
 </code></pre>
-<p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-22" id="halflife_long-22">halflife_long</a></h4>
-<pre><code class="language-xml">halflife_long=string
+<p>emax: Maximum efficacy (between 0 and 1). Dimensionless.</p>
+<h4><a class="header" href="#slope-10" id="slope-10">slope</a></h4>
+<pre><code class="language-xml">slope=double
 </code></pre>
-<p>biphasic: halflife of long lived component (default to years).</p>
+<p>emax: Hill slope (steepness) parameter. Must be &gt; 0.
+Dimensionless.</p>
+<h4><a class="header" href="#ic50-10" id="ic50-10">IC50</a></h4>
+<pre><code class="language-xml">IC50=double
+</code></pre>
+<p>emax: Concentration for half-maximal effect. Must be &gt; 0.
+Units must match initialConcentration.</p>
 <h2><a class="header" href="#a-nameelt-anophelesparams-2a-per-mosquito-species-parameters-1" id="a-nameelt-anophelesparams-2a-per-mosquito-species-parameters-1"><a name="elt-anophelesParams-2"></a> Per-mosquito species parameters</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-human">human</a> → <a href="schema-current.html#elt-component-2">component</a> → <a href="schema-current.html#elt-IRS">IRS</a> → <a href="schema-current.html#elt-anophelesParams-2">anophelesParams</a></p>
 <pre><code class="language-xml">&lt;anophelesParams
@@ -18309,15 +18430,16 @@ wanted, a separate component can be used for each action.</p>
 <h2><a class="header" href="#a-nameelt-decay-8a-decay-1" id="a-nameelt-decay-8a-decay-1"><a name="elt-decay-8"></a> Decay</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-human">human</a> → <a href="schema-current.html#elt-component-2">component</a> → <a href="schema-current.html#elt-GVI">GVI</a> → <a href="schema-current.html#elt-decay-8">decay</a></p>
 <pre><code class="language-xml">&lt;decay
-    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+    function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
   [ L=string ]
   [ k=double ] DEFAULT VALUE 1.0
   [ CV=double ] DEFAULT VALUE 0
   [ increasing=boolean ] DEFAULT VALUE false
   [ initialEfficacy=double ] DEFAULT VALUE 1
-  [ rho=double ]
-  [ halflife_short=string ]
-  [ halflife_long=string ]
+  [ initialConcentration=double ]
+  [ Emax=double ]
+  [ slope=double ]
+  [ IC50=double ]
   &gt;
 IN THIS ORDER:
 |   &lt;decay ... /&gt; 
@@ -18334,7 +18456,7 @@ https://github.com/SwissTPH/openmalaria/wiki/ModelDecayFunctions</p>
 <p>Specification of decay or survival of a parameter.</p>
 <h3><a class="header" href="#attributes-466" id="attributes-466">Attributes</a></h3>
 <h4><a class="header" href="#function-23" id="function-23">function</a></h4>
-<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot;)
+<pre><code class="language-xml">function=(&quot;constant&quot; or &quot;step&quot; or &quot;linear&quot; or &quot;exponential&quot; or &quot;weibull&quot; or &quot;hill&quot; or &quot;smooth-compact&quot; or &quot;plus&quot; or &quot;minus&quot; or &quot;divides&quot; or &quot;multiplies&quot; or &quot;emax&quot;)
 </code></pre>
 <p><strong>Units:</strong> None
 <strong>Min:</strong> 0
@@ -18347,7 +18469,10 @@ linear: 1 - t/L for t less than L, otherwise 0
 exponential: exp( - t/L * log(2) )
 weibull: exp( -(t/L)^k * log(2) )
 hill: 1 / (1 + (t/L)^k)
-smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0</p>
+smooth-compact: exp( k - k / (1 - (t/L)^2) ) for t less than L, otherwise 0
+emax: Emax * C(t)^slope / (C(t)^slope + IC50^slope),
+where C(t) = initialConcentration * f(t), and f(t) is the
+single nested decay function</p>
 <h4><a class="header" href="#l-46" id="l-46">L</a></h4>
 <pre><code class="language-xml">L=string
 </code></pre>
@@ -18396,18 +18521,25 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-23" id="rho-23">rho</a></h4>
-<pre><code class="language-xml">rho=double
+<h4><a class="header" href="#initialconcentration-11" id="initialconcentration-11">initialConcentration</a></h4>
+<pre><code class="language-xml">initialConcentration=double
 </code></pre>
-<p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-23" id="halflife_short-23">halflife_short</a></h4>
-<pre><code class="language-xml">halflife_short=string
+<p>emax: Initial concentration C(0). Must be &gt;= 0.
+Units are user-defined, but must be consistent with IC50.</p>
+<h4><a class="header" href="#emax-11" id="emax-11">Emax</a></h4>
+<pre><code class="language-xml">Emax=double
 </code></pre>
-<p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-23" id="halflife_long-23">halflife_long</a></h4>
-<pre><code class="language-xml">halflife_long=string
+<p>emax: Maximum efficacy (between 0 and 1). Dimensionless.</p>
+<h4><a class="header" href="#slope-11" id="slope-11">slope</a></h4>
+<pre><code class="language-xml">slope=double
 </code></pre>
-<p>biphasic: halflife of long lived component (default to years).</p>
+<p>emax: Hill slope (steepness) parameter. Must be &gt; 0.
+Dimensionless.</p>
+<h4><a class="header" href="#ic50-11" id="ic50-11">IC50</a></h4>
+<pre><code class="language-xml">IC50=double
+</code></pre>
+<p>emax: Concentration for half-maximal effect. Must be &gt; 0.
+Units must match initialConcentration.</p>
 <h2><a class="header" href="#a-nameelt-anophelesparams-3a-per-mosquito-species-parameters-1" id="a-nameelt-anophelesparams-3a-per-mosquito-species-parameters-1"><a name="elt-anophelesParams-3"></a> Per-mosquito species parameters</a></h2>
 <p>→ <a href="schema-current.html#elt-scenario">scenario</a> → <a href="schema-current.html#elt-interventions">interventions</a> → <a href="schema-current.html#elt-human">human</a> → <a href="schema-current.html#elt-component-2">component</a> → <a href="schema-current.html#elt-GVI">GVI</a> → <a href="schema-current.html#elt-anophelesParams-3">anophelesParams</a></p>
 <pre><code class="language-xml">&lt;anophelesParams
@@ -26037,15 +26169,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-24" id="rho-24">rho</a></h4>
+<h4><a class="header" href="#rho-12" id="rho-12">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-24" id="halflife_short-24">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-12" id="halflife_short-12">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-24" id="halflife_long-24">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-12" id="halflife_long-12">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -26135,15 +26267,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-25" id="rho-25">rho</a></h4>
+<h4><a class="header" href="#rho-13" id="rho-13">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-25" id="halflife_short-25">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-13" id="halflife_short-13">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-25" id="halflife_long-25">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-13" id="halflife_long-13">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -26257,15 +26389,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-26" id="rho-26">rho</a></h4>
+<h4><a class="header" href="#rho-14" id="rho-14">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-26" id="halflife_short-26">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-14" id="halflife_short-14">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-26" id="halflife_long-26">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-14" id="halflife_long-14">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -26382,15 +26514,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-27" id="rho-27">rho</a></h4>
+<h4><a class="header" href="#rho-15" id="rho-15">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-27" id="halflife_short-27">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-15" id="halflife_short-15">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-27" id="halflife_long-27">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-15" id="halflife_long-15">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -26518,15 +26650,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-28" id="rho-28">rho</a></h4>
+<h4><a class="header" href="#rho-16" id="rho-16">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-28" id="halflife_short-28">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-16" id="halflife_short-16">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-28" id="halflife_long-28">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-16" id="halflife_long-16">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -26744,15 +26876,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-29" id="rho-29">rho</a></h4>
+<h4><a class="header" href="#rho-17" id="rho-17">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-29" id="halflife_short-29">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-17" id="halflife_short-17">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-29" id="halflife_long-29">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-17" id="halflife_long-17">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -26939,15 +27071,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-30" id="rho-30">rho</a></h4>
+<h4><a class="header" href="#rho-18" id="rho-18">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-30" id="halflife_short-30">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-18" id="halflife_short-18">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-30" id="halflife_long-30">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-18" id="halflife_long-18">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -27637,15 +27769,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-31" id="rho-31">rho</a></h4>
+<h4><a class="header" href="#rho-19" id="rho-19">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-31" id="halflife_short-31">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-19" id="halflife_short-19">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-31" id="halflife_long-31">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-19" id="halflife_long-19">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -28119,15 +28251,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-32" id="rho-32">rho</a></h4>
+<h4><a class="header" href="#rho-20" id="rho-20">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-32" id="halflife_short-32">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-20" id="halflife_short-20">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-32" id="halflife_long-32">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-20" id="halflife_long-20">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -28231,15 +28363,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-33" id="rho-33">rho</a></h4>
+<h4><a class="header" href="#rho-21" id="rho-21">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-33" id="halflife_short-33">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-21" id="halflife_short-21">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-33" id="halflife_long-33">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-21" id="halflife_long-21">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -29052,15 +29184,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-34" id="rho-34">rho</a></h4>
+<h4><a class="header" href="#rho-22" id="rho-22">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-34" id="halflife_short-34">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-22" id="halflife_short-22">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-34" id="halflife_long-34">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-22" id="halflife_long-22">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -29374,15 +29506,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-35" id="rho-35">rho</a></h4>
+<h4><a class="header" href="#rho-23" id="rho-23">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-35" id="halflife_short-35">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-23" id="halflife_short-23">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-35" id="halflife_long-35">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-23" id="halflife_long-23">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -36654,15 +36786,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-36" id="rho-36">rho</a></h4>
+<h4><a class="header" href="#rho-24" id="rho-24">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-36" id="halflife_short-36">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-24" id="halflife_short-24">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-36" id="halflife_long-36">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-24" id="halflife_long-24">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -36752,15 +36884,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-37" id="rho-37">rho</a></h4>
+<h4><a class="header" href="#rho-25" id="rho-25">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-37" id="halflife_short-37">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-25" id="halflife_short-25">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-37" id="halflife_long-37">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-25" id="halflife_long-25">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -36874,15 +37006,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-38" id="rho-38">rho</a></h4>
+<h4><a class="header" href="#rho-26" id="rho-26">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-38" id="halflife_short-38">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-26" id="halflife_short-26">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-38" id="halflife_long-38">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-26" id="halflife_long-26">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -36999,15 +37131,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-39" id="rho-39">rho</a></h4>
+<h4><a class="header" href="#rho-27" id="rho-27">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-39" id="halflife_short-39">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-27" id="halflife_short-27">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-39" id="halflife_long-39">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-27" id="halflife_long-27">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -37135,15 +37267,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-40" id="rho-40">rho</a></h4>
+<h4><a class="header" href="#rho-28" id="rho-28">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-40" id="halflife_short-40">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-28" id="halflife_short-28">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-40" id="halflife_long-40">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-28" id="halflife_long-28">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -37361,15 +37493,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-41" id="rho-41">rho</a></h4>
+<h4><a class="header" href="#rho-29" id="rho-29">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-41" id="halflife_short-41">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-29" id="halflife_short-29">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-41" id="halflife_long-41">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-29" id="halflife_long-29">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -37556,15 +37688,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-42" id="rho-42">rho</a></h4>
+<h4><a class="header" href="#rho-30" id="rho-30">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-42" id="halflife_short-42">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-30" id="halflife_short-30">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-42" id="halflife_long-42">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-30" id="halflife_long-30">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -38252,15 +38384,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-43" id="rho-43">rho</a></h4>
+<h4><a class="header" href="#rho-31" id="rho-31">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-43" id="halflife_short-43">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-31" id="halflife_short-31">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-43" id="halflife_long-43">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-31" id="halflife_long-31">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -38734,15 +38866,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-44" id="rho-44">rho</a></h4>
+<h4><a class="header" href="#rho-32" id="rho-32">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-44" id="halflife_short-44">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-32" id="halflife_short-32">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-44" id="halflife_long-44">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-32" id="halflife_long-32">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -38846,15 +38978,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-45" id="rho-45">rho</a></h4>
+<h4><a class="header" href="#rho-33" id="rho-33">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-45" id="halflife_short-45">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-33" id="halflife_short-33">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-45" id="halflife_long-45">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-33" id="halflife_long-33">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -39667,15 +39799,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-46" id="rho-46">rho</a></h4>
+<h4><a class="header" href="#rho-34" id="rho-34">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-46" id="halflife_short-46">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-34" id="halflife_short-34">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-46" id="halflife_long-46">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-34" id="halflife_long-34">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -39989,15 +40121,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-47" id="rho-47">rho</a></h4>
+<h4><a class="header" href="#rho-35" id="rho-35">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-47" id="halflife_short-47">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-35" id="halflife_short-35">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-47" id="halflife_long-47">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-35" id="halflife_long-35">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -46859,15 +46991,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-48" id="rho-48">rho</a></h4>
+<h4><a class="header" href="#rho-36" id="rho-36">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-48" id="halflife_short-48">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-36" id="halflife_short-36">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-48" id="halflife_long-48">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-36" id="halflife_long-36">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -46957,15 +47089,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-49" id="rho-49">rho</a></h4>
+<h4><a class="header" href="#rho-37" id="rho-37">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-49" id="halflife_short-49">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-37" id="halflife_short-37">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-49" id="halflife_long-49">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-37" id="halflife_long-37">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -47079,15 +47211,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-50" id="rho-50">rho</a></h4>
+<h4><a class="header" href="#rho-38" id="rho-38">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-50" id="halflife_short-50">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-38" id="halflife_short-38">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-50" id="halflife_long-50">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-38" id="halflife_long-38">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -47204,15 +47336,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-51" id="rho-51">rho</a></h4>
+<h4><a class="header" href="#rho-39" id="rho-39">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-51" id="halflife_short-51">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-39" id="halflife_short-39">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-51" id="halflife_long-51">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-39" id="halflife_long-39">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -47340,15 +47472,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-52" id="rho-52">rho</a></h4>
+<h4><a class="header" href="#rho-40" id="rho-40">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-52" id="halflife_short-52">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-40" id="halflife_short-40">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-52" id="halflife_long-52">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-40" id="halflife_long-40">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -47566,15 +47698,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-53" id="rho-53">rho</a></h4>
+<h4><a class="header" href="#rho-41" id="rho-41">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-53" id="halflife_short-53">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-41" id="halflife_short-41">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-53" id="halflife_long-53">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-41" id="halflife_long-41">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -47761,15 +47893,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-54" id="rho-54">rho</a></h4>
+<h4><a class="header" href="#rho-42" id="rho-42">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-54" id="halflife_short-54">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-42" id="halflife_short-42">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-54" id="halflife_long-54">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-42" id="halflife_long-42">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -48453,15 +48585,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-55" id="rho-55">rho</a></h4>
+<h4><a class="header" href="#rho-43" id="rho-43">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-55" id="halflife_short-55">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-43" id="halflife_short-43">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-55" id="halflife_long-55">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-43" id="halflife_long-43">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -48935,15 +49067,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-56" id="rho-56">rho</a></h4>
+<h4><a class="header" href="#rho-44" id="rho-44">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-56" id="halflife_short-56">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-44" id="halflife_short-44">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-56" id="halflife_long-56">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-44" id="halflife_long-44">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -49047,15 +49179,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-57" id="rho-57">rho</a></h4>
+<h4><a class="header" href="#rho-45" id="rho-45">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-57" id="halflife_short-57">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-45" id="halflife_short-45">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-57" id="halflife_long-57">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-45" id="halflife_long-45">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -49868,15 +50000,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-58" id="rho-58">rho</a></h4>
+<h4><a class="header" href="#rho-46" id="rho-46">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-58" id="halflife_short-58">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-46" id="halflife_short-46">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-58" id="halflife_long-58">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-46" id="halflife_long-46">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
@@ -50190,15 +50322,15 @@ between 0 and 1.</p>
 </code></pre>
 <p><strong>Default value:</strong> 1</p>
 <p>biphasic: Efficacy between 0 and 1.</p>
-<h4><a class="header" href="#rho-59" id="rho-59">rho</a></h4>
+<h4><a class="header" href="#rho-47" id="rho-47">rho</a></h4>
 <pre><code class="language-xml">rho=double
 </code></pre>
 <p>biphasic: Proportion between 0 and 1, proportion of the response that is short-lived.</p>
-<h4><a class="header" href="#halflife_short-59" id="halflife_short-59">halflife_short</a></h4>
+<h4><a class="header" href="#halflife_short-47" id="halflife_short-47">halflife_short</a></h4>
 <pre><code class="language-xml">halflife_short=string
 </code></pre>
 <p>biphasic: halflife of short lived component (default to years).</p>
-<h4><a class="header" href="#halflife_long-59" id="halflife_long-59">halflife_long</a></h4>
+<h4><a class="header" href="#halflife_long-47" id="halflife_long-47">halflife_long</a></h4>
 <pre><code class="language-xml">halflife_long=string
 </code></pre>
 <p>biphasic: halflife of long lived component (default to years).</p>
