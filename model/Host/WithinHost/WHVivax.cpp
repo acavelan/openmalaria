@@ -345,18 +345,18 @@ double WHVivax::probTransmissionToMosquito(vector<double> &probTransGenotype_i, 
 
 bool WHVivax::summarize(Host::Human& human) const{
     if( infections.size() == 0 ) return false;  // no infections: not patent, nothing to report
-    mon::recordStat(mon::measure("nInfect"), human, 1);
+    mon::recordStat(mon::measure("nInfect"), human);
     bool patentHost = false;
     // (patent) infections are reported by genotype, even though we don't have
     // genotype in this model
     mon::recordStat(mon::measure("totalInfs"), human, static_cast<int>(infections.size()));
     for(auto inf = infections.begin(); inf != infections.end(); ++inf) {
         if (inf->isPatent()){
-            mon::recordStat(mon::measure("totalPatentInf"), human, 1);
+            mon::recordStat(mon::measure("totalPatentInf"), human);
             patentHost = true;
         }
     }
-    if( patentHost ) mon::recordStat(mon::measure("nPatent"), human, 1);
+    if( patentHost ) mon::recordStat(mon::measure("nPatent"), human);
     return patentHost;
 }
 
@@ -494,7 +494,7 @@ void WHVivax::optionalPqTreatment( Host::Human& human ){
                 it->treatmentLS();
             }
         }
-        mon::recordEvent(mon::measure("nLiverStageTreatments"), human, 1);
+        mon::recordEvent(mon::measure("nLiverStageTreatments"), human);
     }
 }
 bool WHVivax::treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlood ){
@@ -518,7 +518,7 @@ bool WHVivax::treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBl
                 }
             }
         }
-        mon::recordEvent(mon::measure("nLiverStageTreatments"), human, 1);
+        mon::recordEvent(mon::measure("nLiverStageTreatments"), human);
     }
     
     // there probably will be blood-stage treatment

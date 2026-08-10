@@ -403,8 +403,8 @@ protected:
     }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
-        for( const size_t outId : outIds ){
-            mon::recordStat(mon::measure("nCMDTReport"), hostData.human, 1, 0, 0, 0, outId);
+        for( const int outId : outIds ){
+            mon::recordEvent(mon::measure("nCMDTReport"), hostData.human, 1, outId);
         }
         return CMDTOut(false);
     }

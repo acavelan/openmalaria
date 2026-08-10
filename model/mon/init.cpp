@@ -32,6 +32,7 @@
 #include "util/errors.h"
 
 #include <algorithm>
+#include <bit>
 #include <cctype>
 #include <iostream>
 #include <map>
@@ -44,94 +45,81 @@ using internal::runtime;
 
 namespace {
 
-bool notPowerOfTwo(uint32_t num)
+constexpr uint32_t maxCohortNumber = uint32_t{1} << 21;
+
+void initAgeGroups(const scnXml::Monitoring& monitoring)
 {
-    return num == 0 || num > (static_cast<uint32_t>(1) << 21) || (num & (num - 1)) != 0;
+    const scnXml::MonAgeGroup::GroupSequence& groups = monitoring.getAgeGroup().getGroup();
+    if (!(monitoring.getAgeGroup().getLowerbound() <= 0.0)) {
+        throw util::xml_scenario_error("Expected survey age-group lowerbound of 0");
+    }
+
+    runtime.ageGroupUpperBound.resize(groups.size() + 1);
+    for (size_t i = 0; i < groups.size(); ++i) {
+        runtime.ageGroupUpperBound[i] = sim::fromYearsD(groups[i].getUpperbound());
+    }
+    runtime.ageGroupUpperBound[groups.size()] = sim::future();
 }
 
-}
+} // namespace
 
 void initReporting(const scnXml::Scenario& scenario)
 {
-    defineOutMeasures(runtime.namedOutMeasures, runtime.validCondMeasures);
-    assert(runtime.reportedMeasures.empty());
     runtime.reportIMR = -1;
     const scnXml::MonitoringOptions& optsElt = scenario.getMonitoring().getSurveyOptions();
-    runtime.reportedMeasures.reserve(optsElt.getOption().size() + runtime.namedOutMeasures.size());
-    auto applyCategory = [](Dim& dims, Dim flag, const bool optionalPresent, const bool requested,
-                            const std::string& optionName, const char* label)
-    {
-        if (!optionalPresent) return;
-        const bool supports = hasDim(dims, flag);
-        if (supports) {
-            if (!requested) clearDim(dims, flag);
-        } else if (requested) {
-            throw util::xml_scenario_error("measure " + optionName + " does not support categorisation by " + label);
-        }
-    };
+    std::vector<OutMeasure> reportedMeasures;
+    reportedMeasures.reserve(optsElt.getOption().size());
 
     std::set<int> outIds;
     for (const scnXml::MonitoringOption& optElt : optsElt.getOption()) {
         if (!optElt.getValue()) continue;
 
-        auto it = runtime.namedOutMeasures.find(optElt.getName());
-        if (it == runtime.namedOutMeasures.end()) {
-            throw util::xml_scenario_error("unrecognised survey option: " + std::string(optElt.getName()));
-        }
-        OutMeasure om = it->second;
-        if (om.m >= MeasureCount) {
-            if (om.m == obsoleteMeasure) {
+        OutMeasure om = findOutMeasure(optElt.getName());
+        if (om.measure == invalidMeasure) {
+            if (isObsoleteMeasure(optElt.getName())) {
                 throw util::xml_scenario_error("obsolete survey option: " + std::string(optElt.getName()));
             }
-            assert(om.m == allCauseIMR);
-            const bool byAge = optElt.getByAge().present() && optElt.getByAge().get();
-            const bool byCohort = optElt.getByCohort().present() && optElt.getByCohort().get();
-            const bool bySpecies = optElt.getBySpecies().present() && optElt.getBySpecies().get();
-            const bool byGenotype = optElt.getByGenotype().present() && optElt.getByGenotype().get();
-            const bool byDrug = optElt.getByDrugType().present() && optElt.getByDrugType().get();
-            if (!om.isDouble || byAge || byCohort || bySpecies || byGenotype || byDrug) {
-                throw util::xml_scenario_error("measure allCauseIMR does not support any categorisation");
-            }
-            if (optElt.getOutputNumber().present()) om.outId = optElt.getOutputNumber().get();
-            if (outIds.count(om.outId)) {
-                throw util::xml_scenario_error("monitoring output number " + std::to_string(om.outId) + " used more than once");
-            }
-            outIds.insert(om.outId);
-            runtime.reportIMR = om.outId;
-            continue;
+            throw util::xml_scenario_error("unrecognised survey option: " + std::string(optElt.getName()));
         }
-
-        if ((om.m == measure("sumlogDens") || om.m == measure("logDensByGenotype")) &&
+        if ((om.measure == measure("sumlogDens") || om.measure == measure("logDensByGenotype")) &&
             WithinHost::diagnostics::monitoringDiagnostic().allowsFalsePositives())
         {
             throw util::xml_scenario_error("measure " + std::string(optElt.getName()) + " may not be used when monitoring diagnostic sensitivity < 1");
         }
-        const std::string optionName(optElt.getName());
-        const bool byAgePresent = optElt.getByAge().present();
-        const bool byCohortPresent = optElt.getByCohort().present();
-        const bool bySpeciesPresent = optElt.getBySpecies().present();
-        const bool byGenotypePresent = optElt.getByGenotype().present();
-        const bool byDrugPresent = optElt.getByDrugType().present();
-        applyCategory(om.dims, Dim::Age, byAgePresent, byAgePresent ? optElt.getByAge().get() : false, optionName, "age group");
-        applyCategory(om.dims, Dim::Cohort, byCohortPresent, byCohortPresent ? optElt.getByCohort().get() : false, optionName, "cohort");
-        applyCategory(om.dims, Dim::Species, bySpeciesPresent, bySpeciesPresent ? optElt.getBySpecies().get() : false, optionName, "species");
-        applyCategory(om.dims, Dim::Genotype, byGenotypePresent, byGenotypePresent ? optElt.getByGenotype().get() : false, optionName, "genotype");
-        applyCategory(om.dims, Dim::Drug, byDrugPresent, byDrugPresent ? optElt.getByDrugType().get() : false, optionName, "drug type");
+
+        auto applyCategory = [&](Dim flag, const auto& option, const char* label) {
+            if (!option.present()) return;
+            if (option.get() && !(om.dims & flag)) {
+                throw util::xml_scenario_error("measure " + std::string(optElt.getName()) + " does not support categorisation by " + label);
+            }
+            if (!option.get()) om.dims &= ~flag;
+        };
+        applyCategory(Dim::Age, optElt.getByAge(), "age group");
+        applyCategory(Dim::Cohort, optElt.getByCohort(), "cohort");
+        applyCategory(Dim::Species, optElt.getBySpecies(), "species");
+        applyCategory(Dim::Genotype, optElt.getByGenotype(), "genotype");
+        applyCategory(Dim::Drug, optElt.getByDrugType(), "drug type");
 
         if (optElt.getOutputNumber().present()) om.outId = optElt.getOutputNumber().get();
-        if (outIds.count(om.outId)) {
+        if (om.outId < 0) {
+            throw util::xml_scenario_error("monitoring output number must not be negative");
+        }
+        if (!outIds.insert(om.outId).second) {
             throw util::xml_scenario_error("monitoring output number " + std::to_string(om.outId) + " used more than once");
         }
-        outIds.insert(om.outId);
-        runtime.reportedMeasures.push_back(om);
+        if (om.measure == allCauseIMR) {
+            runtime.reportIMR = om.outId;
+            continue;
+        }
+        reportedMeasures.push_back(om);
     }
-    std::sort(runtime.reportedMeasures.begin(), runtime.reportedMeasures.end(),
+    std::sort(reportedMeasures.begin(), reportedMeasures.end(),
         [](const OutMeasure& lhs, const OutMeasure& rhs) { return lhs.outId < rhs.outId; });
     const size_t nSpecies = scenario.getEntomology().getVector().present()
         ? scenario.getEntomology().getVector().get().getAnopheles().size() : 1;
     const size_t nDrugs = scenario.getPharmacology().present()
         ? scenario.getPharmacology().get().getDrugs().getDrug().size() : 1;
-    runtime.surveyStore.init(runtime.reportedMeasures, nSpecies, nDrugs);
+    internal::initStores(reportedMeasures, nSpecies, nDrugs);
 }
 
 SimTime readSurveyDates(const scnXml::Monitoring& monitoring)
@@ -225,28 +213,17 @@ void initCohorts(const scnXml::Monitoring& monitoring)
             throw util::xml_scenario_error(
                 std::string("cohort specification uses sub-population \"").append(it->getId()).append("\" more than once"));
         }
-        if (it->getNumber() < 0 || notPowerOfTwo(it->getNumber())) {
+        const auto number = it->getNumber();
+        if (number < 1 || number > maxCohortNumber ||
+            !std::has_single_bit(static_cast<uint32_t>(number))) {
             throw util::xml_scenario_error(
                 std::string("cohort specification assigns sub-population \"").append(it->getId())
-                    .append("\" a number which is not a power of 2 (up to 2^21)"));
+                    .append("\" a number which is not a power of 2 between 1 and ")
+                    .append(std::to_string(maxCohortNumber)));
         }
-        runtime.cohortSubPopNumbers.push_back(it->getNumber());
+        runtime.cohortSubPopNumbers.push_back(number);
         nextId += 1;
     }
-}
-
-void initAgeGroups(const scnXml::Monitoring& monitoring)
-{
-    const scnXml::MonAgeGroup::GroupSequence& groups = monitoring.getAgeGroup().getGroup();
-    if (!(monitoring.getAgeGroup().getLowerbound() <= 0.0)) {
-        throw util::xml_scenario_error("Expected survey age-group lowerbound of 0");
-    }
-
-    runtime.ageGroupUpperBound.resize(groups.size() + 1);
-    for (size_t i = 0; i < groups.size(); ++i) {
-        runtime.ageGroupUpperBound[i] = sim::fromYearsD(groups[i].getUpperbound());
-    }
-    runtime.ageGroupUpperBound[groups.size()] = sim::future();
 }
 
 } // namespace mon

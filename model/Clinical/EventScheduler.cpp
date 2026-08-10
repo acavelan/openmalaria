@@ -253,17 +253,17 @@ void ClinicalEventScheduler::doClinicalUpdate (Human& human, double ageYears, Wi
         if( auxOut.treated ){	// I.E. some treatment was given
             timeLastTreatment = sim::ts0();
             if( pgState & Episode::COMPLICATED ){
-                mon::recordEvent(mon::measure("nTreatments3"), human, 1);
+                mon::recordEvent(mon::measure("nTreatments3"), human);
             }else{
                 if( pgState & Episode::SECOND_CASE ){
-                    mon::recordEvent(mon::measure("nTreatments2"), human, 1);
+                    mon::recordEvent(mon::measure("nTreatments2"), human);
                 }else{
-                    mon::recordEvent(mon::measure("nTreatments1"), human, 1);
+                    mon::recordEvent(mon::measure("nTreatments1"), human);
                 }
             }
         }
         if( auxOut.screened ){
-            mon::recordEvent(mon::measure("nTreatDiagnostics"), human, 1);
+            mon::recordEvent(mon::measure("nTreatDiagnostics"), human);
         }
 	
 	if ( true /*FIXME auxOut.hospitalisation != CMAuxOutput::NONE*/ ) {	// in hospital

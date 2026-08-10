@@ -147,7 +147,7 @@ void Human::removeFirstEvent(interventions::SubPopRemove::RemoveAtCode code )
                 clinicalModel->flushReports();     // reset HS memory
                 
                 // report removal due to first infection/bout/treatment
-                mon::recordEvent(mon::measure("nSubPopRemovalFirstEvent"), *this, 1);
+                mon::recordEvent(mon::measure("nSubPopRemovalFirstEvent"), *this);
             }
             cohortSet = mon::updateCohortSet( cohortSet, expIt->first, false );
             // remove (affects reporting, restrictToSubPop and cumulative deployment):
@@ -163,7 +163,7 @@ void Human::updateCohortSet()
         if( !(expIt->second >= sim::ts0()) ){       // membership expired
             // don't flush reports
             // report removal due to expiry
-            mon::recordEvent(mon::measure("nSubPopRemovalTooOld"), *this, 1);
+            mon::recordEvent(mon::measure("nSubPopRemovalTooOld"), *this);
             cohortSet = mon::updateCohortSet( cohortSet, expIt->first, false );
             // erase element, but continue iteration
             expIt = subPopExp.erase( expIt );
@@ -211,7 +211,7 @@ void summarize(Human &human, bool surveyOnlyNewEp) {
         return;
     }
     
-    mon::recordStat(mon::measure("nHost"), human, 1);
+    mon::recordStat(mon::measure("nHost"), human);
     mon::recordStat(mon::measure("sumAge"), human, sim::inYears(human.age(sim::now())) );
     bool patent = human.withinHostModel->summarize (human);
     human.infIncidence->summarize (human);

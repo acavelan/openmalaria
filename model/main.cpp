@@ -45,7 +45,6 @@
 #include <cerrno>
 
 namespace OM {
-    using mon::Continuous;
     using interventions::InterventionManager;
     using Transmission::TransmissionModel;
 }
@@ -86,7 +85,7 @@ void run(Population &population, TransmissionModel &transmission, SimTime humanW
 
         // Monitoring. sim::now() gives time of end of last step,
         // and is when reporting happens in our time-series.
-        Continuous.update( population );
+        mon::Continuous::update( population );
         if( sim::intervDate() == mon::nextSurveyDate() ){
             for(Host::Human &human : population.humans)
                 Host::summarize(human, surveyOnlyNewEp);
@@ -228,7 +227,7 @@ int main(int argc, char* argv[])
 
         if (startedFromCheckpoint)
         {
-            Continuous.init(scenario->getMonitoring(), true);
+            mon::Continuous::init(scenario->getMonitoring(), true);
             readCheckpoint(checkpointFileName, endTime, estEndTime, *population, *transmission);
 
             /** Calculate ento availability percentiles **/
@@ -236,7 +235,7 @@ int main(int argc, char* argv[])
         }
         else
         {
-            Continuous.init(scenario->getMonitoring(), false);
+            mon::Continuous::init(scenario->getMonitoring(), false);
             population->createInitialHumans();
             transmission->init2(population->humans);
             

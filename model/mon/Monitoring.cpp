@@ -34,12 +34,12 @@
 #include <gzstream/gzstream.h>
 #include <iostream>
 #include <numeric>
+#include <type_traits>
 
 namespace OM {
 namespace mon {
 
 using internal::Condition;
-using internal::SurveyDate;
 using internal::runtime;
 
 namespace {
@@ -55,65 +55,17 @@ uint32_t cohortSetOutputId(uint32_t cohortSet){
     return outNum;
 }
 
-internal::MeasureLayout makeMeasureLayout(const OutMeasure& om, size_t nSpecies, size_t nDrugs, bool forceNoCategories)
-{
-    internal::MeasureLayout layout;
-    layout.outMeasure = om.outId;
-    if (!forceNoCategories && hasDim(om.dims, Dim::Age)) {
-        assert(!runtime.ageGroupUpperBound.empty());
-    }
-    layout.nAges = forceNoCategories ? 1 : (hasDim(om.dims, Dim::Age) ? runtime.ageGroupUpperBound.size() : 1);
-    layout.nCohorts = forceNoCategories ? 1 : (hasDim(om.dims, Dim::Cohort) ? runtime.nCohorts : 1);
-    layout.nSpecies = forceNoCategories ? 1 : (hasDim(om.dims, Dim::Species) ? nSpecies : 1);
-    layout.nGenotypes = forceNoCategories ? 1 : (hasDim(om.dims, Dim::Genotype) ? WithinHost::Genotypes::N() : 1);
-    layout.nDrugs = forceNoCategories ? 1 : (hasDim(om.dims, Dim::Drug) ? nDrugs : 1);
-    layout.deployMask = om.method;
-    return layout;
-}
-
-void checkpointVec(ostream& stream, vector<double>& values, size_t /*expectedSize*/)
-{
-    values.size() & stream;
-    for (double& y : values) y & stream;
-}
-
-void checkpointVec(istream& stream, vector<double>& values, size_t expectedSize)
-{
-    size_t storedSize = 0;
-    storedSize & stream;
-    if (storedSize != expectedSize) {
-        throw util::checkpoint_error("mon::reports: invalid list size");
-    }
-    values.resize(storedSize);
-    for (double& y : values) y & stream;
-}
-
 } // namespace
 
 namespace internal {
 
-size_t MeasureLayout::size() const
+size_t MeasureStore::index(size_t a, size_t c, size_t sp, size_t g, size_t d) const
 {
-    return nAges * nCohorts * nSpecies * nGenotypes * nDrugs;
-}
-
-size_t MeasureLayout::index(size_t a, size_t c, size_t sp, size_t g, size_t d) const
-{
-#ifndef NDEBUG
-    if ((nAges > 1 && a >= nAges) ||
-        (nCohorts > 1 && c >= nCohorts) ||
-        (nSpecies > 1 && sp >= nSpecies) ||
-        (nGenotypes > 1 && g >= nGenotypes) ||
-        (nDrugs > 1 && d >= nDrugs))
-    {
-        cout << "Index out of bounds for age group\t" << a << " of " << nAges
-            << "\ncohort set\t" << c << " of " << nCohorts
-            << "\nspecies\t" << sp << " of " << nSpecies
-            << "\ngenotype\t" << g << " of " << nGenotypes
-            << "\ndrug\t" << d << " of " << nDrugs
-            << endl;
-    }
-#endif
+    assert(nAges == 1 || a < nAges);
+    assert(nCohorts == 1 || c < nCohorts);
+    assert(nSpecies == 1 || sp < nSpecies);
+    assert(nGenotypes == 1 || g < nGenotypes);
+    assert(nDrugs == 1 || d < nDrugs);
     return (d % nDrugs) + nDrugs *
         ((g % nGenotypes) + nGenotypes *
         ((sp % nSpecies) + nSpecies *
@@ -121,148 +73,53 @@ size_t MeasureLayout::index(size_t a, size_t c, size_t sp, size_t g, size_t d) c
         (a % nAges))));
 }
 
-void MeasureLayout::write(ostream& stream, int surveyNum, const OutMeasure& om,
-                          const vector<double>& results, size_t surveyStart) const
+namespace {
+
+void addStore(const OutMeasure& om, size_t nSpecies, size_t nDrugs, bool forceNoCategories)
 {
-    assert(results.size() >= surveyStart + size());
-    const int ageGroupAdd = hasDim(om.dims, Dim::Age) ? 1 : 0;
-    const size_t nAgeCats = nAges == 1 ? 1 : nAges - 1;
-
-    auto emit = [&](size_t ageGroup, size_t cohortSet, size_t species, size_t genotype, size_t drug, int col2) {
-        const double value = results[surveyStart + index(ageGroup, cohortSet, species, genotype, drug)];
-        stream << surveyNum << '\t' << col2 << '\t' << om.outId << '\t';
-        if (om.isDouble) {
-            stream << value;
-        } else {
-            assert(std::trunc(value) == value);
-            stream << static_cast<long long>(value);
-        }
-        stream << lineEnd;
-    };
-
-    if (hasDim(om.dims, Dim::Species)) {
-        assert(nAges == 1 && nCohorts == 1 && nDrugs == 1);
-        for (size_t species = 0; species < nSpecies; ++species) {
-        for (size_t genotype = 0; genotype < nGenotypes; ++genotype) {
-            const int col2 = species + 1 + 1000000 * genotype;
-            emit(0, 0, species, genotype, 0, col2);
-        } }
-        return;
-    }
-
-    if (hasDim(om.dims, Dim::Drug)) {
-        assert(nSpecies == 1 && nGenotypes == 1);
-        for (size_t cohortSet = 0; cohortSet < nCohorts; ++cohortSet) {
-        for (size_t ageGroup = 0; ageGroup < nAgeCats; ++ageGroup) {
-        for (size_t drug = 0; drug < nDrugs; ++drug) {
-            const int col2 = ageGroup + ageGroupAdd +
-                1000 * cohortSetOutputId(cohortSet) +
-                1000000 * (drug + 1);
-            emit(ageGroup, cohortSet, 0, 0, drug, col2);
-        } } }
-        return;
-    }
-
-    assert(nSpecies == 1 && nDrugs == 1);
-    for (size_t cohortSet = 0; cohortSet < nCohorts; ++cohortSet) {
-    for (size_t ageGroup = 0; ageGroup < nAgeCats; ++ageGroup) {
-    for (size_t genotype = 0; genotype < nGenotypes; ++genotype) {
-        const int col2 = ageGroup + ageGroupAdd +
-            1000 * cohortSetOutputId(cohortSet) +
-            1000000 * genotype;
-        emit(ageGroup, cohortSet, 0, genotype, 0, col2);
-    } } }
-}
-
-void SurveyStore::init(const vector<OutMeasure>& enabledMeasures, size_t nSpecies, size_t nDrugs)
-{
-    stores.clear();
-    measureToStates.assign(MeasureCount, {});
-    for (const OutMeasure& om : enabledMeasures) {
-        add(om, nSpecies, nDrugs, false);
-    }
-}
-
-void SurveyStore::ensureConditionState(const OutMeasure& om)
-{
-    assert(om.m < MeasureCount);
-    for (size_t idx : measureToStates[om.m]) {
-        if (stores[idx].layout.deployMask == om.method) return;
-    }
-    add(om, 1, 1, true);
-}
-
-void SurveyStore::record(double val, Measure measure, size_t survey, size_t ageIndex, uint32_t cohortSet,
-                         size_t species, size_t genotype, size_t drug, int outId,
-                         Deploy::Method method)
-{
-    if (survey == NOT_USED) return;
-    assert(measure < measureToStates.size());
-    for (size_t idx : measureToStates[measure]) {
-        MeasureStore& store = stores[idx];
-        if (outId != 0 && store.layout.outMeasure != outId) continue;
-        if (method == Deploy::NA && store.layout.deployMask != Deploy::NA) continue;
-        if (method != Deploy::NA && (store.layout.deployMask & method) == Deploy::NA) continue;
-        const size_t offset = survey * store.layout.size();
-        const size_t index = offset + store.layout.index(ageIndex, cohortSet, species, genotype, drug);
-        assert(index < store.reports.size());
-        store.reports[index] += val;
-    }
-}
-
-double SurveyStore::sum(Measure measure, uint8_t method, size_t survey) const
-{
-    assert(measure < measureToStates.size());
-    for (size_t idx : measureToStates[measure]) {
-        const MeasureStore& store = stores[idx];
-        if (store.layout.deployMask != method) continue;
-        const size_t begin = survey * store.layout.size();
-        const size_t end = begin + store.layout.size();
-        return std::accumulate(store.reports.begin() + begin, store.reports.begin() + end, 0.0);
-    }
-    throw SWITCH_DEFAULT_EXCEPTION;
-}
-
-void SurveyStore::write(ostream& stream, size_t survey, const OutMeasure& om) const
-{
-    assert(om.m < measureToStates.size());
-    for (size_t idx : measureToStates[om.m]) {
-        const MeasureStore& store = stores[idx];
-        if (store.layout.outMeasure != om.outId) continue;
-        store.layout.write(stream, survey + 1, om, store.reports, survey * store.layout.size());
-        return;
-    }
-    assert(false && "measure not found in records");
-}
-
-bool SurveyStore::uses(Measure measure) const
-{
-    assert(measure < MeasureCount);
-    return !measureToStates[measure].empty();
-}
-
-void SurveyStore::checkpoint(ostream& stream)
-{
-    for (MeasureStore& store : stores) {
-        checkpointVec(stream, store.reports, store.layout.size() * runtime.nSurveys);
-    }
-}
-
-void SurveyStore::checkpoint(istream& stream)
-{
-    for (MeasureStore& store : stores) {
-        checkpointVec(stream, store.reports, store.layout.size() * runtime.nSurveys);
-    }
-}
-
-void SurveyStore::add(const OutMeasure& om, size_t nSpecies, size_t nDrugs, bool forceNoCategories)
-{
-    assert(om.m < MeasureCount);
+    assert(om.measure < MeasureCount);
     MeasureStore store;
-    store.layout = makeMeasureLayout(om, nSpecies, nDrugs, forceNoCategories);
-    store.reports.assign(store.layout.size() * runtime.nSurveys, 0.0);
-    measureToStates[om.m].push_back(stores.size());
-    stores.push_back(std::move(store));
+    store.output = om;
+    if (forceNoCategories) store.output.outId = -1;
+    if (!forceNoCategories && (om.dims & Dim::Age)) {
+        assert(!runtime.ageGroupUpperBound.empty());
+    }
+    store.nAges = forceNoCategories ? 1 : (om.dims & Dim::Age ? runtime.ageGroupUpperBound.size() : 1);
+    store.nCohorts = forceNoCategories ? 1 : (om.dims & Dim::Cohort ? runtime.nCohorts : 1);
+    store.nSpecies = forceNoCategories ? 1 : (om.dims & Dim::Species ? nSpecies : 1);
+    store.nGenotypes = forceNoCategories ? 1 : (om.dims & Dim::Genotype ? WithinHost::Genotypes::N() : 1);
+    store.nDrugs = forceNoCategories ? 1 : (om.dims & Dim::Drug ? nDrugs : 1);
+    const size_t reportCount = store.size() * runtime.nSurveys;
+    if (om.isDouble) store.reports.emplace<vector<double>>(reportCount, 0.0);
+    else store.reports.emplace<vector<int>>(reportCount, 0);
+    runtime.storesByMeasure[om.measure].push_back(runtime.stores.size());
+    runtime.stores.push_back(std::move(store));
+}
+
+} // namespace
+
+void initStores(const vector<OutMeasure>& enabledMeasures, size_t nSpecies, size_t nDrugs)
+{
+    runtime.stores.clear();
+    runtime.storesByMeasure.assign(MeasureCount, {});
+    for (const OutMeasure& om : enabledMeasures) addStore(om, nSpecies, nDrugs, false);
+}
+
+void ensureConditionStore(const OutMeasure& om)
+{
+    assert(om.measure < MeasureCount);
+    if (runtime.storesByMeasure[om.measure].empty()) addStore(om, 1, 1, true);
+}
+
+double surveySum(Measure measure, size_t survey)
+{
+    assert(measure < runtime.storesByMeasure.size());
+    if (runtime.storesByMeasure[measure].empty()) throw SWITCH_DEFAULT_EXCEPTION;
+    const MeasureStore& store = runtime.stores[runtime.storesByMeasure[measure].front()];
+    const size_t begin = survey * store.size();
+    return std::visit([&](const auto& reports) {
+        return std::accumulate(reports.begin() + begin, reports.begin() + begin + store.size(), 0.0);
+    }, store.reports);
 }
 
 RuntimeState runtime;
@@ -273,60 +130,116 @@ namespace {
 
 void updateConditions()
 {
-    assert(runtime.survNumStat != NOT_USED);
+    const size_t survey = statSurveyNumber();
+    if (survey == NOT_USED) return;
     for (Condition& cond : runtime.conditions) {
-        const double val = runtime.surveyStore.sum(cond.measure, cond.method, runtime.survNumStat);
+        const double val = internal::surveySum(cond.measure, survey);
         cond.value = (val >= cond.min && val <= cond.max);
     }
 }
 
-void write(ostream& stream)
+void writeTextRow(ostream& stream, int survey, int column, int measure, double value, bool isDouble)
+{
+    stream << survey << '\t' << column << '\t' << measure << '\t';
+    if (isDouble) {
+        stream << value;
+    } else {
+        assert(std::trunc(value) == value);
+        stream << static_cast<long long>(value);
+    }
+    stream << '\n';
+}
+
+size_t outputAgeGroups(const internal::MeasureStore& store)
+{
+    return store.nAges == 1 ? 1 : store.nAges - 1;
+}
+
+template<class Writer>
+void writeMeasure(ostream& stream, Writer writeRow, size_t survey, const internal::MeasureStore& store)
+{
+    const OutMeasure& om = store.output;
+    const size_t surveyStart = survey * store.size();
+    const size_t reportCount = std::visit([](const auto& reports) { return reports.size(); }, store.reports);
+    assert(reportCount >= surveyStart + store.size());
+    const bool bySpecies = om.dims & Dim::Species;
+    const bool byDrug = om.dims & Dim::Drug;
+    const int ageGroupAdd = om.dims & Dim::Age ? 1 : 0;
+
+    if (bySpecies) assert(store.nAges == 1 && store.nCohorts == 1 && store.nDrugs == 1);
+    if (byDrug) assert(store.nSpecies == 1 && store.nGenotypes == 1);
+    for (size_t cohortSet = 0; cohortSet < store.nCohorts; ++cohortSet) {
+    for (size_t ageGroup = 0; ageGroup < outputAgeGroups(store); ++ageGroup) {
+    for (size_t species = 0; species < store.nSpecies; ++species) {
+    for (size_t genotype = 0; genotype < store.nGenotypes; ++genotype) {
+    for (size_t drug = 0; drug < store.nDrugs; ++drug) {
+        const int col2 = bySpecies
+            ? species + 1 + 1000000 * genotype
+            : ageGroup + ageGroupAdd + 1000 * cohortSetOutputId(cohortSet) + 1000000 * (byDrug ? drug + 1 : genotype);
+        const size_t index = surveyStart + store.index(ageGroup, cohortSet, species, genotype, drug);
+        const double value = std::visit([index](const auto& reports) {
+            return static_cast<double>(reports[index]);
+        }, store.reports);
+        writeRow(stream, static_cast<int>(survey + 1), col2, om.outId, value, om.isDouble);
+    } } } } }
+}
+
+template<class Writer>
+void writeRows(ostream& stream, Writer writeRow)
 {
     for (size_t survey = 0; survey < runtime.nSurveys; ++survey) {
-        for (const OutMeasure& om : runtime.reportedMeasures) {
-            runtime.surveyStore.write(stream, survey, om);
+        for (const internal::MeasureStore& store : runtime.stores) {
+            if (store.output.outId < 0) continue;
+            writeMeasure(stream, writeRow, survey, store);
         }
     }
     if (runtime.reportIMR >= 0) {
-        stream << 1 << "\t" << 1 << "\t" << runtime.reportIMR
-            << "\t" << Clinical::InfantMortality::allCause() << lineEnd;
+        writeRow(stream, 1, 1, runtime.reportIMR, Clinical::InfantMortality::allCause(), true);
+    }
+}
+
+void writeText(ostream& stream)
+{
+    writeRows(stream, writeTextRow);
+}
+
+template<class Stream, class Writer>
+void writeOutput(const string& filename, ios::openmode mode, Writer writer)
+{
+    Stream stream(filename.c_str(), mode);
+    if (!stream.rdbuf()->is_open()) {
+        throw util::base_exception("Unable to open monitoring output file \"" + filename + "\"", util::Error::FileIO);
+    }
+    writer(stream);
+    stream.close();
+    if (!stream) {
+        throw util::base_exception("Unable to write monitoring output file \"" + filename + "\"", util::Error::FileIO);
     }
 }
 
 void updateSurveyNumbers()
 {
-    if (runtime.surveyIndex >= runtime.surveyDates.size()) {
-        runtime.survNumEvent = NOT_USED;
-        runtime.survNumStat = NOT_USED;
-        runtime.nextSurveyDate = sim::future();
-        return;
-    }
-
+    runtime.survNumEvent = NOT_USED;
     for (size_t i = runtime.surveyIndex; i < runtime.surveyDates.size(); ++i) {
         runtime.survNumEvent = runtime.surveyDates[i].num;
         if (runtime.survNumEvent != NOT_USED) break;
     }
-
-    const SurveyDate& nextSurvey = runtime.surveyDates[runtime.surveyIndex];
-    runtime.survNumStat = nextSurvey.num;
-    runtime.nextSurveyDate = nextSurvey.date;
 }
 
 } // namespace
 size_t setupCondition(const string& measureName, double minValue, double maxValue, bool initialState)
 {
-    auto it = runtime.namedOutMeasures.find(measureName);
-    if (it == runtime.namedOutMeasures.end()) {
+    const OutMeasure om = findOutMeasure(measureName);
+    if (om.measure == invalidMeasure) {
         throw util::xml_scenario_error("unrecognised measure: " + measureName);
     }
 
-    const OutMeasure om = it->second;
-    if (runtime.validCondMeasures.count(om.m) == 0) {
+    if (!isValidCondition(om.measure)) {
         throw util::xml_scenario_error("cannot use measure " + measureName + " as condition of deployment");
     }
-    runtime.surveyStore.ensureConditionState(om);
+    internal::ensureConditionStore(om);
 
-    runtime.conditions.push_back({initialState, om.m, om.method, minValue, maxValue});
+    runtime.conditions.push_back({initialState, om.measure, minValue, maxValue});
     return runtime.conditions.size() - 1;
 }
 
@@ -336,28 +249,42 @@ bool checkCondition(size_t conditionKey)
     return runtime.conditions[conditionKey].value;
 }
 
-void record(Measure measure, size_t survey, size_t age, uint32_t cohort,
-            size_t species, size_t genotype, size_t drug, double val, int outId, Deploy::Method method)
+static void recordValue(Measure measure, size_t survey, size_t age, uint32_t cohort,
+                        size_t species, size_t genotype, size_t drug, double val, int outId = 0)
 {
-    runtime.surveyStore.record(val, measure, survey, age, cohort, species, genotype, drug, outId, method);
+    if (survey == NOT_USED) return;
+    assert(measure < runtime.storesByMeasure.size());
+    for (size_t idx : runtime.storesByMeasure[measure]) {
+        internal::MeasureStore& store = runtime.stores[idx];
+        if (outId != 0 && store.output.outId != outId) continue;
+        const size_t index = survey * store.size() + store.index(age, cohort, species, genotype, drug);
+        std::visit([index, val](auto& reports) {
+            using Value = typename std::decay_t<decltype(reports)>::value_type;
+            assert(index < reports.size());
+            if constexpr (std::is_integral_v<Value>) assert(std::trunc(val) == val);
+            reports[index] += static_cast<Value>(val);
+        }, store.reports);
+    }
 }
 
-void recordStat(Measure measure, const Host::Human& human, double val, size_t species, size_t genotype, size_t drug, int outId)
-{
-    record(measure, statSurveyNumber(), human.monitoringAgeGroup, human.getCohortSet(), species, genotype, drug, val, outId);
-}
+void recordStat(Measure measure, double val, size_t species, size_t genotype)
+{ recordValue(measure, statSurveyNumber(), 0, 0, species, genotype, 0, val); }
 
-void recordEvent(Measure measure, const Host::Human& human, double val)
-{
-    record(measure, eventSurveyNumber(), human.monitoringAgeGroup, human.getCohortSet(), 0, 0, 0, val);
-}
+void recordStat(Measure measure, const Host::Human& human, double val, size_t species, size_t genotype, size_t drug)
+{ recordValue(measure, statSurveyNumber(), human.monitoringAgeGroup, human.getCohortSet(), species, genotype, drug, val); }
 
-void recordDeploy(Measure measure, const Host::Human& human, Deploy::Method method, double val)
+void recordEvent(Measure measure, size_t survey, size_t age, uint32_t cohort)
+{ recordValue(measure, survey, age, cohort, 0, 0, 0, 1.0); }
+
+void recordEvent(Measure measure, const Host::Human& human, double val, int outId)
+{ recordValue(measure, eventSurveyNumber(), human.monitoringAgeGroup, human.getCohortSet(), 0, 0, 0, val, outId); }
+
+void recordDeploy(Measure timedMeasure, Measure ctsMeasure, const Host::Human& human, Deploy::Method method, double val)
 {
-    record(measure, eventSurveyNumber(), human.monitoringAgeGroup, human.getCohortSet(), 0, 0, 0, val, 0, method);
-    const Measure treatDeployments = ::OM::mon::measure("nTreatDeployments");
-    if (measure != treatDeployments)
-        record(treatDeployments, eventSurveyNumber(), human.monitoringAgeGroup, human.getCohortSet(), 0, 0, 0, val, 0, method);
+    assert(method == Deploy::TIMED || method == Deploy::CTS || method == Deploy::TREAT);
+    const Measure selected = method == Deploy::TIMED ? timedMeasure :
+        method == Deploy::CTS ? ctsMeasure : ::OM::mon::measure("nTreatDeployments");
+    recordEvent(selected, human, val);
 }
 
 template <typename Stream>
@@ -366,9 +293,18 @@ void checkpoint(Stream& stream)
     runtime.isInit & stream;
     runtime.surveyIndex & stream;
     runtime.survNumEvent & stream;
-    runtime.survNumStat & stream;
-    runtime.nextSurveyDate & stream;
-    runtime.surveyStore.checkpoint(stream);
+    for (internal::MeasureStore& store : runtime.stores) {
+        std::visit([&stream](auto& reports) {
+            const size_t expectedSize = reports.size();
+            size_t storedSize = expectedSize;
+            storedSize & stream;
+            if (storedSize != expectedSize) {
+                throw util::checkpoint_error("Monitoring report size mismatch: checkpoint has " +
+                    std::to_string(storedSize) + ", expected " + std::to_string(expectedSize));
+            }
+            for (auto& report : reports) report & stream;
+        }, store.reports);
+    }
 }
 template void checkpoint<ostream>(ostream& stream);
 template void checkpoint<istream>(istream& stream);
@@ -391,15 +327,13 @@ void concludeSurvey()
 void writeSurveyData()
 {
     string filename = util::CommandLine::getOutputName();
-    const auto mode = std::ios::out | std::ios::binary;
+    const ios::openmode mode = ios::out | ios::binary;
 
     if (util::CommandLine::option(util::CommandLine::COMPRESS_OUTPUT)) {
         filename.append(".gz");
-        ogzstream stream(filename.c_str(), mode);
-        write(stream);
+        writeOutput<ogzstream>(filename, mode, writeText);
     } else {
-        ofstream stream(filename, mode);
-        write(stream);
+        writeOutput<ofstream>(filename, mode, writeText);
     }
 }
 

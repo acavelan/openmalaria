@@ -99,10 +99,10 @@ void DecisionTree5Day::uncomplicatedEvent ( Human& human, Episode::State pgState
         
         if( output.treated ){   // if any treatment or intervention deployed
             m_tLastTreatment = sim::ts0();
-            mon::recordEvent(measures[regimen], human, 1);
+            mon::recordEvent(measures[regimen], human);
         }
         if( output.screened ){
-            mon::recordEvent(mon::measure("nTreatDiagnostics"), human, 1);
+            mon::recordEvent(mon::measure("nTreatDiagnostics"), human);
         }
         
         human.withinHostModel->optionalPqTreatment(human);

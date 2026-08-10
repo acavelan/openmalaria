@@ -123,7 +123,7 @@ void InfectionIncidenceModel::init ( const Parameters& parameters ) {
         }
     }
     
-    mon::Continuous.registerCallback( "new infections", "\tnew infections", &InfectionIncidenceModel::ctsReportNewInfections );
+    mon::Continuous::registerCallback( "new infections", "\tnew infections", &InfectionIncidenceModel::ctsReportNewInfections );
 }
 
 

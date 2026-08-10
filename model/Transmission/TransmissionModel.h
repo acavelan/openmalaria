@@ -142,11 +142,10 @@ protected:
         // Set VACCINE_GENOTYPE option
         opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
 
-        using mon::Continuous;
-        Continuous.registerCallback("input EIR", "\tinput EIR", std::bind(&TransmissionModel::ctsCbInputEIR, this, _1));
-        Continuous.registerCallback("simulated EIR", "\tsimulated EIR", std::bind(&TransmissionModel::ctsCbSimulatedEIR, this, _1));
-        Continuous.registerCallback("human infectiousness", "\thuman infectiousness", std::bind(&TransmissionModel::ctsCbKappa, this, _1));
-        Continuous.registerCallback("num transmitting humans", "\tnum transmitting humans", std::bind(&TransmissionModel::ctsCbNumTransmittingHumans, this, _1));
+        mon::Continuous::registerCallback("input EIR", "\tinput EIR", std::bind(&TransmissionModel::ctsCbInputEIR, this, _1));
+        mon::Continuous::registerCallback("simulated EIR", "\tsimulated EIR", std::bind(&TransmissionModel::ctsCbSimulatedEIR, this, _1));
+        mon::Continuous::registerCallback("human infectiousness", "\thuman infectiousness", std::bind(&TransmissionModel::ctsCbKappa, this, _1));
+        mon::Continuous::registerCallback("num transmitting humans", "\tnum transmitting humans", std::bind(&TransmissionModel::ctsCbNumTransmittingHumans, this, _1));
     }
 
 public:
@@ -170,18 +169,18 @@ public:
      * Overriding functions should call this base version too. */
     virtual void summarize()
     {
-        mon::record(mon::measure("nTransmit"), mon::statSurveyNumber(), 0, 0, 0, 0, 0, laggedKappa[sim::moduloSteps(sim::now(), laggedKappa.size())]);
-        mon::record(mon::measure("annAvgK"), mon::statSurveyNumber(), 0, 0, 0, 0, 0, _annualAverageKappa);
+        mon::recordStat(mon::measure("nTransmit"), laggedKappa[sim::moduloSteps(sim::now(), laggedKappa.size())]);
+        mon::recordStat(mon::measure("annAvgK"), _annualAverageKappa);
 
         if (!mon::isReported()) return; // cannot use counters below when not reporting
 
         double duration = sim::inSteps(sim::now() - lastSurveyTime);
         if (duration > 0.0)
         {
-            mon::record(mon::measure("inputEIR"), mon::statSurveyNumber(), 0, 0, 0, 0, 0, surveyInputEIR / duration);
-            mon::record(mon::measure("simulatedEIR"), mon::statSurveyNumber(), 0, 0, 0, 0, 0, surveySimulatedEIR / duration);
-            mon::record(mon::measure("simulatedEIR_Introduced"), mon::statSurveyNumber(), 0, 0, 0, 0, 0, surveySimulatedEIR_i / duration);
-            mon::record(mon::measure("simulatedEIR_Indigenous"), mon::statSurveyNumber(), 0, 0, 0, 0, 0, surveySimulatedEIR_l / duration);
+            mon::recordStat(mon::measure("inputEIR"), surveyInputEIR / duration);
+            mon::recordStat(mon::measure("simulatedEIR"), surveySimulatedEIR / duration);
+            mon::recordStat(mon::measure("simulatedEIR_Introduced"), surveySimulatedEIR_i / duration);
+            mon::recordStat(mon::measure("simulatedEIR_Indigenous"), surveySimulatedEIR_l / duration);
         }
 
         surveyInputEIR = 0.0;

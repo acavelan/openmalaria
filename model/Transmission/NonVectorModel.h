@@ -209,9 +209,8 @@ public:
 #endif
         EIR_l[0] *= human.perHostTransmission.relativeAvailabilityHetAge(ageYears);
 
-        auto ag = human.monitoringAgeGroup;
-        auto cs = human.getCohortSet();
-        mon::record(mon::measure("innoculationsPerAgeGroup"), mon::statSurveyNumber(), ag, cs, 0, 0, 0, EIR_l[0]);
+        mon::recordStat(mon::measure("innoculationsPerAgeGroup"), human, EIR_l[0]);
+        mon::recordStat(mon::measure("innoculationsPerVector"), human, EIR_l[0]);
     }
 
 private:

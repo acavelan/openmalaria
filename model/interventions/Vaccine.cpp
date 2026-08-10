@@ -139,12 +139,11 @@ void VaccineComponent::deploy(Host::Human& human, mon::Deploy::Method method, Va
 {
     bool administered = human.vaccine.possiblyVaccinate( human, id(), vaccLimits );
     if( administered && VaccineComponent::reportComponent == id() ){
-        mon::recordDeploy(mon::measure("vaccinations"), human, method);
+        mon::recordDeploy(mon::measure("nMassVaccinations"), mon::measure("nEPIVaccinations"), human, method);
     }
-    if( type == Vaccine::PEV ) mon::recordDeploy(mon::measure("pev"), human, method);
-    else if( type == Vaccine::BSV ) mon::recordDeploy(mon::measure("bsv"), human, method);
-    else if( type == Vaccine::TBV ) mon::recordDeploy(mon::measure("tbv"), human, method);
-    else assert( false );
+    assert(type == Vaccine::PEV || type == Vaccine::BSV || type == Vaccine::TBV);
+    if (method == mon::Deploy::TREAT)
+        mon::recordEvent(mon::measure("nTreatDeployments"), human);
 }
 
 Component::Type VaccineComponent::componentType() const
