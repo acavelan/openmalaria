@@ -33,6 +33,7 @@ import glob
 import time
 import subprocess
 import shutil
+import struct
 from optparse import OptionParser
 import gzip
 
@@ -111,6 +112,38 @@ def linkOrCopy (src, dest):
     else:
         shutil.copy2(src, dest)
 
+def binaryToText(src, dest):
+    def readValues(stream, code, count):
+        size = struct.calcsize(code) * count
+        data = stream.read(size)
+        if len(data) != size:
+            raise RunError("truncated binary output "+src)
+        return struct.unpack("<%d%s" % (count, code), data)
+
+    opener = gzip.open if src.endswith(".gz") else open
+    with opener(src, "rb") as stream:
+        header = stream.read(28)
+        if len(header) != 28:
+            raise RunError("truncated binary output "+src)
+        magic, version, integerRows, doubleRows = struct.unpack("<8sIQQ", header)
+        if magic != b"OMOUTBIN":
+            raise RunError("unrecognised binary output "+src)
+        if version != 2:
+            raise RunError("unsupported binary output version "+str(version))
+
+        rows = integerRows + doubleRows
+        surveys = readValues(stream, "i", rows)
+        groups = readValues(stream, "i", rows)
+        measures = readValues(stream, "i", rows)
+        values = readValues(stream, "i", integerRows) + readValues(stream, "d", doubleRows)
+        if stream.read(1):
+            raise RunError("extra data in binary output "+src)
+
+    with open(dest, "w") as stream:
+        for row, (survey, group, measure, value) in enumerate(zip(surveys, groups, measures, values)):
+            value = str(value) if row < integerRows else format(value, ".6g")
+            stream.write("%d\t%d\t%d\t%s\n" % (survey, group, measure, value))
+
 # Run, with file "scenario"+name+".xml" (or just "name")
 def runScenario(options,omOptions,name):
     scenarioSrc=os.path.abspath(os.path.join(testSrcDir,"scenario%s.xml" % name))
@@ -136,6 +169,8 @@ def runScenario(options,omOptions,name):
             print("\033[0;32m  "+(" ".join(cmd))+"\033[0;00m")
         return subprocess.call (cmd,cwd=testBuildDir)
     
+    if options.binary:
+        omOptions = omOptions + ["--output-format", "bin"]
     cmd=options.wrapArgs+[openMalariaExec,"--resource-path",os.path.abspath(testSrcDir),"--scenario",scenarioSrc]+omOptions
     
     if not options.run:
@@ -146,6 +181,8 @@ def runScenario(options,omOptions,name):
     simDir = tempfile.mkdtemp(prefix=tmpprefix+'-', dir=testBuildDir)
     outputFile=os.path.join(simDir,"output.txt")
     outputGzFile=os.path.join(simDir,"output.txt.gz")
+    outputBinFile=os.path.join(simDir,"output.bin")
+    outputBinGzFile=os.path.join(simDir,"output.bin.gz")
     ctsoutFile=os.path.join(simDir,"ctsout.txt")
     ctsoutGzFile=os.path.join(simDir,"ctsout.txt.gz")
     checkFile=os.path.join(simDir,"checkpoint")
@@ -179,6 +216,13 @@ def runScenario(options,omOptions,name):
             f_out.close()
             f_in.close()
             os.remove(outputGzFile)
+
+        if options.binary and not os.path.isfile(outputFile):
+            for binaryFile in (outputBinFile, outputBinGzFile):
+                if os.path.isfile(binaryFile):
+                    binaryToText(binaryFile, outputFile)
+                    os.remove(binaryFile)
+                    break
         
         # check for ctsout.txt.gz in place of ctsout.txt and uncompress:
         if (os.path.isfile(ctsoutGzFile)) and (not os.path.isfile(ctsoutFile)):
@@ -300,6 +344,8 @@ You can pass options to openMalaria by first specifying -- (to end options passe
 		    help="Don't clean up expected files from the temparary dir (checkpoint files, schema, etc.)")
     parser.add_option("-C","--no-compare", action="store_false", dest="compare", default=True,
                       help="Don't compare output after running; instead just copy outputs to test/outputXX.txt and test/ctsoutXX.txt")
+    parser.add_option("-b","--binary", action="store_true", default=False,
+                      help="Write binary survey output and compare its decoded rows with expected text output")
     parser.add_option("-d","--diff", action="store_true", dest="diff", default=False,
             help="Launch a diff program (kdiff3) on the output if validation fails")
     parser.add_option("--valid","--validate",
