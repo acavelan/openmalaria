@@ -43,10 +43,10 @@ bool reportPatentInfected = false;
 
 void DescriptiveWithinHostModel::initDescriptive(){
     reportPatentInfected = (
-                                mon::isUsed(mon::measure("totalPatentInf")) 
-                                || mon::isUsed(mon::measure("totalPatentInf_Imported")) 
-                                || mon::isUsed(mon::measure("totalPatentInf_Introduced")) 
-                                || mon::isUsed(mon::measure("totalPatentInf_Indigenous")) 
+                                mon::isUsed(mon::measure("totalPatentInf"))
+                                || mon::isUsed(mon::measure("totalPatentInf_Imported"))
+                                || mon::isUsed(mon::measure("totalPatentInf_Introduced"))
+                                || mon::isUsed(mon::measure("totalPatentInf_Indigenous"))
                             );
 }
 
