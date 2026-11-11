@@ -42,8 +42,8 @@ namespace Transmission
 class NonVectorModel : public TransmissionModel
 {
 public:
-    NonVectorModel(vector<double> initEIR, int interventionMode, const scnXml::Entomology &entoData, const scnXml::NonVector &nonVectorData, int eipDuration)
-        : TransmissionModel(std::move(initEIR), interventionMode, 1 /*this model doesn't support multiple genotypes*/)
+    NonVectorModel(vector<double> initEIR, int interventionMode, const scnXml::Entomology &entoData, const scnXml::NonVector &nonVectorData, int eipDuration, const HostTransmissionParameters& hostParameters)
+        : TransmissionModel(std::move(initEIR), interventionMode, 1 /*this model doesn't support multiple genotypes*/, hostParameters, false)
         , nSpore(sim::fromDays(eipDuration))
     {
         laggedKappa.resize(sim::inSteps(nSpore) + 1, 0.0);
@@ -207,7 +207,7 @@ public:
             throw TRACED_EXCEPTION(msg.str(), util::Error::InitialKappa);
         }
 #endif
-        EIR_l[0] *= human.perHostTransmission.relativeAvailabilityHetAge(ageYears);
+        EIR_l[0] *= Host::relativeAvailabilityHetAge(human.transmission, ageYears, hostParameters);
 
         mon::recordStat(mon::measure("innoculationsPerAgeGroup"), human, EIR_l[0]);
         mon::recordStat(mon::measure("innoculationsPerVector"), human, EIR_l[0]);

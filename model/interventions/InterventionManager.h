@@ -32,7 +32,7 @@
 namespace OM {
     class Population;
     namespace Host {
-        class Human;
+        struct Human;
     }
 
 namespace interventions {
@@ -71,6 +71,8 @@ public:
      * Unlike with vaccines, missing one schedule doesn't preclude the next. */
     static void deploy(vector<Host::Human> &population, Transmission::TransmissionModel& transmission);
     
+    static const auto& components() { return humanComponents; }
+
     /** Get a constant reference to a component class with a certain index.
      * 
      * @throws util::base_exception if the index is out-of-range */

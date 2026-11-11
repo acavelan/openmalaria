@@ -24,7 +24,7 @@
 #define OM_INTERVENTIONS_ITN
 
 #include "util/DecayFunction.h"
-#include "Transmission/PerHost.h"
+#include "interventions/HumanComponents.h"
 #include "util/sampler.h"
 #include "schema/interventions.h"
 
@@ -34,7 +34,6 @@ namespace interventions {
     using util::NormalSampler;
     using util::LognormalSampler;
     using util::LocalRng;
-    using Transmission::PerHostInterventionData;
 
 
 // —————  utility classes (internal use only)  —————
@@ -146,7 +145,7 @@ namespace factors {
 
 // —————  main, public classes  —————
 
-class ITNComponent : public Transmission::HumanVectorInterventionComponent {
+class ITNComponent : public VectorInterventionComponent {
 public:
     ITNComponent( ComponentId id, const scnXml::ITNDescription& elt,
                const map< string, size_t >& species_name_map );
@@ -157,8 +156,8 @@ public:
     
     virtual void print_details( std::ostream& out )const;
     
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng& rng) const;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream, ComponentId id ) const;
+    virtual unique_ptr<VectorInterventionState> makeHumanPart(LocalRng& rng) const;
+    virtual unique_ptr<VectorInterventionState> makeHumanPart( istream& stream, ComponentId id ) const;
     
 private:
     /** Per mosquito-species parameters for extended ITN model. */
@@ -216,10 +215,6 @@ private:
     unique_ptr<DecayFunction> attritionOfNets;
     vector<ITNAnopheles> species; // vector specific params
     
-    // This is sparse vector: only indexes corresponding to ITN components are
-    // used. No memory management.
-    static vector<ITNComponent*> componentsByIndex;
-    
     friend class HumanITN;
 };
 
@@ -227,40 +222,42 @@ private:
  * 
  * Each instance describes a hypothetical net (or no net).
  */
-class HumanITN : public PerHostInterventionData {
+class HumanITN : public VectorInterventionState {
 public:
     HumanITN( LocalRng& rng, const ITNComponent& params );
-    HumanITN( istream& stream, ComponentId id );
+    HumanITN( istream& stream, ComponentId id, const ITNComponent& parameters );
     
-    virtual void redeploy(LocalRng& rng, const Transmission::HumanVectorInterventionComponent& params);
+    virtual void redeploy(LocalRng& rng, const VectorInterventionComponent& params);
     
     inline double getHoleIndex()const{
         return holeIndex;
     }
-    inline double getInsecticideContent(const ITNComponent& params)const{
-            SimTime age = sim::nowOrTs1() - deployTime;  // implies age 1 TS on first use
+    inline double getInsecticideContent(SimTime effectTime)const{
+            SimTime age = effectTime - deployTime;  // implies age 1 TS on first use
         double effectSurvival = insecticideDecayHet->eval( age );
         return initialInsecticide * effectSurvival;
     }
     
     /// Call once per time step to update holes
-    virtual void update(Host::Human& human);
+    bool update(LocalRng& rng, SimTime stepStart) override;
+    Component::Type componentType() const override { return Component::ITN; }
     
     /// Get deterrency. See ComponentParams::effect for a more detailed description.
-    virtual double relativeAttractiveness(size_t speciesIndex) const;
+    virtual double relativeAttractiveness(size_t speciesIndex, SimTime effectTime) const;
     /// Get killing effect on mosquitoes before they've eaten.
     /// See ComponentParams::effect for a more detailed description.
-    virtual double preprandialSurvivalFactor(size_t speciesIndex) const;
+    virtual double preprandialSurvivalFactor(size_t speciesIndex, SimTime effectTime) const;
     /// Get killing effect on mosquitoes after they've eaten.
     /// See ComponentParams::effect for a more detailed description.
-    virtual double postprandialSurvivalFactor(size_t speciesIndex) const;
+    virtual double postprandialSurvivalFactor(size_t speciesIndex, SimTime effectTime) const;
     /// Get the mosquito fecundity multiplier (1 for no effect).
-    virtual double relFecundity(size_t speciesIndex) const;
+    virtual double relFecundity(size_t speciesIndex, SimTime effectTime) const;
     
 protected:
     virtual void checkpoint( ostream& stream );
     
 private:
+    const ITNComponent& parameters;
     // these parameters express the current state of the net:
     SimTime disposalTime = sim::never();	// time at which net will be disposed of (if it's not already been replaced)
     int nHoles;				// total number of holes

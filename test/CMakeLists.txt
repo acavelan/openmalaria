@@ -9,6 +9,8 @@ configure_file (
   @ONLY
 )
 
+add_test (exact_regression_runner ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/exact_regression_test.py)
+
 # working tests (with checkpointing):
 set (OM_BOXTEST_NAMES
   #disabled because of IPT:

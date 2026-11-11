@@ -30,7 +30,7 @@
 #include "schema/interventions.h"
 #include "util/errors.h"
 
-#include "Transmission/PerHost.h"
+#include "Host/HumanTransmission.h"
 #include "Population.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Genotypes.h"
@@ -53,7 +53,7 @@ class Summary;
 class Population;
 namespace Host
 {
-class Human;
+struct Human;
 }
 namespace Transmission
 {
@@ -120,12 +120,16 @@ enum SimulationMode
 /// Abstract base class, defines behaviour of transmission models
 class TransmissionModel
 {
+public:
+    const HostTransmissionParameters& hostParameters;
+    const bool isVector;
 protected:
     /// Reads all entomological parameters from the input datafile.
     /// @param entoData input configuration for model
     /// @param nGenotypes number of genotypes transmission model is using
-    TransmissionModel(vector<double> initialisationEIR, int interventionMode, size_t nGenotypes)
-        : initialisationEIR(std::move(initialisationEIR))
+    TransmissionModel(vector<double> initialisationEIR, int interventionMode, size_t nGenotypes, const HostTransmissionParameters& hostParameters, bool isVector)
+        : hostParameters(hostParameters), isVector(isVector)
+        , initialisationEIR(std::move(initialisationEIR))
         , simulationMode(forcedEIR)
         , interventionMode(interventionMode)
         , laggedKappa(sim::stepsPerYear(), 0.0)
@@ -136,7 +140,7 @@ protected:
         , tsAdultEIR(0.0)
         , surveyInputEIR(0.0)
         , surveySimulatedEIR(0.0)
-        , adultAge(PerHost::adultAge())
+        , adultAge(sim::fromYearsD(hostParameters.availabilityByAge.firstGlobalMaximum()))
         , numTransmittingHumans(0)
     {
         // Set VACCINE_GENOTYPE option
@@ -269,7 +273,7 @@ public:
         {
             // NOTE: calculate availability relative to age at end of time step;
             // not my preference but consistent with TransmissionModel::getEIR().
-            const double avail = human.perHostTransmission.relativeAvailabilityHetAge(sim::inYears(human.age(sim::ts1())));
+            const double avail = Host::relativeAvailabilityHetAge(human.transmission, sim::inYears(human.age(sim::ts1())), hostParameters);
             sumWeight += avail;
 
             vector<double> probTransGenotype_i(WithinHost::Genotypes::N());
@@ -281,11 +285,11 @@ public:
             // Only to be consistent with old simulation runs when set to false
             // Setting this option to true will only affect reporting
             if (opt_vaccine_genotype == false)
-                riskTrans = avail * pTransmit * human.vaccine.getFactor(interventions::Vaccine::TBV);
+                riskTrans = avail * pTransmit * human.interventions.vaccine.getFactor(interventions::Vaccine::TBV);
             else
             {
                 for (size_t g = 0; g < WithinHost::Genotypes::N(); ++g)
-                    riskTrans += (probTransGenotype_i[g] + probTransGenotype_l[g]) * human.vaccine.getFactor(interventions::Vaccine::TBV, g);
+                    riskTrans += (probTransGenotype_i[g] + probTransGenotype_l[g]) * human.interventions.vaccine.getFactor(interventions::Vaccine::TBV, g);
                 riskTrans *= avail;
             }
 

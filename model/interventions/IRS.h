@@ -24,7 +24,7 @@
 #define OM_INTERVENTIONS_IRS
 
 #include "util/DecayFunction.h"
-#include "Transmission/PerHost.h"
+#include "interventions/HumanComponents.h"
 #include "schema/interventions.h"
 
 namespace OM {
@@ -33,9 +33,8 @@ namespace interventions {
     using util::NormalSampler;
     using util::LognormalSampler;
     using util::LocalRng;
-    using Transmission::PerHostInterventionData;
 
-class IRSComponent : public Transmission::HumanVectorInterventionComponent {
+class IRSComponent : public VectorInterventionComponent {
 public:
     IRSComponent( ComponentId id, const scnXml::IRSDescription& elt,
         const map<string,size_t>& species_name_map );
@@ -46,8 +45,8 @@ public:
     
     virtual void print_details( std::ostream& out )const;
     
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng& rng) const;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream, ComponentId ) const;
+    virtual unique_ptr<VectorInterventionState> makeHumanPart(LocalRng& rng) const;
+    virtual unique_ptr<VectorInterventionState> makeHumanPart( istream& stream, ComponentId ) const;
     
 private:
     /** Per mosquito-species parameters for extended IRS model. */
@@ -146,10 +145,6 @@ private:
     unique_ptr<DecayFunction> insecticideDecay;
     vector<IRSAnopheles> species; // vector specific params
     
-    // This is sparse vector: only indexes corresponding to a IRS component are used
-    // No memory management
-    static vector<IRSComponent*> componentsByIndex;
-    
     friend class HumanIRS;
 };
 
@@ -157,38 +152,38 @@ private:
  * 
  * Each instance describes the effects of indoor residual spraying.
  */
-class HumanIRS : public PerHostInterventionData {
+class HumanIRS : public VectorInterventionState {
 public:
     HumanIRS( LocalRng& rng, const IRSComponent& params );
-    HumanIRS( istream& stream, ComponentId id );
+    HumanIRS( istream& stream, ComponentId id, const IRSComponent& parameters );
     
-    virtual void redeploy(LocalRng& rng, const Transmission::HumanVectorInterventionComponent& params);
+    virtual void redeploy(LocalRng& rng, const VectorInterventionComponent& params);
     
     /// Get remaining insecticide content based on initial amount and decay.
-    inline double getInsecticideContent(const IRSComponent& params)const{
-        SimTime age = sim::nowOrTs1() - deployTime;  // implies age 1 TS on first use
+    inline double getInsecticideContent(SimTime effectTime)const{
+        SimTime age = effectTime - deployTime;  // implies age 1 TS on first use
         double effectSurvival = insecticideDecayHet->eval( age );
         return initialInsecticide * effectSurvival;
     }
     
-    /// Call once per time step to update holes
-    virtual void update(Host::Human& human);
+    Component::Type componentType() const override { return Component::IRS; }
     
     /// Get deterrency. See ComponentParams::effect for a more detailed description.
-    virtual double relativeAttractiveness(size_t speciesIndex) const;
+    virtual double relativeAttractiveness(size_t speciesIndex, SimTime effectTime) const;
     /// Get killing effect on mosquitoes before they've eaten.
     /// See ComponentParams::effect for a more detailed description.
-    virtual double preprandialSurvivalFactor(size_t speciesIndex) const;
+    virtual double preprandialSurvivalFactor(size_t speciesIndex, SimTime effectTime) const;
     /// Get killing effect on mosquitoes after they've eaten.
     /// See ComponentParams::effect for a more detailed description.
-    virtual double postprandialSurvivalFactor(size_t speciesIndex) const;
+    virtual double postprandialSurvivalFactor(size_t speciesIndex, SimTime effectTime) const;
     /// Get the mosquito fecundity multiplier (1 for no effect).
-    virtual double relFecundity(size_t speciesIndex) const;
+    virtual double relFecundity(size_t speciesIndex, SimTime effectTime) const;
     
 protected:
     virtual void checkpoint( ostream& stream );
     
 private:
+    const IRSComponent& parameters;
     // this is sampled for each deployment: initial insecticide content doesn't
     // depend on handling by the recipient
     double initialInsecticide;	// units: mg/m²

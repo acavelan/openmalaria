@@ -257,8 +257,6 @@ private:
 typedef RNG<Xoshiro256P> LocalRng;
 typedef RNG<ChaCha<8>> MasterRng;
 
-/// The master RNG, used only for seeding local RNGs
-extern MasterRng master_RNG;
 
 } }
 #endif

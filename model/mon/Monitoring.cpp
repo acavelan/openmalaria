@@ -327,13 +327,13 @@ void recordStat(Measure measure, double val, size_t species, size_t genotype)
 { recordValue(measure, statSurveyNumber(), 0, 0, species, genotype, 0, val); }
 
 void recordStat(Measure measure, const Host::Human& human, double val, size_t species, size_t genotype, size_t drug)
-{ recordValue(measure, statSurveyNumber(), human.monitoringAgeGroup, human.getCohortSet(), species, genotype, drug, val); }
+{ recordValue(measure, statSurveyNumber(), human.monitoringAgeGroup, human.interventions.cohortSet, species, genotype, drug, val); }
 
 void recordEvent(Measure measure, size_t survey, size_t age, uint32_t cohort)
 { recordValue(measure, survey, age, cohort, 0, 0, 0, 1.0); }
 
 void recordEvent(Measure measure, const Host::Human& human, double val, int outId)
-{ recordValue(measure, eventSurveyNumber(), human.monitoringAgeGroup, human.getCohortSet(), 0, 0, 0, val, outId); }
+{ recordValue(measure, eventSurveyNumber(), human.monitoringAgeGroup, human.interventions.cohortSet, 0, 0, 0, val, outId); }
 
 void recordDeploy(Measure timedMeasure, Measure ctsMeasure, const Host::Human& human, Deploy::Method method, double val)
 {

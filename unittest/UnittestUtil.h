@@ -25,6 +25,7 @@
 #ifndef Hmod_UnittestUtil
 #define Hmod_UnittestUtil
 
+#include "ModelParameters.h"
 #include "Global.h"
 #include "util/ModelOptions.h"
 
@@ -475,8 +476,9 @@ public:
         pkpd.medicateQueue.clear();
     }
     
-    static unique_ptr<Host::Human> createHuman(SimTime dateOfBirth){
-        return unique_ptr<Host::Human>( new Host::Human(dateOfBirth) );
+    static unique_ptr<Host::Human> createHuman(SimTime dateOfBirth,
+            const OM::ModelParameters& parameters, util::MasterRng& seed) {
+        return std::make_unique<Host::Human>(dateOfBirth, parameters, seed);
     }
     // Set the WithinHost model used by the human, and return a pointer to it. Do not delete this!
     static WithinHost::WHInterface* setHumanWH(Host::Human& human, unique_ptr<WithinHost::WHInterface> wh){

@@ -20,10 +20,37 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "random.h"
+#pragma once
 
-namespace OM{
-    namespace util {
-        MasterRng master_RNG(0, 0);
-    }
+#include "ModelParameters.h"
+#include "Population.h"
+
+namespace OM {
+namespace Transmission { class TransmissionModel; }
+
+struct Reporting {
+    int newInfections = 0;
+};
+
+// Owns the migrated subsystems. Time, interventions and other reporting state
+// still use their existing APIs until their separate migrations are complete.
+struct Model {
+    explicit Model(size_t populationSize);
+    ~Model();
+    Model(const Model&) = delete;
+    Model& operator=(const Model&) = delete;
+    Model(Model&&) = delete;
+    Model& operator=(Model&&) = delete;
+
+    ModelParameters parameters;
+    util::MasterRng masterRng{0, 0};
+    Population population;
+    std::unique_ptr<Transmission::TransmissionModel> transmission;
+    Reporting reporting;
+
+    SimTime humanWarmupLength = 0;
+    bool surveyOnlyNewEp = false;
+};
+
+void update(Model& model);
 }

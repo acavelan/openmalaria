@@ -30,7 +30,7 @@ namespace scnXml{
 }
 namespace OM {
 namespace Host{
-    class Human;
+    struct Human;
 }
 namespace WithinHost {
     class CommonInfection;

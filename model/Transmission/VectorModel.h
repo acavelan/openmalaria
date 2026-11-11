@@ -52,7 +52,7 @@ public:
 
     VectorModel(vector<double> initEIR, int interventionMode, vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
                 vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList, map<string, size_t> speciesIndexList,
-                int populationSize);
+                int populationSize, const HostTransmissionParameters& hostParameters, util::MasterRng& masterRng);
 
     virtual ~VectorModel();
 
@@ -107,7 +107,7 @@ private:
 
 public:
     /// RNG used by the transmission model
-    LocalRng m_rng;
+    util::LocalRng m_rng;
 
     /// Number of iterations performed during initialization.
     ///
@@ -136,7 +136,7 @@ public:
 
     bool opt_vaccine_genotype = false;
     
-    friend class PerHost;
+    
     friend class AnophelesModelSuite;
 };
 

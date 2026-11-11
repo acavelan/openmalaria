@@ -21,18 +21,14 @@
  */
 
 #include "Host/Human.h"
+#include "ModelParameters.h"
 #include "Host/InfectionIncidenceModel.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/WithinHost/WHInterface.h"
 
-#include "Transmission/TransmissionModel.h"
 #include "util/ModelOptions.h"
-#include "util/vectors.h"
-#include "util/StreamValidator.h"
-#include "Population.h"
 #include "interventions/InterventionManager.h"
 #include "mon/Monitoring.h"
-#include "schema/scenario.h"
 
 namespace OM { namespace Host {
     using namespace OM::util;
@@ -42,7 +38,7 @@ struct HumanHet {
     /* Human heterogeneity; affects:
      * comorbidityFactor (stored in PathogenesisModel)
      * treatmentSeekingFactor (stored in CaseManagementModel)
-     * availabilityFactor (stored in Transmission::PerHost) */
+     * availabilityFactor (stored in Host::HumanTransmission) */
     double comorbidityFactor;
     double treatmentSeekingFactor;
     double availabilityFactor;
@@ -106,39 +102,33 @@ HumanHet hetSample(util::LocalRng& rng)
     return het;
 }
 
-Human::Human(SimTime dateOfBirth) :
-    infIncidence(InfectionIncidenceModel::createModel()),
-    rng(util::master_RNG),
-    dateOfBirth(dateOfBirth)
+Human::Human(SimTime birthDate, const ModelParameters& parameters, util::MasterRng& masterRng) :
+    rng(masterRng),
+    birthDate(birthDate)
 {
-    // Initial humans are created at time 0 and may have dateOfBirth in past. Otherwise dateOfBirth must be now.
-    assert( dateOfBirth == sim::nowOrTs1() || (sim::now() == sim::zero() && dateOfBirth < sim::now()) );
+    // Initial humans are created at time 0 and may have birthDate in past. Otherwise birthDate must be now.
+    assert( birthDate == sim::nowOrTs1() || (sim::now() == sim::zero() && birthDate < sim::now()) );
 
     HumanHet het = hetSample(rng);
     withinHostModel = WithinHost::WHInterface::createWithinHostModel( rng, het.comorbidityFactor );
-    double iiFactor = infIncidence->getAvailabilityFactor(rng, 1.0);
-    perHostTransmission.initialise (rng, het.availabilityFactor * iiFactor);
+    double iiFactor = sampleAvailability(parameters.incidence, rng);
+    initialize(transmission, rng, het.availabilityFactor * iiFactor, parameters.hostTransmission);
     clinicalModel = Clinical::ClinicalModel::createClinicalModel(het.treatmentSeekingFactor);
 }
 
 void Human::addToCohort(ComponentId id, SimTime duration )
 {
     if( duration <= sim::zero() ) return; // nothing to do
-    subPopExp[id] = sim::nowOrTs1() + duration;
-    cohortSet = mon::updateCohortSet( cohortSet, id, true );
-}
-
-void Human::removeFromCohort(interventions::ComponentId id)
-{
-    subPopExp.erase(id);
+    interventions.cohortExpiry[id] = sim::nowOrTs1() + duration;
+    interventions.cohortSet = mon::updateCohortSet( interventions.cohortSet, id, true );
 }
 
 void Human::removeFirstEvent(interventions::SubPopRemove::RemoveAtCode code )
 {
     const vector<ComponentId>& removeAtList = interventions::removeAtIds[code];
     for( auto it = removeAtList.begin(), end = removeAtList.end(); it != end; ++it ){
-        auto expIt = subPopExp.find( *it );
-        if( expIt != subPopExp.end() ){
+        auto expIt = interventions.cohortExpiry.find( *it );
+        if( expIt != interventions.cohortExpiry.end() ){
             if( expIt->second >= sim::nowOrTs0() ){
                 // removeFirstEvent() is used for onFirstBout, onFirstTreatment
                 // and onFirstInfection cohort options. Health system memory must
@@ -149,9 +139,9 @@ void Human::removeFirstEvent(interventions::SubPopRemove::RemoveAtCode code )
                 // report removal due to first infection/bout/treatment
                 mon::recordEvent(mon::measure("nSubPopRemovalFirstEvent"), *this);
             }
-            cohortSet = mon::updateCohortSet( cohortSet, expIt->first, false );
+            interventions.cohortSet = mon::updateCohortSet( interventions.cohortSet, expIt->first, false );
             // remove (affects reporting, restrictToSubPop and cumulative deployment):
-            subPopExp.erase( expIt );
+            interventions.cohortExpiry.erase( expIt );
         }
     }
 }
@@ -159,119 +149,52 @@ void Human::removeFirstEvent(interventions::SubPopRemove::RemoveAtCode code )
 void Human::updateCohortSet()
 {
     // check sub-pop expiry
-    for( auto expIt = subPopExp.begin(), expEnd = subPopExp.end(); expIt != expEnd; ) {
+    for( auto expIt = interventions.cohortExpiry.begin(), expEnd = interventions.cohortExpiry.end(); expIt != expEnd; ) {
         if( !(expIt->second >= sim::ts0()) ){       // membership expired
             // don't flush reports
             // report removal due to expiry
             mon::recordEvent(mon::measure("nSubPopRemovalTooOld"), *this);
-            cohortSet = mon::updateCohortSet( cohortSet, expIt->first, false );
+            interventions.cohortSet = mon::updateCohortSet( interventions.cohortSet, expIt->first, false );
             // erase element, but continue iteration
-            expIt = subPopExp.erase( expIt );
+            expIt = interventions.cohortExpiry.erase( expIt );
         }else{
             ++expIt;
         }
     }
 }
 
-void Human::checkpoint(istream &stream)
+void Human::checkpoint(istream &stream, const vector<unique_ptr<interventions::HumanInterventionComponent>>& definitions)
 {
-    perHostTransmission & stream;
+    Host::checkpoint(transmission, stream);
+    interventions.copulaSamples & stream;
+    checkpointVectorInterventions(interventions, stream, definitions);
     infIncidence & stream;
     withinHostModel & stream;
     clinicalModel & stream;
     rng.checkpoint(stream);
-    dateOfBirth & stream;
-    vaccine & stream;
+    birthDate & stream;
+    interventions.vaccine & stream;
     monitoringAgeGroup & stream;
-    cohortSet & stream;
-    nextCtsDist & stream;
-    subPopExp & stream;
+    interventions.cohortSet & stream;
+    interventions.nextContinuousDeployment & stream;
+    interventions.cohortExpiry & stream;
 }
 
 void Human::checkpoint(ostream &stream)
 {
-    perHostTransmission & stream;
+    Host::checkpoint(transmission, stream);
+    interventions.copulaSamples & stream;
+    checkpointVectorInterventions(interventions, stream);
     infIncidence & stream;
     withinHostModel & stream;
     clinicalModel & stream;
     rng.checkpoint(stream);
-    dateOfBirth & stream;
-    vaccine & stream;
+    birthDate & stream;
+    interventions.vaccine & stream;
     monitoringAgeGroup & stream;
-    cohortSet & stream;
-    nextCtsDist & stream;
-    subPopExp & stream;
-}
-
-// -----  Non-static functions: per-time-step update  -----
-void summarize(Human &human, bool surveyOnlyNewEp) {
-    if( surveyOnlyNewEp && human.clinicalModel->isExistingCase() ){
-        // This modifies the denominator to treat the health-system-memory
-        // period immediately after a bout as 'not at risk'.
-        return;
-    }
-    
-    mon::recordStat(mon::measure("nHost"), human);
-    mon::recordStat(mon::measure("sumAge"), human, sim::inYears(human.age(sim::now())) );
-    bool patent = human.withinHostModel->summarize (human);
-    human.infIncidence->summarize (human);
-    
-    if( patent && mon::isReported() ){
-        // this should happen after all other reporting!
-        human.removeFirstEvent(interventions::SubPopRemove::ON_FIRST_INFECTION);
-    }
-}
-
-void update(Human &human, Transmission::TransmissionModel& transmission)
-{
-    // For integer age checks we use age0 to e.g. get 73 steps comparing less than 1 year old
-    SimTime age0 = human.age(sim::ts0());
-    if (human.clinicalModel->isDead(age0)) {
-        human.kill();
-        return;
-    }
-    
-    util::streamValidate( age0 );
-
-    // monitoringAgeGroup is the group for the start of the time step.
-    mon::updateAgeGroup(human.monitoringAgeGroup, age0);
-    
-    human.updateCohortSet();
-
-    // Age at  the end of the update period. In most cases
-    // the difference between this and age at the start is not especially
-    // important in the model design, but since we parameterised with
-    // age1 we should stick with it.
-    double age1 = sim::inYears(human.age(sim::ts1()));
-
-    // age1 used only in PerHost::relativeAvailabilityAge(); difference to age0 should be minor
-    vector<double> EIR_per_genotype_i, EIR_per_genotype_l;
-    transmission.getEIR(human, age0, age1, EIR_per_genotype_i, EIR_per_genotype_l);
-
-    double EIR_i = util::vectors::sum(EIR_per_genotype_i);
-    double EIR_l = util::vectors::sum(EIR_per_genotype_l);
-    double EIR = EIR_i + EIR_l;
-
-    double x = 0.0;
-    
-    if(EIR > 0)
-        x = EIR_i / EIR;
-
-    double expectedNNewInfs = human.infIncidence->expectedNumNewInfections( human, EIR);
-    double expectedNNewInfs_i = x * expectedNNewInfs;
-    double expectedNNewInfs_l = (1.0-x) * expectedNNewInfs;
-
-    // One more rng call if imported infection
-    int nNewInfs_l = human.infIncidence->numNewInfections( human, expectedNNewInfs_l);
-    int nNewInfs_i = human.infIncidence->numNewInfections( human, expectedNNewInfs_i);
-
-    // age1 used when medicating drugs (small effect) and in immunity model (which was parameterised for it)
-    human.withinHostModel->update(human, human.rng, nNewInfs_i, nNewInfs_l, EIR_per_genotype_i, EIR_per_genotype_l, age1);
-    human.infIncidence->reportNumNewInfections(human, nNewInfs_i, nNewInfs_l);
-
-    // age1 used to get case fatality and sequelae probabilities, determine pathogenesis
-    human.clinicalModel->update( human, age1, age0 == sim::zero() );
-    human.clinicalModel->updateInfantDeaths( age0 );
+    interventions.cohortSet & stream;
+    interventions.nextContinuousDeployment & stream;
+    interventions.cohortExpiry & stream;
 }
 
 } }

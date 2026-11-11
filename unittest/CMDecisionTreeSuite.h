@@ -38,6 +38,8 @@ using UnitTest::WHMock;
 
 class CMDecisionTreeSuite : public CxxTest::TestSuite
 {
+    OM::ModelParameters parameters;
+    util::MasterRng masterRng{0, 0};
 public:
     CMDecisionTreeSuite () {}
     ~CMDecisionTreeSuite () {}
@@ -50,7 +52,7 @@ public:
 
         UnittestUtil::EmpiricalWHM_setup();
 
-        human.reset( UnittestUtil::createHuman(sim::nowOrTs0()).release() );
+        human.reset( UnittestUtil::createHuman(sim::nowOrTs0(), parameters, masterRng).release() );
 
         ETS_ASSERT( human.get() != 0 );
         whm = dynamic_cast<WHMock*>(UnittestUtil::setHumanWH( *human,

@@ -30,7 +30,7 @@
 #include "Population.h"
 #include "Transmission/TransmissionModel.h"
 #include "Transmission/VectorModel.h"
-#include "Transmission/PerHost.h"
+#include "Host/HumanTransmission.h"
 #include "util/random.h"
 #include "util/errors.h"
 #include <schema/interventions.h>
@@ -247,8 +247,8 @@ public:
             const SimTime age = human.age(sim::now());
             if( age >= minAge && age < maxAge ){
                 double availability = 0.0;
-                for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(); ++i)
-                    availability += human.perHostTransmission.anophEntoAvailability[i];
+                for(size_t i = 0; i < transmission.hostParameters.species.size(); ++i)
+                    availability += human.transmission.species[i].availability;
 
                 double probability = coverage;
 
@@ -262,10 +262,10 @@ public:
                         const double alpha = ((1.0 - beta_mean) / beta_var - 1.0 / beta_mean) * (beta_mean * beta_mean);
                         const double beta = alpha * (1.0 / beta_mean - 1.0);
 
-                        if(Transmission::PerHostAnophParams::numSpecies() > 1)
+                        if(transmission.hostParameters.species.size() > 1)
                             throw std::runtime_error("only supports one mosquito species");
 
-                        const double ux = Transmission::PerHostAnophParams::get(0).entoAvailability->cdf(human.perHostTransmission.anophEntoAvailabilityRaw[0]);
+                        const double ux = transmission.hostParameters.species[0].entoAvailability->cdf(human.transmission.species[0].sampledAvailability);
                         if(ux < 1)
                         {
                             double xx = gsl_cdf_ugaussian_Pinv(ux);                      // Unit interval to Normal
@@ -277,13 +277,13 @@ public:
                              * the same component on the same human must use the same gaussian sample. Therefore we store
                              * this value in the human the first time it is calculated. */
                             double g = 0.0;
-                            const auto it = human.perHostTransmission.copulaGaussianSamples.find(cid);
-                            if (it != human.perHostTransmission.copulaGaussianSamples.end())
+                            const auto it = human.interventions.copulaSamples.find(cid);
+                            if (it != human.interventions.copulaSamples.end())
                                 g = it->second;
                             else
                             {
                                 g = human.rng.gauss(0.0, 1.0);
-                                human.perHostTransmission.copulaGaussianSamples[cid] = g;
+                                human.interventions.copulaSamples[cid] = g;
                             }
                             const double yy = coverageCorr * xx + g * sqrt(1 - coverageCorr * coverageCorr);
 
@@ -308,7 +308,7 @@ public:
                     }
                 }
 
-                if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(maxAvailability) ) {
+                if( availability >= transmission.hostParameters.availabilityPercentile(minAvailability) && availability <= transmission.hostParameters.availabilityPercentile(maxAvailability) ) {
                     if( subPop == ComponentId::wholePop() || (human.isInSubPop( subPop ) != complement) ){
                         if( human.rng.bernoulli( probability ) ){
                             deployToHuman( human, mon::Deploy::TIMED );
@@ -363,9 +363,9 @@ public:
             SimTime age = human.age(sim::now());
             if( age >= minAge && age < maxAge ){
                 double availability = 0.0;
-                for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(); ++i)
-                    availability += human.perHostTransmission.anophEntoAvailability[i];
-                if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(maxAvailability) ) {
+                for(size_t i = 0; i < transmission.hostParameters.species.size(); ++i)
+                    availability += human.transmission.species[i].availability;
+                if( availability >= transmission.hostParameters.availabilityPercentile(minAvailability) && availability <= transmission.hostParameters.availabilityPercentile(maxAvailability) ) {
                     if( subPop == ComponentId::wholePop() || (human.isInSubPop( subPop ) != complement) ){
                         total+=1;
                         if( !human.isInSubPop(cumCovInd) )
@@ -572,8 +572,8 @@ public:
                     throw util::xml_scenario_error("non human hosts type " + intervName + " already deployed during non human hosts deployment");
 
                 const NhhParamsInterv &p = nhhParams[anophModel->mosq.name];
-                const double adultAvail = Transmission::PerHostAnophParams::get(i).entoAvailability->mean();
-                const double avail_i = Transmission::PerHostAnophParams::get(i).entoAvailabilityFactor * popSize * adultAvail * p.mosqRelativeAvailabilityHuman;
+                const double adultAvail = transmission.hostParameters.species[i].entoAvailability->mean();
+                const double avail_i = transmission.hostParameters.species[i].entoAvailabilityFactor * popSize * adultAvail * p.mosqRelativeAvailabilityHuman;
                 Transmission::Anopheles::Nhh nhh;
 
                 nhh.avail_i = avail_i;
@@ -652,7 +652,7 @@ public:
      * 
      * @returns false iff this deployment (and thus all later ones in the
      *  ordered list) happens in the future. */
-    bool filterAndDeploy( Host::Human& human ) const{
+    bool filterAndDeploy( Host::Human& human, const Transmission::HostTransmissionParameters& hostParameters ) const{
         SimTime age = human.age(sim::now());
         if( deployAge > age ){
             // stop processing continuous deployments for this
@@ -660,10 +660,10 @@ public:
             return false;
         }else if( deployAge == age ){
             double availability = 0.0;
-            for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(); ++i)
-                availability += human.perHostTransmission.anophEntoAvailabilityRaw[i];
+            for(size_t i = 0; i < hostParameters.species.size(); ++i)
+                availability += human.transmission.species[i].sampledAvailability;
 
-            if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(maxAvailability) )
+            if( availability >= hostParameters.availabilityPercentile(minAvailability) && availability <= hostParameters.availabilityPercentile(maxAvailability) )
             {
                 auto now = sim::intervDate();
                 if( begin <= now && now < end &&

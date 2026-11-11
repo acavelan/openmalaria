@@ -20,57 +20,23 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_Population
-#define Hmod_Population
-
-#include "Global.h"
-#include "PopulationAgeStructure.h"
+#pragma once
 #include "Host/Human.h"
 
-#include <vector>
-
 namespace OM {
-
-/** The simulated human population. */
-class Population
-{
-public:
-    Population(size_t size);
-
-    /** Create the initial population of Humans */
-    void createInitialHumans();
-
-    /** Remove dead humans, outmigrate others and introduce babies to
-     * while keeping the population size and demography distirbution unchanged. */
-    void update();
-
-    /** Return the size of the human population */
-    inline size_t getSize() const;
-
-    /** Return the number of recent births */
-    inline int getRecentBirths() const;
-
-    /** Reset the number of recent births to 0 */
-    inline void resetRecentBirths();
-
-    /** Checkpoint (read) */
-    void checkpoint(istream& stream);
-
-    /** Checkpoint (write) */
-    void checkpoint(ostream& stream);
-
-    /** The simulated human hosts */
-    vector<Host::Human> humans;
-
-private:
-    /** Size of the human population */
-    size_t size = 0;
-    
-    /** Births count since last continuous output */
+struct Population {
+    size_t targetSize = 0;
     int recentBirths = 0;
+    vector<Host::Human> humans;
 };
 
-void registerContinousPopulationCallbacks();
+void createInitialHumans(Population&, const ModelParameters&, util::MasterRng&);
+void update(Population&, const ModelParameters&, util::MasterRng&);
+void checkpoint(Population&, istream&, const ModelParameters&, util::MasterRng&,
+    const vector<unique_ptr<interventions::HumanInterventionComponent>>& definitions);
+void checkpoint(Population&, ostream&);
+
+void registerContinousPopulationCallbacks(const Transmission::HostTransmissionParameters& parameters);
 
 /// Delegate to print the number of hosts
 void ctsHosts (Population &population, ostream& stream);
@@ -87,22 +53,9 @@ void ctsImmunityY (Population &population, ostream& stream);
 /// Delegate to print immunity's cumulativeY parameter (median across population)
 void ctsMedianImmunityY (Population &population, ostream& stream);
 /// Delegate to print the mean age-based availability reduction of each human relative to an adult
-void ctsMeanAgeAvailEffect (Population &population, ostream& stream);
+void ctsMeanAgeAvailEffect (Population &population, ostream& stream, const Transmission::HostTransmissionParameters& parameters);
 void ctsITNCoverage (Population &population, ostream& stream);
 void ctsIRSCoverage (Population &population, ostream& stream);
 void ctsGVICoverage (Population &population, ostream& stream);
 
-inline size_t Population::getSize() const {
-    return size;
 }
-
-inline int Population::getRecentBirths() const {
-    return recentBirths;
-}
-
-inline void Population::resetRecentBirths() {
-    recentBirths = 0;
-}
-
-}
-#endif

@@ -23,7 +23,7 @@
 #ifndef OM_INTERVENTIONS_GVI
 #define OM_INTERVENTIONS_GVI
 
-#include "Transmission/PerHost.h"
+#include "interventions/HumanComponents.h"
 #include "interventions/Interfaces.h"
 #include "util/DecayFunction.h"
 #include "util/sampler.h"
@@ -33,10 +33,9 @@ namespace OM { namespace interventions {
     using util::DecayFunction;
     using util::LognormalSampler;
     using util::LocalRng;
-    using Transmission::PerHostInterventionData;
 
 /** Constant parameters for generic vector intervention model. */
-class GVIComponent : public Transmission::HumanVectorInterventionComponent {
+class GVIComponent : public VectorInterventionComponent {
 public:
     /** Initialise parameters
      * 
@@ -52,8 +51,8 @@ public:
     
     virtual void print_details( std::ostream& out )const;
     
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng& rng) const;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream, ComponentId ) const;
+    virtual unique_ptr<VectorInterventionState> makeHumanPart(LocalRng& rng) const;
+    virtual unique_ptr<VectorInterventionState> makeHumanPart( istream& stream, ComponentId ) const;
     
 private:
     /** Per mosquito-species parameters for generic vector intervention model. */
@@ -87,10 +86,6 @@ private:
     unique_ptr<DecayFunction> decay;
     vector<GVIAnopheles> species;  // vector specific params
     
-    // This is sparse vector: only indexes corresponding to a GVI component are used
-    // No memory management
-    static vector<GVIComponent*> componentsByIndex;
-    
     friend class HumanGVI;
 };
 
@@ -99,36 +94,37 @@ private:
  * 
  * This is the per-host (but not per vector) part.
  */
-class HumanGVI : public PerHostInterventionData {
+class HumanGVI : public VectorInterventionState {
 public:
     HumanGVI( LocalRng& rng, const GVIComponent& params );
-    HumanGVI( istream& stream, ComponentId );
+    HumanGVI( istream& stream, ComponentId id, const GVIComponent& parameters );
     
-    virtual void redeploy( LocalRng& rng, const Transmission::HumanVectorInterventionComponent& );
+    virtual void redeploy( LocalRng& rng, const VectorInterventionComponent& );
     
     /** This is the survival factor of the effect. */
-    inline double getEffectSurvival(const GVIComponent& params)const{
-        SimTime age = sim::nowOrTs1() - deployTime;  // implies age 1 TS on first use
+    inline double getEffectSurvival(SimTime effectTime)const{
+        SimTime age = effectTime - deployTime;  // implies age 1 TS on first use
         return decayHet->eval( age );
     }
     
-    virtual void update(Host::Human& human);
+    Component::Type componentType() const override { return Component::GVI; }
     
     /// Get deterrency. See ComponentParams::effect for a more detailed description.
-    virtual double relativeAttractiveness(size_t speciesIndex) const;
+    virtual double relativeAttractiveness(size_t speciesIndex, SimTime effectTime) const;
     /// Get killing effect on mosquitoes before they've eaten.
     /// See ComponentParams::effect for a more detailed description.
-    virtual double preprandialSurvivalFactor(size_t speciesIndex) const;
+    virtual double preprandialSurvivalFactor(size_t speciesIndex, SimTime effectTime) const;
     /// Get killing effect on mosquitoes after they've eaten.
     /// See ComponentParams::effect for a more detailed description.
-    virtual double postprandialSurvivalFactor(size_t speciesIndex) const;
+    virtual double postprandialSurvivalFactor(size_t speciesIndex, SimTime effectTime) const;
     /// Get the mosquito fecundity multiplier (1 for no effect).
-    virtual double relFecundity(size_t speciesIndex) const;
+    virtual double relFecundity(size_t speciesIndex, SimTime effectTime) const;
     
 protected:
     virtual void checkpoint( ostream& stream );
     
 private:
+    const GVIComponent& parameters;
     // this parameter is sampled on first deployment, but never resampled for the same human:
     unique_ptr<DecayFunction> decayHet;
 };

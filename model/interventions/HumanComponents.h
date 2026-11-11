@@ -27,14 +27,87 @@
 #include "interventions/Interfaces.h"
 #include "util/sampler.h"
 #include "util/DecayFunction.h"
+#include "util/checkpoint_containers.h"
+#include <map>
 
 namespace OM {
 namespace Host {
-    class Human;
+    struct Human;
 }
 namespace interventions {
     class VaccineComponent;
     using util::LocalRng;
+
+class VectorInterventionComponent;
+
+class VectorInterventionState {
+public:
+    virtual ~VectorInterventionState() {}
+    
+    /** Deploy an intervention. */
+    virtual void redeploy( LocalRng& rng, const VectorInterventionComponent& params ) =0;
+    
+    /** Per time step update. Used by ITNs to update hole decay. */
+    // Returns true when this update removes the component's cohort membership.
+    virtual bool update(LocalRng&, SimTime) { return false; }
+    virtual interventions::Component::Type componentType() const =0;
+    
+    /** Get effect of deterrencies of interventions, as an attractiveness multiplier.
+     * 
+     * @return a value describing effect on attractiveness. Must not be
+     * negative. 0 means mosquitoes are fully deterred, 1 that the intervention
+     * has no effect, 2 that the intervention attracts twice as many mosquitoes
+     * as would otherwise come. */
+    virtual double relativeAttractiveness(size_t species, SimTime effectTime) const =0;
+    /** Get the killing effect on mosquitoes before they've eaten as a survival
+     * multiplier. */
+    virtual double preprandialSurvivalFactor(size_t species, SimTime effectTime) const =0;
+    /** Get the killing effect on mosquitoes after they've eaten as a survival
+     * multiplier. */
+    virtual double postprandialSurvivalFactor(size_t species, SimTime effectTime) const =0;
+    /// Get the mosquito fecundity multiplier (1 for no effect).
+    virtual double relFecundity(size_t species, SimTime effectTime) const =0;
+    
+    /// Index of effect describing the intervention
+    inline interventions::ComponentId id() const { return m_id; }
+    
+    /// Return true if this component is deployed (i.e. currently active)
+    inline bool isDeployed() const{ return deployTime != sim::never(); }
+    
+    /// Checkpointing (write only)
+    void operator& (ostream& stream) {
+        m_id & stream; // must be first; read externally so that the correct
+                // makeHumanPart function can be found
+        checkpoint( stream );
+    }
+    
+protected:
+    /// Set the component id
+    explicit VectorInterventionState( interventions::ComponentId id ) :
+            deployTime( sim::now() ),
+            m_id(id) {}
+    
+    /// Checkpointing: write
+    virtual void checkpoint( ostream& stream ) =0;
+    
+    SimTime deployTime = sim::never();        // time of deployment or sim::never()
+    interventions::ComponentId m_id;       // component id; don't change
+};
+
+/** A base class for human vector intervention parameters. */
+class VectorInterventionComponent : public interventions::HumanInterventionComponent {
+public:
+    virtual ~VectorInterventionComponent() {}
+    
+    /** Create a new object to store human-specific details of deployment. */
+    virtual unique_ptr<VectorInterventionState> makeHumanPart(LocalRng&) const =0;
+    virtual unique_ptr<VectorInterventionState> makeHumanPart( istream& stream,
+            interventions::ComponentId id ) const =0;
+protected:
+    explicit VectorInterventionComponent(interventions::ComponentId id) :
+            HumanInterventionComponent(id) {}
+};
+
 
 // ———  sub-population removal  ———
 
@@ -141,6 +214,23 @@ private:
     typedef std::vector<PerEffectPerHumanVaccine> EffectList;
     EffectList effects;
 };
+
+struct HumanInterventions {
+    PerHumanVaccine vaccine;
+    std::map<ComponentId, SimTime> cohortExpiry;
+    uint32_t cohortSet = 0;
+    uint32_t nextContinuousDeployment = 0;
+    std::map<ComponentId, double> copulaSamples;
+    // Retain expired instances: redeployment reuses personal heterogeneity samples.
+    vector<unique_ptr<VectorInterventionState>> vectorInterventions;
+};
+
+void deployVectorIntervention(HumanInterventions&, LocalRng&, const VectorInterventionComponent&);
+void updateVectorInterventions(HumanInterventions&, LocalRng&, SimTime stepStart);
+bool hasActiveIntervention(const HumanInterventions&, Component::Type);
+void checkpointVectorInterventions(HumanInterventions&, ostream&);
+void checkpointVectorInterventions(HumanInterventions&, istream&,
+    const vector<unique_ptr<HumanInterventionComponent>>& definitions);
 
 }
 }

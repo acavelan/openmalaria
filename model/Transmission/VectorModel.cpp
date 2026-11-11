@@ -101,7 +101,7 @@ void VectorModel::ctsCbAlpha(const vector<Host::Human> &population, ostream &str
         double total = 0.0;
         for (const Host::Human &human : population)
         {
-            total += human.perHostTransmission.entoAvailabilityFull(i, sim::inYears(human.age(sim::now())));
+            total += Host::availabilityWithAge(human.transmission, human.interventions, i, sim::inYears(human.age(sim::now())), hostParameters, sim::nowOrTs1());
         }
         stream << '\t' << total / population.size();
     }
@@ -113,7 +113,7 @@ void VectorModel::ctsCbP_B(const vector<Host::Human> &population, ostream &strea
         double total = 0.0;
         for (const Host::Human &human : population)
         {
-            total += human.perHostTransmission.probMosqBiting(i);
+            total += Host::bitingProbability(human.transmission, human.interventions, i, sim::nowOrTs1());
         }
         stream << '\t' << total / population.size();
     }
@@ -125,7 +125,7 @@ void VectorModel::ctsCbP_CD(const vector<Host::Human> &population, ostream &stre
         double total = 0.0;
         for (const Host::Human &human : population)
         {
-            total += human.perHostTransmission.probMosqResting(i);
+            total += Host::restingProbability(human.transmission, human.interventions, i, sim::nowOrTs1());
         }
         stream << '\t' << total / population.size();
     }
@@ -135,9 +135,9 @@ void VectorModel::ctsNetInsecticideContent(const vector<Host::Human> &population
     //     double meanVar = 0.0;
     //     int n = 0;
     //     for(const Host::Human &human : population) {
-    //         if( human.perHostTransmission.getITN().timeOfDeployment() >= sim::zero() ){
+    //         if( human.transmission.getITN().timeOfDeployment() >= sim::zero() ){
     //             ++n;
-    //             meanVar += human.perHostTransmission.getITN().getInsecticideContent(_ITNParams);
+    //             meanVar += human.transmission.getITN().getInsecticideContent(_ITNParams);
     //         }
     //     }
     //     stream << '\t' << meanVar/n;
@@ -147,7 +147,7 @@ void VectorModel::ctsIRSInsecticideContent(const vector<Host::Human> &population
     // TODO(monitoring): work out how this applies when multiple IRS effects are allowed
     //     double totalInsecticide = 0.0;
     //     for(const Host::Human &human : population) {
-    //         totalInsecticide += human.perHostTransmission.getIRS().getInsecticideContent(_IRSParams);
+    //         totalInsecticide += human.transmission.getIRS().getInsecticideContent(_IRSParams);
     //     }
     //     stream << '\t' << totalInsecticide / population.size();
 }
@@ -158,9 +158,9 @@ void VectorModel::ctsIRSEffects(const vector<Host::Human> &population, ostream &
     //         const interventions::IRSAnophelesParams& params = species[i]->getHumanBaseParams().irs;
     //         double totalRA = 0.0, totalPrePSF = 0.0, totalPostPSF = 0.0;
     //         for(const Host::Human &human : population) {
-    //             totalRA += human.perHostTransmission.getIRS().relativeAttractiveness(params);
-    //             totalPrePSF += human.perHostTransmission.getIRS().preprandialSurvivalFactor(params);
-    //             totalPostPSF += human.perHostTransmission.getIRS().postprandialSurvivalFactor(params);
+    //             totalRA += human.transmission.getIRS().relativeAttractiveness(params);
+    //             totalPrePSF += human.transmission.getIRS().preprandialSurvivalFactor(params);
+    //             totalPostPSF += human.transmission.getIRS().postprandialSurvivalFactor(params);
     //         }
     //         stream << '\t' << totalRA / population.size()
     //             << '\t' << totalPrePSF / population.size()
@@ -190,9 +190,9 @@ const string &reverseLookup(const map<string, size_t> &m, size_t i)
 
 VectorModel::VectorModel(vector<double> initEIR, int interventionMode, vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
                          vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList, map<string, size_t> speciesIndexList,
-                         int populationSize)
-    : TransmissionModel(std::move(initEIR), interventionMode, WithinHost::Genotypes::N())
-    , m_rng(util::master_RNG)
+                         int populationSize, const HostTransmissionParameters& hostParameters, util::MasterRng& masterRng)
+    : TransmissionModel(std::move(initEIR), interventionMode, WithinHost::Genotypes::N(), hostParameters, true)
+    , m_rng(masterRng)
     , initIterations(0)
     , species(std::move(speciesList))
     , emergenceRateEstimators(std::move(emergenceRateEstimatorsList))
@@ -263,7 +263,7 @@ void VectorModel::init2(const vector<Host::Human> &population)
     double sumRelativeAvailability = 0.0;
     for (const Host::Human &human : population)
     {
-        sumRelativeAvailability += human.perHostTransmission.relativeAvailabilityAge(sim::inYears(human.age(sim::now())));
+        sumRelativeAvailability += Host::relativeAvailabilityAge(human.transmission, sim::inYears(human.age(sim::now())), hostParameters);
     }
     int popSize = population.size();
     // value should be unimportant when no humans are available, though inf/nan is not acceptable
@@ -281,13 +281,13 @@ void VectorModel::init2(const vector<Host::Human> &population)
 
         for (const Host::Human &human : population)
         {
-            const OM::Transmission::PerHost &host = human.perHostTransmission;
-            double prod = host.entoAvailabilityFull(i, sim::inYears(human.age(sim::now())));
+            const OM::Host::HumanTransmission &host = human.transmission;
+            double prod = Host::availabilityWithAge(host, human.interventions, i, sim::inYears(human.age(sim::now())), hostParameters, sim::nowOrTs1());
             sum_avail += prod;
-            prod *= host.probMosqBiting(i);
+            prod *= Host::bitingProbability(host, human.interventions, i, sim::nowOrTs1());
             sigma_f += prod;
-            sigma_df += prod * host.probMosqResting(i);
-            sigma_dff += prod * host.probMosqResting(i) * host.relMosqFecundity(i);
+            sigma_df += prod * Host::restingProbability(host, human.interventions, i, sim::nowOrTs1());
+            sigma_dff += prod * Host::restingProbability(host, human.interventions, i, sim::nowOrTs1()) * Host::fecundity(human.interventions, i, sim::nowOrTs1());
         }
 
         species[i]->init2(population.size(), meanAvail, sum_avail, sigma_f, sigma_df, sigma_dff);
@@ -371,8 +371,7 @@ SimTime VectorModel::initIterate()
 void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l) const
 {
 
-    PerHost &host = human.perHostTransmission;
-    host.update(human);
+    const Host::HumanTransmission &host = human.transmission;
     if(simulationMode == transientEIRknown)
     {
         EIR_i.assign(1, 0.0);
@@ -384,17 +383,17 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
-            double eir = species[i]->getInterventionEIR() * host.relativeAvailabilityAge(ageYears) * host.entoAvailabilityHetVecItv(i);
+            double eir = species[i]->getInterventionEIR() * Host::relativeAvailabilityAge(host, ageYears, hostParameters) * Host::availability(host, human.interventions, i, sim::nowOrTs1());
             mon::recordStat(mon::measure("innoculationsPerAgeGroup"), human, eir);
             mon::recordStat(mon::measure("innoculationsPerVector"), human, eir, i);
-            // cout << host.availBite(i) << endl;
-            // cout << "species: " << eir << " " << host.entoAvailabilityHetVecItv(i) << " " << host.entoAvailabilityHetVecItv(i) * (1000*0.00112608) << endl;
+            // cout << Host::availabilityToBite(host, human.interventions, i, sim::nowOrTs1()) << endl;
+            // cout << "species: " << eir << " " << Host::availability(host, human.interventions, i, sim::nowOrTs1()) << " " << Host::availability(host, human.interventions, i, sim::nowOrTs1()) * (1000*0.00112608) << endl;
             EIR_l[0] += eir;
         }
     }
     else if (simulationMode == forcedEIR)
     {
-        // double eir = initialisationEIR[sim::moduloYearSteps(sim::ts0())] * host.relativeAvailabilityHetAge(ageYears);
+        // double eir = initialisationEIR[sim::moduloYearSteps(sim::ts0())] * Host::relativeAvailabilityHetAge(host, ageYears);
 
         // cout << "global: " << eir << " " <<  endl;
         // mon::recordStat(mon::measure("innoculationsPerAgeGroup"), human, eir);
@@ -409,11 +408,11 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
-            double eir = species[i]->getInitPartialEIR() * host.relativeAvailabilityAge(ageYears) * host.entoAvailabilityHetVecItv(i);
+            double eir = species[i]->getInitPartialEIR() * Host::relativeAvailabilityAge(host, ageYears, hostParameters) * Host::availability(host, human.interventions, i, sim::nowOrTs1());
             mon::recordStat(mon::measure("innoculationsPerAgeGroup"), human, eir);
             mon::recordStat(mon::measure("innoculationsPerVector"), human, eir, i);
-            // cout << host.availBite(i) << endl;
-            // cout << "species: " << eir << " " << host.entoAvailabilityHetVecItv(i) << " " << host.entoAvailabilityHetVecItv(i) * (1000*0.00112608) << endl;
+            // cout << Host::availabilityToBite(host, human.interventions, i, sim::nowOrTs1()) << endl;
+            // cout << "species: " << eir << " " << Host::availability(host, human.interventions, i, sim::nowOrTs1()) << " " << Host::availability(host, human.interventions, i, sim::nowOrTs1()) * (1000*0.00112608) << endl;
             EIR_l[0] += eir;
         }
     }
@@ -422,7 +421,7 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
         assert(simulationMode == dynamicEIR);
         EIR_i.assign(WithinHost::Genotypes::N(), 0.0);
         EIR_l.assign(WithinHost::Genotypes::N(), 0.0);
-        const double ageFactor = host.relativeAvailabilityAge(ageYears);
+        const double ageFactor = Host::relativeAvailabilityAge(host, ageYears, hostParameters);
         for (size_t i = 0; i < speciesIndex.size(); ++i)
         {
             const vector<double> &partialEIR_i = species[i]->getPartialEIRImported();
@@ -436,7 +435,7 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
-            double entoFactor = ageFactor * host.availBite(i);
+            double entoFactor = ageFactor * Host::availabilityToBite(host, human.interventions, i, sim::nowOrTs1());
             for (size_t g = 0; g < EIR_i.size(); ++g)
             {
                 double eir_i = partialEIR_i[g] * entoFactor;
@@ -461,7 +460,7 @@ void VectorModel::vectorUpdate(const vector<Host::Human> &population)
     std::vector<std::vector<double>> sigma_dif_i(speciesIndex.size(), std::vector<double>(nGenotypes)), sigma_dif_l(speciesIndex.size(), std::vector<double>(nGenotypes));
     for (const Host::Human &human : population)
     {
-        const OM::Transmission::PerHost &host = human.perHostTransmission;
+        const OM::Host::HumanTransmission &host = human.transmission;
         WithinHost::WHInterface &whm = *human.withinHostModel;
 
         probTransmission_i.assign(nGenotypes, 0.0);
@@ -473,17 +472,17 @@ void VectorModel::vectorUpdate(const vector<Host::Human> &population)
             // NOTE: calculate availability relative to age at end of time step;
             // not my preference but consistent with TransmissionModel::getEIR().
             // TODO: even stranger since probTransmission comes from the previous time step
-            const double avail = host.entoAvailabilityFull(s, sim::inYears(human.age(sim::ts1())));
+            const double avail = Host::availabilityWithAge(host, human.interventions, s, sim::inYears(human.age(sim::ts1())), hostParameters, sim::nowOrTs1());
             sum_avail[s] += avail;
-            const double df = avail * host.probMosqBiting(s) * host.probMosqResting(s);
+            const double df = avail * Host::bitingProbability(host, human.interventions, s, sim::nowOrTs1()) * Host::restingProbability(host, human.interventions, s, sim::nowOrTs1());
             sigma_df[s] += df;
             for (size_t g = 0; g < nGenotypes; ++g)
             {
-                const double tbvFac = human.vaccine.getFactor(interventions::Vaccine::TBV, opt_vaccine_genotype? g : 0);
+                const double tbvFac = human.interventions.vaccine.getFactor(interventions::Vaccine::TBV, opt_vaccine_genotype? g : 0);
                 sigma_dif_i[s][g] += df * probTransmission_i[g] * tbvFac;
                 sigma_dif_l[s][g] += df * probTransmission_l[g] * tbvFac;
             }
-            sigma_dff[s] += df * host.relMosqFecundity(s);
+            sigma_dff[s] += df * Host::fecundity(human.interventions, s, sim::nowOrTs1());
         }
     }
 
@@ -509,7 +508,7 @@ void VectorModel::deployVectorTrap(size_t instance, double number, SimTime lifes
     if (interventionMode != dynamicEIR) { throw xml_scenario_error(vec_mode_err); }
     for (size_t i = 0; i < speciesIndex.size(); ++i)
     {
-        species[i]->deployVectorTrap(m_rng, i, instance, number, lifespan);
+        species[i]->deployVectorTrap(m_rng, hostParameters.species[i], instance, number, lifespan);
     }
 }
 

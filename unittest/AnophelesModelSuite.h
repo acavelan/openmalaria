@@ -176,7 +176,7 @@ public:
     vtm->timeStepNumEntoInnocs = 0;
     vtm->advancePeriod (*population, simulationTime);
     for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
-      vtm->getEIR (simulationTime, it->perHostTransmission, it->getAgeInYears());
+      vtm->getEIR (simulationTime, it->transmission, it->getAgeInYears());
     TS_ASSERT_SPECIES_APPROX (doc["calculateEIR"]["output"]);
   }
   
@@ -188,7 +188,7 @@ public:
     vtm->timeStepNumEntoInnocs = 0;
     vtm->advancePeriod (*population, simulationTime);
     for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
-      vtm->getEIR (simulationTime, it->perHostTransmission, it->getAgeInYears());
+      vtm->getEIR (simulationTime, it->transmission, it->getAgeInYears());
     TS_ASSERT_SPECIES_APPROX (node["output"]);
   }
   
@@ -200,7 +200,7 @@ public:
     vtm->timeStepNumEntoInnocs = 0;
     vtm->advancePeriod (*population, simulationTime);
     for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
-      vtm->getEIR (simulationTime, it->perHostTransmission, it->getAgeInYears());
+      vtm->getEIR (simulationTime, it->transmission, it->getAgeInYears());
     TS_ASSERT_SPECIES_APPROX (node["output"]);
   }
   
@@ -212,7 +212,7 @@ public:
     vtm->timeStepNumEntoInnocs = 0;
     vtm->advancePeriod (*population, simulationTime);
     for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
-      vtm->getEIR (simulationTime, it->perHostTransmission, it->getAgeInYears());
+      vtm->getEIR (simulationTime, it->transmission, it->getAgeInYears());
     TS_ASSERT_SPECIES_APPROX (node["output"]);
   }
   
@@ -224,7 +224,7 @@ public:
     vtm->timeStepNumEntoInnocs = 0;
     vtm->advancePeriod (*population, simulationTime);
     for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
-      vtm->getEIR (simulationTime, it->perHostTransmission, it->getAgeInYears());
+      vtm->getEIR (simulationTime, it->transmission, it->getAgeInYears());
     TS_ASSERT_SPECIES_APPROX (node["output"]);
   }
   
@@ -236,7 +236,7 @@ public:
     vtm->timeStepNumEntoInnocs = 0;
     vtm->advancePeriod (*population, simulationTime);
     for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
-      vtm->getEIR (simulationTime, it->perHostTransmission, it->getAgeInYears());
+      vtm->getEIR (simulationTime, it->transmission, it->getAgeInYears());
     TS_ASSERT_SPECIES_APPROX (node["output"]);
   }
   

@@ -137,7 +137,7 @@ VaccineComponent::VaccineComponent( ComponentId component, const scnXml::Vaccine
 
 void VaccineComponent::deploy(Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const
 {
-    bool administered = human.vaccine.possiblyVaccinate( human, id(), vaccLimits );
+    bool administered = human.interventions.vaccine.possiblyVaccinate( human, id(), vaccLimits );
     if( administered && VaccineComponent::reportComponent == id() ){
         mon::recordDeploy(mon::measure("nMassVaccinations"), mon::measure("nEPIVaccinations"), human, method);
     }

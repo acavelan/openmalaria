@@ -28,7 +28,7 @@
 
 namespace OM {
 namespace Host {
-    class Human;
+    struct Human;
 }
 namespace interventions {
 using util::LocalRng;

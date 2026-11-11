@@ -24,7 +24,7 @@
 #define Hmod_EmergenceRateEstimator
 
 #include "Global.h"
-#include "Transmission/PerHost.h"
+#include "Host/HumanTransmission.h"
 #include "util/SimpleDecayingValue.h"
 #include "util/vectors.h"
 #include "util/CommandLine.h"

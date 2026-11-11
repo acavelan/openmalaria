@@ -42,7 +42,7 @@ class UnittestUtil;
 
 namespace OM {
 namespace Host {
-    class Human;
+    struct Human;
 }
 namespace WithinHost {
 

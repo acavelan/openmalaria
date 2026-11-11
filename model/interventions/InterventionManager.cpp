@@ -557,7 +557,7 @@ void InterventionManager::deploy(vector<Host::Human> &population, Transmission::
     // deploy continuous interventions
     for (Host::Human &human : population)
     {
-        uint32_t nextCtsDist = human.nextCtsDist;
+        uint32_t nextCtsDist = human.interventions.nextContinuousDeployment;
         // deploy continuous interventions
         while (nextCtsDist < continuous.size())
         {
@@ -567,8 +567,8 @@ void InterventionManager::deploy(vector<Host::Human> &population, Transmission::
                 continuous[nextCtsDist].print_details(cout);
                 cout << endl;
             }
-            if (!continuous[nextCtsDist].filterAndDeploy(human)) break; // deployment (and all remaining) happens in the future
-            nextCtsDist = ++human.nextCtsDist;
+            if (!continuous[nextCtsDist].filterAndDeploy(human, transmission.hostParameters)) break; // deployment (and all remaining) happens in the future
+            nextCtsDist = ++human.interventions.nextContinuousDeployment;
         }
     }
 }

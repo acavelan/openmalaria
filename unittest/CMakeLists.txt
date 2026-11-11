@@ -37,6 +37,8 @@ set (OM_CXXTEST_HEADERS
   DummyInfectionSuite.h
   EmpiricalInfectionSuite.h
   InfectionImmunitySuite.h
+  IncidenceSuite.h
+  HumanTransmissionSuite.h
   #DescriptiveInfectionSuite.h
   #ESCaseManagementSuite.h
   CMDecisionTreeSuite.h

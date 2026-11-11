@@ -34,7 +34,7 @@ namespace scnXml{
 }
 
 namespace OM {
-    namespace Host { class Human; }
+    namespace Host { struct Human; }
     namespace WithinHost { namespace Pathogenesis {
 
 using util::LocalRng;

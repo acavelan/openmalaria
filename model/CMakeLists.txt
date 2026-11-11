@@ -33,6 +33,8 @@ configure_file(
 
 # Don't use aux_source_directory on . because we don't want to compile openMalaria.cpp in to the lib.
 set (Model_CPP
+  Model.cpp
+  ModelInitialization.cpp
   sim.cpp
   Population.cpp
   PopulationAgeStructure.cpp
@@ -59,8 +61,10 @@ set (Model_CPP
   PkPd/Drug/LSTMDrugType.cpp
   PkPd/LSTMTreatments.cpp
   
+  Transmission/transmission.cpp
   Transmission/VectorModel.cpp
-  Transmission/PerHost.cpp
+  Host/HumanTransmission.cpp
+  interventions/HumanComponents.cpp
   Transmission/Anopheles/AnophelesModel.cpp
   Transmission/Anopheles/CalcNvO.cpp
   
@@ -93,7 +97,6 @@ set (Model_CPP
   util/sampler.cpp
   util/SpeciesIndexChecker.cpp
   util/DocumentLoader.cpp
-  util/random.cpp
   util/UnitParse.cpp
   util/DecayFunction.cpp
   
