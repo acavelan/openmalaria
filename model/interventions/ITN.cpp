@@ -546,13 +546,6 @@ void ITNComponent::print_details( std::ostream& out )const{
     out << id().id << "\tITN";
 }
 
-unique_ptr<PerHostInterventionData> ITNComponent::makeHumanPart(LocalRng& rng, SimTime now) const{
-    return make_unique<HumanITN>( rng, *this, now );
-}
-unique_ptr<PerHostInterventionData> ITNComponent::makeHumanPart( istream& stream, ComponentId ) const{
-    return make_unique<HumanITN>( stream, *this );
-}
-
 void ITNComponent::ITNAnopheles::init(
     const scnXml::ITNDescription::AnophelesParamsType& elt,
     double proportionUse,
@@ -625,111 +618,125 @@ void ITNComponent::ITNAnopheles::init(
     proportionUnprotected = 1.0 - proportionProtected;
 }
 
-HumanITN::HumanITN( LocalRng& rng, const ITNComponent& params, SimTime now ) :
-        PerHostInterventionData( params.id() ),
-        component( params ),
-        nHoles( 0 ),
-        holeIndex( 0.0 )
+} } // namespace OM::interventions
+
+namespace OM {
+namespace interventions {
+
+// —————  per-host net state: Transmission::PerHostInterventionData, kind ITN  —————
+namespace {
+const interventions::ITNComponent& componentOf(const Transmission::PerHostInterventionData& d) {
+    return static_cast<const interventions::ITNComponent&>(d.component);
+}
+/// Remaining insecticide content of the net (implies age 1 TS on first use).
+double insecticideContent(const Transmission::PerHostInterventionData& d, SimTime now) {
+    return d.initialInsecticide * d.decayHet->eval(now - d.deployTime);
+}
+}
+
+void itnInitNew(Transmission::PerHostInterventionData& d, LocalRng& rng, const Transmission::HumanVectorInterventionComponent&, SimTime now)
 {
     // Net rips and insecticide loss are assumed to co-vary dependent on
     // handling of net. They are sampled once per human: human handling is
     // presumed to be the largest cause of variance.
     util::NormalSample x = util::NormalSample::generate(rng);
-    holeRate = params.holeRate->sample(x);
-    ripRate = params.ripRate->sample(x);
-    insecticideDecayHet = params.insecticideDecay->hetSample(x);
+    const interventions::ITNComponent& params = componentOf(d);
+    d.holeRate = params.holeRate->sample(x);
+    d.ripRate = params.ripRate->sample(x);
+    d.decayHet = params.insecticideDecay->hetSample(x);
 
-    // Sample per-deployment variables as in redeploy:
-    disposalTime = now + params.attritionOfNets->sampleAgeOfDecay(rng);
+    // Sample per-deployment variables as in itnRedeploy:
+    d.deployTime = sim::now();
+    d.disposalTime = now + params.attritionOfNets->sampleAgeOfDecay(rng);
     // this is sampled independently: initial insecticide content doesn't depend on handling
-    initialInsecticide = params.initialInsecticide.sample(rng);
-    if( initialInsecticide < 0.0 )
-        initialInsecticide = 0.0;       // avoid negative samples
-    if( initialInsecticide > params.maxInsecticide )
-        initialInsecticide = params.maxInsecticide;
+    d.initialInsecticide = params.initialInsecticide.sample(rng);
+    if( d.initialInsecticide < 0.0 )
+        d.initialInsecticide = 0.0;       // avoid negative samples
+    if( d.initialInsecticide > params.maxInsecticide )
+        d.initialInsecticide = params.maxInsecticide;
 }
 
-void HumanITN::redeploy(LocalRng& rng, const OM::Transmission::HumanVectorInterventionComponent&, SimTime now) {
+void itnRedeploy(Transmission::PerHostInterventionData& d, LocalRng& rng, const Transmission::HumanVectorInterventionComponent&, SimTime now) {
     // PerHost::deployComponent only redeploys when the component ids match,
     // so the passed params are always the same component we were built with.
-    deployTime = now;
-    disposalTime = now + component.attritionOfNets->sampleAgeOfDecay(rng);
-    nHoles = 0;
-    holeIndex = 0.0;
+    const interventions::ITNComponent& component = componentOf(d);
+    d.deployTime = now;
+    d.disposalTime = now + component.attritionOfNets->sampleAgeOfDecay(rng);
+    d.nHoles = 0;
+    d.holeIndex = 0.0;
     // this is sampled independently: initial insecticide content doesn't depend on handling
-    initialInsecticide = component.initialInsecticide.sample(rng);
-    if( initialInsecticide < 0.0 )
-        initialInsecticide = 0.0;	// avoid negative samples
-    if( initialInsecticide > component.maxInsecticide )
-        initialInsecticide = component.maxInsecticide;
+    d.initialInsecticide = component.initialInsecticide.sample(rng);
+    if( d.initialInsecticide < 0.0 )
+        d.initialInsecticide = 0.0;	// avoid negative samples
+    if( d.initialInsecticide > component.maxInsecticide )
+        d.initialInsecticide = component.maxInsecticide;
 }
 
-void HumanITN::update(Host::Human& human, SimTime ts0){
-    if( deployTime != sim::never() ){
+void itnUpdate(Transmission::PerHostInterventionData& d, Host::Human& human, SimTime ts0){
+    if( d.deployTime != sim::never() ){
         // First use is at age 0 relative to ts0()
-        if( ts0 >= disposalTime ){
-            deployTime = sim::never();
-            human.removeFromCohort(id());
+        if( ts0 >= d.disposalTime ){
+            d.deployTime = sim::never();
+            human.removeFromCohort(d.id);
             return;
         }
         
         int newHoles = 0;
-        if( holeRate > 0)
-            newHoles = human.rng.poisson( holeRate );
+        if( d.holeRate > 0)
+            newHoles = human.rng.poisson( d.holeRate );
 
-        nHoles += newHoles;
-        holeIndex += newHoles;
+        d.nHoles += newHoles;
+        d.holeIndex += newHoles;
 
-        double lambda = nHoles * ripRate;
+        double lambda = d.nHoles * d.ripRate;
         if (lambda > 0)
-            holeIndex += component.ripFactor * human.rng.poisson( lambda );
+            d.holeIndex += componentOf(d).ripFactor * human.rng.poisson( lambda );
     }
 }
 
-double HumanITN::relativeAttractiveness(size_t speciesIndex, SimTime now) const{
-    if( deployTime == sim::never() ) return 1.0;
-    const ITNComponent::ITNAnopheles& anoph = component.species[speciesIndex];
-    return anoph.relativeAttractiveness( holeIndex, getInsecticideContent(component, now) );
+double itnRelativeAttractiveness(const Transmission::PerHostInterventionData& d, size_t speciesIndex, SimTime now){
+    if( d.deployTime == sim::never() ) return 1.0;
+    const interventions::ITNComponent::ITNAnopheles& anoph = componentOf(d).species[speciesIndex];
+    return anoph.relativeAttractiveness( d.holeIndex, insecticideContent(d, now) );
 }
 
-double HumanITN::preprandialSurvivalFactor(size_t speciesIndex, SimTime now) const{
-    if( deployTime == sim::never() ) return 1.0;
-    const ITNComponent::ITNAnopheles& anoph = component.species[speciesIndex];
-    return anoph.preprandialSurvivalFactor( holeIndex, getInsecticideContent(component, now) );
+double itnPreprandialSurvivalFactor(const Transmission::PerHostInterventionData& d, size_t speciesIndex, SimTime now){
+    if( d.deployTime == sim::never() ) return 1.0;
+    const interventions::ITNComponent::ITNAnopheles& anoph = componentOf(d).species[speciesIndex];
+    return anoph.preprandialSurvivalFactor( d.holeIndex, insecticideContent(d, now) );
 }
 
-double HumanITN::postprandialSurvivalFactor(size_t speciesIndex, SimTime now) const{
-    if( deployTime == sim::never() ) return 1.0;
-    const ITNComponent::ITNAnopheles& anoph = component.species[speciesIndex];
-    return anoph.postprandialSurvivalFactor( holeIndex, getInsecticideContent(component, now) );
-}
-double HumanITN::relFecundity(size_t speciesIndex, SimTime now) const{
-    if( deployTime == sim::never() ) return 1.0;
-    const ITNComponent::ITNAnopheles& anoph = component.species[speciesIndex];
-    return anoph.relFecundity( holeIndex, getInsecticideContent(component, now) );
+double itnPostprandialSurvivalFactor(const Transmission::PerHostInterventionData& d, size_t speciesIndex, SimTime now){
+    if( d.deployTime == sim::never() ) return 1.0;
+    const interventions::ITNComponent::ITNAnopheles& anoph = componentOf(d).species[speciesIndex];
+    return anoph.postprandialSurvivalFactor( d.holeIndex, insecticideContent(d, now) );
 }
 
-void HumanITN::checkpoint( ostream& stream ){
-    deployTime & stream;
-    disposalTime & stream;
-    nHoles & stream;
-    holeIndex & stream;
-    initialInsecticide & stream;
-    holeRate & stream;
-    ripRate & stream;
-    component.insecticideDecay->checkpointSample(insecticideDecayHet, stream);
+double itnRelFecundity(const Transmission::PerHostInterventionData& d, size_t speciesIndex, SimTime now){
+    if( d.deployTime == sim::never() ) return 1.0;
+    const interventions::ITNComponent::ITNAnopheles& anoph = componentOf(d).species[speciesIndex];
+    return anoph.relFecundity( d.holeIndex, insecticideContent(d, now) );
 }
-HumanITN::HumanITN( istream& stream, const ITNComponent& params ) :
-    PerHostInterventionData( params.id() ), component( params )
-{
-    deployTime & stream;
-    disposalTime & stream;
-    nHoles & stream;
-    holeIndex & stream;
-    initialInsecticide & stream;
-    holeRate & stream;
-    ripRate & stream;
-    component.insecticideDecay->checkpointSample(insecticideDecayHet, stream);
+
+void itnCheckpoint(Transmission::PerHostInterventionData& d, ostream& stream){
+    d.deployTime & stream;
+    d.disposalTime & stream;
+    d.nHoles & stream;
+    d.holeIndex & stream;
+    d.initialInsecticide & stream;
+    d.holeRate & stream;
+    d.ripRate & stream;
+    componentOf(d).insecticideDecay->checkpointSample(d.decayHet, stream);
+}
+void itnRead(istream& stream, Transmission::PerHostInterventionData& d){
+    d.deployTime & stream;
+    d.disposalTime & stream;
+    d.nHoles & stream;
+    d.holeIndex & stream;
+    d.initialInsecticide & stream;
+    d.holeRate & stream;
+    d.ripRate & stream;
+    componentOf(d).insecticideDecay->checkpointSample(d.decayHet, stream);
 }
 
 } }

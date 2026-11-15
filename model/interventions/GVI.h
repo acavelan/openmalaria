@@ -36,7 +36,6 @@ namespace OM { namespace interventions {
     using util::DecayFunction;
     using util::LognormalSampler;
     using util::LocalRng;
-    using Transmission::PerHostInterventionData;
 
 /** Constant parameters for generic vector intervention model. */
 class GVIComponent : public Transmission::HumanVectorInterventionComponent {
@@ -54,9 +53,6 @@ public:
     virtual Component::Type componentType() const;
     
     virtual void print_details( std::ostream& out )const;
-    
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng& rng, SimTime /*now*/) const;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream, ComponentId ) const;
     
 public:
     /** Per mosquito-species parameters for generic vector intervention model. */
@@ -87,51 +83,6 @@ public:
     
     unique_ptr<DecayFunction> decay;
     vector<GVIAnopheles> species;  // vector specific params
-};
-
-/** Low-level (generic) vector intervention model. Has three effects:
- * deterrency, pre-prandial killing and post-prandial killing.
- * 
- * This is the per-host (but not per vector) part.
- */
-class HumanGVI : public PerHostInterventionData {
-public:
-    HumanGVI( LocalRng& rng, const GVIComponent& params );
-    /// Read from checkpoint; component params are known (id was read by the caller).
-    HumanGVI( istream& stream, const GVIComponent& params );
-    
-    virtual void redeploy( LocalRng& rng, const Transmission::HumanVectorInterventionComponent&, SimTime now );
-    
-    virtual Component::Type componentType() const override { return Component::GVI; }
-    
-    /** This is the survival factor of the effect. */
-    inline double getEffectSurvival(const GVIComponent& params, SimTime now)const{
-        SimTime age = now - deployTime;  // implies age 1 TS on first use
-        return decayHet->eval( age );
-    }
-    
-    virtual void update(Host::Human& human, SimTime ts0);
-    
-    /// Get deterrency. See ComponentParams::effect for a more detailed description.
-    virtual double relativeAttractiveness(size_t speciesIndex, SimTime now) const;
-    /// Get killing effect on mosquitoes before they've eaten.
-    /// See ComponentParams::effect for a more detailed description.
-    virtual double preprandialSurvivalFactor(size_t speciesIndex, SimTime now) const;
-    /// Get killing effect on mosquitoes after they've eaten.
-    /// See ComponentParams::effect for a more detailed description.
-    virtual double postprandialSurvivalFactor(size_t speciesIndex, SimTime now) const;
-    /// Get the mosquito fecundity multiplier (1 for no effect).
-    virtual double relFecundity(size_t speciesIndex, SimTime now) const;
-    
-public:
-    virtual void checkpoint( ostream& stream );
-    
-public:
-    /// The parameters describing this intervention (lives as long as the run).
-    const GVIComponent& component;
-    
-    // this parameter is sampled on first deployment, but never resampled for the same human:
-    unique_ptr<DecayFunction> decayHet;
 };
 
 } }

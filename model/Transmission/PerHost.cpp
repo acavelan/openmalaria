@@ -31,6 +31,86 @@ namespace OM {
 namespace Transmission {
 using namespace OM::util;
 
+namespace {
+// Kind dispatch for PerHostInterventionData (only vector kinds are stored).
+using PHID = PerHostInterventionData;
+
+std::unique_ptr<PHID> makeHumanPart(LocalRng& rng, const HumanVectorInterventionComponent& params, SimTime now)
+{
+    auto d = std::make_unique<PHID>(params.componentType(), params, params.id());
+    switch (d->kind) {
+    case interventions::Component::ITN: interventions::itnInitNew(*d, rng, params, now); break;
+    case interventions::Component::IRS: interventions::irsInitNew(*d, rng, params, now); break;
+    case interventions::Component::GVI: interventions::gviInitNew(*d, rng, params, now); break;
+    default: break; // not a vector component: never deployed here
+    }
+    return d;
+}
+void redeploy(PHID& d, LocalRng& rng, const HumanVectorInterventionComponent& params, SimTime now)
+{
+    switch (d.kind) {
+    case interventions::Component::ITN: interventions::itnRedeploy(d, rng, params, now); break;
+    case interventions::Component::IRS: interventions::irsRedeploy(d, rng, params, now); break;
+    case interventions::Component::GVI: interventions::gviRedeploy(d, rng, params, now); break;
+    default: break;
+    }
+}
+void updateInterv(PHID& d, Host::Human& human, SimTime ts0)
+{
+    switch (d.kind) {
+    case interventions::Component::ITN: interventions::itnUpdate(d, human, ts0); break;
+    case interventions::Component::IRS: interventions::irsUpdate(d, human, ts0); break;
+    case interventions::Component::GVI: interventions::gviUpdate(d, human, ts0); break;
+    default: break;
+    }
+}
+double interv_relativeAttractiveness(const PHID& d, size_t species, SimTime now)
+{
+    switch (d.kind) {
+    case interventions::Component::ITN: return interventions::itnRelativeAttractiveness(d, species, now);
+    case interventions::Component::IRS: return interventions::irsRelativeAttractiveness(d, species, now);
+    case interventions::Component::GVI: return interventions::gviRelativeAttractiveness(d, species, now);
+    }
+    return 1.0;
+}
+double interv_preprandialSurvivalFactor(const PHID& d, size_t species, SimTime now)
+{
+    switch (d.kind) {
+    case interventions::Component::ITN: return interventions::itnPreprandialSurvivalFactor(d, species, now);
+    case interventions::Component::IRS: return interventions::irsPreprandialSurvivalFactor(d, species, now);
+    case interventions::Component::GVI: return interventions::gviPreprandialSurvivalFactor(d, species, now);
+    }
+    return 1.0;
+}
+double interv_postprandialSurvivalFactor(const PHID& d, size_t species, SimTime now)
+{
+    switch (d.kind) {
+    case interventions::Component::ITN: return interventions::itnPostprandialSurvivalFactor(d, species, now);
+    case interventions::Component::IRS: return interventions::irsPostprandialSurvivalFactor(d, species, now);
+    case interventions::Component::GVI: return interventions::gviPostprandialSurvivalFactor(d, species, now);
+    }
+    return 1.0;
+}
+double interv_relFecundity(const PHID& d, size_t species, SimTime now)
+{
+    switch (d.kind) {
+    case interventions::Component::ITN: return interventions::itnRelFecundity(d, species, now);
+    case interventions::Component::IRS: return interventions::irsRelFecundity(d, species, now);
+    case interventions::Component::GVI: return interventions::gviRelFecundity(d, species, now);
+    }
+    return 1.0;
+}
+void checkpointInterv(PHID& d, ostream& stream)
+{
+    switch (d.kind) {
+    case interventions::Component::ITN: interventions::itnCheckpoint(d, stream); break;
+    case interventions::Component::IRS: interventions::irsCheckpoint(d, stream); break;
+    case interventions::Component::GVI: interventions::gviCheckpoint(d, stream); break;
+    default: break;
+    }
+}
+} // anonymous namespace
+
 // -----  PerHost static  -----
 
 PerHostAnophParams::PerHostAnophParams (const scnXml::Mosq& mosq) {
@@ -73,7 +153,7 @@ void PerHost::initialise (LocalRng& rng, double availabilityFactor, const Vector
 
 void PerHost::update(Host::Human& human, SimTime ts0){
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        (*iter)->update(human, ts0);
+        updateInterv(**iter, human, ts0);
     }
 }
 
@@ -81,14 +161,14 @@ void PerHost::deployComponent( LocalRng& rng, const HumanVectorInterventionCompo
     // This adds per-host per-intervention details to the host's data set.
     // This data is never removed since it can contain per-host heterogeneity samples.
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        if( (*iter)->id() == params.id() ){
+        if( (*iter)->id == params.id() ){
             // already have a deployment for that description; just update it
-            (*iter)->redeploy( rng, params, now );
+            redeploy(**iter, rng, params, now );
             return;
         }
     }
     // no deployment for that description: must make a new one
-    activeComponents.push_back( params.makeHumanPart(rng, now) );
+    activeComponents.push_back( makeHumanPart(rng, params, now) );
 }
 
 // Note: in the case an intervention is not present, we can use the approximation
@@ -99,21 +179,21 @@ void PerHost::deployComponent( LocalRng& rng, const HumanVectorInterventionCompo
 double PerHost::entoAvailabilityHetVecItv (size_t species, SimTime now) const {
     double alpha_i = anophEntoAvailability[species];
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        alpha_i *= (*iter)->relativeAttractiveness( species, now );
+        alpha_i *= interv_relativeAttractiveness(**iter, species, now );
     }
     return alpha_i;
 }
 double PerHost::probMosqBiting (size_t species, SimTime now) const {
     double P_B_i = anophProbMosqBiting[species];
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        P_B_i *= (*iter)->preprandialSurvivalFactor( species, now );
+        P_B_i *= interv_preprandialSurvivalFactor(**iter, species, now );
     }
     return P_B_i;
 }
 double PerHost::probMosqResting (size_t species, SimTime now) const {
     double pRest = anophProbMosqResting[species];
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        pRest *= (*iter)->postprandialSurvivalFactor( species, now );
+        pRest *= interv_postprandialSurvivalFactor(**iter, species, now );
     }
     return pRest;
 }
@@ -121,7 +201,7 @@ double PerHost::probMosqResting (size_t species, SimTime now) const {
 double PerHost::relMosqFecundity (size_t species, SimTime now) const {
     double relFecundity = 1.0;
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        relFecundity *= (*iter)->relFecundity( species, now );
+        relFecundity *= interv_relFecundity(**iter, species, now );
     }
     return relFecundity;
 }
@@ -129,7 +209,7 @@ double PerHost::relMosqFecundity (size_t species, SimTime now) const {
 bool PerHost::hasActiveInterv(interventions::Component::Type type) const{
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
         if( (*iter)->isDeployed() ){
-            if( (*iter)->componentType() == type )
+            if( (*iter)->kind == type )
                 return true;
         }
     }
@@ -139,7 +219,9 @@ bool PerHost::hasActiveInterv(interventions::Component::Type type) const{
 void PerHost::checkpointIntervs( ostream& stream ){
     activeComponents.size() & stream;
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        *iter & stream;
+        (*iter)->id & stream; // must be first; read externally so that the
+                // correct kind can be found
+        checkpointInterv(**iter, stream);
     }
 }
 void PerHost::load( istream& stream, const interventions::InterventionRegistry& reg ) {
@@ -166,7 +248,14 @@ void PerHost::checkpointIntervs( istream& stream, const interventions::Intervent
                 dynamic_cast<const HumanVectorInterventionComponent*>( &gen_params );
             if( params == 0 )
                 throw util::base_exception( "" );       // see catch block below
-            activeComponents.push_back( params->makeHumanPart( stream, id ) );
+            auto d = std::make_unique<PerHostInterventionData>( params->componentType(), *params, id );
+            switch (d->kind) {
+            case interventions::Component::ITN: interventions::itnRead(stream, *d); break;
+            case interventions::Component::IRS: interventions::irsRead(stream, *d); break;
+            case interventions::Component::GVI: interventions::gviRead(stream, *d); break;
+            default: throw util::base_exception( "" );  // not a vector component
+            }
+            activeComponents.push_back( std::move(d) );
         }catch( util::base_exception& e ){
             // two causes, both boil down to index being wrong
             throw util::checkpoint_error( "bad value in checkpoint file" );

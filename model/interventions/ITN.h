@@ -38,7 +38,6 @@ namespace interventions {
     using util::NormalSampler;
     using util::LognormalSampler;
     using util::LocalRng;
-    using Transmission::PerHostInterventionData;
 
 
 // —————  main, public classes  —————
@@ -53,9 +52,6 @@ public:
     virtual Component::Type componentType() const;
     
     virtual void print_details( std::ostream& out )const;
-    
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng& rng, SimTime now) const;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream, ComponentId id ) const;
     
 public:
     /** Per mosquito-species parameters for extended ITN model. */
@@ -110,60 +106,6 @@ public:
     unique_ptr<DecayFunction> insecticideDecay;
     unique_ptr<DecayFunction> attritionOfNets;
     vector<ITNAnopheles> species; // vector specific params
-};
-
-/** Extended ITN model by OB.
- * 
- * Each instance describes a hypothetical net (or no net).
- */
-class HumanITN : public PerHostInterventionData {
-public:
-    HumanITN( LocalRng& rng, const ITNComponent& params, SimTime now );
-    // Read from checkpoint; the component params are known (id was read by the caller).
-    HumanITN( istream& stream, const ITNComponent& params );
-    
-    virtual void redeploy(LocalRng& rng, const Transmission::HumanVectorInterventionComponent& params, SimTime now);
-    
-    virtual Component::Type componentType() const override { return Component::ITN; }
-    
-    inline double getInsecticideContent(const ITNComponent& params, SimTime now)const{
-            SimTime age = now - deployTime;  // implies age 1 TS on first use
-        double effectSurvival = insecticideDecayHet->eval( age );
-        return initialInsecticide * effectSurvival;
-    }
-    
-    /// Call once per time step to update holes
-    virtual void update(Host::Human& human, SimTime ts0);
-    
-    /// Get deterrency. See ComponentParams::effect for a more detailed description.
-    virtual double relativeAttractiveness(size_t speciesIndex, SimTime now) const;
-    /// Get killing effect on mosquitoes before they've eaten.
-    /// See ComponentParams::effect for a more detailed description.
-    virtual double preprandialSurvivalFactor(size_t speciesIndex, SimTime now) const;
-    /// Get killing effect on mosquitoes after they've eaten.
-    /// See ComponentParams::effect for a more detailed description.
-    virtual double postprandialSurvivalFactor(size_t speciesIndex, SimTime now) const;
-    /// Get the mosquito fecundity multiplier (1 for no effect).
-    virtual double relFecundity(size_t speciesIndex, SimTime now) const;
-    
-public:
-    virtual void checkpoint( ostream& stream );
-    
-public:
-    /// The parameters describing this kind of net (lives as long as the run).
-    const ITNComponent& component;
-    
-    // these parameters express the current state of the net:
-    SimTime disposalTime = sim::never();	// time at which net will be disposed of (if it's not already been replaced)
-    int nHoles;				// total number of holes
-    double holeIndex;		// a measure of both the number and size of holes
-    double initialInsecticide;	// units: mg/m²
-    
-    // these parameters are sampled from log-normal per net, but thereafter constant:
-    double holeRate;	// rate at which new holes are created (holes/time-step)
-    double ripRate;		// rate at which holes are enlarged (rips/hole/time-step)
-    unique_ptr<DecayFunction> insecticideDecayHet;
-
 };
 
 } }

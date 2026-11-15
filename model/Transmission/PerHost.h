@@ -168,69 +168,36 @@ public:
     vector<double> entoAvailabilityPercentiles;
 };
 
-/**
- * A base class for interventions affecting human-vector interaction.
- * 
- * The constructor should initialise the data to represent an intervention
- * deployed at this time (sim::now()).
- * 
- * redeploy() should reset the intervention to a freshly deployed state. If
- * necessary, PerHost::deployComponent can be updated to make it create a new
- * instance instead of calling redeploy.
- */
-class PerHostInterventionData {
-public:
-    virtual ~PerHostInterventionData() {}
-    
-    /** Deploy an intervention. */
-    virtual void redeploy( LocalRng& rng, const HumanVectorInterventionComponent& params, SimTime now ) =0;
-    
-    /** Per time step update. Used by ITNs to update hole decay. */
-    virtual void update(Host::Human& human, SimTime ts0) =0;
-    
-    /** Get effect of deterrencies of interventions, as an attractiveness multiplier.
-     * 
-     * @return a value describing effect on attractiveness. Must not be
-     * negative. 0 means mosquitoes are fully deterred, 1 that the intervention
-     * has no effect, 2 that the intervention attracts twice as many mosquitoes
-     * as would otherwise come. */
-    virtual double relativeAttractiveness(size_t species, SimTime now) const =0;
-    /** Get the killing effect on mosquitoes before they've eaten as a survival
-     * multiplier. */
-    virtual double preprandialSurvivalFactor(size_t species, SimTime now) const =0;
-    /** Get the killing effect on mosquitoes after they've eaten as a survival
-     * multiplier. */
-    virtual double postprandialSurvivalFactor(size_t species, SimTime now) const =0;
-    /// Get the mosquito fecundity multiplier (1 for no effect).
-    virtual double relFecundity(size_t species, SimTime now) const =0;
-    
-    /// Index of effect describing the intervention
-    inline interventions::ComponentId id() const { return m_id; }
-    
-    /// Which kind of component this deployment belongs to.
-    virtual interventions::Component::Type componentType() const =0;
-    
+/** Deployment state of one vector intervention on one host. Kind selects
+ * which fields are live and what the effect functions compute; the per-kind
+ * logic is the free functions declared below (implemented in
+ * interventions/ITN.cpp, IRS.cpp, GVI.cpp, dispatched from PerHost.cpp). */
+struct PerHostInterventionData {
+    PerHostInterventionData( interventions::Component::Type kind,
+            const HumanVectorInterventionComponent& component, interventions::ComponentId id ) :
+        kind(kind), component(component), id(id), deployTime( sim::now() ) {}
+
+    interventions::Component::Type kind;
+    const HumanVectorInterventionComponent& component;
+    interventions::ComponentId id;          // component id; don't change
+
+    SimTime deployTime = sim::never();      // time of deployment or sim::never()
     /// Return true if this component is deployed (i.e. currently active)
-    inline bool isDeployed() const{ return deployTime != sim::never(); }
-    
-    /// Checkpointing (write only)
-    void operator& (ostream& stream) {
-        m_id & stream; // must be first; read externally so that the correct
-                // makeHumanPart function can be found
-        checkpoint( stream );
-    }
-    
-public:
-    /// Set the component id
-    explicit PerHostInterventionData( interventions::ComponentId id ) :
-            deployTime( sim::now() ),
-            m_id(id) {}
-    
-    /// Checkpointing: write
-    virtual void checkpoint( ostream& stream ) =0;
-    
-    SimTime deployTime = sim::never();        // time of deployment or sim::never()
-    interventions::ComponentId m_id;       // component id; don't change
+    bool isDeployed() const { return deployTime != sim::never(); }
+
+    /** Heterogeneity sample of the component's decay function — insecticide
+     * decay for ITN/IRS, effect decay for GVI. Sampled once per human. */
+    unique_ptr<util::DecayFunction> decayHet;
+
+    /// ITN only:
+    SimTime disposalTime = sim::never();    // time at which the net is disposed of
+    int nHoles = 0;
+    double holeIndex = 0.0;                 // measure of number and size of holes
+    double holeRate = 0.0;                  // holes per time-step
+    double ripRate = 0.0;                   // rips per hole per time-step
+
+    /// ITN and IRS:
+    double initialInsecticide = 0.0;        // mg/m²
 };
 
 /** A base class for human vector intervention parameters. */
@@ -238,10 +205,6 @@ class HumanVectorInterventionComponent : public interventions::HumanIntervention
 public:
     virtual ~HumanVectorInterventionComponent() {}
     
-    /** Create a new object to store human-specific details of deployment. */
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng&, SimTime now) const =0;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream,
-            interventions::ComponentId id ) const =0;
 public:
     explicit HumanVectorInterventionComponent(interventions::ComponentId id) :
             HumanInterventionComponent(id) {}
@@ -403,4 +366,50 @@ public:
 
 }
 }
+/** Per-kind deployment logic for PerHostInterventionData. InitNew samples
+ * the per-human heterogeneity and sets deployTime; Redeploy resets
+ * per-deployment state. Effects return multipliers (1 = no effect).
+ * Checkpoint/Read use the same per-kind field order (the id is streamed by
+ * the caller, first). Implemented in interventions/ITN.cpp, IRS.cpp, GVI.cpp;
+ * dispatched from PerHost.cpp. */
+//@{
+namespace OM {
+namespace interventions {
+    void itnInitNew(Transmission::PerHostInterventionData&, util::LocalRng&,
+        const Transmission::HumanVectorInterventionComponent&, SimTime now);
+    void itnRedeploy(Transmission::PerHostInterventionData&, util::LocalRng&,
+        const Transmission::HumanVectorInterventionComponent&, SimTime now);
+    void itnUpdate(Transmission::PerHostInterventionData&, Host::Human&, SimTime ts0);
+    double itnRelativeAttractiveness(const Transmission::PerHostInterventionData&, size_t species, SimTime now);
+    double itnPreprandialSurvivalFactor(const Transmission::PerHostInterventionData&, size_t species, SimTime now);
+    double itnPostprandialSurvivalFactor(const Transmission::PerHostInterventionData&, size_t species, SimTime now);
+    double itnRelFecundity(const Transmission::PerHostInterventionData&, size_t species, SimTime now);
+    void itnCheckpoint(Transmission::PerHostInterventionData&, ostream&);
+    void itnRead(istream&, Transmission::PerHostInterventionData&);
+
+    void irsInitNew(Transmission::PerHostInterventionData&, util::LocalRng&,
+        const Transmission::HumanVectorInterventionComponent&, SimTime now);
+    void irsRedeploy(Transmission::PerHostInterventionData&, util::LocalRng&,
+        const Transmission::HumanVectorInterventionComponent&, SimTime now);
+    void irsUpdate(Transmission::PerHostInterventionData&, Host::Human&, SimTime ts0);
+    double irsRelativeAttractiveness(const Transmission::PerHostInterventionData&, size_t species, SimTime now);
+    double irsPreprandialSurvivalFactor(const Transmission::PerHostInterventionData&, size_t species, SimTime now);
+    double irsPostprandialSurvivalFactor(const Transmission::PerHostInterventionData&, size_t species, SimTime now);
+    double irsRelFecundity(const Transmission::PerHostInterventionData&, size_t species, SimTime now);
+    void irsCheckpoint(Transmission::PerHostInterventionData&, ostream&);
+    void irsRead(istream&, Transmission::PerHostInterventionData&);
+
+    void gviInitNew(Transmission::PerHostInterventionData&, util::LocalRng&,
+        const Transmission::HumanVectorInterventionComponent&, SimTime now);
+    void gviRedeploy(Transmission::PerHostInterventionData&, util::LocalRng&,
+        const Transmission::HumanVectorInterventionComponent&, SimTime now);
+    void gviUpdate(Transmission::PerHostInterventionData&, Host::Human&, SimTime ts0);
+    double gviRelativeAttractiveness(const Transmission::PerHostInterventionData&, size_t species, SimTime now);
+    double gviPreprandialSurvivalFactor(const Transmission::PerHostInterventionData&, size_t species, SimTime now);
+    double gviPostprandialSurvivalFactor(const Transmission::PerHostInterventionData&, size_t species, SimTime now);
+    double gviRelFecundity(const Transmission::PerHostInterventionData&, size_t species, SimTime now);
+    void gviCheckpoint(Transmission::PerHostInterventionData&, ostream&);
+    void gviRead(istream&, Transmission::PerHostInterventionData&);
+} }
+//@}
 #endif

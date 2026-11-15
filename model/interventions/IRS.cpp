@@ -74,13 +74,6 @@ void IRSComponent::print_details( std::ostream& out )const{
     out << id().id << "\tIRS";
 }
 
-unique_ptr<PerHostInterventionData> IRSComponent::makeHumanPart(LocalRng& rng, SimTime /*now*/) const{
-    return make_unique<HumanIRS>( rng, *this );
-}
-unique_ptr<PerHostInterventionData> IRSComponent::makeHumanPart( istream& stream, ComponentId ) const{
-    return make_unique<HumanIRS>( stream, *this );
-}
-
 // The IRS response curves are the shared ITN/IRS factor models with the
 // hole terms zero and holeIndex fixed at 0 (see InterventionFactors.h).
 // Evaluated at holeIndex=0 the shared formulas reduce bit-exactly to:
@@ -175,60 +168,75 @@ double IRSComponent::sampleInitialInsecticide(LocalRng& rng) const{
 
 
 // ———  per-human data  ———
-HumanIRS::HumanIRS( LocalRng& rng, const IRSComponent& params ) :
-    PerHostInterventionData( params.id() ),
-    component( params ),
-    initialInsecticide( params.sampleInitialInsecticide(rng) )
+} } // namespace OM::interventions
+
+namespace OM {
+namespace interventions {
+
+// —————  per-host sprayed-state: Transmission::PerHostInterventionData, kind IRS  —————
+namespace {
+const interventions::IRSComponent& componentOf(const Transmission::PerHostInterventionData& d) {
+    return static_cast<const interventions::IRSComponent&>(d.component);
+}
+/// Remaining insecticide content (implies age 1 TS on first use).
+double insecticideContent(const Transmission::PerHostInterventionData& d, SimTime now) {
+    return d.initialInsecticide * d.decayHet->eval(now - d.deployTime);
+}
+}
+
+void irsInitNew(Transmission::PerHostInterventionData& d, LocalRng& rng, const Transmission::HumanVectorInterventionComponent&, SimTime /*now*/)
 {
+    const interventions::IRSComponent& params = componentOf(d);
+    d.deployTime = sim::now();
+    d.initialInsecticide = params.sampleInitialInsecticide(rng);
     // Varience factor of decay is sampled once per human: human is assumed
     // to account for most variance.
-    insecticideDecayHet = params.insecticideDecay->hetSample(rng);
+    d.decayHet = params.insecticideDecay->hetSample(rng);
 }
 
-void HumanIRS::redeploy( LocalRng& rng, const OM::Transmission::HumanVectorInterventionComponent&, SimTime now ) {
+void irsRedeploy(Transmission::PerHostInterventionData& d, LocalRng& rng, const Transmission::HumanVectorInterventionComponent&, SimTime now) {
     // PerHost::deployComponent only redeploys when the component ids match,
     // so the passed params are always the same component we were built with.
-    deployTime = now;
-    initialInsecticide = component.sampleInitialInsecticide(rng);
+    d.deployTime = now;
+    d.initialInsecticide = componentOf(d).sampleInitialInsecticide(rng);
 }
 
-void HumanIRS::update(Host::Human&, SimTime /*ts0*/){
+void irsUpdate(Transmission::PerHostInterventionData&, Host::Human&, SimTime /*ts0*/){
 }
 
-double HumanIRS::relativeAttractiveness(size_t speciesIndex, SimTime now) const{
-    const IRSComponent::IRSAnopheles& anoph = component.species[speciesIndex];
-    double effect = anoph.relativeAttractiveness( getInsecticideContent(component, now) );
+double irsRelativeAttractiveness(const Transmission::PerHostInterventionData& d, size_t speciesIndex, SimTime now){
+    const interventions::IRSComponent::IRSAnopheles& anoph = componentOf(d).species[speciesIndex];
+    double effect = anoph.relativeAttractiveness( insecticideContent(d, now) );
     return anoph.byProtection( effect );
 }
 
-double HumanIRS::preprandialSurvivalFactor(size_t speciesIndex, SimTime now) const{
-    const IRSComponent::IRSAnopheles& anoph = component.species[speciesIndex];
-    double effect = anoph.preprandialSurvivalFactor( getInsecticideContent(component, now) );
+double irsPreprandialSurvivalFactor(const Transmission::PerHostInterventionData& d, size_t speciesIndex, SimTime now){
+    const interventions::IRSComponent::IRSAnopheles& anoph = componentOf(d).species[speciesIndex];
+    double effect = anoph.preprandialSurvivalFactor( insecticideContent(d, now) );
     return anoph.byProtection( effect );
 }
 
-double HumanIRS::postprandialSurvivalFactor(size_t speciesIndex, SimTime now) const{
-    const IRSComponent::IRSAnopheles& anoph = component.species[speciesIndex];
-    double effect = anoph.postprandialSurvivalFactor( getInsecticideContent(component, now) );
-    return anoph.byProtection( effect );
-}
-double HumanIRS::relFecundity(size_t speciesIndex, SimTime now) const{
-    const IRSComponent::IRSAnopheles& anoph = component.species[speciesIndex];
-    double effect = anoph.fecundityEffect( getInsecticideContent(component, now) );
+double irsPostprandialSurvivalFactor(const Transmission::PerHostInterventionData& d, size_t speciesIndex, SimTime now){
+    const interventions::IRSComponent::IRSAnopheles& anoph = componentOf(d).species[speciesIndex];
+    double effect = anoph.postprandialSurvivalFactor( insecticideContent(d, now) );
     return anoph.byProtection( effect );
 }
 
-void HumanIRS::checkpoint( ostream& stream ){
-    deployTime & stream;
-    initialInsecticide & stream;
-    component.insecticideDecay->checkpointSample(insecticideDecayHet, stream);
+double irsRelFecundity(const Transmission::PerHostInterventionData& d, size_t speciesIndex, SimTime now){
+    const interventions::IRSComponent::IRSAnopheles& anoph = componentOf(d).species[speciesIndex];
+    double effect = anoph.fecundityEffect( insecticideContent(d, now) );
+    return anoph.byProtection( effect );
 }
-HumanIRS::HumanIRS( istream& stream, const IRSComponent& params ) :
-    PerHostInterventionData( params.id() ), component( params )
-{
-    deployTime & stream;
-    initialInsecticide & stream;
-    component.insecticideDecay->checkpointSample(insecticideDecayHet, stream);
+
+void irsCheckpoint(Transmission::PerHostInterventionData& d, ostream& stream){
+    d.deployTime & stream;
+    d.initialInsecticide & stream;
+    componentOf(d).insecticideDecay->checkpointSample(d.decayHet, stream);
+}
+void irsRead(istream& stream, Transmission::PerHostInterventionData& d){
+    d.deployTime & stream;
+    d.initialInsecticide & stream;
+    componentOf(d).insecticideDecay->checkpointSample(d.decayHet, stream);
 }
 
 } }

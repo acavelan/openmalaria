@@ -39,7 +39,6 @@ namespace interventions {
     using util::NormalSampler;
     using util::LognormalSampler;
     using util::LocalRng;
-    using Transmission::PerHostInterventionData;
 
 class IRSComponent : public Transmission::HumanVectorInterventionComponent {
 public:
@@ -51,9 +50,6 @@ public:
     virtual Component::Type componentType() const;
     
     virtual void print_details( std::ostream& out )const;
-    
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng& rng, SimTime /*now*/) const;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream, ComponentId ) const;
     
 public:
     /** Per mosquito-species parameters for extended IRS model. */
@@ -105,56 +101,6 @@ public:
     double maxInsecticide;              // maximum initial insecticide
     unique_ptr<DecayFunction> insecticideDecay;
     vector<IRSAnopheles> species; // vector specific params
-};
-
-/** Extended IRS model by OB and original model.
- * 
- * Each instance describes the effects of indoor residual spraying.
- */
-class HumanIRS : public PerHostInterventionData {
-public:
-    HumanIRS( LocalRng& rng, const IRSComponent& params );
-    /// Read from checkpoint; component params are known (id was read by the caller).
-    HumanIRS( istream& stream, const IRSComponent& params );
-    
-    virtual void redeploy(LocalRng& rng, const Transmission::HumanVectorInterventionComponent& params, SimTime now);
-    
-    virtual Component::Type componentType() const override { return Component::IRS; }
-    
-    /// Get remaining insecticide content based on initial amount and decay.
-    inline double getInsecticideContent(const IRSComponent& params, SimTime now)const{
-        SimTime age = now - deployTime;  // implies age 1 TS on first use
-        double effectSurvival = insecticideDecayHet->eval( age );
-        return initialInsecticide * effectSurvival;
-    }
-    
-    /// Call once per time step to update holes
-    virtual void update(Host::Human& human, SimTime ts0);
-    
-    /// Get deterrency. See ComponentParams::effect for a more detailed description.
-    virtual double relativeAttractiveness(size_t speciesIndex, SimTime now) const;
-    /// Get killing effect on mosquitoes before they've eaten.
-    /// See ComponentParams::effect for a more detailed description.
-    virtual double preprandialSurvivalFactor(size_t speciesIndex, SimTime now) const;
-    /// Get killing effect on mosquitoes after they've eaten.
-    /// See ComponentParams::effect for a more detailed description.
-    virtual double postprandialSurvivalFactor(size_t speciesIndex, SimTime now) const;
-    /// Get the mosquito fecundity multiplier (1 for no effect).
-    virtual double relFecundity(size_t speciesIndex, SimTime now) const;
-    
-public:
-    virtual void checkpoint( ostream& stream );
-    
-public:
-    /// The parameters describing this kind of intervention (lives as long as the run).
-    const IRSComponent& component;
-    
-    // this is sampled for each deployment: initial insecticide content doesn't
-    // depend on handling by the recipient
-    double initialInsecticide;	// units: mg/m²
-    
-    // this parameter is sampled on first deployment, but never resampled for the same human:
-    unique_ptr<DecayFunction> insecticideDecayHet;
 };
 
 } }
