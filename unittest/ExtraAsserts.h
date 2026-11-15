@@ -57,12 +57,18 @@
 #include <cmath>
 
 // Note: cxxtest already defines those macros, use a trailing underscore to avoid redefinition
+// Check for NaN:
+#   define TS_ASSERT_IS_NAN_(x) _TS_ASSERT_DIFFERS(__FILE__,__LINE__,x,x)
+
 // TS_ASSERT_APPROX
 #define DEF_REL_PRECISION 1e-7
 #define DEF_ABS_PRECISION 1e-7
 
 #   define ___ETS_ASSERT_APPROX(f,l,x,y,r,a) ExtraAsserts::assert_approx( (f), (l), (x), (y), (r), (a) )
 #   define ___TS_ASSERT_APPROX(f,l,x,y,r,a) { _TS_TRY { ___ETS_ASSERT_APPROX(f,l,x,y,r,a); } __TS_CATCH(f,l) }
+
+// Explicit tolerance:
+#   define TS_ASSERT_APPROX_TOL(x,y,r,a) ___TS_ASSERT_APPROX(__FILE__,__LINE__,x,y,r,a)
 
 // No explicit accuracy:
 #   define ETS_ASSERT_APPROX(x,y) ___ETS_ASSERT_APPROX(__FILE__,__LINE__,x,y, DEF_REL_PRECISION, DEF_ABS_PRECISION)

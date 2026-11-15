@@ -101,31 +101,18 @@ void quadratic_fdf (double x, void *params, double *y, double *dy)
     *dy = -a + b + c;
 }
 
-#define USE_DERIVATIVE
-
-#ifdef USE_DERIVATIVE
-    using gsl_root_solver_type = gsl_root_fdfsolver_type;
-    using gsl_root_solver = gsl_root_fdfsolver;
-    auto gsl_root_solver_alloc = gsl_root_fdfsolver_alloc;
-    auto gsl_root_solver_free = gsl_root_fdfsolver_free;
-    auto gsl_root_solver_name = gsl_root_fdfsolver_name;
-    auto gsl_root_solver_iterate = gsl_root_fdfsolver_iterate;
-    auto gsl_root_solver_root = gsl_root_fdfsolver_root;
-    // auto gsl_root_solver_method = gsl_root_fdfsolver_newton;
-    auto gsl_root_solver_method = gsl_root_fdfsolver_secant;
-    // auto gsl_root_solver_method = gsl_root_fdfsolver_steffenson;
-#else
-    using gsl_root_solver_type = gsl_root_fsolver_type;
-    using gsl_root_solver = gsl_root_fsolver;
-    auto gsl_root_solver_alloc = gsl_root_fsolver_alloc;
-    auto gsl_root_solver_free = gsl_root_fsolver_free;
-    auto gsl_root_solver_name = gsl_root_fsolver_name;
-    auto gsl_root_solver_iterate = gsl_root_fsolver_iterate;
-    auto gsl_root_solver_root = gsl_root_fsolver_root;
-    // auto gsl_root_solver_method = gsl_root_fsolver_brent;
-    auto gsl_root_solver_method = gsl_root_fsolver_bisection;
-    // auto gsl_root_solver_method = gsl_root_fsolver_falsepos;
-#endif
+// Root solving uses the derivative-based solver; alternate GSL methods are
+// listed below the chosen one for experiments.
+using gsl_root_solver_type = gsl_root_fdfsolver_type;
+using gsl_root_solver = gsl_root_fdfsolver;
+auto gsl_root_solver_alloc = gsl_root_fdfsolver_alloc;
+auto gsl_root_solver_free = gsl_root_fdfsolver_free;
+auto gsl_root_solver_name = gsl_root_fdfsolver_name;
+auto gsl_root_solver_iterate = gsl_root_fdfsolver_iterate;
+auto gsl_root_solver_root = gsl_root_fdfsolver_root;
+// auto gsl_root_solver_method = gsl_root_fdfsolver_newton;
+// auto gsl_root_solver_method = gsl_root_fdfsolver_steffenson;
+auto gsl_root_solver_method = gsl_root_fdfsolver_secant;
 
 
 namespace OM
@@ -622,7 +609,7 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
         const gsl_root_solver_type *T = gsl_root_solver_method;
         gsl_root_solver *s = gsl_root_solver_alloc(T);
 
-        #ifdef USE_DERIVATIVE
+        {
             gsl_function_fdf FDF;
             FDF.f = &quadratic_f;
             FDF.df = &quadratic_df;
@@ -630,13 +617,7 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
             FDF.params = &params;
 
             gsl_root_fdfsolver_set (s, &FDF, a_t);
-        #else
-            gsl_function F;
-            F.function = &quadratic_f;
-            F.params = &params;
-
-            gsl_root_fsolver_set (s, &F, 0.0, 1.0);
-        #endif
+        }
 
         do
         {
