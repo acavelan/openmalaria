@@ -51,7 +51,7 @@ using util::NormalSample;
 using util::LocalRng;
 
 class LSTMDrugType;
-class LSTMDrug;
+struct LSTMDrug;
 
 /** Drug PD parameters (specified per phenotype), as well as applicable
  * functions to calculate drug factors and concentrations.

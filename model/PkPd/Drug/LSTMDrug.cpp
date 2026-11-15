@@ -21,6 +21,7 @@
  */
 
 #include "PkPd/Drug/LSTMDrug.h"
+#include "PkPd/Drug/LSTMDrugType.h"
 #include "util/errors.h"
 #include "util/StreamValidator.h"
 #include "util/vectors.h"
@@ -37,8 +38,10 @@ using namespace std;
 namespace OM {
 namespace PkPd {
 
-LSTMDrug::LSTMDrug(double Vd): vol_dist(Vd) {}
-LSTMDrug::~LSTMDrug() {}
+LSTMDrug::LSTMDrug(Kind kind, const LSTMDrugType& typeData, double vol_dist)
+    : kind(kind), typeData(typeData), vol_dist(vol_dist) {}
+
+size_t LSTMDrug::getIndex() const { return typeData.getIndex(); }
 
 bool comp(pair<double,double> lhs, pair<double,double> rhs){
     return lhs.first < rhs.first;
@@ -55,6 +58,47 @@ void LSTMDrug::medicate(double time, double qty){
     doses.insert(pos, std::move(elt));
     assert(is_sorted(doses.begin(), doses.end(), comp));
 }
+
+
+double LSTMDrug::getConcentration(size_t index) const {
+    switch (kind) {
+    case ONE_COMP:   return lstmdrug::oneComp::getConcentration(*this, index);
+    case THREE_COMP: return lstmdrug::threeComp::getConcentration(*this, index);
+    default:         return lstmdrug::conversion::getConcentration(*this, index);
+    }
+}
+
+double LSTMDrug::calculateDrugFactor(LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const {
+    switch (kind) {
+    case ONE_COMP:   return lstmdrug::oneComp::drugFactor(*this, rng, inf, body_mass);
+    case THREE_COMP: return lstmdrug::threeComp::drugFactor(*this, rng, inf, body_mass);
+    default:         return lstmdrug::conversion::drugFactor(*this, rng, inf, body_mass);
+    }
+}
+
+void LSTMDrug::updateConcentration(double body_mass) {
+    switch (kind) {
+    case ONE_COMP:   lstmdrug::oneComp::update(*this, body_mass); break;
+    case THREE_COMP: lstmdrug::threeComp::update(*this, body_mass); break;
+    default:         lstmdrug::conversion::update(*this, body_mass); break;
+    }
+}
+
+void LSTMDrug::checkpoint(ostream& stream) {
+    switch (kind) {
+    case ONE_COMP:   lstmdrug::oneComp::checkpoint(*this, stream); break;
+    case THREE_COMP: lstmdrug::threeComp::checkpoint(*this, stream); break;
+    default:         lstmdrug::conversion::checkpoint(*this, stream); break;
+    }
+}
+void LSTMDrug::checkpoint(istream& stream) {
+    switch (kind) {
+    case ONE_COMP:   lstmdrug::oneComp::read(*this, stream); break;
+    case THREE_COMP: lstmdrug::threeComp::read(*this, stream); break;
+    default:         lstmdrug::conversion::read(*this, stream); break;
+    }
+}
+
 
 }
 }

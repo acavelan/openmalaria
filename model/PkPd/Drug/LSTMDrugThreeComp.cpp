@@ -20,7 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "PkPd/Drug/LSTMDrugThreeComp.h"
+#include "PkPd/Drug/LSTMDrug.h"
+#include "PkPd/Drug/LSTMDrugType.h"
 #include "Host/WithinHost/Infection/CommonInfection.h"
 #include "util/errors.h"
 #include "util/StreamValidator.h"
@@ -30,70 +31,7 @@
 
 using namespace std;
 
-namespace OM { namespace PkPd {
-
-LSTMDrugThreeComp::LSTMDrugThreeComp(const LSTMDrugType& type, LocalRng& rng) :
-    LSTMDrug(type.sample_Vd(rng)),
-    typeData(type),
-    concA(0.0), concB(0.0), concC(0.0), concABC(0.0),
-    elim_sample(type.sample_elim_rate(rng)),
-    k12(type.sample_k12(rng)),
-    k21(type.sample_k21(rng)),
-    k13(type.sample_k13(rng)),
-    k31(type.sample_k31(rng)),
-    nka(-type.sample_ka(rng)),
-    last_bm(numeric_limits<double>::quiet_NaN()),
-    na(numeric_limits<double>::quiet_NaN()),
-    nb(numeric_limits<double>::quiet_NaN()),
-    ng(numeric_limits<double>::quiet_NaN()),
-    A(numeric_limits<double>::quiet_NaN()),
-    B(numeric_limits<double>::quiet_NaN()),
-    C(numeric_limits<double>::quiet_NaN())
-{
-    // These are from the Monolix article, pp38-39.
-}
-
-size_t LSTMDrugThreeComp::getIndex() const {
-    return typeData.getIndex();
-}
-double LSTMDrugThreeComp::getConcentration(size_t index) const {
-    if( index == typeData.getIndex() ) return conc();
-    else return 0.0;
-}
-
-void LSTMDrugThreeComp::updateCached(double body_mass) const{
-    if( last_bm == body_mass ) return;
-    
-    double k = elim_sample * pow(body_mass, typeData.neg_m_exponent());
-    
-    const double a0 = k*k21*k31;
-    const double a1 = k*k31 + k21*k31 + k21*k13 + k*k21 + k31*k12;
-    const double a2 = k + k12 + k13 + k21 + k31;
-    
-    const double third = 1.0 / 3.0;
-    const double p = a1 - third * a2 * a2;
-    const double q = (2.0 / 27.0) * a2 * a2 * a2 - third * a1 * a2 + a0;
-    
-    const double at = third * a2;
-    const double rt = -third * p;
-    const double r2 = 2.0 * sqrt(rt);
-    
-    const double phi = acos(-q / (rt * r2)) * third;
-    const double pi23 = (2.0 / 3.0) * PI;
-    
-    // negative alpha, beta, gamma:
-    na = r2 * cos(phi) - at;
-    nb = r2 * cos(phi + pi23) - at;
-    ng = r2 * cos(phi + 2.0 * pi23) -at;
-    
-    // A, B, C from Monolix 1.3.3 (p44):
-    const double kaOv = -nka / (vol_dist * body_mass);
-    A = kaOv * (k21 + na) * (k31 + na) / ((na - nka) * (nb - na) * (ng - na));
-    B = kaOv * (k21 + nb) * (k31 + nb) / ((nb - nka) * (na - nb) * (ng - nb));
-    C = kaOv * (k21 + ng) * (k31 + ng) / ((ng - nka) * (nb - ng) * (na - ng));
-    
-    last_bm = body_mass;
-}
+namespace OM { namespace PkPd { namespace lstmdrug { namespace threeComp {
 
 /// Parameters for func_fC
 struct Params_fC {
@@ -110,7 +48,7 @@ struct Params_fC {
  * @param pp Pointer to a Params_fC struct
  * @return killing rate (unitless)
  */
-double func_fC( double t, void* pp ){
+static double func_fC( double t, void* pp ){
     const Params_fC& p = *static_cast<const Params_fC*>( pp );
     
     // exponential decay of drug concentration:
@@ -125,11 +63,11 @@ double func_fC( double t, void* pp ){
     return fC;
 }
 const size_t GSL_INTG_MAX_ITER = 1000;     // 10 seems enough, but no harm in using a higher value
-gsl_integration_workspace *gsl_intgr_wksp = gsl_integration_workspace_alloc (GSL_INTG_MAX_ITER);
+static gsl_integration_workspace *gsl_intgr_wksp = gsl_integration_workspace_alloc (GSL_INTG_MAX_ITER);
 //NOTE: we "should" free, but mem-leaks at end of program aren't really important
 // gsl_integration_workspace_free (gsl_intgr_wksp);
 
-double LSTMDrugThreeComp::calculateFactor(const Params_fC& p, double duration) const{
+static double calculateFactor(const Params_fC& p, double duration){
     gsl_function F;
     F.function = &func_fC;
     // gsl_function doesn't accept const; we re-apply const later
@@ -156,24 +94,63 @@ double LSTMDrugThreeComp::calculateFactor(const Params_fC& p, double duration) c
     return 1.0 / exp( intfC );  // drug factor
 }
 
+// Update cached constants. bm: body mass (kg)
+static void updateCached(const LSTMDrug& d, double body_mass){
+    if( d.last_bm == body_mass ) return;
+    
+    double k = d.elim_sample * pow(body_mass, d.typeData.neg_m_exponent());
+    
+    const double a0 = k*d.k21*d.k31;
+    const double a1 = k*d.k31 + d.k21*d.k31 + d.k21*d.k13 + k*d.k21 + d.k31*d.k12;
+    const double a2 = k + d.k12 + d.k13 + d.k21 + d.k31;
+    
+    const double third = 1.0 / 3.0;
+    const double p = a1 - third * a2 * a2;
+    const double q = (2.0 / 27.0) * a2 * a2 * a2 - third * a1 * a2 + a0;
+    
+    const double at = third * a2;
+    const double rt = -third * p;
+    const double r2 = 2.0 * sqrt(rt);
+    
+    const double phi = acos(-q / (rt * r2)) * third;
+    const double pi23 = (2.0 / 3.0) * PI;
+    
+    // negative alpha, beta, gamma:
+    d.na = r2 * cos(phi) - at;
+    d.nb = r2 * cos(phi + pi23) - at;
+    d.ng = r2 * cos(phi + 2.0 * pi23) -at;
+    
+    // A, B, C from Monolix 1.3.3 (p44):
+    const double kaOv = -d.nka / (d.vol_dist * body_mass);
+    d.A = kaOv * (d.k21 + d.na) * (d.k31 + d.na) / ((d.na - d.nka) * (d.nb - d.na) * (d.ng - d.na));
+    d.B = kaOv * (d.k21 + d.nb) * (d.k31 + d.nb) / ((d.nb - d.nka) * (d.na - d.nb) * (d.ng - d.nb));
+    d.C = kaOv * (d.k21 + d.ng) * (d.k31 + d.ng) / ((d.ng - d.nka) * (d.nb - d.ng) * (d.na - d.ng));
+    
+    d.last_bm = body_mass;
+}
+double getConcentration(const LSTMDrug& d, size_t index) {
+    if( index == d.typeData.getIndex() ) return d.conc();
+    else return 0.0;
+}
+
 // TODO: in high transmission, is this going to get called more often than updateConcentration?
 // When does it make sense to try to optimise (avoid doing decay calcuations here)?
-double LSTMDrugThreeComp::calculateDrugFactor(LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const {
-    if( conc() == 0.0 && doses.size() == 0 ) return 1.0; // nothing to do
-    updateCached(body_mass);
+double drugFactor(const LSTMDrug& d, LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) {
+    if( d.conc() == 0.0 && d.doses.size() == 0 ) return 1.0; // nothing to do
+    updateCached(d, body_mass);
     
     Params_fC p;
-    p.cA = concA;       p.cB = concB;   p.cC = concC;   p.cABC = concABC;
-    p.na = na;  p.nb = nb;      p.ng = ng;      p.nka = nka;
-    const LSTMDrugPD& pd = typeData.getPD(inf->genotype());
+    p.cA = d.concA;     p.cB = d.concB;   p.cC = d.concC;   p.cABC = d.concABC;
+    p.na = d.na;        p.nb = d.nb;      p.ng = d.ng;      p.nka = d.nka;
+    const LSTMDrugPD& pd = d.typeData.getPD(inf->genotype());
     p.n = pd.slope();   p.V = pd.max_killing_rate();
-    p.Kn = pd.IC50_pow_slope(rng, typeData.getIndex(), inf);
+    p.Kn = pd.IC50_pow_slope(rng, d.typeData.getIndex(), inf);
     
     double time = 0.0;  // time since start of day
     double totalFactor = 1.0;   // survival factor for whole day
     
     typedef pair<double,double> TimeConc;
-    for( const TimeConc& time_conc : doses ){
+    for( const TimeConc& time_conc : d.doses ){
         // we iteratate through doses in time order (since doses are sorted)
         if( time_conc.first < 1.0 /*i.e. today*/ ){
             if( time < time_conc.first ){
@@ -186,10 +163,10 @@ double LSTMDrugThreeComp::calculateDrugFactor(LocalRng& rng, WithinHost::CommonI
                 time = time_conc.first;
             }else{ assert( time == time_conc.first ); }
             // add dose:
-            p.cA += A * time_conc.second;
-            p.cB += B * time_conc.second;
-            p.cC += C * time_conc.second;
-            p.cABC += (A + B + C) * time_conc.second;
+            p.cA += d.A * time_conc.second;
+            p.cB += d.B * time_conc.second;
+            p.cC += d.C * time_conc.second;
+            p.cABC += (d.A + d.B + d.C) * time_conc.second;
         }else /*i.e. tomorrow or later*/{
             // ignore
         }
@@ -201,86 +178,85 @@ double LSTMDrugThreeComp::calculateDrugFactor(LocalRng& rng, WithinHost::CommonI
     return totalFactor;
 }
 
-void LSTMDrugThreeComp::updateConcentration (double body_mass) {
-    if( conc() == 0.0 && doses.size() == 0 ) return;     // nothing to do
-    updateCached(body_mass);
+void update(LSTMDrug& d, double body_mass ) {
+    if( d.conc() == 0.0 && d.doses.size() == 0 ) return;        // nothing to do
+    updateCached(d, body_mass);
     
     // exponential decay of existing quantities:
     //TODO(performance): is it faster to pre-calculate these and either store extra
     // parameters or adapt uses of alpha, beta, gamma, etc. below?
-    concA *= exp(na);
-    concB *= exp(nb);
-    concC *= exp(ng);
-    concABC *= exp(nka);
+    d.concA *= exp(d.na);
+    d.concB *= exp(d.nb);
+    d.concC *= exp(d.ng);
+    d.concABC *= exp(d.nka);
     
     size_t doses_taken = 0;
     typedef pair<double,double> TimeConc;
-    for( TimeConc& time_conc : doses ){
+    for( TimeConc& time_conc : d.doses ){
         // we iteratate through doses in time order (since doses are sorted)
         if( time_conc.first < 1.0 /*i.e. today*/ ){
             // add dose:
             const double qty = time_conc.second;
-            concA += A * qty * exp(na * (1.0 - time_conc.first));
-            concB += B * qty * exp(nb * (1.0 - time_conc.first));
-            concC += C * qty * exp(ng * (1.0 - time_conc.first));
-            concABC += (A + B + C) * qty * exp(nka * (1.0 - time_conc.first));
+            d.concA += d.A * qty * exp(d.na * (1.0 - time_conc.first));
+            d.concB += d.B * qty * exp(d.nb * (1.0 - time_conc.first));
+            d.concC += d.C * qty * exp(d.ng * (1.0 - time_conc.first));
+            d.concABC += (d.A + d.B + d.C) * qty * exp(d.nka * (1.0 - time_conc.first));
             doses_taken += 1;
         }else /*i.e. tomorrow or later*/{
             time_conc.first -= 1.0;
         }
     }
     //NOTE: would be faster if elements were stored in reverse order — though prescribing would probably be slower
-    doses.erase(doses.begin(), doses.begin() + doses_taken);
+    d.doses.erase(d.doses.begin(), d.doses.begin() + doses_taken);
     
-    util::streamValidate( conc() );
-    if( conc() < typeData.getNegligibleConcentration() ){
+    util::streamValidate( d.conc() );
+    if( d.conc() < d.typeData.getNegligibleConcentration() ){
         // once negligible, try to optimise so that we don't have to do
         // anything next time step
-        concA = 0.0;
-        concB = 0.0;
-        concC = 0.0;
-        concABC = 0.0;
+        d.concA = 0.0;
+        d.concB = 0.0;
+        d.concC = 0.0;
+        d.concABC = 0.0;
     }
 }
 
-void LSTMDrugThreeComp::checkpoint(ostream& stream){
-    concA & stream;
-    concB & stream;
-    concC & stream;
-    concABC & stream;
-    elim_sample & stream;
-    k12 & stream;
-    k21 & stream;
-    k13 & stream;
-    k31 & stream;
-    nka & stream;
-    last_bm & stream;
-    na & stream;
-    nb & stream;
-    ng & stream;
-    A & stream;
-    B & stream;
-    C & stream;
+void checkpoint(LSTMDrug& d, ostream& stream){
+    d.concA & stream;
+    d.concB & stream;
+    d.concC & stream;
+    d.concABC & stream;
+    d.elim_sample & stream;
+    d.k12 & stream;
+    d.k21 & stream;
+    d.k13 & stream;
+    d.k31 & stream;
+    d.nka & stream;
+    d.last_bm & stream;
+    d.na & stream;
+    d.nb & stream;
+    d.ng & stream;
+    d.A & stream;
+    d.B & stream;
+    d.C & stream;
 }
-void LSTMDrugThreeComp::checkpoint(istream& stream){
-    concA & stream;
-    concB & stream;
-    concC & stream;
-    concABC & stream;
-    elim_sample & stream;
-    k12 & stream;
-    k21 & stream;
-    k13 & stream;
-    k31 & stream;
-    nka & stream;
-    last_bm & stream;
-    na & stream;
-    nb & stream;
-    ng & stream;
-    A & stream;
-    B & stream;
-    C & stream;
+void read(LSTMDrug& d, istream& stream){
+    d.concA & stream;
+    d.concB & stream;
+    d.concC & stream;
+    d.concABC & stream;
+    d.elim_sample & stream;
+    d.k12 & stream;
+    d.k21 & stream;
+    d.k13 & stream;
+    d.k31 & stream;
+    d.nka & stream;
+    d.last_bm & stream;
+    d.na & stream;
+    d.nb & stream;
+    d.ng & stream;
+    d.A & stream;
+    d.B & stream;
+    d.C & stream;
 }
 
-}
-}
+} } } }

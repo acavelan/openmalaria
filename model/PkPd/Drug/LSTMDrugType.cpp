@@ -25,9 +25,7 @@
 #include "Host/WithinHost/Infection/CommonInfection.h"
 #include "util/errors.h"
 #include "util/CommandLine.h"
-#include "PkPd/Drug/LSTMDrugOneComp.h"
-#include "PkPd/Drug/LSTMDrugThreeComp.h"
-#include "PkPd/Drug/LSTMDrugConversion.h"
+#include "PkPd/Drug/LSTMDrug.h"
 #include <schema/pharmacology.h>
 
 #include <cmath>
@@ -136,13 +134,29 @@ unique_ptr<LSTMDrug> LSTMDrugType::createInstance(LocalRng& rng, size_t index) {
     LSTMDrugType& typeData = drugTypes[index];
     if( typeData.conversion_rate ){
         LSTMDrugType& metaboliteData = drugTypes[typeData.metabolite];
-        return make_unique<LSTMDrugConversion>( typeData, metaboliteData, rng );
+        auto d = make_unique<LSTMDrug>(LSTMDrug::CONVERSION, typeData, typeData.sample_Vd(rng));
+        d->metaboliteType = &metaboliteData;
+        d->nka = -typeData.sample_ka(rng);
+        d->nkP_sample = -typeData.sample_elim_rate(rng);
+        d->nconv_sample = -typeData.sample_conv_rate(rng);
+        d->nkM_sample = -metaboliteData.sample_elim_rate(rng);
+        d->vol_dist_metabolite = metaboliteData.sample_Vd(rng);
+        return d;
     }else if( typeData.k12 ){
         // k21 is set when k12 is set; k13 and k31 may be set
-        return make_unique<LSTMDrugThreeComp>( typeData, rng );
+        auto d = make_unique<LSTMDrug>(LSTMDrug::THREE_COMP, typeData, typeData.sample_Vd(rng));
+        d->elim_sample = typeData.sample_elim_rate(rng);
+        d->k12 = typeData.sample_k12(rng);
+        d->k21 = typeData.sample_k21(rng);
+        d->k13 = typeData.sample_k13(rng);
+        d->k31 = typeData.sample_k31(rng);
+        d->nka = -typeData.sample_ka(rng);
+        return d;
     }else{
         // none of k12/k21/k13/k31 should be set in this case
-        return make_unique<LSTMDrugOneComp>( typeData, rng );
+        auto d = make_unique<LSTMDrug>(LSTMDrug::ONE_COMP, typeData, typeData.sample_Vd(rng));
+        d->neg_elim_sample = -typeData.sample_elim_rate(rng);
+        return d;
     }
 }
 
