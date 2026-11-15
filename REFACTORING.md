@@ -377,9 +377,9 @@ gaps):
   the cohort snapshot taken at episode creation. Both are observable in
   survey output, so the asymmetry stays byte-identical.
 
-Remaining Phase-6 clusters (not started, deliberately): `InfantMortality`
-statics (checkpointed reporting counters) and the mon/WithinHost clusters.
-The clinical health-system statics cluster is done — see Phase 6c below.
+Remaining Phase-6 clusters (not started, deliberately): the mon and
+WithinHost static clusters. The clinical health-system statics are done —
+see Phase 6c/6d below.
 
 Phase 5 (XML interface at the boundary) — first slice:
 
@@ -517,18 +517,18 @@ Status of the remaining plan (what is *not* done yet):
   (the owner — reads there are final or die with the last slices); each
   needs its update-chain functions to take the clock as a parameter,
   mechanically, per directory.
-- **Phase 6**: `NeonatalMortality` (6a), component registry (6b) and the
-  clinical/HS statics cluster (6c, `Clinical::ClinicalParams`) done;
-  `InfantMortality` statics and the mon/WithinHost clusters remain.
+- **Phase 6**: `NeonatalMortality` (6a), component registry (6b), clinical/HS
+  statics (6c, `Clinical::ClinicalParams`) and `InfantMortality` (6d) done;
+  the mon/WithinHost static clusters remain.
 - 59 `ModelOptions::option()` reads remain (Phase 5 wants init-time caches).
 
 Net effect so far: no mutable process-wide state left in the
 transmission/PerHost path; intervention deployment state, the component
-registry, the master RNG, the neonatal model and all clinical/health-system
-parameters are caller-owned (`Model` members). The XML boundary is complete —
-schema headers reach only the loader and the `.cpp` files that parse.
-Cumulative branch diff vs `main`: +5871/−6247 across 137 files — the model
-tree is 31,241 lines.
+registry, the master RNG, the neonatal and infant-mortality models and all
+clinical/health-system parameters are caller-owned (`Model` members). The XML
+boundary is complete — schema headers reach only the loader and the `.cpp`
+files that parse. Cumulative branch diff vs `main`: +6017/−6343 across 140
+files — the model tree is 31,257 lines.
 
 ---
 
@@ -697,6 +697,22 @@ struct (52/52 byte-identical, net −2 lines):
   takes it for `DecisionTreeComponent` (the old static happened to be set
   by then); `CM5DayCommon`/ES keep their per-model virtuals — that
   polymorphism earns its keep (§3).
+
+---
+
+Phase 6d — InfantMortality statics → struct (52/52 byte-identical):
+
+- `74f2fb74` — the file-static counters (`infantDeaths`,
+  `infantIntervalsAtRisk`, `nonMalariaMortality`) and the `InfantMortality`
+  static-method class became one plain struct in a new
+  `Clinical/InfantMortality.h` (inline members, mirroring
+  `Host/NeonatalMortality.h`), a value member of `Model`. `init` moved from
+  the `ClinicalParams` ctor to `main` (next to `neonatal.init`);
+  `ClinicalModel::updateInfantDeaths` takes the struct; checkpointing is its
+  `operator&` at the identical stream position; `mon::writeSurveyData` now
+  takes the `allCause()` value (computed in `main`, threaded through the
+  file-local writer chain) so `Monitoring.cpp` no longer includes any
+  clinical header.
 
 ---
 
