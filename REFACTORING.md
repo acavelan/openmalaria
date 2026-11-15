@@ -122,8 +122,12 @@ binding (`schema/` → `scnXml`, produced by `xsd` from `scenario_50.xsd`).
    branches are load-bearing for reproduction; simplify *where the option is
    read*, never collapse an option's behavior.
 
-Safety net for every step: `build/test/run.py` (all scenarios) +
-`build/test/unittest`, both already green at baseline.
+Safety net for every step: `ctest` in the build dir (51 tests: the curated
+scenario suite with checkpoint save/resume + the Boost unit suites, all
+byte-compared) — all green at baseline. NOTE: running `run.py` bare executes
+53 scenarios, but `12a` and `MonitoringAll` are not in the suite lists in
+`test/CMakeLists.txt` and have no expected files; use `ctest`, not bare
+`run.py`, as the gate.
 
 ---
 

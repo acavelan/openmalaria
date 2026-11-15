@@ -216,10 +216,6 @@ private:
     unique_ptr<DecayFunction> attritionOfNets;
     vector<ITNAnopheles> species; // vector specific params
     
-    // This is sparse vector: only indexes corresponding to ITN components are
-    // used. No memory management.
-    static vector<ITNComponent*> componentsByIndex;
-    
     friend class HumanITN;
 };
 
@@ -230,7 +226,8 @@ private:
 class HumanITN : public PerHostInterventionData {
 public:
     HumanITN( LocalRng& rng, const ITNComponent& params );
-    HumanITN( istream& stream, ComponentId id );
+    // Read from checkpoint; the component params are known (id was read by the caller).
+    HumanITN( istream& stream, const ITNComponent& params );
     
     virtual void redeploy(LocalRng& rng, const Transmission::HumanVectorInterventionComponent& params);
     
@@ -261,6 +258,9 @@ protected:
     virtual void checkpoint( ostream& stream );
     
 private:
+    /// The parameters describing this kind of net (lives as long as the run).
+    const ITNComponent& component;
+    
     // these parameters express the current state of the net:
     SimTime disposalTime = sim::never();	// time at which net will be disposed of (if it's not already been replaced)
     int nHoles;				// total number of holes
