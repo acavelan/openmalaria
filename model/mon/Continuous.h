@@ -72,7 +72,7 @@ namespace Continuous {
 	
 	/// Generate time-step's output. Called at beginning of time step.
         /// Passed population since some callbacks use this to generate output.
-	void update (Population &population);
+	void update (Population &population, const SimClock &clock);
 
 } // namespace Continuous
 } // namespace mon

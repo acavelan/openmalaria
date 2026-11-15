@@ -73,6 +73,13 @@ public:
  *****************************************************************************/
 typedef int SimTime;
 
+/** Snapshot of the mutable simulation time. Passed to code that needs the
+ * clock instead of reading the sim:: statics (see REFACTORING.md phase 3). */
+struct SimClock {
+    SimTime now;        // mid-day at the end of the last completed time step
+    SimTime intervTime; // time relative to the start of the intervention period
+};
+
 /** Encapsulates static variables: sim time. */
 class sim {
 public:

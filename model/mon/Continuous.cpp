@@ -140,25 +140,25 @@ namespace OM {
             registered[optName] = {titles, f};
         }
 
-        void update (Population &population){
+        void update (Population &population, const SimClock &clock){
             if( ctsPeriod == sim::zero() )
                 return;	// output disabled
             if( !duringInit ){
-                if( sim::intervTime() < sim::zero()
-                    || mod_nn(sim::intervTime(), ctsPeriod) != sim::zero() )
+                if( clock.intervTime < sim::zero()
+                    || mod_nn(clock.intervTime, ctsPeriod) != sim::zero() )
                     return;
             } else {
-                if( mod_nn(sim::now(), ctsPeriod) != sim::zero() )
+                if( mod_nn(clock.now, ctsPeriod) != sim::zero() )
                     return;
-                ctsOStream << sim::inSteps(sim::now()) << '\t';
+                ctsOStream << sim::inSteps(clock.now) << '\t';
             }
 
-            if( duringInit && sim::intervTime() < sim::zero() ){
+            if( duringInit && clock.intervTime < sim::zero() ){
                 ctsOStream << "nan";
             }else{
                 // NOTE: we could switch this to output dates, but (1) it would be
                 // breaking change and (2) it may be harder to use.
-                ctsOStream << sim::inSteps(sim::intervTime());
+                ctsOStream << sim::inSteps(clock.intervTime);
             }
             for (const auto& report : toReport) std::get<1>(report)(population, ctsOStream);
 

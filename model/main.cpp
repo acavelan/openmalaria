@@ -88,7 +88,7 @@ void run(Model &model, SimTime humanWarmupLength, SimTime &endTime, SimTime &est
 
         // Monitoring. sim::now() gives time of end of last step,
         // and is when reporting happens in our time-series.
-        mon::Continuous::update( population );
+        mon::Continuous::update( population, { sim::now(), sim::intervTime() } );
         if( sim::intervDate() == mon::nextSurveyDate() ){
             for(Host::Human &human : population.humans)
                 Host::summarize(human, surveyOnlyNewEp);
