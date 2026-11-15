@@ -22,7 +22,7 @@
 
 #include "mon/Monitoring.h"
 #include "Host/WithinHost/Genotypes.h"
-#include "Clinical/ClinicalModel.h"
+
 #include "Host/Human.h"
 #include "util/CommandLine.h"
 #include "util/errors.h"
@@ -194,7 +194,7 @@ void writeMeasure(ostream& stream, Writer writeRow, size_t survey, const interna
 enum class ValueType { All, Integer, Double };
 
 template<class Writer>
-void writeRows(ostream& stream, Writer writeRow, ValueType type = ValueType::All)
+void writeRows(ostream& stream, Writer writeRow, double imr, ValueType type = ValueType::All)
 {
     for (size_t survey = 0; survey < runtime.nSurveys; ++survey) {
         for (const internal::MeasureStore& store : runtime.stores) {
@@ -205,7 +205,7 @@ void writeRows(ostream& stream, Writer writeRow, ValueType type = ValueType::All
         }
     }
     if (runtime.reportIMR >= 0 && type != ValueType::Integer) {
-        writeRow(stream, 1, 1, runtime.reportIMR, Clinical::InfantMortality::allCause(), true);
+        writeRow(stream, 1, 1, runtime.reportIMR, imr, true);
     }
 }
 
@@ -220,7 +220,7 @@ uint64_t countRows(bool isDouble)
     return count;
 }
 
-void writeBinary(ostream& stream)
+void writeBinary(ostream& stream, double imr)
 {
     static_assert(std::endian::native == std::endian::little, "output.bin uses little-endian values");
     static_assert(sizeof(double) == 8 && std::numeric_limits<double>::is_iec559, "output.bin needs IEEE-754 doubles");
@@ -239,7 +239,7 @@ void writeBinary(ostream& stream)
         for (ValueType type : {ValueType::Integer, ValueType::Double}) {
             writeRows(stream, [&](ostream& output, int survey, int column, int measure, double, bool) {
                 writeBinaryValue<int32_t>(output, select(survey, column, measure));
-            }, type);
+            }, imr, type);
         }
     };
     writeIdColumn([](int survey, int, int) { return survey; });
@@ -248,15 +248,15 @@ void writeBinary(ostream& stream)
     writeRows(stream, [](ostream& output, int, int, int, double value, bool) {
         assert(std::trunc(value) == value);
         writeBinaryValue<int32_t>(output, static_cast<int32_t>(value));
-    }, ValueType::Integer);
+    }, imr, ValueType::Integer);
     writeRows(stream, [](ostream& output, int, int, int, double value, bool) {
         writeBinaryValue<double>(output, value);
-    }, ValueType::Double);
+    }, imr, ValueType::Double);
 }
 
-void writeText(ostream& stream)
+void writeText(ostream& stream, double imr)
 {
-    writeRows(stream, writeTextRow);
+    writeRows(stream, writeTextRow, imr);
 }
 
 template<class Stream, class Writer>
@@ -380,11 +380,11 @@ void concludeSurvey()
     updateSurveyNumbers();
 }
 
-void writeSurveyData()
+void writeSurveyData(double imr)
 {
     string filename = util::CommandLine::getOutputName();
     const bool binary = util::CommandLine::getOutputFormat() == util::CommandLine::OutputFormat::BIN;
-    const auto writer = binary ? writeBinary : writeText;
+    const auto writer = [&](ostream& stream){ binary ? writeBinary(stream, imr) : writeText(stream, imr); };
     const ios::openmode mode = ios::out | ios::binary;
 
     if (util::CommandLine::option(util::CommandLine::COMPRESS_OUTPUT)) {

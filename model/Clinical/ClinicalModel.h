@@ -35,6 +35,7 @@ namespace scnXml{
 namespace OM { namespace interventions { struct InterventionRegistry; } }
 namespace OM { namespace Host { struct NeonatalMortality; } }
 namespace OM { namespace Clinical {
+    struct InfantMortality;
     using Host::Human;
 
 /** The clinical model models the effects of sickness dependant on malarial
@@ -75,7 +76,7 @@ public:
     
     /** For infants, updates the infantIntervalsAtRisk and potentially
      * infantDeaths arrays. */
-    void updateInfantDeaths( SimTime age );
+    void updateInfantDeaths( SimTime age, InfantMortality& infant_mortality );
     
     /** Special option to allow reports not to be delivered for existing cases
      * (within health-system-memory and not new cases). */
@@ -144,31 +145,6 @@ public:
      * population at the beginning of the next time step. NOTE:
      * updateInfantDeaths() counts deaths after the fact, thus cannot remove immediately. */
     int doomed;
-};
-
-
-/// Infant mortality reporting
-class InfantMortality {
-public:
-    /** Initialise parameters. */
-    static void init( const Parameters& parameters );
-    static void preMainSimInit();
-
-    /// Static checkpointing
-    static void staticCheckpoint(istream& stream);
-    static void staticCheckpoint(ostream& stream);
-
-    static void reportRisk(size_t index, bool isDoomed);
-    
-    /// Calculate infant mortality as deaths/1000 livebirths for the whole main-
-    /// simulation period (not as deaths/1000 years-at-risk per survey).
-    /// 
-    /// This mimicks field data on all-cause mortality in infants.
-    /// Uses the kaplan-meier method because the demography was set up to provide
-    /// a stable age-distribution but unfortunately does not accurately describe
-    /// death rates. The kaplan-meier estimate is the product of the proportion of
-    /// infants survivng at each interval.
-    static double allCause();
 };
 
 

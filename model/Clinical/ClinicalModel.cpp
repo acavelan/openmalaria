@@ -21,6 +21,7 @@
  */
 
 #include "Clinical/ClinicalModel.h"
+#include "Clinical/InfantMortality.h"
 
 #include "Clinical/EventScheduler.h"
 #include "Clinical/ImmediateOutcomes.h"
@@ -44,7 +45,6 @@ ClinicalParams::ClinicalParams( const Parameters& parameters, const scnXml::Scen
         //NOTE: if changing XSD, this should not have a default unit:
         healthSystemMemory = UnitParse::readShortDuration(clinical.getHealthSystemMemory(), UnitParse::STEPS);
         oddsRatioThreshold = exp( parameters[Parameter::LOG_ODDS_RATIO_CF_COMMUNITY] );
-        InfantMortality::init( parameters );
         cfrPfUseHospital = util::ModelOptions::option( util::CFR_PF_USE_HOSPITAL );
     }catch( const util::format_error& e ){
         throw util::xml_scenario_error( string("model/clinical/healthSystemMemory: ").append(e.message()) );
@@ -153,7 +153,7 @@ void ClinicalModel::update (Human& human, double ageYears, bool newBorn, Host::N
     doClinicalUpdate (human, ageYears, pg, params);
 }
 
-void ClinicalModel::updateInfantDeaths( SimTime age ){
+void ClinicalModel::updateInfantDeaths( SimTime age, InfantMortality& infant_mortality ){
     // update array for the infant death rates
     if (age < sim::oneYear()){
         size_t index = age / sim::oneTS();
@@ -163,7 +163,7 @@ void ClinicalModel::updateInfantDeaths( SimTime age ){
         bool isDoomed = doomed == DOOMED_COMPLICATED
                 || doomed == DOOMED_NEXT_TS
                 || doomed == DOOMED_NEONATAL;
-        InfantMortality::reportRisk( index, isDoomed );
+        infant_mortality.reportRisk( index, isDoomed );
     }
 }
 
@@ -176,55 +176,5 @@ void ClinicalModel::checkpoint (ostream& stream) {
     latestReport & stream;
     doomed & stream;
 }
-
-
-
-// ——— infant mortality ———
-
-// Infant death summaries (checkpointed).
-vector<int> infantDeaths;
-vector<int> infantIntervalsAtRisk;
-
-/// Non-malaria mortality in under 1year olds.
-/// Set by init ()
-double nonMalariaMortality;
-
-void InfantMortality::init( const OM::Parameters& parameters ){
-    infantDeaths.resize(sim::stepsPerYear());
-    infantIntervalsAtRisk.resize(sim::stepsPerYear());
-    nonMalariaMortality=parameters[Parameter::NON_MALARIA_INFANT_MORTALITY];
-}
-
-void InfantMortality::preMainSimInit() {
-    std::fill(infantDeaths.begin(), infantDeaths.end(), 0);
-    std::fill(infantIntervalsAtRisk.begin(), infantIntervalsAtRisk.end(), 0);
-}
-
-void InfantMortality::staticCheckpoint(istream& stream) {
-    infantDeaths & stream;
-    infantIntervalsAtRisk & stream;
-}
-void InfantMortality::staticCheckpoint (ostream& stream) {
-    infantDeaths & stream;
-    infantIntervalsAtRisk & stream;
-}
-
-void InfantMortality::reportRisk(size_t index, bool isDoomed) {
-    infantIntervalsAtRisk[index] += 1;     // baseline
-    if (isDoomed)
-        infantDeaths[index] += 1;  // deaths
-}
-
-double InfantMortality::allCause(){
-    double infantPropSurviving=1.0;       // use to calculate proportion surviving
-    for( size_t i = 0; i < sim::stepsPerYear(); i += 1 ){
-        // multiply by proportion of infants surviving at each interval
-        infantPropSurviving *= double(infantIntervalsAtRisk[i] - infantDeaths[i])
-            / double(infantIntervalsAtRisk[i]);
-    }
-    // Child deaths due to malaria (per 1000), plus non-malaria child deaths. Deaths per 1000 births is the return unit.
-    return (1.0 - infantPropSurviving) * 1000.0 + nonMalariaMortality;
-}
-
 
 } }

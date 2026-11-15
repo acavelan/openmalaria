@@ -277,7 +277,7 @@ void update(Human &human, Model& model)
 
     // age1 used to get case fatality and sequelae probabilities, determine pathogenesis
     human.clinicalModel->update( human, age1, age0 == sim::zero(), neonatal, model.clinical_params );
-    human.clinicalModel->updateInfantDeaths( age0 );
+    human.clinicalModel->updateInfantDeaths( age0, model.infant_mortality );
 }
 
 } }

@@ -115,7 +115,7 @@ uint32_t updateCohortSet(uint32_t old, interventions::ComponentId subPop, bool i
 void updateAgeGroup(size_t& index, SimTime age);
 void initMainSim();
 void concludeSurvey();
-void writeSurveyData();
+void writeSurveyData(double imr);
 
 template <typename Stream>
 void checkpoint(Stream& stream);

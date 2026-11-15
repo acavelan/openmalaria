@@ -29,6 +29,7 @@
 #include "Host/NeonatalMortality.h"
 #include "Transmission/TransmissionModel.h"
 #include "Clinical/ClinicalParams.h"
+#include "Clinical/InfantMortality.h"
 #include "interventions/InterventionManager.h"
 
 namespace scnXml { class Entomology; class AgeGroupValues; }
@@ -49,6 +50,8 @@ struct Model {
     Population humans;
     /** Neonatal mortality state. */
     Host::NeonatalMortality neonatal;
+    /** Infant mortality reporting counters. */
+    Clinical::InfantMortality infant_mortality;
     /** Intervention deployment state. */
     interventions::InterventionManager interventions;
 

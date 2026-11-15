@@ -185,6 +185,7 @@ int main(int argc, char* argv[])
                     scenario->getEntomology(), clinical_params,
                     scenario->getModel().getHuman().getAvailabilityToMosquitoes());
         model.neonatal.init( scenario->getModel().getClinical() );
+        model.infant_mortality.init( parameters );
 
         registerContinousPopulationCallbacks();
 
@@ -274,7 +275,7 @@ int main(int argc, char* argv[])
             estEndTime = endTime = endTime + (sim::endDate() - sim::startDate()) + sim::oneTS();
             sim::s_interv = sim::zero();
             Host::InfectionIncidenceModel::preMainSimInit();
-            Clinical::InfantMortality::preMainSimInit();
+            model.infant_mortality.preMainSimInit();
             WithinHost::Genotypes::preMainSimInit();
             model.humans.resetRecentBirths();
             model.transmission->summarize(); // Only to reset TransmissionModel::inoculationsPerAgeGroup
@@ -296,7 +297,7 @@ int main(int argc, char* argv[])
         for(Host::Human &human : model.humans.humans)
             human.clinicalModel->flushReports();
 
-        mon::writeSurveyData();
+        mon::writeSurveyData(model.infant_mortality.allCause());
         
     # ifdef OM_STREAM_VALIDATOR
         util::StreamValidator.saveStream();
