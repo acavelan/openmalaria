@@ -25,38 +25,25 @@
 
 #include "Global.h"
 
+#include <map>
+
 namespace scnXml {
     class AgeGroupValues;
 }
 namespace OM { namespace util {
 
-/** This struct is not for external use. Use AgeGroupInterpolator instead.
- * 
- * It is here to allow the trivial functions below to be inlined. */
-struct AgeGroupInterpolation{
-    virtual ~AgeGroupInterpolation() {}
-    
-    virtual double eval (double ageYears) const =0;
-    virtual void scale( double factor ) =0;
-    virtual double firstGlobalMaximum() =0;
-    
-public:
-    /** Sample interpolator between 0 and max age, outputting to a csv file
-     * called name.csv. */
-    void outputSamples( const string name );
-};
-
-/** A class representing deterministic interpolation of data collected
- * according to age groups. Derived classes implement the actual interpolation.
+/** Deterministic interpolation of data collected according to age groups.
  * 
  * Current version does not store an age index, thus an order log(n) lookup
  * must occur each time a value is looked up.
  ********************************************/
 struct AgeGroupInterpolator
 {
-    /** Create. set() must be called before further use to avoid exceptions. */
-    AgeGroupInterpolator();
-    ~AgeGroupInterpolator(){ reset(); }
+    /** Not set (eval etc. throw); otherwise the interpolation kind. */
+    enum class Kind { None, PiecewiseConstant, PiecewiseLinear };
+
+    /** Create unset: set() must be called before further use. */
+    AgeGroupInterpolator() = default;
     
     /** Set age-group interpolation data from an XML fragment.
      * 
@@ -72,24 +59,24 @@ struct AgeGroupInterpolator
     bool isSet();
     
     /** Return a value interpolated for age ageYears. */
-    inline double eval( double ageYears )const{
-        return obj->eval( ageYears );
-    }
+    double eval( double ageYears )const;
     
     /** Scale function by factor. */
-    inline void scale( double factor ){
-        obj->scale( factor );
-    }
+    void scale( double factor );
 
     /** Find the youngest age which is the global maximum (i.e. the age at
      * which individuals are considered adults where all adults have the same
      * same value). */
-    inline double firstGlobalMaximum() const{
-        return obj->firstGlobalMaximum();
-    }
+    double firstGlobalMaximum() const;
     
+    /** Sample interpolator between 0 and max age, outputting to a csv file
+     * called name.csv. */
+    void outputSamples( const string name );
+
 public:
-    AgeGroupInterpolation *obj;
+    Kind kind = Kind::None;
+    // (age, value) pairs: group lower bounds (none) or interpolation points.
+    std::map<double, double> data;
 };
 
 } }
