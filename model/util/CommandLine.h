@@ -119,7 +119,7 @@ namespace OM { namespace util {
 		static void staticCheckpoint (istream& stream);
 	static void staticCheckpoint (ostream& stream);	///< ditto
 	
-private:
+public:
 	// Static parameters: don't require checkpointing (set by parse())
 	static bitset<NUM_OPTIONS> options;	// boolean options
 	static string resourcePath;

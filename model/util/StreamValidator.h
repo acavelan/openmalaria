@@ -101,7 +101,7 @@ namespace OM { namespace util {
 	    checkpoint( cp_str );
 	}
 	
-    private:
+    public:
 	void checkpoint ( istream& cp_str );
 	void checkpoint ( ostream& cp_str ) const;
 	

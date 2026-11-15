@@ -56,7 +56,7 @@ namespace OM
             {
                 CheckModelOptionsAndParams(scenario);
             }
-        private:
+        public:
 
             /*
             * Verifies that, if no model name is written in input XML, then both parameters and

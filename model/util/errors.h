@@ -124,7 +124,7 @@ namespace OM { namespace util {
         virtual const char* message() const{
             return what();
         }
-    private:
+    public:
         int errCode;
     };
     
@@ -163,14 +163,13 @@ namespace OM { namespace util {
          */
         explicit traced_exception(const string& msg, const char *file, int line, int code=Error::TracedDefault, int start=1);
         virtual ~traced_exception() throw();
-    private:
+    public:
         const char *file;
         int line, start;
 #ifdef OM_GNU_STACK_TRACE
         size_t length;
         char** trace;
 #endif
-        friend ostream& operator<<(ostream& stream, const traced_exception& e);
     };
     /// Print trace to stream (a series of lines, each with \\n appended)
     ostream& operator<<(ostream& stream, const traced_exception& e);

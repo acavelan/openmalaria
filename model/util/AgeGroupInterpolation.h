@@ -40,7 +40,7 @@ struct AgeGroupInterpolation{
     virtual void scale( double factor ) =0;
     virtual double firstGlobalMaximum() =0;
     
-protected:
+public:
     /** Sample interpolator between 0 and max age, outputting to a csv file
      * called name.csv. */
     void outputSamples( const string name );
@@ -88,7 +88,7 @@ struct AgeGroupInterpolator
         return obj->firstGlobalMaximum();
     }
     
-private:
+public:
     AgeGroupInterpolation *obj;
 };
 

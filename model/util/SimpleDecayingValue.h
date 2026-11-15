@@ -77,7 +77,7 @@ public:
         deploy_t & stream;
     }
     
-private:
+public:
     /** Description of decay of effects on emergence. */
     unique_ptr<util::DecayFunction> decay;
     

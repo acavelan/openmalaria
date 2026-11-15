@@ -43,7 +43,7 @@ public:
     /** Throw if some species was missed. */
     void checkNoneMissed() const;
     
-private:
+public:
     const string& _intervName;
     const map<string,size_t>& _indices;
     set<string> found;

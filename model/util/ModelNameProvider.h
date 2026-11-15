@@ -58,7 +58,7 @@ namespace OM
 
             ModelNames GetModelName() { return modelInUse; }
 
-        private:
+        public:
             ModelNames modelInUse = ModelNames::none;
         };
     }

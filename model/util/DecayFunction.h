@@ -106,12 +106,12 @@ public:
     void checkpointSample(const unique_ptr<DecayFunction>& sample, ostream& stream) const;
     void checkpointSample(unique_ptr<DecayFunction>& sample, istream& stream) const;
 
-private:
+public:
     bool increasing;
     double initialEfficacy;
     std::unique_ptr<util::Sampler> het;
 
-protected:
+public:
     virtual unique_ptr<DecayFunction> makeHetSample(double factor) const = 0;
     double hetFactor = 0.0;
 };

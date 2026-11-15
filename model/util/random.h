@@ -239,14 +239,12 @@ struct RNG {
     }
     //@}
     
-private:
+public:
     T m_rng;
     
     // Hooks for GSL distributions
     gsl_rng_type m_gsl_type;
     gsl_rng m_gsl_gen;
-    
-    template<class> friend class RNG;
 };
 
 typedef RNG<Xoshiro256P> LocalRng;

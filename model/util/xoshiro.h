@@ -80,14 +80,6 @@ public:
     uint32_t gen_u32();
     double gen_double();
 
-    friend bool operator==(const Xoshiro256P& lhs, const Xoshiro256P& rhs);
-    friend bool operator!=(const Xoshiro256P& lhs, const Xoshiro256P& rhs);
-
-//     template<typename CharT, typename Traits>
-//     friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const Xoshiro256P& rng);
-// 
-//     template<typename CharT, typename Traits>
-//     friend std::basic_istream<CharT, Traits>& operator>>(std::basic_istream<CharT, Traits>& is, Xoshiro256P& rng);
 
     void binary_checkpoint(ostream& stream) {
         stream.write (reinterpret_cast<char*>(&s[0]), sizeof(s));
@@ -101,7 +93,7 @@ public:
     static constexpr uint64_t min() { return std::numeric_limits<uint64_t>::min(); }
     static constexpr uint64_t max() { return std::numeric_limits<uint64_t>::max(); }
 
-private:
+public:
 
     uint64_t s[4];
 };

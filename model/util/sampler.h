@@ -57,7 +57,7 @@ namespace OM { namespace util {
         /// @param factor should equal sqrt(1 - correlation^2); may be cached
         static NormalSample generate_correlated(NormalSample base, double correlation, double factor, LocalRng& rng);
         
-    private:
+    public:
         NormalSample( double variate ) : x(variate) {}
         
         double x;   // variate (sampled from N(0,1))
@@ -100,7 +100,7 @@ namespace OM { namespace util {
             return sigma;
         }
         
-    private:
+    public:
         double mu, sigma;
     };
     
@@ -191,7 +191,7 @@ namespace OM { namespace util {
          */
         double cdf(double x) const override;
         
-    private:
+    public:
         // log-space parameters
         double mu       = std::numeric_limits<double>::signaling_NaN(); 
         double sigma    = std::numeric_limits<double>::signaling_NaN();
@@ -265,7 +265,7 @@ namespace OM { namespace util {
          */
         double cdf(double x) const override;
         
-    private:
+    public:
         double mu       = std::numeric_limits<double>::signaling_NaN();
         double k        = std::numeric_limits<double>::signaling_NaN();
         double theta    = std::numeric_limits<double>::signaling_NaN();
@@ -380,7 +380,7 @@ namespace OM { namespace util {
         /** Sample a value. */
         double sample(LocalRng& rng) const;
         
-    private:
+    public:
         //Note: if b is 0, then alpha is mean. Otherwise a and b are
         //the expected (α,β) parameters to the beta distribution.
         double a, b;
@@ -410,7 +410,7 @@ namespace OM { namespace util {
             return rng.weibull( scale, shape );
         }
         
-    private:
+    public:
         double scale, shape;    // λ, k
     };
     
