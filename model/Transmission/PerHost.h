@@ -176,8 +176,9 @@ public:
  * interventions/ITN.cpp, IRS.cpp, GVI.cpp, dispatched from PerHost.cpp). */
 struct PerHostInterventionData {
     PerHostInterventionData( interventions::Component::Type kind,
-            const HumanVectorInterventionComponent& component, interventions::ComponentId id ) :
-        kind(kind), component(component), id(id), deployTime( sim::now() ) {}
+            const HumanVectorInterventionComponent& component, interventions::ComponentId id,
+            SimTime deployTime ) :
+        kind(kind), component(component), id(id), deployTime( deployTime ) {}
 
     interventions::Component::Type kind;
     const HumanVectorInterventionComponent& component;

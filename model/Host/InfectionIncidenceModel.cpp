@@ -169,7 +169,7 @@ double getModelExpectedInfections (const InfectionIncidenceModel& model,
 
 double expectedNumNewInfections (InfectionIncidenceModel& model, Human& human,
                                  double effectiveEIR,
-                                 const InfectionIncidenceParams& params)
+                                 const InfectionIncidenceParams& params, SimTime ts1)
 {
     // error check (should be OK if kappa is checked, for nonVector model):
     if( !(std::isfinite)(effectiveEIR) ){
@@ -184,7 +184,7 @@ double expectedNumNewInfections (InfectionIncidenceModel& model, Human& human,
     // Setting this option to true will only affect reporting
     if(params.vaccineGenotype == false)
         //Introduce the effect of vaccination. Note that this does not affect cumEIR.
-        expectedNumInfections *= human.vaccine.getFactor( interventions::Vaccine::PEV, sim::nowOrTs1() );
+        expectedNumInfections *= human.vaccine.getFactor( interventions::Vaccine::PEV, ts1 );
   
     //Update pre-erythrocytic immunity
     model.m_cumulativeEIRa += effectiveEIR;

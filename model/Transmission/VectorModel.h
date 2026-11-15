@@ -70,24 +70,25 @@ public:
 
     virtual SimTime initIterate();
 
-    virtual void vectorUpdate(const vector<Host::Human> &population);
+    virtual void vectorUpdate(const vector<Host::Human> &population, const SimClock& clock);
 
-    virtual void calculateEIR(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l) const;
+    virtual void calculateEIR(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l,
+                               const SimClock& clock) const;
 
     /** Update the human's net holes (per time step, before EIR calculation). */
-    virtual void startHumanUpdate(Host::Human &human) override
+    virtual void startHumanUpdate(Host::Human &human, const SimClock& clock) override
     {
-        human.perHostTransmission.update(human, sim::ts0());
+        human.perHostTransmission.update(human, clock.now);
     }
 
-    virtual void deployVectorPopInterv(size_t instance);
-    virtual void deployVectorTrap(size_t instance, double popSize, SimTime lifespan);
+    virtual void deployVectorPopInterv(size_t instance, SimTime now);
+    virtual void deployVectorTrap(size_t instance, double popSize, SimTime lifespan, SimTime now);
 
     virtual void changeEIRIntervention(const scnXml::NonVector &nonVectorData);
 
     virtual void uninfectVectors();
 
-    virtual void summarize();
+    virtual void summarize(const SimClock& clock);
 
 public:
     virtual void checkpoint(istream &stream);

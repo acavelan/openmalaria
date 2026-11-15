@@ -159,7 +159,7 @@ void summarize(Human &human, bool surveyOnlyNewEp, const Clinical::ClinicalParam
 
 struct NeonatalMortality;
     /** Per-time-step update of one human (infection, clinical, monitoring). */
-    void update(Human &human, OM::Model& model);
+    void update(Human &human, OM::Model& model, const SimClock& clock);
 
 inline SimTime Human::age( SimTime time ) const { 
     return time - dateOfBirth; 

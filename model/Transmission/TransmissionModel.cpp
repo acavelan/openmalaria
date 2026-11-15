@@ -57,14 +57,15 @@ void TransmissionModel::setAgeAvailability(const scnXml::AgeGroupValues& availab
     ageAvailability.set(availabilityToMosquitoes, "availabilityToMosquitoes");
     adultAge = sim::fromYearsD(ageAvailability.firstGlobalMaximum());
 }
-double TransmissionModel::getEIR(Host::Human &human, SimTime age, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l)
+double TransmissionModel::getEIR(Host::Human &human, SimTime age, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l,
+                                  const SimClock& clock)
 {
-    startHumanUpdate(human);
+    startHumanUpdate(human, clock);
     /* For the NonVector model, the EIR should just be multiplied by the
      * availability. For the Vector model, the availability is also required
      * for internal calculations, but again the EIR should be multiplied by the
      * availability. */
-    calculateEIR(human, ageYears, EIR_i, EIR_l);
+    calculateEIR(human, ageYears, EIR_i, EIR_l, clock);
 
     double sum_EIR_i = util::vectors::sum(EIR_i);
     double sum_EIR_l = util::vectors::sum(EIR_l);
@@ -80,7 +81,7 @@ double TransmissionModel::getEIR(Host::Human &human, SimTime age, double ageYear
     return allEIR;
 }
 
-double TransmissionModel::updateKappa(const vector<Host::Human> &population)
+double TransmissionModel::updateKappa(const vector<Host::Human> &population, const SimClock& clock)
 {
     // We calculate kappa for output and the non-vector model.
     double sumWt_kappa = 0.0;
@@ -91,7 +92,7 @@ double TransmissionModel::updateKappa(const vector<Host::Human> &population)
     {
         // NOTE: calculate availability relative to age at end of time step;
         // not my preference but consistent with TransmissionModel::getEIR().
-        const double avail = human.perHostTransmission.relativeAvailabilityHetAge(sim::inYears(human.age(sim::ts1())));
+        const double avail = human.perHostTransmission.relativeAvailabilityHetAge(sim::inYears(human.age(clock.ts1)));
         sumWeight += avail;
 
         vector<double> probTransGenotype_i(WithinHost::Genotypes::N());
@@ -103,11 +104,11 @@ double TransmissionModel::updateKappa(const vector<Host::Human> &population)
         // Only to be consistent with old simulation runs when set to false
         // Setting this option to true will only affect reporting
         if (opt_vaccine_genotype == false)
-            riskTrans = avail * pTransmit * human.vaccine.getFactor(interventions::Vaccine::TBV, sim::nowOrTs1());
+            riskTrans = avail * pTransmit * human.vaccine.getFactor(interventions::Vaccine::TBV, clock.ts1);
         else
         {
             for (size_t g = 0; g < WithinHost::Genotypes::N(); ++g)
-                riskTrans += (probTransGenotype_i[g] + probTransGenotype_l[g]) * human.vaccine.getFactor(interventions::Vaccine::TBV, sim::nowOrTs1(), g);
+                riskTrans += (probTransGenotype_i[g] + probTransGenotype_l[g]) * human.vaccine.getFactor(interventions::Vaccine::TBV, clock.ts1, g);
             riskTrans *= avail;
         }
 
@@ -116,7 +117,7 @@ double TransmissionModel::updateKappa(const vector<Host::Human> &population)
         sumWt_kappa += riskTrans;
     }
 
-    size_t lKMod = sim::moduloSteps(sim::ts1(), laggedKappa.size()); // now
+    size_t lKMod = sim::moduloSteps(clock.ts1, laggedKappa.size()); // now
     if (population.size() == 0)
     {                             // this is valid
         laggedKappa[lKMod] = 0.0; // no humans: no infectiousness
@@ -132,7 +133,7 @@ double TransmissionModel::updateKappa(const vector<Host::Human> &population)
         laggedKappa[lKMod] = sumWt_kappa / sumWeight;
     }
 
-    size_t tmod = sim::moduloYearSteps(sim::ts0());
+    size_t tmod = sim::moduloYearSteps(clock.now);
 
     // Calculate time-weighted average of kappa
     _sumAnnualKappa += laggedKappa[lKMod] * initialisationEIR[tmod];

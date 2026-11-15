@@ -128,7 +128,7 @@ double susceptibility (const InfectionIncidenceModel& model,
  *        outside transmission due to hospitalisation) */
 double expectedNumNewInfections (InfectionIncidenceModel& model, Human& human,
                                  double effectiveEIR,
-                                 const InfectionIncidenceParams& params);
+                                 const InfectionIncidenceParams& params, SimTime ts1);
 
 /** Calculate the number of new infections to introduce.
  * 

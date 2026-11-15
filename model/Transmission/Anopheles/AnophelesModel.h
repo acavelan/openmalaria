@@ -318,10 +318,11 @@ public:
      * @param sigma_dff sum_i α_i * N_i * P_Bi * P_Ci * P_Di * rel_mosq_fecundity for human hosts i
      * @param isDynamic True to use full model; false to drive model from current contents of S_v.
      */
-    void advancePeriod (double sum_avail, double sigma_df, vector<double>& sigma_dif_i, vector<double>& sigma_dif_l, double sigma_dff, bool isDynamic);
+    void advancePeriod (double sum_avail, double sigma_df, vector<double>& sigma_dif_i, vector<double>& sigma_dif_l, double sigma_dff, bool isDynamic,
+                        const SimClock& clock);
 
     /// Intermediatary from vector model equations used to calculate EIR
-    inline double getInitPartialEIR() const{ return partialInitEIR[sim::moduloYearSteps(sim::ts0())] / initAvail; }
+    inline double getInitPartialEIR(SimTime ts0) const{ return partialInitEIR[sim::moduloYearSteps(ts0)] / initAvail; }
     //@}
 
     /// Intermediatary from vector model equations used to calculate EIR
@@ -332,13 +333,14 @@ public:
 
     ///@brief Functions called to deploy interventions
     //@{
-    void deployVectorPopInterv (LocalRng& rng, size_t instance);
+    void deployVectorPopInterv (LocalRng& rng, size_t instance, SimTime now);
     /// Deploy some traps
     /// 
     /// @param instance Index of this type of trap
     /// @param number The number of traps to deploy
     /// @param lifespan Time until these traps are removed/replaced/useless
-    void deployVectorTrap(LocalRng& rng, size_t species, size_t instance, double popSize, SimTime lifespan, const VectorSpeciesParams& species_params);
+    void deployVectorTrap(LocalRng& rng, size_t species, size_t instance, double popSize, SimTime lifespan, const VectorSpeciesParams& species_params,
+                          SimTime now);
 
     /** (Re) allocate and initialise some state variables. Must be called
      * before model is run. */
@@ -348,7 +350,7 @@ public:
                      const std::vector<double>& forcedS_v);
     
     
-    virtual double getEmergenceRate(const SimTime &d0, const std::vector<double>& mosqEmergeRate, double nOvipositing)
+    virtual double getEmergenceRate(const SimTime &d0, const std::vector<double>& mosqEmergeRate, double nOvipositing, SimTime intervTime)
     {   
         // Get emergence at start of step:
         SimTime dYear1 = mod_nn(d0, sim::oneYear());
@@ -370,10 +372,11 @@ public:
     void update( SimTime d0, double tsP_A, double tsP_Amu, double tsP_A1, double tsP_Ah, double tsP_df,
                    const vector<double> &tsP_dif_i, const vector<double> &tsP_dif_l, double tsP_dff,
                    bool isDynamic,
-                   vector<double>& partialEIR_i, vector<double>& partialEIR_l, double EIR_factor);
+                   vector<double>& partialEIR_i, vector<double>& partialEIR_l, double EIR_factor,
+                   const SimClock& clock);
     
     /// Intermediatary from vector model equations used to calculate EIR in intervention mode
-    inline double getInterventionEIR() const{ return interventionEIR[sim::inSteps(sim::intervTime())] / initAvail; }
+    inline double getInterventionEIR(SimTime intervTime) const{ return interventionEIR[sim::inSteps(intervTime)] / initAvail; }
     //@}
 
     void changeEIRIntervention(const scnXml::NonVector &nonVectorData);
@@ -411,7 +414,7 @@ public:
     }
     
     /// Write some per-species summary information.
-    void summarize( size_t species )const;
+    void summarize( size_t species, const SimClock& clock )const;
     //@}
     
     virtual void checkpoint (istream& stream){ (*this) & stream; }

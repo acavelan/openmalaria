@@ -88,41 +88,44 @@ void run(Model &model, SimTime humanWarmupLength, SimTime &endTime, SimTime &est
 
         // Monitoring. sim::now() gives time of end of last step,
         // and is when reporting happens in our time-series.
-        mon::Continuous::update( population, { sim::now(), sim::intervTime(), sim::intervDate() } );
+        const SimClock clock{ sim::now(), sim::intervTime(), sim::intervDate(), sim::nowOrTs1() };
+        mon::Continuous::update( population, clock );
         if( sim::intervDate() == mon::nextSurveyDate() ){
             for(Host::Human &human : population.humans)
                 Host::summarize(human, surveyOnlyNewEp, model.clinical_params);
-            transmission.summarize();
+            transmission.summarize(clock);
             mon::concludeSurvey();
         }
         
         // Deploy interventions, at time sim::now().
-        interventions::deploy( model, { sim::now(), sim::intervTime(), sim::intervDate() } );
+        interventions::deploy( model, clock );
         
         // Time step updates. Time steps are mid-day to mid-day.
         // sim::ts0() gives the date at the start of the step, sim::ts1() the date at the end.
         sim::start_update();
+        // Clock for the per-step update chain: now == ts0, ts1 == end of step.
+        const SimClock update_clock{ sim::now(), sim::intervTime(), sim::intervDate(), sim::ts1() };
 
         // This should be called before humans contract new infections in the simulation step.
         // This needs the whole population (it is an approximation before all humans are updated).
-        transmission.vectorUpdate(population.humans);
+        transmission.vectorUpdate(population.humans, update_clock);
         
         // NOTE: no neonatal mortalities will occur in the first 20 years of warmup
         // (until humans old enough to be pregnate get updated and can be infected).
-        model.neonatal.update (population.humans, sim::ts0());
+        model.neonatal.update (population.humans, update_clock.now);
         
         for (Host::Human& human : population.humans)
         {
             if (human.getDOB() + sim::maxHumanAge() >= humanWarmupLength) // this is last time of possible update
-                Host::update(human, model);
+                Host::update(human, model, update_clock);
         }
        
-        population.update();
+        population.update(update_clock.ts1);
         
         // Doesn't matter whether non-updated humans are included (value isn't used
         // before all humans are updated).
-        transmission.updateKappa(population.humans);
-        transmission.surveyEIR();
+        transmission.updateKappa(population.humans, update_clock);
+        transmission.surveyEIR(update_clock);
 
         sim::end_update();
 
@@ -281,7 +284,7 @@ int main(int argc, char* argv[])
             model.infant_mortality.preMainSimInit();
             WithinHost::Genotypes::preMainSimInit();
             model.humans.resetRecentBirths();
-            model.transmission->summarize(); // Only to reset TransmissionModel::inoculationsPerAgeGroup
+            model.transmission->summarize({ sim::now(), sim::intervTime(), sim::intervDate(), sim::nowOrTs1() }); // Only to reset TransmissionModel::inoculationsPerAgeGroup
             mon::initMainSim();
 
             if(util::CommandLine::option (util::CommandLine::CHECKPOINT))

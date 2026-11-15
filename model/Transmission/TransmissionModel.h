@@ -153,14 +153,14 @@ public:
     /** Set some summary items.
      *
      * Overriding functions should call this base version too. */
-    virtual void summarize()
+    virtual void summarize(const SimClock& clock)
     {
-        mon::recordStat(mon::measure("nTransmit"), laggedKappa[sim::moduloSteps(sim::now(), laggedKappa.size())]);
+        mon::recordStat(mon::measure("nTransmit"), laggedKappa[sim::moduloSteps(clock.now, laggedKappa.size())]);
         mon::recordStat(mon::measure("annAvgK"), _annualAverageKappa);
 
         if (!mon::isReported()) return; // cannot use counters below when not reporting
 
-        double duration = sim::inSteps(sim::now() - lastSurveyTime);
+        double duration = sim::inSteps(clock.now - lastSurveyTime);
         if (duration > 0.0)
         {
             mon::recordStat(mon::measure("inputEIR"), surveyInputEIR / duration);
@@ -173,7 +173,7 @@ public:
         surveySimulatedEIR = 0.0;
         surveySimulatedEIR_i = 0.0;
         surveySimulatedEIR_l = 0.0;
-        lastSurveyTime = sim::now();
+        lastSurveyTime = clock.now;
     }
 
     /** Scale the EIR used by the model.
@@ -187,7 +187,7 @@ public:
     /** Needs to be called each step of the simulation before Human::update().
      *
      * when the vector model is used this updates mosquito populations. */
-    virtual void vectorUpdate(const vector<Host::Human> &population){};
+    virtual void vectorUpdate(const vector<Host::Human> &population, const SimClock& clock){};
 
     virtual void changeEIRIntervention(const scnXml::NonVector &) = 0;
 
@@ -217,7 +217,7 @@ public:
      */
     /** Called once per human per time step at the start of the human's EIR
      * calculation. The vector model uses this to update net holes. */
-    virtual void startHumanUpdate(Host::Human &human) {}
+    virtual void startHumanUpdate(Host::Human &human, const SimClock&) {}
 
 
     /** Remove all current infections to mosquitoes, such that without re-
@@ -228,11 +228,12 @@ public:
      * statististics related to transmission. Also returns kappa (the average
      * human infectiousness weighted by availability to mosquitoes). */
 
-    double getEIR(Host::Human &human, SimTime age, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l);
+    double getEIR(Host::Human &human, SimTime age, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l,
+                  const SimClock& clock);
 
-    virtual double updateKappa(const vector<Host::Human> &population);
+    virtual double updateKappa(const vector<Host::Human> &population, const SimClock& clock);
 
-    virtual void surveyEIR()
+    virtual void surveyEIR(const SimClock& clock)
     {
         tsAdultEIR = tsAdultEntoInocs / tsNumAdults;
         tsAdultEntoInocs = 0.0;
@@ -245,7 +246,7 @@ public:
 
         tsNumAdults = 0;
 
-        surveyInputEIR += initialisationEIR[sim::moduloYearSteps(sim::ts0())];
+        surveyInputEIR += initialisationEIR[sim::moduloYearSteps(clock.now)];
 
         surveySimulatedEIR += tsAdultEIR;
         surveySimulatedEIR_i += tsAdultEIR_i;
@@ -263,7 +264,8 @@ public:
      *    individual human is exposed to, per parasite genotype, in units of
      *    inoculations per day. Length set by callee. 
      *    _i for imported infections and _l for local infections */
-    virtual void calculateEIR(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l) const = 0;
+    virtual void calculateEIR(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l,
+                               const SimClock& clock) const = 0;
 
     virtual void checkpoint(istream &stream)
     {

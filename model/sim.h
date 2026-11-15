@@ -75,12 +75,13 @@ typedef int SimTime;
 
 /** Snapshot of the mutable simulation time. Passed to code that needs the
  * clock instead of reading the sim:: statics (see REFACTORING.md phase 3).
- * Between updates now == sim::now(); code run during an update is passed
- * sim::nowOrTs1(). */
+ * Between updates now == ts1 == sim::now(); during an update ts1 is the end
+ * of the step (sim::nowOrTs1()). */
 struct SimClock {
     SimTime now;        // current simulation time (mid-day)
     SimTime intervTime; // time relative to the start of the intervention period
     SimTime intervDate; // scenario date, == sim::intervDate()
+    SimTime ts1;        // end of the update period (== sim::ts1())
 };
 
 /** Encapsulates static variables: sim time. */

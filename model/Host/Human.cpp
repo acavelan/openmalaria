@@ -226,12 +226,12 @@ void summarize(Human &human, bool surveyOnlyNewEp, const Clinical::ClinicalParam
     }
 }
 
-void update(Human &human, Model& model)
+void update(Human &human, Model& model, const SimClock& clock)
 {
     Transmission::TransmissionModel& transmission = *model.transmission;
     NeonatalMortality& neonatal = model.neonatal;
     // For integer age checks we use age0 to e.g. get 73 steps comparing less than 1 year old
-    SimTime age0 = human.age(sim::ts0());
+    SimTime age0 = human.age(clock.now);
     if (human.clinicalModel->isDead(age0)) {
         human.kill();
         return;
@@ -248,11 +248,11 @@ void update(Human &human, Model& model)
     // the difference between this and age at the start is not especially
     // important in the model design, but since we parameterised with
     // age1 we should stick with it.
-    double age1 = sim::inYears(human.age(sim::ts1()));
+    double age1 = sim::inYears(human.age(clock.ts1));
 
     // age1 used only in PerHost::relativeAvailabilityAge(); difference to age0 should be minor
     vector<double> EIR_per_genotype_i, EIR_per_genotype_l;
-    transmission.getEIR(human, age0, age1, EIR_per_genotype_i, EIR_per_genotype_l);
+    transmission.getEIR(human, age0, age1, EIR_per_genotype_i, EIR_per_genotype_l, clock);
 
     double EIR_i = util::vectors::sum(EIR_per_genotype_i);
     double EIR_l = util::vectors::sum(EIR_per_genotype_l);
@@ -263,7 +263,7 @@ void update(Human &human, Model& model)
     if(EIR > 0)
         x = EIR_i / EIR;
 
-    double expectedNNewInfs = expectedNumNewInfections( human.infIncidence, human, EIR, model.incidence_params );
+    double expectedNNewInfs = expectedNumNewInfections( human.infIncidence, human, EIR, model.incidence_params, clock.ts1 );
     double expectedNNewInfs_i = x * expectedNNewInfs;
     double expectedNNewInfs_l = (1.0-x) * expectedNNewInfs;
 

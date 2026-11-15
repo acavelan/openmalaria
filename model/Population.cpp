@@ -83,7 +83,7 @@ void Population::createInitialHumans()
     assert( sim::now() == sim::zero() );      // assumed below
 }
 
-void Population::update()
+void Population::update(SimTime ts1)
 {
     //NOTE: other parts of code are not set up to handle changing population size. Also
     // size is assumed to be the _actual and exact_ population size by other code.
@@ -96,7 +96,7 @@ void Population::update()
         // "outmigrate" some to maintain population shape
         //NOTE: better to use age(sim::ts0())? Possibly, but the difference will not be very significant.
         // Also see targetPop = ... comment above
-        bool outmigrate = cumPop >= AgeStructure::targetCumPop(sim::inSteps(it->age(sim::ts1())), size);
+        bool outmigrate = cumPop >= AgeStructure::targetCumPop(sim::inSteps(it->age(ts1)), size);
         
         if( isDead || outmigrate ){
             it = humans.erase (it);
@@ -110,7 +110,7 @@ void Population::update()
     recentBirths += (size - cumPop);
     while (cumPop < (int)size) {
         // humans born at end of this time step = beginning of next, hence ts1
-        humans.push_back( Host::Human (sim::ts1(), species_params, age_availability, master_rng, clinical_params, incidence_params) );
+        humans.push_back( Host::Human (ts1, species_params, age_availability, master_rng, clinical_params, incidence_params) );
         ++cumPop;
     }
 }

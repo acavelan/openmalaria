@@ -89,34 +89,35 @@ public:
         laggedKappa.assign(laggedKappa.size(), 0.0);
     }
 
-    virtual double updateKappa(const vector<Host::Human> &population)
+    virtual double updateKappa(const vector<Host::Human> &population, const SimClock& clock)
     {
-        double currentKappa = TransmissionModel::updateKappa(population);
-        if (simulationMode == forcedEIR) { initialKappa[sim::moduloSteps(sim::ts1(), initialKappa.size())] = currentKappa; }
+        double currentKappa = TransmissionModel::updateKappa(population, clock);
+        if (simulationMode == forcedEIR) { initialKappa[sim::moduloSteps(clock.ts1, initialKappa.size())] = currentKappa; }
         return currentKappa;
     }
 
-    virtual void calculateEIR(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l) const
+    virtual void calculateEIR(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l,
+                               const SimClock& clock) const
     {
         EIR_i.resize(1);
         EIR_l.resize(1); // no support for per-genotype tracking in this model (possible, but we're lazy)
         // where the full model, with estimates of human mosquito transmission is in use, use this:
-        if (simulationMode == forcedEIR) { EIR_l[0] = initialisationEIR[sim::moduloYearSteps(sim::ts0())]; }
+        if (simulationMode == forcedEIR) { EIR_l[0] = initialisationEIR[sim::moduloYearSteps(clock.now)]; }
         else if (simulationMode == transientEIRknown)
         {
             // where the EIR for the intervention phase is known, obtain this from
             // the interventionEIR array
-            EIR_l[0] = interventionEIR[sim::inSteps(sim::intervTime())];
+            EIR_l[0] = interventionEIR[sim::inSteps(clock.intervTime)];
         }
         else if (simulationMode == dynamicEIR)
         {
-            EIR_l[0] = initialisationEIR[sim::moduloYearSteps(sim::ts0())];
-            if (sim::intervTime() >= sim::zero())
+            EIR_l[0] = initialisationEIR[sim::moduloYearSteps(clock.now)];
+            if (clock.intervTime >= sim::zero())
             {
                 // we modulate the initialization based on the human infectiousness time steps ago in the
                 // simulation relative to infectiousness at the same time-of-year, pre-intervention.
                 // nspore gives the sporozoite development delay.
-                size_t t = sim::inSteps(sim::ts1() - nSpore);
+                size_t t = sim::inSteps(clock.ts1 - nSpore);
                 EIR_l[0] *= laggedKappa[mod_nn(t, laggedKappa.size())] / initialKappa[mod_nn(t, sim::stepsPerYear())];
             }
         }
@@ -127,7 +128,7 @@ public:
 #ifndef NDEBUG
         if (!(std::isfinite)(EIR_l[0]))
         {
-            size_t t = sim::inSteps(sim::ts1() - nSpore);
+            size_t t = sim::inSteps(clock.ts1 - nSpore);
             ostringstream msg;
             msg << "Error: non-vect eir is: " << EIR_l[0] << "\nlaggedKappa:\t" << laggedKappa[mod_nn(t, laggedKappa.size())]
                 << "\ninitialKappa:\t" << initialKappa[mod_nn(t, sim::stepsPerYear())] << endl;

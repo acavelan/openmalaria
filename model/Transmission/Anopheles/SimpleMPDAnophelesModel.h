@@ -122,7 +122,7 @@ public:
     }
     //@}
 
-    virtual double getEmergenceRate(const SimTime &d0, const std::vector<double> &mosqEmergeRate, double nOvipositing)
+    virtual double getEmergenceRate(const SimTime &d0, const std::vector<double> &mosqEmergeRate, double nOvipositing, SimTime intervTime)
     {
         // // Get emergence at start of step:
         // SimTime dYear1 = mod_nn(d0, sim::oneYear());
@@ -140,7 +140,7 @@ public:
         nOvipositingDelayed[util::mod_nn(d1, developmentDuration)] = nOvipositing;
         quinquennialOvipositing[util::mod_nn(d1, sim::fromYearsI(5))] = nOvipositing;
         
-        if (sim::intervTime() > 0 && emergence < 0)
+        if (intervTime > 0 && emergence < 0)
         {
             std::ostringstream oss;
             oss << "Error: SimpleMPD model: negative emergence at t=" << d0 << ": " << emergence << ". ";

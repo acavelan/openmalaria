@@ -326,7 +326,8 @@ SimTime VectorModel::initIterate()
     }
 }
 
-void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l) const
+void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l,
+                                const SimClock& clock) const
 {
 
     PerHost &host = human.perHostTransmission;
@@ -341,7 +342,7 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
-            double eir = species[i]->getInterventionEIR() * host.relativeAvailabilityAge(ageYears) * host.entoAvailabilityHetVecItv(i, sim::nowOrTs1());
+            double eir = species[i]->getInterventionEIR(clock.intervTime) * host.relativeAvailabilityAge(ageYears) * host.entoAvailabilityHetVecItv(i, clock.ts1);
             mon::recordStat(mon::measure("innoculationsPerAgeGroup"), human, eir);
             mon::recordStat(mon::measure("innoculationsPerVector"), human, eir, i);
             // cout << host.availBite(i) << endl;
@@ -366,7 +367,7 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
-            double eir = species[i]->getInitPartialEIR() * host.relativeAvailabilityAge(ageYears) * host.entoAvailabilityHetVecItv(i, sim::nowOrTs1());
+            double eir = species[i]->getInitPartialEIR(clock.now) * host.relativeAvailabilityAge(ageYears) * host.entoAvailabilityHetVecItv(i, clock.ts1);
             mon::recordStat(mon::measure("innoculationsPerAgeGroup"), human, eir);
             mon::recordStat(mon::measure("innoculationsPerVector"), human, eir, i);
             // cout << host.availBite(i) << endl;
@@ -393,7 +394,7 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
-            double entoFactor = ageFactor * host.availBite(i, sim::nowOrTs1());
+            double entoFactor = ageFactor * host.availBite(i, clock.ts1);
             for (size_t g = 0; g < EIR_i.size(); ++g)
             {
                 double eir_i = partialEIR_i[g] * entoFactor;
@@ -408,7 +409,7 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
 }
 
 // Every Global::interval days:
-void VectorModel::vectorUpdate(const vector<Host::Human> &population)
+void VectorModel::vectorUpdate(const vector<Host::Human> &population, const SimClock& clock)
 {
     const size_t nGenotypes = WithinHost::Genotypes::N();
     std::vector<double> probTransmission_i, probTransmission_l;
@@ -430,43 +431,43 @@ void VectorModel::vectorUpdate(const vector<Host::Human> &population)
             // NOTE: calculate availability relative to age at end of time step;
             // not my preference but consistent with TransmissionModel::getEIR().
             // TODO: even stranger since probTransmission comes from the previous time step
-            const double avail = host.entoAvailabilityFull(s, sim::inYears(human.age(sim::ts1())), sim::nowOrTs1());
+            const double avail = host.entoAvailabilityFull(s, sim::inYears(human.age(clock.ts1)), clock.ts1);
             sum_avail[s] += avail;
-            const double df = avail * host.probMosqBiting(s, sim::nowOrTs1()) * host.probMosqResting(s, sim::nowOrTs1());
+            const double df = avail * host.probMosqBiting(s, clock.ts1) * host.probMosqResting(s, clock.ts1);
             sigma_df[s] += df;
             for (size_t g = 0; g < nGenotypes; ++g)
             {
-                const double tbvFac = human.vaccine.getFactor(interventions::Vaccine::TBV, sim::nowOrTs1(), opt_vaccine_genotype? g : 0);
+                const double tbvFac = human.vaccine.getFactor(interventions::Vaccine::TBV, clock.ts1, opt_vaccine_genotype? g : 0);
                 sigma_dif_i[s][g] += df * probTransmission_i[g] * tbvFac;
                 sigma_dif_l[s][g] += df * probTransmission_l[g] * tbvFac;
             }
-            sigma_dff[s] += df * host.relMosqFecundity(s, sim::nowOrTs1());
+            sigma_dff[s] += df * host.relMosqFecundity(s, clock.ts1);
         }
     }
 
     for (size_t s = 0; s < speciesIndex.size(); ++s)
     {
-        species[s]->advancePeriod(sum_avail[s], sigma_df[s], sigma_dif_i[s], sigma_dif_l[s], sigma_dff[s], simulationMode == dynamicEIR);
+        species[s]->advancePeriod(sum_avail[s], sigma_df[s], sigma_dif_i[s], sigma_dif_l[s], sigma_dff[s], simulationMode == dynamicEIR, clock);
     }
 }
 
 const string vec_mode_err = "vector interventions can only be used in "
                             "dynamic transmission mode (mode=\"dynamic\")";
 
-void VectorModel::deployVectorPopInterv(size_t instance)
+void VectorModel::deployVectorPopInterv(size_t instance, SimTime now)
 {
     if (interventionMode != dynamicEIR) { throw xml_scenario_error(vec_mode_err); }
     for (auto it = species.begin(); it != species.end(); ++it)
     {
-        (*it)->deployVectorPopInterv(m_rng, instance);
+        (*it)->deployVectorPopInterv(m_rng, instance, now);
     }
 }
-void VectorModel::deployVectorTrap(size_t instance, double number, SimTime lifespan)
+void VectorModel::deployVectorTrap(size_t instance, double number, SimTime lifespan, SimTime now)
 {
     if (interventionMode != dynamicEIR) { throw xml_scenario_error(vec_mode_err); }
     for (size_t i = 0; i < speciesIndex.size(); ++i)
     {
-        species[i]->deployVectorTrap(m_rng, i, instance, number, lifespan, speciesParams);
+        species[i]->deployVectorTrap(m_rng, i, instance, number, lifespan, speciesParams, now);
     }
 }
 
@@ -489,13 +490,13 @@ void VectorModel::uninfectVectors()
         species[i]->uninfectVectors();
 }
 
-void VectorModel::summarize()
+void VectorModel::summarize(const SimClock& clock)
 {
-    TransmissionModel::summarize();
+    TransmissionModel::summarize(clock);
 
     for (size_t i = 0; i < speciesIndex.size(); ++i)
     {
-        species[i]->summarize(i);
+        species[i]->summarize(i, clock);
     }
 }
 

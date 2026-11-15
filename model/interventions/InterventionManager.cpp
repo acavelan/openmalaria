@@ -713,14 +713,14 @@ void apply(TimedDeployment& dep, const SimClock& clock, vector<Host::Human>& pop
         void operator() (const TimedDeployment::VectorPop& a) const {
             Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
             if(vectorModel)
-                vectorModel->deployVectorPopInterv(a.instance);
+                vectorModel->deployVectorPopInterv(a.instance, clock.now);
         }
         void operator() (const TimedDeployment::Trap& a) const {
             Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
             if(vectorModel)
             {
                 double number = population.size() * a.ratio;
-                vectorModel->deployVectorTrap(a.instance, number, a.lifespan);
+                vectorModel->deployVectorTrap(a.instance, number, a.lifespan, clock.now);
             }
         }
         void operator() (const TimedDeployment::ReduceNhh& a) const {

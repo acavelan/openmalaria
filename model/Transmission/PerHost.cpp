@@ -37,7 +37,7 @@ using PHID = PerHostInterventionData;
 
 std::unique_ptr<PHID> makeHumanPart(LocalRng& rng, const HumanVectorInterventionComponent& params, SimTime now)
 {
-    auto d = std::make_unique<PHID>(params.componentType(), params, params.id());
+    auto d = std::make_unique<PHID>(params.componentType(), params, params.id(), now);
     switch (d->kind) {
     case interventions::Component::ITN: interventions::itnInitNew(*d, rng, params, now); break;
     case interventions::Component::IRS: interventions::irsInitNew(*d, rng, params, now); break;
@@ -263,7 +263,8 @@ void PerHost::checkpointIntervs( istream& stream, const interventions::Intervent
                 dynamic_cast<const HumanVectorInterventionComponent*>( &gen_params );
             if( params == 0 )
                 throw util::base_exception( "" );       // see catch block below
-            auto d = std::make_unique<PerHostInterventionData>( params->componentType(), *params, id );
+            auto d = std::make_unique<PerHostInterventionData>( params->componentType(), *params, id,
+                                                                sim::never() ); // deployTime read from stream below
             switch (d->kind) {
             case interventions::Component::ITN: interventions::itnRead(stream, *d); break;
             case interventions::Component::IRS: interventions::irsRead(stream, *d); break;
