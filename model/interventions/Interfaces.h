@@ -122,7 +122,7 @@ public:
         m_duration = duration;
     }
     
-protected:
+public:
     /** Construct (from a derived class).
      * 
      * @param id Component identifier; used as an identifier for cumulative
@@ -131,7 +131,7 @@ protected:
      */
     explicit HumanInterventionComponent(ComponentId id) : m_id(id) {}
     
-private:
+public:
     /** Don't copy (this may be possible but shouldn't be needed). */
     HumanInterventionComponent( const HumanInterventionComponent& ) = delete;
     HumanInterventionComponent& operator= ( const HumanInterventionComponent& ) = delete;
@@ -172,7 +172,7 @@ public:
     
     void print_details( std::ostream& out )const;
     
-protected:
+public:
     // List of pointers to components. Does not manage memory (InterventionRegistry does that).
     vector<const HumanInterventionComponent*> components;
     // List of conditions of deployment. All must be satisfied to deploy.
@@ -188,7 +188,7 @@ public:
     void deploy( Host::Human& human, mon::Deploy::Method method,
             VaccineLimits vaccLimits )const;
     
-private:
+public:
     struct SubList : protected HumanIntervention{
         SubList( const scnXml::TriggeredDeployments::DeployType& elt, const InterventionRegistry& reg );
         

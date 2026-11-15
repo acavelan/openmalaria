@@ -246,7 +246,7 @@ public:
         out << id().id << "\tScreen";
     }
     
-private:
+public:
     const Diagnostic& diagnostic;
     HumanIntervention positive, negative;
 };
@@ -288,7 +288,7 @@ public:
         out << id().id << "\ttreatSimple";
     }
     
-private:
+public:
     SimTime timeLiver, timeBlood;
 };
 
@@ -315,7 +315,7 @@ public:
         out << id().id << "\ttreatPKPD";
     }
     
-private:
+public:
     size_t schedule;        // index of the schedule
     size_t dosage;          // name of the dosage table
     double delay_d;         // delay in days
@@ -346,7 +346,7 @@ public:
         out << id().id << "\tDecision tree";
     }
     
-private:
+public:
     const Clinical::CMDecisionTree& tree;
 };
 

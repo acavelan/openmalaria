@@ -51,7 +51,7 @@ public:
     
     virtual void print_details( std::ostream& out )const;
     
-private:
+public:
     /** Get the initial efficacy of the vaccine.
      *
      * @param numPrevDoses The number of prior vaccinations of the individual. */
@@ -90,9 +90,6 @@ private:
     /** Until the monitoring system is updated, only one type of vaccination
      * delivery can be reported. This is whichever is first configured. */
     static ComponentId reportComponent;
-
-    friend class PerHumanVaccine;
-    friend class PerEffectPerHumanVaccine;
 };
 
 }

@@ -75,7 +75,7 @@ namespace factors {
         * net ages. */
         double survivalFactor( double holeIndex, double insecticideContent )const;
         
-    private:
+    public:
         union {
             struct {
                 double BF, HF, PF, IF;  // base, hole, insecticide and interaction factors
@@ -120,7 +120,7 @@ namespace factors {
          * deterrent, 1 has no effect, >1 attracts extra mosquitoes. */
         double relativeAttractiveness (double holeIndex, double insecticideContent) const;
         
-    private:
+    public:
         union {
             struct {
                 double lHF, lPF, lIF;      // logs of hole, insecticide and interaction factors
@@ -160,7 +160,7 @@ public:
     virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng& rng) const;
     virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream, ComponentId id ) const;
     
-private:
+public:
     /** Per mosquito-species parameters for extended ITN model. */
     class ITNAnopheles {
     public:
@@ -196,15 +196,13 @@ private:
             return x*proportionProtected + proportionUnprotected;
         }
         
-    private:
+    public:
         double proportionProtected;
         double proportionUnprotected;
         factors::RelativeAttractiveness relAttractiveness;
         factors::SurvivalFactor preprandialKillingEffect;
         factors::SurvivalFactor postprandialKillingEffect;
         factors::SurvivalFactor relFecundityEffect;
-        
-        friend class HumanITN;
     };
 
     NormalSampler initialInsecticide;
@@ -215,8 +213,6 @@ private:
     unique_ptr<DecayFunction> insecticideDecay;
     unique_ptr<DecayFunction> attritionOfNets;
     vector<ITNAnopheles> species; // vector specific params
-    
-    friend class HumanITN;
 };
 
 /** Extended ITN model by OB.
@@ -253,10 +249,10 @@ public:
     /// Get the mosquito fecundity multiplier (1 for no effect).
     virtual double relFecundity(size_t speciesIndex) const;
     
-protected:
+public:
     virtual void checkpoint( ostream& stream );
     
-private:
+public:
     /// The parameters describing this kind of net (lives as long as the run).
     const ITNComponent& component;
     

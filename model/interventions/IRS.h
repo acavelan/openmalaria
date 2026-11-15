@@ -49,7 +49,7 @@ public:
     virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng& rng) const;
     virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream, ComponentId ) const;
     
-private:
+public:
     /** Per mosquito-species parameters for extended IRS model. */
     class IRSAnopheles {
     public:
@@ -84,7 +84,7 @@ private:
             return x*proportionProtected + proportionUnprotected;
         }
         
-    private:
+    public:
         class RelativeAttractiveness {
         public:
             RelativeAttractiveness();
@@ -104,7 +104,7 @@ private:
             * range [0,1]. */
             double relativeAttractiveness( double insecticideContent )const;
             
-        protected:
+        public:
             double lPF;      // log of insecticide factor
             double insecticideScaling;
         };
@@ -124,7 +124,7 @@ private:
             * prandial killing. Should be bounded to [0,1] and tend to 1 as the
             * IRS ages. */
             double survivalFactor( double insecticideContent )const;
-        private:
+        public:
             double BF,PF;   // base and insecticide factors
             double insecticideScaling;
             double invBaseSurvival; // stored for performance only
@@ -135,8 +135,6 @@ private:
         SurvivalFactor _preprandialKillingEffect;
         SurvivalFactor _postprandialKillingEffect;
         SurvivalFactor _fecundityEffect;
-        
-        friend class HumanIRS;
     };
     
     double sampleInitialInsecticide(LocalRng& rng) const;
@@ -145,8 +143,6 @@ private:
     double maxInsecticide;              // maximum initial insecticide
     unique_ptr<DecayFunction> insecticideDecay;
     vector<IRSAnopheles> species; // vector specific params
-    
-    friend class HumanIRS;
 };
 
 /** Extended IRS model by OB and original model.
@@ -184,10 +180,10 @@ public:
     /// Get the mosquito fecundity multiplier (1 for no effect).
     virtual double relFecundity(size_t speciesIndex) const;
     
-protected:
+public:
     virtual void checkpoint( ostream& stream );
     
-private:
+public:
     /// The parameters describing this kind of intervention (lives as long as the run).
     const IRSComponent& component;
     

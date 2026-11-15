@@ -84,7 +84,7 @@ public:
         checkpointHet(stream);
     }
     
-private:
+public:
     PerEffectPerHumanVaccine( LocalRng& rng, ComponentId id, const VaccineComponent& params );
     
     ComponentId component;      // id of component (for finding parameters)
@@ -103,8 +103,6 @@ private:
 
     void checkpointHet(ostream& stream);
     void checkpointHet(istream& stream);
-    
-    friend class PerHumanVaccine;
 };
 
 /** Per-human vaccine code. */
@@ -128,7 +126,7 @@ public:
         effects & stream;
     }
 
-private:
+public:
     /// Details for each deployed vaccine for this human
     typedef std::vector<PerEffectPerHumanVaccine> EffectList;
     EffectList effects;

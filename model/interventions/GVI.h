@@ -55,7 +55,7 @@ public:
     virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng& rng) const;
     virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream, ComponentId ) const;
     
-private:
+public:
     /** Per mosquito-species parameters for generic vector intervention model. */
     class GVIAnopheles {
     public:
@@ -80,14 +80,10 @@ private:
         double preprandialKilling;
         double postprandialKilling;
         double fecundityReduction;
-        
-        friend class HumanGVI;
     };
     
     unique_ptr<DecayFunction> decay;
     vector<GVIAnopheles> species;  // vector specific params
-    
-    friend class HumanGVI;
 };
 
 /** Low-level (generic) vector intervention model. Has three effects:
@@ -124,10 +120,10 @@ public:
     /// Get the mosquito fecundity multiplier (1 for no effect).
     virtual double relFecundity(size_t speciesIndex) const;
     
-protected:
+public:
     virtual void checkpoint( ostream& stream );
     
-private:
+public:
     /// The parameters describing this intervention (lives as long as the run).
     const GVIComponent& component;
     
