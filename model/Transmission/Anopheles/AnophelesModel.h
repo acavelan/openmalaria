@@ -157,6 +157,16 @@ struct Nhh {
     double P_D_I;
     double rel_fecundity;
     SimTime expiry = sim::never();
+
+    template<class S>
+    void operator& (S& stream) {
+        avail_i & stream;
+        P_B_I & stream;
+        P_C_I & stream;
+        P_D_I & stream;
+        rel_fecundity & stream;
+        expiry & stream;
+    }
 };
 
 struct TrapParams {
@@ -395,6 +405,7 @@ public:
         // transmission & stream;
         seekingDeathRateIntervs & stream;
         probDeathOvipositingIntervs & stream;
+        probAdditionalDeathSugarFeedingIntervs & stream;
         partialEIR_i & stream;
         partialEIR_l & stream;
         EIRRotateAngle & stream;
@@ -432,6 +443,80 @@ public:
         ftauArray & stream;
         uninfected_v & stream;
         timeStep_N_v0 & stream;
+        // State created by vector-side interventions (was lost on resume):
+        checkpointTraps (stream);
+        checkpointNhhMap (stream);
+        checkpointReduceMap (stream, reduceNhhAvailability);
+        checkpointReduceMap (stream, reduceP_B_I);
+        checkpointReduceMap (stream, reduceP_C_I);
+        checkpointReduceMap (stream, reduceP_D_I);
+        checkpointReduceMap (stream, reduceFecundity);
+    }
+
+    /** Baited traps: per-deployment state, rebuilt in full. The decay
+     * function comes from trapParams (indexed by the streamed instance), so
+     * only the het sample and times need streaming. */
+    template<class S>
+    void checkpointTraps (S& stream) {
+        size_t n = baitedTraps.size();
+        n & stream;
+        if constexpr (std::is_same_v<S, istream>) {
+            util::checkpoint::validateListSize (n);
+            baitedTraps.clear();
+            for (size_t i = 0; i < n; ++i) {
+                TrapData d{};
+                trapFields (stream, d);
+                baitedTraps.push_back (std::move (d));
+            }
+        } else {
+            for (auto& d : baitedTraps) trapFields (stream, d);
+        }
+    }
+    template<class S>
+    void trapFields (S& stream, TrapData& d) {
+        d.instance & stream;
+        d.initialAvail & stream;
+        // Decay parameters are known from the scenario XML:
+        trapParams[d.instance].availDecay->checkpointSample (d.availHet, stream);
+        d.deployTime & stream;
+        d.expiry & stream;
+    }
+
+    /** Non-human-host instances: pure state plus name key, rebuilt in full. */
+    template<class S>
+    void checkpointNhhMap (S& stream) {
+        size_t n = nhhInstances.size();
+        n & stream;
+        if constexpr (std::is_same_v<S, istream>) {
+            util::checkpoint::validateListSize (n);
+            nhhInstances.clear();
+            auto pos = nhhInstances.begin();
+            for (size_t i = 0; i < n; ++i) {
+                string key;
+                Nhh value;
+                key & stream;
+                value & stream;
+                pos = nhhInstances.insert (pos, make_pair (key, value));
+            }
+        } else {
+            for (auto& kv : nhhInstances) {
+                kv.first & stream;
+                kv.second & stream;
+            }
+        }
+    }
+
+    /** The reduce* maps' keys, vector sizes and decay functions are all built
+     * from the scenario XML before any checkpoint is read, so only the
+     * per-entry deployment state is streamed, over the existing entries
+     * (iteration order is by key on both sides). */
+    template<class S>
+    void checkpointReduceMap (S& stream, map<string,vector<util::SimpleDecayingValue>>& m) {
+        size_t n = m.size();
+        n & stream;
+        if (n != m.size())
+            throw util::checkpoint_error ("vector intervention map: different scenario?");
+        for (auto& kv : m) kv.second & stream;
     }
 
     MosquitoParams mosq;
