@@ -30,6 +30,11 @@
 
 #include <list>
 
+namespace scnXml {
+    class HSEventScheduler;
+    class Clinical;
+}
+
 namespace OM {
 namespace Clinical {
 

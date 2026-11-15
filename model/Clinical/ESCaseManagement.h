@@ -27,6 +27,10 @@
 #include "Clinical/CMDecisionTree.h"
 #include "Host/WithinHost/WHInterface.h"
 
+namespace scnXml {
+    class HSEventScheduler;
+}
+
 namespace OM { namespace interventions { struct InterventionRegistry; } }
 namespace OM { namespace Clinical {
 using WithinHost::WHInterface;

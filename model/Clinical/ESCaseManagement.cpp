@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "schema/healthSystem.h"
 #include "Clinical/ESCaseManagement.h"
 #include "Clinical/CMDecisionTree.h"
 #include "Clinical/EventScheduler.h"

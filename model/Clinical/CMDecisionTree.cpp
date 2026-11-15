@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "schema/interventions.h"
 #include "Clinical/CMDecisionTree.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/WithinHost/WHInterface.h"
