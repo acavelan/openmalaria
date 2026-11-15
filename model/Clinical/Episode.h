@@ -99,8 +99,9 @@ public:
      *
      * @param human The human whose info is being reported
      * @param newState The severity (diagnosis) and outcome.
+     * @param hsMemory Health-system memory (scenario parameter).
      */
-    void update(const Host::Human& human, Episode::State newState);
+    void update(const Host::Human& human, Episode::State newState, SimTime hsMemory);
     
     /// Checkpointing
     void operator& (istream& stream);

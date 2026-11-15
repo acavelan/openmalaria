@@ -24,6 +24,7 @@
 #include "Clinical/ESCaseManagement.h"
 #include "Clinical/CMDecisionTree.h"
 #include "Clinical/EventScheduler.h"
+#include "Clinical/ClinicalParams.h"
 #include "util/errors.h"
 #include "util/ModelOptions.h"
 
@@ -33,22 +34,17 @@
 namespace OM { namespace Clinical {
     using namespace OM::util;
 
-// -----  ESCaseManagement  -----
+// -----  health-system data and tree execution  -----
 
-const CMDecisionTree *escm_uncomplicated = 0,
-    *escm_complicated = 0;
-
-void ESCaseManagement::setHealthSystem(const scnXml::HSEventScheduler& esData, const interventions::InterventionRegistry& reg){
-    escm_uncomplicated = &CMDecisionTree::create( esData.getUncomplicated(), true, reg );
-    escm_complicated = &CMDecisionTree::create( esData.getComplicated(), false, reg );
-    
-    // Calling our parent class like this is messy. Changing this would require
-    // moving change-of-health-system handling into ClinicalModel.
-    ClinicalEventScheduler::setParameters( esData );
+void loadHSEventScheduler( ClinicalParams& params, const scnXml::HSEventScheduler& esData, const interventions::InterventionRegistry& reg){
+    params.escmUncomplicated = &CMDecisionTree::create( esData.getUncomplicated(), true, reg, params.healthSystemMemory );
+    params.escmComplicated = &CMDecisionTree::create( esData.getComplicated(), false, reg, params.healthSystemMemory );
+    esSetParameters( params, esData );
 }
 
-CMDTOut ESCaseManagement::execute (
-        const CMHostData& hostData
+CMDTOut esExecute (
+        const CMHostData& hostData,
+        const ClinicalParams& params
 ) {
     assert (hostData.pgState & Episode::SICK);
     //TODO: should we remove any existing prescriptions?
@@ -56,7 +52,7 @@ CMDTOut ESCaseManagement::execute (
     //TODO: medicateQueue.clear();
     
     const CMDecisionTree& tree = (hostData.pgState & Episode::COMPLICATED) ?
-        *escm_complicated : *escm_uncomplicated;
+        *params.escmComplicated : *params.escmUncomplicated;
     return tree.exec( hostData );
 }
 

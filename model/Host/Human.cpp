@@ -108,7 +108,8 @@ HumanHet hetSample(util::LocalRng& rng)
 }
 
 Human::Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& species_params,
-        const Transmission::AgeGroupInterpolator& age_availability, util::MasterRng& master_rng) :
+        const Transmission::AgeGroupInterpolator& age_availability, util::MasterRng& master_rng,
+        const Clinical::ClinicalParams& clinical_params) :
     infIncidence(InfectionIncidenceModel::createModel()),
     rng(master_rng),
     dateOfBirth(dateOfBirth),
@@ -121,7 +122,7 @@ Human::Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& speci
     withinHostModel = WithinHost::WHInterface::createWithinHostModel( rng, het.comorbidityFactor );
     double iiFactor = infIncidence->getAvailabilityFactor(rng, 1.0);
     perHostTransmission.initialise (rng, het.availabilityFactor * iiFactor, *this->species_params, age_availability);
-    clinicalModel = Clinical::ClinicalModel::createClinicalModel(het.treatmentSeekingFactor);
+    clinicalModel = Clinical::ClinicalModel::createClinicalModel(het.treatmentSeekingFactor, clinical_params);
 }
 
 void Human::addToCohort(ComponentId id, SimTime duration )
@@ -207,8 +208,8 @@ void Human::checkpoint(ostream &stream)
 }
 
 // -----  Non-static functions: per-time-step update  -----
-void summarize(Human &human, bool surveyOnlyNewEp) {
-    if( surveyOnlyNewEp && human.clinicalModel->isExistingCase() ){
+void summarize(Human &human, bool surveyOnlyNewEp, const Clinical::ClinicalParams& clinical_params) {
+    if( surveyOnlyNewEp && human.clinicalModel->isExistingCase(clinical_params) ){
         // This modifies the denominator to treat the health-system-memory
         // period immediately after a bout as 'not at risk'.
         return;
@@ -275,7 +276,7 @@ void update(Human &human, Model& model)
     human.infIncidence->reportNumNewInfections(human, nNewInfs_i, nNewInfs_l);
 
     // age1 used to get case fatality and sequelae probabilities, determine pathogenesis
-    human.clinicalModel->update( human, age1, age0 == sim::zero(), neonatal );
+    human.clinicalModel->update( human, age1, age0 == sim::zero(), neonatal, model.clinical_params );
     human.clinicalModel->updateInfantDeaths( age0 );
 }
 

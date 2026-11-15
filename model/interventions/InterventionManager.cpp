@@ -389,9 +389,10 @@ public:
 
 class DecisionTreeComponent : public HumanInterventionComponent {
 public:
-    DecisionTreeComponent( ComponentId id, const scnXml::DecisionTree& elt, const InterventionRegistry& reg ) :
+    DecisionTreeComponent( ComponentId id, const scnXml::DecisionTree& elt, const InterventionRegistry& reg,
+                           SimTime hsMemory ) :
         HumanInterventionComponent(id),
-        tree(Clinical::CMDecisionTree::create(elt, false, reg))
+        tree(Clinical::CMDecisionTree::create(elt, false, reg, hsMemory))
     {}
     
     void deploy( Human& human, mon::Deploy::Method method, VaccineLimits, SimTime now )const{
@@ -582,17 +583,19 @@ bool inAvailabilityRange(const Host::Human& human, bool raw, SimTime minAvail, S
 }
 
 void apply(TimedDeployment& dep, const SimClock& clock, vector<Host::Human>& population,
-    Transmission::TransmissionModel& transmission, const InterventionRegistry& reg)
+    Transmission::TransmissionModel& transmission, const InterventionRegistry& reg,
+    Clinical::ClinicalParams& clinical_params)
 {
     struct Action {
         vector<Host::Human>& population;
         Transmission::TransmissionModel& transmission;
         const InterventionRegistry& reg;
         const SimClock& clock;
+        Clinical::ClinicalParams& clinical_params;
 
         void operator() (std::monostate) const {}  // list-end marker
         void operator() (TimedDeployment::ChangeHS& a) const {
-            Clinical::ClinicalModel::setHS( *a.newHS, reg );
+            clinical_params.loadHealthSystem( *a.newHS, reg );
             a.newHS.reset();
         }
         void operator() (TimedDeployment::ChangeEIR& a) const {
@@ -770,7 +773,7 @@ void apply(TimedDeployment& dep, const SimClock& clock, vector<Host::Human>& pop
             }
         }
     };
-    std::visit(Action{population, transmission, reg, clock}, dep.action);
+    std::visit(Action{population, transmission, reg, clock, clinical_params}, dep.action);
 }
 
 static void initReduceNhh(size_t instance, const std::string &intervName,
@@ -939,7 +942,7 @@ vector<ComponentId> removeAtIds[SubPopRemove::NUM];
 // static functions:
 
 void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, const Population &population,
-          Transmission::TransmissionModel &transmission)
+          Transmission::TransmissionModel &transmission, SimTime hsMemory)
 {
     auto& continuous = mgr.continuous;
     auto& timed = mgr.timed;
@@ -1038,7 +1041,7 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
             }
             else if (component.getDecisionTree().present())
             {
-                hiComponent = new DecisionTreeComponent(id, component.getDecisionTree().get(), mgr.registry);
+                hiComponent = new DecisionTreeComponent(id, component.getDecisionTree().get(), mgr.registry, hsMemory);
             }
             else if (component.getPEV().present())
             {
@@ -1420,7 +1423,7 @@ void loadFromCheckpoint(Model& model, const SimClock& clock)
             // Note: neither changeHS nor changeEIR interventions care what the
             // current time step is when they are deployed, so we don't need to
             // tell them the deployment date.
-            apply(timed[nextTimed], clock, population, transmission, mgr.registry);
+            apply(timed[nextTimed], clock, population, transmission, mgr.registry, model.clinical_params);
         }
         nextTimed += 1;
     }
@@ -1452,7 +1455,7 @@ void deploy(Model& model, const SimClock& clock)
             cout << endl;
         }
 
-        apply(timed[nextTimed], clock, population, transmission, mgr.registry);
+        apply(timed[nextTimed], clock, population, transmission, mgr.registry, model.clinical_params);
         nextTimed += 1;
     }
 

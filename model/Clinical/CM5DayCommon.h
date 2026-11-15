@@ -39,35 +39,25 @@ using Host::Human;
 class CM5DayCommon : public ClinicalModel
 {
 public:
-    static void init();
-    
     /** Construct an instance (per-human).
      * 
      * @param tSF Treatment-seeking factor. Normally 1 but allows simple heterogeneity.
      */
     CM5DayCommon (double tSF);
     
-    virtual bool isExistingCase () {
+    virtual bool isExistingCase (const ClinicalParams& params) override {
         // If treated in the recent past:
-        return sim::now() > m_tLastTreatment && sim::now() <= m_tLastTreatment + healthSystemMemory;
+        return sim::now() > m_tLastTreatment && sim::now() <= m_tLastTreatment + params.healthSystemMemory;
     }
     
-public:
-    enum CaseType { FirstLine, SecondLine, NumCaseTypes };
-    static mon::Measure measures[NumCaseTypes];
-    static double accessUCAny[NumCaseTypes];
-    static double accessUCSelfTreat[NumCaseTypes];
-    static double accessSevere;
-    static double cureRateSevere;
-    static WithinHost::TreatmentId treatmentSevere;
-    
-    virtual void doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg);
+    virtual void doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg,
+                                   const ClinicalParams& params) override;
 
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
 
     /** Called when a non-severe/complicated malaria sickness occurs. */
-    virtual void uncomplicatedEvent(Human& human, Episode::State pgState) =0;
+    virtual void uncomplicatedEvent(Human& human, Episode::State pgState, const ClinicalParams& params) =0;
 
     //! treatment seeking for heterogeneity
     double m_treatmentSeekingFactor;
@@ -76,7 +66,8 @@ public:
     /** Called when a severe/complicated (with co-infection) malaria sickness occurs.
      *
      * Note: sets doomed = 4 if patient dies. */
-    void severeMalaria(Human& human, Episode::State pgState, double ageYears, int& doomed);
+    void severeMalaria(Human& human, Episode::State pgState, double ageYears, int& doomed,
+                       const ClinicalParams& params);
 };
 
 }

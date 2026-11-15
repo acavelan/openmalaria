@@ -47,75 +47,27 @@ using util::AgeGroupInterpolator;
  * bout. It's possible that memory usage could be reduced by storing them
  * externally in a temporary object during episodes (but unlikely worth doing).
  */
+/** Read model-wide event-scheduler parameters into params (part of
+ * ClinicalParams construction). */
+void esInit( ClinicalParams& params, const OM::Parameters& parameters, const scnXml::Clinical& clinical );
+/** Load the EventScheduler clinical-outcomes and non-malaria-fever data into
+ * params (part of ClinicalParams::loadHealthSystem). */
+void esSetParameters( ClinicalParams& params, const scnXml::HSEventScheduler& esData );
+
 class ClinicalEventScheduler : public ClinicalModel
 {
 public:
-    static void init (const OM::Parameters& parameters, const scnXml::Clinical& clinical);
-    static void setParameters (const scnXml::HSEventScheduler& esData);
-
     ClinicalEventScheduler (double tSF);
     
-    virtual bool isExistingCase();
+    virtual bool isExistingCase(const ClinicalParams& params) override;
 
 public:
-    virtual void doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg);
+    virtual void doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg,
+                                   const ClinicalParams& params) override;
 
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
 
-public:
-    /// Maximum number of time steps (including first of case) an individual
-    /// will remember they are sick before resetting.
-    static SimTime maxUCSeekingMemory;
-    /// Length of an uncomplicated case
-    static SimTime uncomplicatedCaseDuration;
-    /// Length of a complicated case
-    static SimTime complicatedCaseDuration;
-    /// Time-span for which individual is at risk of death in complicated case
-    /// minus length of complicated case (must be <= 0)
-    static SimTime extraDaysAtRisk;
-    /// First value is probability immediate treatment, second is first +
-    /// probability 1-day delay to treatment seeking, etc. Last value must be 1.
-    /// Index units are days.
-    static vector<double> cumDailyPrImmUCTS;
-
-    /// Parameter of S(t) for t > 0
-    static double neg_v;
-    /// Parameter
-    static double alpha;
-    
-    /** Base log odds of treatment of non-malarial fevers in absense of a
-     * malaria diagnostic and irrespective of whether treatment is needed.
-     * 
-     * In our model, this is logit(P₀), not β₀. */
-    static double logOddsAbBase;
-    /** Added to log odds treatment when a malaria diagnostic indicates no
-     * parasites. Symbol in model: β₁. */
-    static double logOddsAbNegTest;
-    /** Added to log odds treatment when a malaria diagnostic indicates
-     * parasites. Symbol in model: β₂. */
-    static double logOddsAbPosTest;
-    /** Added to log odds treatment when NMF is categorized as an illness
-     * potentially leading to death (Pathogenesis::NEED_ANTIBIOTIC).
-     * Symbol in model: β₃. */
-    static double logOddsAbNeed;
-    /** Added to log odds treatment when given by an informal provider.
-     * Symbol in model: β₄. */
-    static double logOddsAbInformal;
-    /** One minus the efficacy of antibiotic/NMF treatment (i.e. a multiplier
-     * for fatality-rate given that the case is treated). */
-    static double oneMinusEfficacyAb;
-    /** Case fatality rate of non-malaria fevers requiring treatment given that
-     * the case is not treated. */
-    static AgeGroupInterpolator severeNmfMortality;
-    
-    /// Probability that an NMF needs antibiotic treatment and could lead to death.
-    static AgeGroupInterpolator NMF_need_antibiotic;
-    /** Probability that a malarial fever classified as uncomplicated requires
-     * antibiotic treatment (and death could occur from non-malarial causes).
-     * Unclear whether using this at the same time as comorbidity parameters
-     * makes any sense. */
-    static AgeGroupInterpolator MF_need_antibiotic;
     
     // Note on memory usage: Pathogenesis::State is and enum (an int), so we
     // have a vtable followed by 3 ints, a double and a list. Alignment probably

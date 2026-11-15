@@ -80,9 +80,11 @@ struct InterventionManager {
     OM::Host::ImportedInfections importedInfections;
 };
 
-/** Read XML descriptions. */
+/** Read XML descriptions.
+ * @param hsMemory health-system memory (validates decision-tree components) */
 void init (InterventionManager& mgr, const scnXml::Interventions& intervElt,
-           const Population &population, Transmission::TransmissionModel& transmission);
+           const Population &population, Transmission::TransmissionModel& transmission,
+           SimTime hsMemory);
 
 /// Checkpointing
 template<class S>

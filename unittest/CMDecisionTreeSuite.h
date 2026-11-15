@@ -76,7 +76,7 @@ public:
      */
     double propTreatmentsNReps (int N, const scnXml::DecisionTree& dt) {
         static const interventions::InterventionRegistry empty_reg; // no deploy/cohort nodes in test trees
-        const CMDecisionTree& cmdt = CMDecisionTree::create( dt, true, empty_reg );
+        const CMDecisionTree& cmdt = CMDecisionTree::create( dt, true, empty_reg, sim::never() );
         
 	whm->nTreatments = 0;
         int secondCounter = 0;

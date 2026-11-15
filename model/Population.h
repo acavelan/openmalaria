@@ -30,6 +30,7 @@
 #include <vector>
 
 namespace OM { namespace interventions { struct InterventionRegistry; } }
+namespace OM { namespace Clinical { struct ClinicalParams; } }
 namespace OM {
 
 /** The simulated human population. */
@@ -37,7 +38,8 @@ class Population
 {
 public:
     Population(size_t size, const Transmission::VectorSpeciesParams& species_params,
-             const Transmission::AgeGroupInterpolator& age_availability, util::MasterRng& master_rng);
+             const Transmission::AgeGroupInterpolator& age_availability, util::MasterRng& master_rng,
+             const Clinical::ClinicalParams& clinical_params);
 
     /** Create the initial population of Humans */
     void createInitialHumans();
@@ -74,6 +76,7 @@ public:
     const Transmission::VectorSpeciesParams& species_params;
     const Transmission::AgeGroupInterpolator& age_availability;
     util::MasterRng& master_rng;
+    const Clinical::ClinicalParams& clinical_params;
 };
 
 void registerContinousPopulationCallbacks();

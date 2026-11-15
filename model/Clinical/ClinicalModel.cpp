@@ -35,21 +35,9 @@
 
 namespace OM { namespace Clinical {
 
-bool opt_event_scheduler = false;
-bool opt_imm_outcomes = false;
+// -----  ClinicalParams  -----
 
-bool ClinicalModel::indirectMortBugfix;
-SimTime ClinicalModel::healthSystemMemory{ sim::never() };
-
-//log odds ratio of case-fatality in community compared to hospital
-double oddsRatioThreshold;
-
-util::AgeGroupInterpolator ClinicalModel::caseFatalityRate;
-util::AgeGroupInterpolator ClinicalModel::pSequelaeInpatient;
-
-// -----  static methods  -----
-
-void ClinicalModel::init( const Parameters& parameters, const scnXml::Scenario& scenario ) {
+ClinicalParams::ClinicalParams( const Parameters& parameters, const scnXml::Scenario& scenario ) {
     const scnXml::Clinical& clinical = scenario.getModel().getClinical();
     try{
         indirectMortBugfix = util::ModelOptions::option (util::INDIRECT_MORTALITY_FIX);
@@ -57,64 +45,65 @@ void ClinicalModel::init( const Parameters& parameters, const scnXml::Scenario& 
         healthSystemMemory = UnitParse::readShortDuration(clinical.getHealthSystemMemory(), UnitParse::STEPS);
         oddsRatioThreshold = exp( parameters[Parameter::LOG_ODDS_RATIO_CF_COMMUNITY] );
         InfantMortality::init( parameters );
+        cfrPfUseHospital = util::ModelOptions::option( util::CFR_PF_USE_HOSPITAL );
     }catch( const util::format_error& e ){
         throw util::xml_scenario_error( string("model/clinical/healthSystemMemory: ").append(e.message()) );
     }
     
     if (util::ModelOptions::option (util::CLINICAL_EVENT_SCHEDULER)){
-        opt_event_scheduler = true;
-        ClinicalEventScheduler::init( parameters, clinical );
+        eventScheduler = true;
+        esInit( *this, parameters, clinical );
     }else{
         if( scenario.getHealthSystem().getImmediateOutcomes().present() ){
-            opt_imm_outcomes = true;
+            immOutcomes = true;
             
             if( util::CommandLine::option(util::CommandLine::DEPRECATION_WARNINGS) ){
                 cerr << "Deprecation warning: healthSystem: use of ImmediateOutcomes can be replaced by the more flexible DecisionTree5Day (optional)" << endl;
             }
         }
         // else: decision tree 5 day
-        
-        CM5DayCommon::init();
     }
 }
 
-void ClinicalModel::setHS( const scnXml::HealthSystem& healthSystem, const interventions::InterventionRegistry& reg ){
+void ClinicalParams::loadHealthSystem( const scnXml::HealthSystem& healthSystem, const interventions::InterventionRegistry& reg ){
     caseFatalityRate.set( healthSystem.getCFR(), "CFR" );
     pSequelaeInpatient.set( healthSystem.getPSequelaeInpatient(), "pSequelaeInpatient" );
-    if( opt_event_scheduler ){
+    if( eventScheduler ){
         if( !healthSystem.getEventScheduler().present() ){
             throw util::xml_scenario_error ("Expected EventScheduler "
                 "section in healthSystem data (initial or intervention)");
         }
-        ESCaseManagement::setHealthSystem(healthSystem.getEventScheduler().get(), reg);
-    }else if( opt_imm_outcomes ){
+        loadHSEventScheduler( *this, healthSystem.getEventScheduler().get(), reg );
+    }else if( immOutcomes ){
         if ( !healthSystem.getImmediateOutcomes().present() ){
             throw util::xml_scenario_error ("Expected ImmediateOutcomes "
                 "section in healthSystem data (initial or intervention)");
         }
-        ImmediateOutcomes::setHealthSystem(healthSystem.getImmediateOutcomes().get(), reg);
+        loadHSImmediateOutcomes( *this, healthSystem.getImmediateOutcomes().get(), reg );
     }else{
         if( !healthSystem.getDecisionTree5Day().present() ){
             throw util::xml_scenario_error ("Expected DecisionTree5Day "
                 "section in healthSystem data (initial or intervention)");
         }
-        DecisionTree5Day::setHealthSystem(healthSystem.getDecisionTree5Day().get(), reg);
+        loadHSDT5Day( *this, healthSystem.getDecisionTree5Day().get(), reg );
     }
 }
 
-unique_ptr<ClinicalModel> ClinicalModel::createClinicalModel (double tSF) {
-    if (opt_event_scheduler){
+double ClinicalParams::getCommunityCFR (double caseFatalityRatio) const{
+    double x = caseFatalityRatio * oddsRatioThreshold;
+    return x / (1 - caseFatalityRatio + x);
+}
+
+// -----  static methods  -----
+
+unique_ptr<ClinicalModel> ClinicalModel::createClinicalModel (double tSF, const ClinicalParams& params) {
+    if (params.eventScheduler){
         return make_unique<ClinicalEventScheduler>(tSF);
-    }else if( opt_imm_outcomes ){
+    }else if( params.immOutcomes ){
         return make_unique<ImmediateOutcomes>(tSF);
     }else{
         return make_unique<DecisionTree5Day>( tSF );
     }
-}
-
-double ClinicalModel::getCommunityCFR (double caseFatalityRatio){
-    double x = caseFatalityRatio * oddsRatioThreshold;
-    return x / (1 - caseFatalityRatio + x);
 }
 
 
@@ -137,7 +126,8 @@ bool ClinicalModel::isDead( SimTime age ){
     return doomed > NOT_DOOMED;	// killed by some means
 }
 
-void ClinicalModel::update (Human& human, double ageYears, bool newBorn, Host::NeonatalMortality& neonatal) {
+void ClinicalModel::update (Human& human, double ageYears, bool newBorn, Host::NeonatalMortality& neonatal,
+                            const ClinicalParams& params) {
     if (doomed < NOT_DOOMED)	// Countdown to indirect mortality
         doomed -= sim::oneTS();
     
@@ -160,7 +150,7 @@ void ClinicalModel::update (Human& human, double ageYears, bool newBorn, Host::N
     WithinHost::Pathogenesis::StatePair pg = human.withinHostModel->determineMorbidity( human, ageYears, isDoomed );
     latestState = static_cast<Episode::State>(pg.state);
 
-    doClinicalUpdate (human, ageYears, pg);
+    doClinicalUpdate (human, ageYears, pg, params);
 }
 
 void ClinicalModel::updateInfantDeaths( SimTime age ){

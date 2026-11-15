@@ -52,9 +52,9 @@ const vector<double> ctsDemogAgeGroups = { 1.0, 5.0, 10.0, 15.0, 25.0 };
 
 Population::Population(size_t size, const Transmission::VectorSpeciesParams& species_params,
                        const Transmission::AgeGroupInterpolator& age_availability,
-                       util::MasterRng& master_rng) :
+                       util::MasterRng& master_rng, const Clinical::ClinicalParams& clinical_params) :
     size (size), species_params(species_params), age_availability(age_availability),
-    master_rng(master_rng)
+    master_rng(master_rng), clinical_params(clinical_params)
 {}
 
 void Population::createInitialHumans()
@@ -72,7 +72,7 @@ void Population::createInitialHumans()
         while (cumulativePop < targetPop) {
             SimTime dob = sim::zero() - sim::fromTS(iage);
             util::streamValidate( dob );
-            humans.push_back( Host::Human (dob, species_params, age_availability, master_rng) );
+            humans.push_back( Host::Human (dob, species_params, age_availability, master_rng, clinical_params) );
             ++cumulativePop;
         }
     }
@@ -109,7 +109,7 @@ void Population::update()
     recentBirths += (size - cumPop);
     while (cumPop < (int)size) {
         // humans born at end of this time step = beginning of next, hence ts1
-        humans.push_back( Host::Human (sim::ts1(), species_params, age_availability, master_rng) );
+        humans.push_back( Host::Human (sim::ts1(), species_params, age_availability, master_rng, clinical_params) );
         ++cumPop;
     }
 }
@@ -120,7 +120,7 @@ void Population::checkpoint(istream& stream, const interventions::InterventionRe
     recentBirths & stream;
 
     for(size_t i = 0; i < size && !stream.eof(); ++i) {
-        humans.push_back( Host::Human (sim::zero(), species_params, age_availability, master_rng) );
+        humans.push_back( Host::Human (sim::zero(), species_params, age_availability, master_rng, clinical_params) );
         humans.back().checkpoint(stream, reg);
     }
     if (humans.size() != size)

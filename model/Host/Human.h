@@ -34,6 +34,7 @@ namespace OM {
     struct Model;
 namespace Clinical {
     class ClinicalModel;
+    struct ClinicalParams;
 }
 namespace WithinHost {
     class WHInterface;
@@ -53,7 +54,8 @@ public:
     * 
     * @param dateOfBirth date of birth (usually start of next time step) */
     Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& species_params,
-        const Transmission::AgeGroupInterpolator& age_availability, util::MasterRng& master_rng);
+        const Transmission::AgeGroupInterpolator& age_availability, util::MasterRng& master_rng,
+        const Clinical::ClinicalParams& clinical_params);
 
     /// Allow move construction
     Human(Human&&) = default;
@@ -152,7 +154,7 @@ public:
     std::map<interventions::ComponentId,SimTime> subPopExp;
 };
 
-void summarize(Human &human, bool surveyOnlyNewEp);
+void summarize(Human &human, bool surveyOnlyNewEp, const Clinical::ClinicalParams& clinical_params);
 
 struct NeonatalMortality;
     /** Per-time-step update of one human (infection, clinical, monitoring). */

@@ -25,6 +25,7 @@
 
 #include "Host/Human.h"
 #include "Episode.h"
+#include "Clinical/ClinicalParams.h"
 #include <memory>
 
 namespace scnXml{
@@ -50,22 +51,10 @@ namespace OM { namespace Clinical {
 class ClinicalModel
 {
 public:
-    /// @brief Static functions
-    //@{
-    /// First stage of initialisation
-    static void init ( const Parameters& parameters, const scnXml::Scenario& model );
-  
-    /** Second stage of initialisation, done after interventions are configured
-     * 
-     * Also done when a certain intervention is deployed. */
-    static void setHS (const scnXml::HealthSystem& healthSystem,
-        const interventions::InterventionRegistry& reg);
-    
-    /** Return a new ClinicalModel.
+    /** Return a new ClinicalModel of the kind selected by params.
      *
-     * @param tSF	treatment seeking factor, passed to CaseManagementModel */
-    static unique_ptr<ClinicalModel> createClinicalModel (double tSF);
-    //@}
+     * @param tSF treatment seeking factor, passed to CaseManagementModel */
+    static unique_ptr<ClinicalModel> createClinicalModel (double tSF, const ClinicalParams& params);
     
     /// Destructor
     virtual ~ClinicalModel ();
@@ -81,7 +70,8 @@ public:
      * 
      * @param ageYears Age of human.
      * @param newBorn True if human age is one time step old */
-    void update (Human& human, double ageYears, bool newBorn, Host::NeonatalMortality& neonatal);
+    void update (Human& human, double ageYears, bool newBorn, Host::NeonatalMortality& neonatal,
+                 const ClinicalParams& params);
     
     /** For infants, updates the infantIntervalsAtRisk and potentially
      * infantDeaths arrays. */
@@ -89,11 +79,7 @@ public:
     
     /** Special option to allow reports not to be delivered for existing cases
      * (within health-system-memory and not new cases). */
-    virtual bool isExistingCase() =0;
-    
-    inline static SimTime hsMemory() {
-        return healthSystemMemory;
-    }
+    virtual bool isExistingCase(const ClinicalParams& params) =0;
     
     /// Force all pending summaries to be reported. Should only be called when
     /// class is about to be destroyed anyway to avoid affecting output.
@@ -128,7 +114,8 @@ public:
      * @param hostTransmission per-host transmission data of human.
      * @param ageYears Age of human.
      * @param ageGroup Survey age group of human. */
-    virtual void doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg) =0;
+    virtual void doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg,
+                                   const ClinicalParams& params) =0;
     
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
@@ -157,30 +144,6 @@ public:
      * population at the beginning of the next time step. NOTE:
      * updateInfantDeaths() counts deaths after the fact, thus cannot remove immediately. */
     int doomed;
-    
-    
-    /// True if bug-fix is enabled
-    static bool indirectMortBugfix;
-    
-    /// The maximum age of a sickness bout, for another bout to be considered
-    /// part of the same episode.
-    /// 
-    /// Used by both the clinical models in roughly the same way, but will have
-    /// different values in each to match Global::interval.
-    static SimTime healthSystemMemory;
-    
-    ///@brief Case fatality and sequelae "rate" data
-    //@{
-    /// Calculate the case fatality "rate" in the community as a function of
-    /// that in hospitals.
-    static double getCommunityCFR(double caseFatalityRatio);
-    
-    /// Age-specific hospital case fatality "rates"
-    static util::AgeGroupInterpolator caseFatalityRate;
-    /// Age-specific in-hospital rates of sequelae given a severe malaria bout
-    /// Note: out-patients have currently have the same probabilities of sequelae
-    static util::AgeGroupInterpolator pSequelaeInpatient;
-    //@}
 };
 
 

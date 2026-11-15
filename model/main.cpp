@@ -91,7 +91,7 @@ void run(Model &model, SimTime humanWarmupLength, SimTime &endTime, SimTime &est
         mon::Continuous::update( population, { sim::now(), sim::intervTime(), sim::intervDate() } );
         if( sim::intervDate() == mon::nextSurveyDate() ){
             for(Host::Human &human : population.humans)
-                Host::summarize(human, surveyOnlyNewEp);
+                Host::summarize(human, surveyOnlyNewEp, model.clinical_params);
             transmission.summarize();
             mon::concludeSurvey();
         }
@@ -172,7 +172,7 @@ int main(int argc, char* argv[])
         // Init models used by humans
         Host::InfectionIncidenceModel::init( parameters );
         WithinHost::WHInterface::init( parameters, *scenario );
-        Clinical::ClinicalModel::init( parameters, *scenario );
+        Clinical::ClinicalParams clinical_params( parameters, *scenario );
         AgeStructure::init( scenario->getDemography() );
 
         // 3) elements depending on other elements; dependencies on (1) are not mentioned:
@@ -182,15 +182,17 @@ int main(int argc, char* argv[])
         size_t popSize = scenario->getDemography().getPopSize();
 
         Model model(popSize, scenario->getModel().getComputationParameters().getIseed(),
-                    scenario->getEntomology(), scenario->getModel().getHuman().getAvailabilityToMosquitoes());
+                    scenario->getEntomology(), clinical_params,
+                    scenario->getModel().getHuman().getAvailabilityToMosquitoes());
         model.neonatal.init( scenario->getModel().getClinical() );
 
         registerContinousPopulationCallbacks();
 
         // Depends on transmission model (for species indexes):
         // MDA1D may depend on health system (too complex to verify)
-        interventions::init(model.interventions, scenario->getInterventions(), model.humans, *model.transmission );
-        Clinical::ClinicalModel::setHS( scenario->getHealthSystem(), model.interventions.registry ); // Depends on interventions, PK/PD (from humanPop)
+        interventions::init(model.interventions, scenario->getInterventions(), model.humans, *model.transmission,
+                            clinical_params.healthSystemMemory );
+        model.clinical_params.loadHealthSystem( scenario->getHealthSystem(), model.interventions.registry ); // Depends on interventions, PK/PD (from humanPop)
         mon::initCohorts( scenario->getMonitoring(), model.interventions.registry ); // Depends on interventions
 
         bool surveyOnlyNewEp = scenario->getMonitoring().getSurveyOptions().getOnlyNewEpisode();

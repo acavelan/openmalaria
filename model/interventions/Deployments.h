@@ -130,10 +130,6 @@ struct ContinuousHumanDeployment {
  * Called once per deployment as it is read. */
 SimTime checkDeployDate(SimTime date);
 
-/** Do one timed deployment (now). */
-void apply (TimedDeployment& dep, vector<Host::Human>& population,
-            Transmission::TransmissionModel& transmission);
-
 /** Apply filters and potentially deploy.
  *
  * @returns false iff this deployment (and thus all later ones in the
