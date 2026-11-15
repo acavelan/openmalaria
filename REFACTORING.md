@@ -509,14 +509,15 @@ Status of the remaining plan (what is *not* done yet):
    `probAdditionalDeathSugarFeedingIntervs` are now checkpointed.
 - **Phase 3 (clock global)**: in progress — `SimClock`/`sim::now` etc.
   conversions landed for `mon/Continuous`, the whole human-intervention
-  deploy chain, vaccine decay and the per-host intervention/effect chain
-  (`model/interventions/` now has zero clock-global reads). Remaining
-  reads (~160) are in the transmission update chain
-  (`Anopheles`/`VectorModel`/`NonVectorModel`/`TransmissionModel`), the
-  within-host and clinical models, `Human`/`Population` and `main.cpp`
-  (the owner — reads there are final or die with the last slices); each
-  needs its update-chain functions to take the clock as a parameter,
-  mechanically, per directory.
+  deploy chain, vaccine decay, the per-host intervention/effect chain
+  (`model/interventions/` has zero clock-global reads) and the full
+  transmission update chain incl. `AnophelesModel` and the `Human`/
+  `Population` step (`b96bb10a`; `TransmissionModel.h`/`NonVectorModel.h`
+  dynamic reads and `AnophelesModel.cpp` are clock-only). Remaining reads
+  (~105, incl. `main.cpp`/`checkpoint.cpp`/`mon` themselves): the
+  within-host/clinical models (mon/WithinHost cluster), the
+  deferred cts-callback/init-time reads listed under `b96bb10a` below, and
+  `main.cpp`/`sim` themselves (the owner — dies with the last slice).
 - **Phase 6**: `NeonatalMortality` (6a), component registry (6b), clinical/HS
   statics (6c, `Clinical::ClinicalParams`), `InfantMortality` (6d) and
   `InfectionIncidenceModel` (6e, also de-virtualised) done; the
@@ -528,8 +529,8 @@ transmission/PerHost path; intervention deployment state, the component
 registry, the master RNG, the neonatal and infant-mortality models and all
 clinical/health-system parameters are caller-owned (`Model` members). The XML
 boundary is complete — schema headers reach only the loader and the `.cpp`
-files that parse. Cumulative branch diff vs `main`: +6252/−6626 across 140
-files — the model tree is 31,192 lines.
+files that parse. Cumulative branch diff vs `main`: +6369/−6706 across 140
+files — the model tree is 31,209 lines.
 
 ---
 
@@ -546,7 +547,7 @@ ITN and IRS (−209 lines, 52/52):
 
 ---
 
-Phase 3 (clock global) — first four slices (52/52, bit-identical):
+Phase 3 (clock global) — slices (52/52, bit-identical):
 
 - `f69d61c4` added `struct SimClock{now, intervTime, intervDate}` and made
   `mon/Continuous::update` take it (one caller). `6d0489f8` threaded a
@@ -558,6 +559,21 @@ Phase 3 (clock global) — first four slices (52/52, bit-identical):
   `PerHost` aggregators and `makeHumanPart`. Every caller passes the same
   value the code used to read internally, so all outputs are unchanged; the
   interventions directory no longer reads a time global.
+- `b96bb10a` transmission update chain: `SimClock` gained `ts1` (==
+  `sim::nowOrTs1()`), `main::run` builds a loop-top clock (continuous
+  reporting, deploys, survey `summarize`) and a post-`start_update`
+  `update_clock` (`now == ts0`, `ts1 == end of step`), threaded through
+  `getEIR`/`calculateEIR`/`startHumanUpdate`/`updateKappa`/`surveyEIR`/
+  `summarize`/`vectorUpdate`, `AnophelesModel::advancePeriod`/`update`/
+  `summarize(species)`/`getInitPartialEIR`/`getInterventionEIR`/
+  `getEmergenceRate` (now with an `intervTime` param), the vector
+  intervention deploys (`deployVectorPopInterv`/`deployVectorTrap` from the
+  timed-action `SimClock`), `Host::update`, `Population::update(ts1)` and
+  `PerHostInterventionData`'s ctor (`deployTime` param; the checkpoint-load
+  ctor value is overwritten from the stream). Deferred, documented:
+  `VectorModel::init2` (init-time) and the continuous-report callbacks
+  (`ctsCb*`, `getLastVecStat`, `getResAvailability`) — their
+  `mon::Continuous` callback signatures carry no clock.
 
 ---
 
