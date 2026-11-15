@@ -325,11 +325,16 @@ Phase 4 (deployments) — first slice done:
 - 4b `9db62d02` one shared `inAvailabilityRange` for timed/cumulative/
   continuous (raw-vs-scaled is an explicit parameter, behaviour kept).
 
+- 4c `56fd8cf1` decision-tree equivalence machinery deleted: `operator==`
+  existed only for `save_decision`'s duplicate elision; both gone (15
+  hand-written comparisons, ~165 lines). Pointer identity of trees was
+  never observable (not checkpointed, exec is structural).
+
 Phase 6 — remaining statics, one cluster at a time:
 
 - 6a `af8abdb5` `NeonatalMortality` statics → `Model::neonatal` member;
   `ClinicalModel::update` / `Host::update` take it by reference.
-- 6b (this commit) component registry de-static: `struct
+- 6b `4ee4e68d` component registry de-static: `struct
   InterventionRegistry { identifiers; components }` is now a member of
   `InterventionManager` (built by `init()`, immutable afterwards). The
   free `getComponent`/`getComponentId` take it by const reference, and
@@ -359,20 +364,34 @@ Deliberately left file-static:
 
 Phase 5 (XML interface at the boundary) — first slice:
 
-- 5a (this commit) XML parsing moved out of widely-included headers:
+- 5a `ec45f786` XML parsing moved out of widely-included headers:
   `Parameters.h`, `util/ModelNameProvider.h`, `util/ModelOptions.h`,
   `Transmission/TransmissionModel.h`, `Host/ImportedInfections.h` and
   `Clinical/ESCaseManagement.h` no longer include any generated schema
   header. New `Parameters.cpp`, `util/ModelNameProvider.cpp`,
   `Host/ImportedInfections.cpp` hold the moved XML-reading bodies;
   `ModelOptions::init`/`Parameters` ctor now take `const scnXml::Model&`
-  (forward-declared) instead of nested Optional types; `averageEIR` and
-  `setAgeAvailability` are out-of-line in `TransmissionModel.cpp`.
-  new ctor shapes. `averageEIR` keeps both overloads (NonVector and
-  DailyValues — the latter is used by AnophelesModel via
-  `transmission.h`); the unused `schema/pharmacology.h` include in
-  `ESCaseManagement.h` deleted. `unittest/UnittestUtil.h` call sites updated to the
-  new ctor shapes.
+  (forward-declared) at the boundary. `averageEIR` and
+  `setAgeAvailability` are out-of-line in `TransmissionModel.cpp` (both
+  `averageEIR` overloads kept — `transmission.h` uses the DailyValues
+  one); `schema/pharmacology.h` was an unused include in
+  `ESCaseManagement.h`.
+
+Phase 2 (end state) — finished:
+
+- `61f46b86` `Host::update(human, transmission, neonatal)` →
+  `Host::update(human, model)`.
+- `6ec2f3bc` `interventions::deploy` / `loadFromCheckpoint` take
+  `Model&`. The run loop and checkpoint resume now hand the whole model
+  to the few functions that need several members.
+
+Phase 7 (sweep) — first pass:
+
+- `ac77e16e` all three `#if 0` R_0 corpses deleted (the live
+  `insertR_0Case` scenario error stays); seven commented-out
+  `ModelOptions` enum entries with their doc comments deleted; fifteen
+  polymorphic `unique_ptr<Base>(new Derived(…))` factory sites converted
+  to `make_unique<Derived>`.
 
 Net effect so far: no mutable process-wide state left in the
 transmission/PerHost path; intervention deployment state, the component
