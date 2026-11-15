@@ -410,12 +410,43 @@ Phase 7 (sweep) — first pass:
   polymorphic `unique_ptr<Base>(new Derived(…))` factory sites converted
   to `make_unique<Derived>`.
 
+Phase 7 (sweep) — dead-code hunt (−595 lines, 52/52 throughout):
+
+- `475e13ce` deleted `DescriptiveIPTInfection` (never listed in
+  CMakeLists, never referenced); free functions/macros/methods with zero
+  call sites anywhere: `util::addTo`, `RNG::gen_seed`, `OM_ASSERT_EQ(_TOL)`
+  + `do_assertion(_tol)`, `addProphylacticEffects` stub,
+  `samplePatentValue`, `numDrugTypes`, `argmax`, `initIterateScale`,
+  `IPTattenuateAsexualDensity` virtual, `VivaxBrood` `hasHad*` getters
+  (the members stay — they are checkpointed).
+- `7b31ce21` commented-out code blocks deleted (old treatment-probability
+  formula, hypnozoite partial-clearance alternative, GSL spline
+  interpolator, disabled Molineaux tests, debug life-cycle loop) and the
+  three never-registered, fully-commented `VectorModel::cts*` callbacks.
+- `92d0db3d` `62eba769` unused assert macros and the stale LCEmergence
+  comment; the hardcoded-on `USE_DERIVATIVE` root-solver `#else` branch
+  and the never-defined `WHVivaxSamples` debug blocks deleted (alternate
+  GSL solver methods stay listed as comments — they are tuning knobs).
+- `c5e606b2` `-Wall -Wextra` fallout: counters set but never read
+  (`nImported`, `sumLogDens`, AddNonHumanHosts `instance`), unused
+  `deploy()` aliases, eight `return std::move(copy)` → `return copy`
+  (NRVO) in `DecayFunction`.
+
+Deliberately kept: `ModelOptions` flags whose only remaining reference is
+the XML name table (old scenario files may still set them — deleting the
+enum would turn a silent no-op into a scenario error), `StreamValidator`
+(option-gated checkpoint tooling used by every `operator&`), the
+net/IRS-insecticide TODO comments inside the empty-state callbacks they
+refer to.
+
 Net effect so far: no mutable process-wide state left in the
 transmission/PerHost path; intervention deployment state, the component
 registry, the master RNG and the neonatal model are caller-owned (`Model`
-members). The vector-side (string-keyed decay maps, traps, NHH)
-checkpoint gaps remain as noted in §6 — gated by the byte-identical
-contract.
+members). Cumulative branch diff vs `main`: ~1800+/2300− in
+model+unittest — the tree is now ~600 lines smaller than before this
+sweep with no behaviour change. The vector-side (string-keyed decay maps,
+traps, NHH) checkpoint gaps remain as noted in §6 — gated by the
+byte-identical contract.
 
 ---
 
