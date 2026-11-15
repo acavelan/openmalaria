@@ -43,7 +43,9 @@ class HumanVectorInterventionComponent;
 /** Stores vector model data applicable between a category of host and a
  * mosquito species: intervention descriptions and model parameters.
  *
- * Parameters are read from XML, and the availability rate is adjusted. */
+ * Parameters are read from XML, and the availability rate is adjusted.
+ *
+ * Owned by VectorSpeciesParams (below); reached via TransmissionModel. */
 class PerHostAnophParams {
 public:
     PerHostAnophParams (const scnXml::Mosq& mosq);
@@ -54,20 +56,6 @@ public:
     PerHostAnophParams(const PerHostAnophParams&) = delete;
     PerHostAnophParams& operator=(const PerHostAnophParams&) = delete;
 
-    static inline void init (const scnXml::Mosq& mosq) {
-        params.emplace_back(mosq);
-    }
-    
-    /// Get the number of vector species
-    static inline size_t numSpecies() {
-        return params.size();
-    }
-    
-    /// Get parameters for the given vector species
-    static inline const PerHostAnophParams& get(size_t species) {
-        return params[species];
-    }
-    
     /** entoAvailability is calculated externally, then set after other
      * parameters have been initialised.
      * 
@@ -75,47 +63,8 @@ public:
      * 
      * It should be called exactly once.
       */
-    inline static void setEntoAvailabilityFactor(size_t species, double entoAvailability){
-        params[species].entoAvailabilityFactor = entoAvailability;
-    }
-
-    inline static void calcAvailabilityPercentiles(){
-        int nSamples = 100000;
-        vector<double> samples(nSamples, 0.0);
-
-        // Using a different seed to make sure old results will not change
-        // Does it really matter? 
-        util::MasterRng seed(0, 0);
-        seed.seed(0, 0);
-        
-        util::LocalRng rng(seed);
-
-        // Sample
-        for(int i=0; i<nSamples; i++)
-        {
-            double avail = 0.0;
-            for(size_t s = 0; s < Transmission::PerHostAnophParams::numSpecies(); ++s)
-                avail += Transmission::PerHostAnophParams::get(s).entoAvailabilityFactor * Transmission::PerHostAnophParams::get(s).entoAvailability->sample(rng);
-            samples[i] = avail;
-        }
-
-        // Sort samples
-        sort(samples.begin(), samples.end());
-
-        entoAvailabilityPercentiles.resize(100);
-
-        // Calc percetiles threshold values
-        for(int i=0; i<100; i++)
-            entoAvailabilityPercentiles[i] = samples[int(i*nSamples/100)];
-        entoAvailabilityPercentiles[0] = 0.0;
-    }
-
-    inline static double getEntoAvailabilityPercentile(int p){
-        if(p >= 0 && p < 100)
-            return entoAvailabilityPercentiles[p];
-        else if(p == 100)
-            return std::numeric_limits<double>::max();
-        else throw util::xml_scenario_error("Availability percentiles in intervention specifications can only be in [0 and 100]");
+    inline void setEntoAvailabilityFactor(double entoAvailability){
+        entoAvailabilityFactor = entoAvailability;
     }
 
     /** @brief Probabilities of finding a host and surviving a feeding cycle
@@ -141,11 +90,77 @@ public:
      * (P_D_i). */
     util::BetaSampler probMosqSurvivalResting;
     //@}
-    
-private:
-    static vector<PerHostAnophParams> params;
-    static vector<double> entoAvailabilityPercentiles;
+};
 
+/** Vector species parameters: one PerHostAnophParams per species, in species
+ * index order. Built while reading the XML, owned by TransmissionModel. */
+class VectorSpeciesParams {
+public:
+    VectorSpeciesParams() = default;
+    VectorSpeciesParams(VectorSpeciesParams&&) = default;
+    VectorSpeciesParams& operator=(VectorSpeciesParams&&) = default;
+
+    /// Add one species' parameters (must be called in species index order)
+    inline void init (const scnXml::Mosq& mosq) {
+        params.emplace_back(mosq);
+    }
+
+    /// Get the number of vector species
+    inline size_t numSpecies() const {
+        return params.size();
+    }
+
+    /// Get parameters for the given vector species
+    inline const PerHostAnophParams& get(size_t species) const {
+        return params[species];
+    }
+
+    inline void setEntoAvailabilityFactor(size_t species, double entoAvailability){
+        params[species].setEntoAvailabilityFactor(entoAvailability);
+    }
+
+    inline void calcAvailabilityPercentiles(){
+        int nSamples = 100000;
+        vector<double> samples(nSamples, 0.0);
+
+        // Using a different seed to make sure old results will not change
+        // Does it really matter? 
+        util::MasterRng seed(0, 0);
+        seed.seed(0, 0);
+        
+        util::LocalRng rng(seed);
+
+        // Sample
+        for(int i=0; i<nSamples; i++)
+        {
+            double avail = 0.0;
+            for(size_t s = 0; s < numSpecies(); ++s)
+                avail += get(s).entoAvailabilityFactor * get(s).entoAvailability->sample(rng);
+            samples[i] = avail;
+        }
+
+        // Sort samples
+        sort(samples.begin(), samples.end());
+
+        entoAvailabilityPercentiles.resize(100);
+
+        // Calc percetiles threshold values
+        for(int i=0; i<100; i++)
+            entoAvailabilityPercentiles[i] = samples[int(i*nSamples/100)];
+        entoAvailabilityPercentiles[0] = 0.0;
+    }
+
+    inline double getEntoAvailabilityPercentile(int p) const{
+        if(p >= 0 && p < 100)
+            return entoAvailabilityPercentiles[p];
+        else if(p == 100)
+            return std::numeric_limits<double>::max();
+        else throw util::xml_scenario_error("Availability percentiles in intervention specifications can only be in [0 and 100]");
+    }
+
+private:
+    vector<PerHostAnophParams> params;
+    vector<double> entoAvailabilityPercentiles;
 };
 
 /**
@@ -239,7 +254,7 @@ public:
     ///@brief Initialisation / checkpionting
     //@{
     PerHost ();
-    void initialise (LocalRng& rng, double availabilityFactor);
+    void initialise (LocalRng& rng, double availabilityFactor, const VectorSpeciesParams& species_params);
     //@}
     
     /// Call once per time step. Updates net holes.

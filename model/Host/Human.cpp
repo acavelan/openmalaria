@@ -106,10 +106,11 @@ HumanHet hetSample(util::LocalRng& rng)
     return het;
 }
 
-Human::Human(SimTime dateOfBirth) :
+Human::Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& species_params) :
     infIncidence(InfectionIncidenceModel::createModel()),
     rng(util::master_RNG),
-    dateOfBirth(dateOfBirth)
+    dateOfBirth(dateOfBirth),
+    species_params(&species_params)
 {
     // Initial humans are created at time 0 and may have dateOfBirth in past. Otherwise dateOfBirth must be now.
     assert( dateOfBirth == sim::nowOrTs1() || (sim::now() == sim::zero() && dateOfBirth < sim::now()) );
@@ -117,7 +118,7 @@ Human::Human(SimTime dateOfBirth) :
     HumanHet het = hetSample(rng);
     withinHostModel = WithinHost::WHInterface::createWithinHostModel( rng, het.comorbidityFactor );
     double iiFactor = infIncidence->getAvailabilityFactor(rng, 1.0);
-    perHostTransmission.initialise (rng, het.availabilityFactor * iiFactor);
+    perHostTransmission.initialise (rng, het.availabilityFactor * iiFactor, *this->species_params);
     clinicalModel = Clinical::ClinicalModel::createClinicalModel(het.treatmentSeekingFactor);
 }
 

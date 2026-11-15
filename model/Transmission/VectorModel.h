@@ -52,7 +52,7 @@ public:
 
     VectorModel(vector<double> initEIR, int interventionMode, vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
                 vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList, map<string, size_t> speciesIndexList,
-                int populationSize);
+                int populationSize, VectorSpeciesParams species_store);
 
     virtual ~VectorModel();
 
@@ -136,7 +136,6 @@ public:
 
     bool opt_vaccine_genotype = false;
     
-    friend class PerHost;
     friend class AnophelesModelSuite;
 };
 

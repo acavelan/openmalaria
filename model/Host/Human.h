@@ -50,7 +50,7 @@ public:
     /** Initialise all variables of a human datatype.
     * 
     * @param dateOfBirth date of birth (usually start of next time step) */
-    Human(SimTime dateOfBirth);
+    Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& species_params);
 
     /// Allow move construction
     Human(Human&&) = default;
@@ -124,6 +124,8 @@ public:
 
 private:
     SimTime dateOfBirth = sim::never();        // date of birth; humans are always born at the end of a time step
+
+    const Transmission::VectorSpeciesParams* species_params;
 
     /** Cache, updated when human is added to or removed from a sub-population */
     uint32_t cohortSet = 0;

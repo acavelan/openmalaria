@@ -182,8 +182,8 @@ int main(int argc, char* argv[])
         // Note: PerHost dependency can be postponed; it is only used to set adultAge
         size_t popSize = scenario->getDemography().getPopSize();
 
-        std::unique_ptr<Population> population = std::unique_ptr<Population>(new Population(popSize));
         std::unique_ptr<TransmissionModel> transmission = std::unique_ptr<TransmissionModel>(Transmission::createTransmissionModel(scenario->getEntomology(), popSize));
+        std::unique_ptr<Population> population = std::unique_ptr<Population>(new Population(popSize, transmission->speciesParams));
 
         registerContinousPopulationCallbacks();
 
@@ -231,7 +231,7 @@ int main(int argc, char* argv[])
             readCheckpoint(checkpointFileName, endTime, estEndTime, *population, *transmission);
 
             /** Calculate ento availability percentiles **/
-            Transmission::PerHostAnophParams::calcAvailabilityPercentiles();
+            transmission->speciesParams.calcAvailabilityPercentiles();
         }
         else
         {
@@ -240,7 +240,7 @@ int main(int argc, char* argv[])
             transmission->init2(population->humans);
             
             /** Calculate ento availability percentiles **/
-            Transmission::PerHostAnophParams::calcAvailabilityPercentiles();
+            transmission->speciesParams.calcAvailabilityPercentiles();
 
             /** Warm-up phase: 
              * Run the simulation using the equilibrium inoculation rates over one

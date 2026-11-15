@@ -225,7 +225,7 @@ public:
      * @param nonHumanHostPopulations Size of each non-human population
      * @param populationSize Size of the human population (assumed constant)
      */
-    void initAvailability(size_t species, const vector<NhhParams> &nhhs, int populationSize);
+    void initAvailability(size_t species, const vector<NhhParams> &nhhs, int populationSize, VectorSpeciesParams& species_params);
 
     void initEIR(const vector<double>& initEIR365, vector<double> FSCoefficInit, double EIRRotateAngleInit, double propInfectious, double propInfected);
 
@@ -304,7 +304,7 @@ public:
     /// @param instance Index of this type of trap
     /// @param number The number of traps to deploy
     /// @param lifespan Time until these traps are removed/replaced/useless
-    void deployVectorTrap(LocalRng& rng, size_t species, size_t instance, double popSize, SimTime lifespan);
+    void deployVectorTrap(LocalRng& rng, size_t species, size_t instance, double popSize, SimTime lifespan, const VectorSpeciesParams& species_params);
 
     /** (Re) allocate and initialise some state variables. Must be called
      * before model is run. */

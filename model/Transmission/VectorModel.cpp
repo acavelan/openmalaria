@@ -190,7 +190,7 @@ const string &reverseLookup(const map<string, size_t> &m, size_t i)
 
 VectorModel::VectorModel(vector<double> initEIR, int interventionMode, vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
                          vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList, map<string, size_t> speciesIndexList,
-                         int populationSize)
+                         int populationSize, VectorSpeciesParams species_store)
     : TransmissionModel(std::move(initEIR), interventionMode, WithinHost::Genotypes::N())
     , m_rng(util::master_RNG)
     , initIterations(0)
@@ -198,6 +198,7 @@ VectorModel::VectorModel(vector<double> initEIR, int interventionMode, vector<st
     , emergenceRateEstimators(std::move(emergenceRateEstimatorsList))
     , speciesIndex(std::move(speciesIndexList))
 {
+    speciesParams = std::move(species_store);
     // set VACCINE_GENOTYPE option
     opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
 
@@ -509,7 +510,7 @@ void VectorModel::deployVectorTrap(size_t instance, double number, SimTime lifes
     if (interventionMode != dynamicEIR) { throw xml_scenario_error(vec_mode_err); }
     for (size_t i = 0; i < speciesIndex.size(); ++i)
     {
-        species[i]->deployVectorTrap(m_rng, i, instance, number, lifespan);
+        species[i]->deployVectorTrap(m_rng, i, instance, number, lifespan, speciesParams);
     }
 }
 

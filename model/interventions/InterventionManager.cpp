@@ -567,7 +567,7 @@ void InterventionManager::deploy(vector<Host::Human> &population, Transmission::
                 continuous[nextCtsDist].print_details(cout);
                 cout << endl;
             }
-            if (!continuous[nextCtsDist].filterAndDeploy(human)) break; // deployment (and all remaining) happens in the future
+            if (!continuous[nextCtsDist].filterAndDeploy(human, transmission.speciesParams)) break; // deployment (and all remaining) happens in the future
             nextCtsDist = ++human.nextCtsDist;
         }
     }

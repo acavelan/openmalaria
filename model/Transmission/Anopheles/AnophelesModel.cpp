@@ -160,7 +160,7 @@ void AnophelesModel::initialise(size_t species, MosquitoParams mosqParams)
     uninfected_v[sim::zero()] = numeric_limits<double>::quiet_NaN(); // index not used
 }
 
-void AnophelesModel::initAvailability(size_t species, const vector<NhhParams> &nhhs, int populationSize)
+void AnophelesModel::initAvailability(size_t species, const vector<NhhParams> &nhhs, int populationSize, VectorSpeciesParams& species_params)
 {
     // A: Host seeking
     // Proportion of host-seeking parous mosquitoes (those who have laid eggs)
@@ -240,7 +240,7 @@ void AnophelesModel::initAvailability(size_t species, const vector<NhhParams> &n
     }
 
     // -----  Calculate availability rate of hosts (α_i) and non-human population data  -----
-    PerHostAnophParams::setEntoAvailabilityFactor(species, (P_A1 / populationSize) * availFactor);
+    species_params.setEntoAvailabilityFactor(species, (P_A1 / populationSize) * availFactor);
 
     initAvail = (P_A1 / populationSize) * availFactor;
 
@@ -452,12 +452,12 @@ void AnophelesModel::deployVectorPopInterv(LocalRng &rng, size_t instance)
     seekingDeathRateIntervs[instance].deploy(rng, sim::now());
     probDeathOvipositingIntervs[instance].deploy(rng, sim::now());
 }
-void AnophelesModel::deployVectorTrap(LocalRng &rng, size_t species, size_t instance, double popSize, SimTime lifespan)
+void AnophelesModel::deployVectorTrap(LocalRng &rng, size_t species, size_t instance, double popSize, SimTime lifespan, const VectorSpeciesParams& species_params)
 {
     assert(instance < trapParams.size());
     TrapData data;
     data.instance = instance;
-    const PerHostAnophParams &anophParams = PerHostAnophParams::get(species);
+    const PerHostAnophParams &anophParams = species_params.get(species);
     const double adultAvail = anophParams.entoAvailability->mean() * anophParams.entoAvailabilityFactor;
     data.initialAvail = popSize * adultAvail * trapParams[instance].relAvail;
     data.availHet = trapParams[instance].availDecay->hetSample(rng);

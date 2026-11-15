@@ -35,7 +35,7 @@ namespace OM {
 class Population
 {
 public:
-    Population(size_t size);
+    Population(size_t size, const Transmission::VectorSpeciesParams& species_params);
 
     /** Create the initial population of Humans */
     void createInitialHumans();
@@ -68,6 +68,8 @@ private:
     
     /** Births count since last continuous output */
     int recentBirths = 0;
+
+    const Transmission::VectorSpeciesParams& species_params;
 };
 
 void registerContinousPopulationCallbacks();

@@ -69,7 +69,7 @@ inline bool anophelesCompare(const scnXml::AnophelesParams &a1, const scnXml::An
     return (a1.getSeasonality().getAnnualEIR().get() > a2.getSeasonality().getAnnualEIR().get());
 }
 
-inline Anopheles::AnophelesModel *createAnophelesModel(size_t i, const scnXml::AnophelesParams &anoph, vector<double>& initialisationEIR, int populationSize, int interventionMode)
+inline Anopheles::AnophelesModel *createAnophelesModel(size_t i, const scnXml::AnophelesParams &anoph, vector<double>& initialisationEIR, int populationSize, int interventionMode, VectorSpeciesParams& species_params)
 {
     Anopheles::AnophelesModel *anophModel;
 
@@ -308,7 +308,7 @@ inline Anopheles::AnophelesModel *createAnophelesModel(size_t i, const scnXml::A
     double propInfected = 0.078;
 
     anophModel->initialise(i, mosqParams);
-    anophModel->initAvailability(i, nhhs, populationSize);
+    anophModel->initAvailability(i, nhhs, populationSize, species_params);
     anophModel->initEIR(initEIR365, FSCoeffic, EIRRotateAngle, propInfectious, propInfected);
 
     for (SimTime i = sim::zero(); i < sim::oneYear(); i = i + sim::oneDay())
@@ -332,6 +332,7 @@ inline VectorModel *createVectorModel(const scnXml::Entomology &entoData, int po
     map<string, size_t> speciesIndex;
 
     size_t numSpecies = anophelesList.size();
+    VectorSpeciesParams species_params;
 
     if (numSpecies < 1) throw util::xml_scenario_error("Can't use Vector model without data for at least one anopheles species!");
 
@@ -342,9 +343,9 @@ inline VectorModel *createVectorModel(const scnXml::Entomology &entoData, int po
     {
         auto anoph = anophelesList[i];
 
-        PerHostAnophParams::init(anoph.getMosq());
+        species_params.init(anoph.getMosq());
 
-        Anopheles::AnophelesModel *anophModel = createAnophelesModel(i, anoph, initialisationEIR, populationSize, interventionMode);
+        Anopheles::AnophelesModel *anophModel = createAnophelesModel(i, anoph, initialisationEIR, populationSize, interventionMode, species_params);
         std::unique_ptr<Anopheles::EmergenceRateEstimator> estimator;
         if (util::ModelOptions::option(util::USE_EXACT_NV0_SOLVER))
             estimator = std::make_unique<Anopheles::EmergenceRateSolver>(*anophModel, populationSize);
@@ -364,7 +365,7 @@ inline VectorModel *createVectorModel(const scnXml::Entomology &entoData, int po
         // speciesIndex.clear();
     }
 
-    return new VectorModel(initialisationEIR, interventionMode, std::move(species), std::move(emergenceRateEstimators), speciesIndex, populationSize);
+    return new VectorModel(initialisationEIR, interventionMode, std::move(species), std::move(emergenceRateEstimators), speciesIndex, populationSize, std::move(species_params));
 }
 
 ///@brief Creation, destruction and checkpointing

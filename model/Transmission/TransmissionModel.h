@@ -40,6 +40,7 @@
 #include "util/CommandLine.h"
 #include "util/vectors.h"
 #include "util/ModelOptions.h"
+#include "Transmission/PerHost.h"
 
 #include <cmath>
 #include <cfloat>
@@ -151,6 +152,9 @@ protected:
 public:
     //! Deallocate memory for TransmissionModel parameters and clean up
     virtual ~TransmissionModel() {}
+
+    /// Species-level mosquito parameters (empty for the non-vector model).
+    VectorSpeciesParams speciesParams;
 
     /** Extra initialisation when not loading from a checkpoint, requiring
      * information from the human population structure. */

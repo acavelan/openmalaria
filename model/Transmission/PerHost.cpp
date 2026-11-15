@@ -33,9 +33,6 @@ using namespace OM::util;
 // -----  PerHost static  -----
 
 AgeGroupInterpolator PerHost::relAvailAge;
-vector<PerHostAnophParams> PerHostAnophParams::params;
-vector<double> PerHostAnophParams::entoAvailabilityPercentiles;
-
 PerHostAnophParams::PerHostAnophParams (const scnXml::Mosq& mosq) {
     if(mosq.getAvailability().getDistr() != "const" && (util::ModelOptions::option(NEGATIVE_BINOMIAL_MASS_ACTION) || util::ModelOptions::option(LOGNORMAL_MASS_ACTION) || util::ModelOptions::option(COMORB_TRANS_HET)))
         throw util::xml_scenario_error( "PerHostAnophParams::PerHostAnophParams(): ModelOptions NEGATIVE_BINOMIAL_MASS_ACTION, LOGNORMAL_MASS_ACTION, COMORB_TRANS_HET are not compatible with ento-availability heterogeneity distributions other than \"const\"");
@@ -58,15 +55,15 @@ PerHost::PerHost () :
 {
 }
 
-void PerHost::initialise (LocalRng& rng, double availabilityFactor) {
+void PerHost::initialise (LocalRng& rng, double availabilityFactor, const VectorSpeciesParams& species_params) {
     relativeAvailabilityHet = availabilityFactor;
-    anophEntoAvailabilityRaw.resize(PerHostAnophParams::numSpecies());
-    anophEntoAvailability.resize(PerHostAnophParams::numSpecies());
-    anophProbMosqBiting.resize(PerHostAnophParams::numSpecies());
-    anophProbMosqResting.resize(PerHostAnophParams::numSpecies());
+    anophEntoAvailabilityRaw.resize(species_params.numSpecies());
+    anophEntoAvailability.resize(species_params.numSpecies());
+    anophProbMosqBiting.resize(species_params.numSpecies());
+    anophProbMosqResting.resize(species_params.numSpecies());
 
-    for(size_t i = 0; i < PerHostAnophParams::numSpecies(); ++i) {
-        const PerHostAnophParams& base = PerHostAnophParams::get(i);
+    for(size_t i = 0; i < species_params.numSpecies(); ++i) {
+        const PerHostAnophParams& base = species_params.get(i);
         anophEntoAvailabilityRaw[i] = base.entoAvailability->sample(rng);
         anophEntoAvailability[i] = base.entoAvailabilityFactor * anophEntoAvailabilityRaw[i] * availabilityFactor;
         anophProbMosqBiting[i] = base.probMosqBiting.sample(rng);
