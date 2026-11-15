@@ -108,61 +108,6 @@ public:
         // from the pairwise model, when compared to those in the paper.
         stats.compare( "MolineauxStatsOrigRG" );
     }
-    /*
-    void dont_testMol1MG(){
-        UnittestUtil::MolineauxWHM_setup( "1st_max_gamma", false );
-        MolInfStats stats( 200 );
-        stats.capture(m_rng);
-        // We compare against model outputs (checking for changes, rather than
-        // accuracy). Output is nowhere near what we want.
-        stats.write( "MolineauxStats1MG" );
-    }
-    
-    void dont_testMol1MGRG(){
-        UnittestUtil::MolineauxWHM_setup( "1st_max_gamma", true );
-        MolInfStats stats( 200 );
-        stats.capture(m_rng);
-        // We compare against model outputs (checking for changes, rather than
-        // accuracy). Output is nowhere near what we want.
-        stats.write( "MolineauxStats1MGRG" );
-    }
-    
-    void dont_testMolMDG(){
-        UnittestUtil::MolineauxWHM_setup( "mean_dur_gamma", false );
-        MolInfStats stats( 200 );
-        stats.capture(m_rng);
-        // We compare against model outputs (checking for changes, rather than
-        // accuracy). Model output contains NaNs.
-        stats.write( "MolineauxStatsMDG" );
-    }
-    
-    void dont_testMolMDGRG(){
-        UnittestUtil::MolineauxWHM_setup( "mean_dur_gamma", true );
-        MolInfStats stats( 200 );
-        stats.capture(m_rng);
-        // We compare against model outputs (checking for changes, rather than
-        // accuracy). Model output contains NaNs.
-        stats.write( "MolineauxStatsMDGRG" );
-    }
-    
-    void dont_testMol1MGMDG(){
-        UnittestUtil::MolineauxWHM_setup( "1st_max_and_mean_dur_gamma", false );
-        MolInfStats stats( 200 );
-        stats.capture(m_rng);
-        // We compare against model outputs (checking for changes, rather than
-        // accuracy). Model output contains NaNs.
-        stats.write( "MolineauxStats1MGMDG" );
-    }
-    
-    void dont_testMol1MGMDGRG(){
-        UnittestUtil::MolineauxWHM_setup( "1st_max_and_mean_dur_gamma", true );
-        MolInfStats stats( 200 );
-        stats.capture(m_rng);
-        // We compare against model outputs (checking for changes, rather than
-        // accuracy). Model output contains NaNs.
-        stats.write( "MolineauxStats1MGMDGRG" );;
-    }
-    */
     void testMolPairwise(){
         UnittestUtil::MolineauxWHM_setup( "pairwise", false );
         MolInfStats stats( 200 );

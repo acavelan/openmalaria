@@ -105,9 +105,6 @@ private:
     void ctsCbAlpha(const vector<Host::Human> &population, ostream &stream);
     void ctsCbP_B(const vector<Host::Human> &population, ostream &stream);
     void ctsCbP_CD(const vector<Host::Human> &population, ostream &stream);
-    void ctsNetInsecticideContent(const vector<Host::Human> &population, ostream &stream);
-    void ctsIRSInsecticideContent(const vector<Host::Human> &population, ostream &stream);
-    void ctsIRSEffects(const vector<Host::Human> &population, ostream &stream);
     void ctsCbResAvailability(ostream &stream);
     void ctsCbResRequirements(ostream &stream);
 

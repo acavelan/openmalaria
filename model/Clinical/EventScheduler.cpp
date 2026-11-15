@@ -308,30 +308,7 @@ void ClinicalEventScheduler::doClinicalUpdate (Human& human, double ageYears, Wi
                 
                 // Calculate chance of antibiotic administration:
                 double pTreatment = 0.0;
-                /*FIXME
-                if( auxOut.AB_provider != CMAuxOutput::NO_AB ){
-                    // Treatment seeking; may be at a health facility or from
-                    // the informal sector.
-                    double logOddsAb = logOddsAbBase - logOddsAbNeed * pNeedTreat;
-                    if( auxOut.AB_provider == CMAuxOutput::FACILITY ){
-                        if( auxOut.diagnostic == CMAuxOutput::NEGATIVE ){
-                            logOddsAb += logOddsAbNegTest;
-                        }else if( auxOut.diagnostic == CMAuxOutput::POSITIVE ){
-                            logOddsAb += logOddsAbPosTest;
-                        }
-                        if( needTreat ){
-                            logOddsAb += logOddsAbNeed;
-                        }
-                    }else{
-                        assert( auxOut.AB_provider == CMAuxOutput::INFORMAL );
-                        logOddsAb += logOddsAbInformal;
-                    }
-                    
-                    double oddsTreatment = exp( logOddsAb );
-                    pTreatment = oddsTreatment / (1.0 + oddsTreatment);
-                }*/
-                
-                double treatmentEffectMult = 1.0;
+                                double treatmentEffectMult = 1.0;
                 
                 if( human.rng.uniform_01() < pTreatment ){
                     /*FIXME: impossible due to above; NMF output removed

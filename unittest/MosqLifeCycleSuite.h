@@ -466,16 +466,6 @@ public:
         }
     }
     void testSimulateWithInfections (){
-        /* NOTE: this is only for debugging
-        // constant resource availability; in this case we need a vector 365 long
-        mt.lcParams.invLarvalResources.assign( 365, 1e-8 );
-        
-        mt.initState( P_A, P_df, initNvFromSv, initOvFromSv, vector<double>(&myS_v[0], &myS_v[365]) );
-        
-        for( size_t d=1; d<400; ++d ){
-            mt.update( d, P_A, P_df, myP_dif[d % 365], true );
-        }
-        */
     }
     
     // Test the fitting algorithm doesn't throw/assert false. No other tests

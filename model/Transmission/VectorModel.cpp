@@ -130,44 +130,6 @@ void VectorModel::ctsCbP_CD(const vector<Host::Human> &population, ostream &stre
         stream << '\t' << total / population.size();
     }
 }
-void VectorModel::ctsNetInsecticideContent(const vector<Host::Human> &population, ostream &stream)
-{
-    //     double meanVar = 0.0;
-    //     int n = 0;
-    //     for(const Host::Human &human : population) {
-    //         if( human.perHostTransmission.getITN().timeOfDeployment() >= sim::zero() ){
-    //             ++n;
-    //             meanVar += human.perHostTransmission.getITN().getInsecticideContent(_ITNParams);
-    //         }
-    //     }
-    //     stream << '\t' << meanVar/n;
-}
-void VectorModel::ctsIRSInsecticideContent(const vector<Host::Human> &population, ostream &stream)
-{
-    // TODO(monitoring): work out how this applies when multiple IRS effects are allowed
-    //     double totalInsecticide = 0.0;
-    //     for(const Host::Human &human : population) {
-    //         totalInsecticide += human.perHostTransmission.getIRS().getInsecticideContent(_IRSParams);
-    //     }
-    //     stream << '\t' << totalInsecticide / population.size();
-}
-void VectorModel::ctsIRSEffects(const vector<Host::Human> &population, ostream &stream)
-{
-    // TODO(monitoring): work out how this applies when multiple IRS effects are allowed
-    //     for( size_t i = 0; i < speciesIndex.size(); ++i ){
-    //         const interventions::IRSAnophelesParams& params = species[i]->getHumanBaseParams().irs;
-    //         double totalRA = 0.0, totalPrePSF = 0.0, totalPostPSF = 0.0;
-    //         for(const Host::Human &human : population) {
-    //             totalRA += human.perHostTransmission.getIRS().relativeAttractiveness(params);
-    //             totalPrePSF += human.perHostTransmission.getIRS().preprandialSurvivalFactor(params);
-    //             totalPostPSF += human.perHostTransmission.getIRS().postprandialSurvivalFactor(params);
-    //         }
-    //         stream << '\t' << totalRA / population.size()
-    //             << '\t' << totalPrePSF / population.size()
-    //             << '\t' << totalPostPSF / population.size();
-    //     }
-}
-
 void VectorModel::ctsCbResAvailability(ostream &stream)
 {
     for (size_t i = 0; i < speciesIndex.size(); ++i)

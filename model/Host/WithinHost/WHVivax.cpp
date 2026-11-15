@@ -284,16 +284,6 @@ void VivaxBrood::treatmentBS(){
 void VivaxBrood::treatmentLS(){
     releaseDates.clear();       // 100% clearance
     
-    /* partial clearance code, in case of need:
-    vector<SimTime> survivingZoites;
-    survivingZoites.reserve( releaseDates.size() );   // maximum size we need
-    for( auto it = releaseDates.begin(); it != releaseDates.end(); ++it ){
-        if( !rng.bernoulli( pClearEachHypnozoite ) ){
-            survivingZoites.push_back( *it );    // copy            
-        }
-    }
-    swap( releaseDates, survivingZoites );
-    */
 }
 
 
