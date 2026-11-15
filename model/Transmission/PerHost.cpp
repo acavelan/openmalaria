@@ -123,6 +123,21 @@ PerHostAnophParams::PerHostAnophParams (const scnXml::Mosq& mosq) {
     probMosqSurvivalResting.setParams( mosq.getMosqProbResting() );
 }
 
+// -----  HumanVectorInterventionComponent  -----
+
+void HumanVectorInterventionComponent::deploy(Host::Human& human, mon::Deploy::Method method, interventions::VaccineLimits, SimTime now) const{
+    human.perHostTransmission.deployComponent(human.rng, *this, now);
+    switch (kind) {
+    case interventions::Component::ITN: mon::recordDeploy(mon::measure("nMassITNs"), mon::measure("nEPI_ITNs"), human, method); break;
+    case interventions::Component::IRS: mon::recordDeploy(mon::measure("nMassIRS"), mon::measure("nCtsIRS"), human, method); break;
+    default: mon::recordDeploy(mon::measure("nMassGVI"), mon::measure("nCtsGVI"), human, method); break; // GVI
+    }
+}
+
+void HumanVectorInterventionComponent::print_details(std::ostream& out) const{
+    out << id().id << "\t" << (kind == interventions::Component::IRS ? "IRS" : (kind == interventions::Component::GVI ? "GVI" : "ITN"));
+}
+
 // -----  PerHost non-static -----
 
 PerHost::PerHost () :

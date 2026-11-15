@@ -24,66 +24,22 @@
 #define OM_INTERVENTIONS_GVI
 
 #include "Transmission/PerHost.h"
-#include "interventions/Interfaces.h"
-#include "util/DecayFunction.h"
-#include "util/sampler.h"
+
+#include <map>
+#include <memory>
+#include <string>
+
 namespace scnXml {
     class GVIDescription;
-    class AnophelesParams11;
 }
 
-namespace OM { namespace interventions {
-    using util::DecayFunction;
-    using util::LognormalSampler;
-    using util::LocalRng;
+namespace OM {
+namespace interventions {
 
-/** Constant parameters for generic vector intervention model. */
-class GVIComponent : public Transmission::HumanVectorInterventionComponent {
-public:
-    /** Initialise parameters
-     * 
-     * @param elt Component description from XML
-     * @param species_name_map Map of species names to indices.
-     */
-    GVIComponent( ComponentId, const scnXml::GVIDescription& elt,
-               const map<string,size_t>& species_name_map );
-    
-    void deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits, SimTime /*now*/ )const;
-    
-    virtual Component::Type componentType() const;
-    
-    virtual void print_details( std::ostream& out )const;
-    
-public:
-    /** Per mosquito-species parameters for generic vector intervention model. */
-    class GVIAnopheles {
-    public:
-        GVIAnopheles() :
-            proportionProtected( numeric_limits<double>::signaling_NaN() ),
-            proportionUnprotected( numeric_limits<double>::signaling_NaN() ),
-            deterrency( numeric_limits<double>::signaling_NaN() ),
-            preprandialKilling( numeric_limits<double>::signaling_NaN() ),
-            postprandialKilling( numeric_limits<double>::signaling_NaN() ),
-            fecundityReduction( numeric_limits<double>::signaling_NaN() )
-        {}
-        void init(const scnXml::AnophelesParams11& elt, double proportionUse);
-        
-        /// Return x*proportionProtected + proportionUnprotected
-        inline double byProtection(double x) const{
-            return x*proportionProtected + proportionUnprotected;
-        }
-        
-        double proportionProtected;
-        double proportionUnprotected;
-        double deterrency;
-        double preprandialKilling;
-        double postprandialKilling;
-        double fecundityReduction;
-    };
-    
-    unique_ptr<DecayFunction> decay;
-    vector<GVIAnopheles> species;  // vector specific params
-};
+/** Build the GVI parameters from XML. Defined in GVI.cpp. */
+std::unique_ptr<Transmission::HumanVectorInterventionComponent> parseGVIComponent(
+    ComponentId id, const scnXml::GVIDescription& elt,
+    const std::map<std::string, size_t>& species_name_map);
 
 } }
 

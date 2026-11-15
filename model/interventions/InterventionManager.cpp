@@ -1054,15 +1054,15 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
             }
             else if (component.getITN().present())
             {
-                hiComponent = new ITNComponent(id, component.getITN().get(), species_index_map);
+                hiComponent = parseITNComponent(id, component.getITN().get(), species_index_map).release();
             }
             else if (component.getIRS().present())
             {
-                hiComponent = new IRSComponent(id, component.getIRS().get(), species_index_map);
+                hiComponent = parseIRSComponent(id, component.getIRS().get(), species_index_map).release();
             }
             else if (component.getGVI().present())
             {
-                hiComponent = new GVIComponent(id, component.getGVI().get(), species_index_map);
+                hiComponent = parseGVIComponent(id, component.getGVI().get(), species_index_map).release();
             }
             else if (component.getRecruitmentOnly().present())
             {

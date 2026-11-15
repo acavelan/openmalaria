@@ -25,9 +25,11 @@
 
 #include "Global.h"
 #include "interventions/Interfaces.h"
+#include "interventions/InterventionFactors.h"
 #include "util/AgeGroupInterpolation.h"
 #include "util/DecayFunction.h"
 #include "util/checkpoint_containers.h"
+#include "util/sampler.h"
 
 #include "util/random.h"
 
@@ -200,14 +202,66 @@ struct PerHostInterventionData {
     double initialInsecticide = 0.0;        // mg/m²
 };
 
-/** A base class for human vector intervention parameters. */
+/** Parameters of a human-deployed vector intervention (ITN, IRS or GVI): one
+ * kind-tagged data holder for all three, built from XML by the per-kind
+ * parsers (interventions/ITN.cpp/IRS.cpp/GVI.cpp). The per-host state that
+ * deployment creates is PerHostInterventionData (above). Which fields carry
+ * data depends on kind:
+ *  ITN: all fields; species hold response curves evaluated at the net's
+ *       current holeIndex and insecticide content.
+ *  IRS: initialInsecticide, maxInsecticide, insecticideDecay, species; the
+ *       curves are the ITN ones with hole terms zero (evaluated at 0).
+ *  GVI: insecticideDecay (effect decay) and species (constant effects). */
 class HumanVectorInterventionComponent : public interventions::HumanInterventionComponent {
 public:
-    virtual ~HumanVectorInterventionComponent() {}
-    
-public:
-    explicit HumanVectorInterventionComponent(interventions::ComponentId id) :
-            HumanInterventionComponent(id) {}
+    /** Per mosquito-species effect parameters, shared by the three kinds. */
+    struct SpeciesParams {
+        double proportionProtected = numeric_limits<double>::signaling_NaN();
+        double proportionUnprotected = numeric_limits<double>::signaling_NaN();
+        /// ITN/IRS response curves:
+        interventions::factors::RelativeAttractiveness relAttractiveness;
+        interventions::factors::SurvivalFactor preprandialKillingEffect;
+        interventions::factors::SurvivalFactor postprandialKillingEffect;
+        interventions::factors::SurvivalFactor relFecundityEffect;
+        /// GVI constants (instead of curves):
+        double deterrency = 0.0;
+        double preprandialKilling = 0.0;
+        double postprandialKilling = 0.0;
+        double fecundityReduction = 0.0;
+    };
+
+    HumanVectorInterventionComponent(interventions::ComponentId id, interventions::Component::Type kind) :
+            HumanInterventionComponent(id), kind(kind) {}
+
+    /// Deploy to the human; records monitoring for the kind.
+    virtual void deploy(Host::Human& human, mon::Deploy::Method method,
+            interventions::VaccineLimits, SimTime now) const;  // PerHost.cpp
+    virtual interventions::Component::Type componentType() const { return kind; }
+    virtual void print_details(std::ostream& out) const;       // PerHost.cpp
+
+    /// ITN/IRS: clamped draw of the initial insecticide content (mg/m²).
+    double sampleInitialInsecticide(util::LocalRng& rng) const {
+        double sample = initialInsecticide.sample(rng);
+        if( sample < 0.0 )
+            sample = 0.0;       // avoid negative samples
+        if( sample > maxInsecticide )
+            sample = maxInsecticide;
+        return sample;
+    }
+
+    const interventions::Component::Type kind;
+
+    /// ITN and IRS:
+    util::NormalSampler initialInsecticide;
+    double maxInsecticide = 0.0;              // maximum initial insecticide
+    unique_ptr<DecayFunction> insecticideDecay;  // GVI: decay of effect
+    /// ITN only:
+    unique_ptr<util::LognormalSampler> holeRate;  // holes per step
+    unique_ptr<util::LognormalSampler> ripRate;   // rips per hole per step
+    double ripFactor = 0.0;     // significance of rips relative to holes
+    unique_ptr<DecayFunction> attritionOfNets;
+    /// All kinds (per species, in species-index order):
+    vector<SpeciesParams> species;
 };
 
 /** Contains TransmissionModel parameters which need to be stored per host.
