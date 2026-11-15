@@ -109,7 +109,7 @@ void run(Model &model, SimTime humanWarmupLength, SimTime &endTime, SimTime &est
         
         // NOTE: no neonatal mortalities will occur in the first 20 years of warmup
         // (until humans old enough to be pregnate get updated and can be infected).
-        model.neonatal.update (population.humans);
+        model.neonatal.update (population.humans, sim::ts0());
         
         for (Host::Human& human : population.humans)
         {

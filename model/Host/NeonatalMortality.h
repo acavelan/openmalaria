@@ -56,7 +56,7 @@ struct NeonatalMortality {
     bool eventNeonatalMortality(LocalRng& rng) const;
 
     /** Calculate risk of a neonatal mortality based on humans 20-25 years old. */
-    void update (vector<Human> &population);
+    void update (vector<Human> &population, SimTime ts0);
 
 public:
     /// Probability for a newborn to die (indirect death) because the mother is infected.
