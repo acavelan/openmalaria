@@ -373,7 +373,6 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
 {
 
     PerHost &host = human.perHostTransmission;
-    host.update(human);
     if(simulationMode == transientEIRknown)
     {
         EIR_i.assign(1, 0.0);

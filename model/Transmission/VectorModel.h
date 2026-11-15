@@ -72,6 +72,12 @@ public:
 
     virtual void calculateEIR(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l) const;
 
+    /** Update the human's net holes (per time step, before EIR calculation). */
+    virtual void startHumanUpdate(Host::Human &human) override
+    {
+        human.perHostTransmission.update(human);
+    }
+
     virtual void deployVectorPopInterv(size_t instance);
     virtual void deployVectorTrap(size_t instance, double popSize, SimTime lifespan);
 

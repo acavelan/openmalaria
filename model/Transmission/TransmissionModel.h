@@ -242,8 +242,13 @@ public:
      *    the non-vector model), the length is set to one.
      * @returns the sum of EIR across genotypes
      */
+    /** Called once per human per time step at the start of the human's EIR
+     * calculation. The vector model uses this to update net holes. */
+    virtual void startHumanUpdate(Host::Human &human) {}
+
     double getEIR(Host::Human &human, SimTime age, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l)
     {
+        startHumanUpdate(human);
         /* For the NonVector model, the EIR should just be multiplied by the
          * availability. For the Vector model, the availability is also required
          * for internal calculations, but again the EIR should be multiplied by the
