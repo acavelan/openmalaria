@@ -98,7 +98,7 @@ void run(Model &model, SimTime humanWarmupLength, SimTime &endTime, SimTime &est
         }
         
         // Deploy interventions, at time sim::now().
-        interventions::deploy( intervention_mgr, population.humans, transmission );
+        interventions::deploy( model );
         
         // Time step updates. Time steps are mid-day to mid-day.
         // sim::ts0() gives the date at the start of the step, sim::ts1() the date at the end.

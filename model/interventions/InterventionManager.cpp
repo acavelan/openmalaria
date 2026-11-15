@@ -33,6 +33,7 @@
 #include "Host/WithinHost/Diagnostic.h"
 #include "Transmission/VectorModel.h"
 #include "Clinical/ClinicalModel.h"
+#include "Model.h"
 #include "Transmission/PerHost.h"
 #include "util/SpeciesIndexChecker.h"
 
@@ -1007,8 +1008,11 @@ ComponentId getComponentId(const InterventionRegistry& reg, const string textId)
     return it->second;
 }
 
-void loadFromCheckpoint(InterventionManager& mgr, vector<Host::Human> &population, Transmission::TransmissionModel &transmission)
+void loadFromCheckpoint(Model& model)
 {
+    InterventionManager& mgr = model.interventions;
+    vector<Host::Human>& population = model.humans.humans;
+    Transmission::TransmissionModel& transmission = *model.transmission;
     // ponytail: aliases keep these (soon-to-be-rewritten) bodies untouched;
     // remove together with the Phase-4 interventions rewrite.
     auto& continuous = mgr.continuous;
@@ -1035,10 +1039,11 @@ void loadFromCheckpoint(InterventionManager& mgr, vector<Host::Human> &populatio
     }
 }
 
-void deploy(InterventionManager& mgr, vector<Host::Human> &population, Transmission::TransmissionModel &transmission)
+void deploy(Model& model)
 {
-    // ponytail: aliases keep these (soon-to-be-rewritten) bodies untouched;
-    // remove together with the Phase-4 interventions rewrite.
+    InterventionManager& mgr = model.interventions;
+    vector<Host::Human>& population = model.humans.humans;
+    Transmission::TransmissionModel& transmission = *model.transmission;
     auto& continuous = mgr.continuous;
     auto& timed = mgr.timed;
     uint32_t& nextTimed = mgr.nextTimed;
