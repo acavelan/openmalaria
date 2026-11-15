@@ -520,9 +520,9 @@ Status of the remaining plan (what is *not* done yet):
 Net effect so far: no mutable process-wide state left in the
 transmission/PerHost path; intervention deployment state, the component
 registry, the master RNG and the neonatal model are caller-owned (`Model`
-members). Cumulative branch diff vs `main`: +2639/−3224 across
-121 files — the model tree is ~600 lines smaller than when the
-dead-code sweep started, with no behaviour change. The vector-side (string-keyed decay maps,
+members). Cumulative branch diff vs `main`: +3935/−4267 across
+128 files — the model tree is 31,400 lines, shrinking further with
+every de-virtualised family, with no behaviour change. The vector-side (string-keyed decay maps,
 traps, NHH) checkpoint gaps remain as noted in §6 — gated by the
 byte-identical contract.
 
@@ -553,6 +553,43 @@ Phase 3 (clock global) — first four slices (52/52, bit-identical):
   `PerHost` aggregators and `makeHumanPart`. Every caller passes the same
   value the code used to read internally, so all outputs are unchanged; the
   interventions directory no longer reads a time global.
+
+---
+
+De-polymorphisation sweep (virtuals → Kind tags + switch; 52/52 each,
+bit-identical by construction — same arithmetic, same RNG order):
+
+- `380dfbc6` `Sampler`: the abstract base had exactly two consumer slots
+  (`DecayFunction::het`, `PerHost::entoAvailability`). `LognormalSampler` and
+  `GammaSampler` became plain final structs (kept their `unique_ptr`
+  `fromMeanCV`/`fromMeanVariance` builders — every concrete caller stores
+  `unique_ptr<LognormalSampler>` anyway); the base was replaced by a final
+  `Sampler` wrapping `std::variant<Lognormal, Gamma>` with four
+  `std::visit` members; gamma keeps a `sample(NormalSample)` that throws the
+  same message the old base did. `DecayFunction::het` — always lognormal —
+  became a value member (clone() gone).
+- `66439abe` `DecayFunction`: 12 file-private subclasses (constant…emax,
+  incl. the operator/Emax recursion that made `clone` virtual) collapsed into
+  the one class: `Kind` enum, the union of plain parameters
+  (`invL,k,constOverLambda,Emax,IC50,slope,initialConcentration`), child
+  pointers `f1,f2`, deep-copy ctor, `compute`/`sampleAgeOfDecay`/
+  `makeHetSample` switches (−102 lines). Checkpoint format untouched: only
+  `hetFactor` was ever streamed; children re-cloned via `hetSample`.
+- `86c19137` decision trees: 15 node classes with `virtual exec` became one
+  public-data `CMDecisionTree` (`Kind` + all fields public; the Deploy node
+  holds `optional<HumanIntervention>` instead of privately inheriting it)
+  with `exec` a switch and the per-kind XML builders as file-local free
+  functions. `save_decision`/`decision_library` unchanged.
+- `a97f2566` `AgeGroupInterpolation`: only two implementations were live
+  (linear, none) plus a throwing dummy; the whole hierarchy collapsed into
+  `AgeGroupInterpolator` itself — `Kind{None,PiecewiseConstant,PiecewiseLinear}`
+  + one `map<double,double>`, no heap, no dummy singleton.
+
+Remaining virtual clusters are the by-design strategy families (WH models,
+vector/transmission/pathogenesis models) and the intervention-component
+hierarchy (Phase 4d). Next de-virtual candidate: `LSTMDrug` (4 classes ×
+6 virtuals, closed set; checkpoint streams differ per class — preserve
+byte-for-byte), same recipe as DecayFunction.
 
 ---
 
