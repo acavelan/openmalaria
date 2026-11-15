@@ -35,6 +35,7 @@
 #include "mon/Monitoring.h"
 
 #include "interventions/InterventionManager.h"
+#include "interventions/Deployments.h" // defines the deployment types (needed to instantiate the state struct)
 #include "Clinical/ClinicalModel.h"
 
 #include "Host/NeonatalMortality.h"
@@ -72,7 +73,7 @@ void print_errno()
 }
 
 // Internal simulation loop
-void run(Population &population, TransmissionModel &transmission, SimTime humanWarmupLength, SimTime &endTime, SimTime &estEndTime, bool surveyOnlyNewEp, string phase)
+void run(Population &population, TransmissionModel &transmission, InterventionManager &intervention_mgr, SimTime humanWarmupLength, SimTime &endTime, SimTime &estEndTime, bool surveyOnlyNewEp, string phase)
 {
     static int lastPercent = -1;
 
@@ -94,7 +95,7 @@ void run(Population &population, TransmissionModel &transmission, SimTime humanW
         }
         
         // Deploy interventions, at time sim::now().
-        InterventionManager::deploy( population.humans, transmission );
+        interventions::deploy( intervention_mgr, population.humans, transmission );
         
         // Time step updates. Time steps are mid-day to mid-day.
         // sim::ts0() gives the date at the start of the step, sim::ts1() the date at the end.
@@ -189,7 +190,8 @@ int main(int argc, char* argv[])
 
         // Depends on transmission model (for species indexes):
         // MDA1D may depend on health system (too complex to verify)
-        interventions::InterventionManager::init(scenario->getInterventions(), *population, *transmission );
+        interventions::InterventionManager intervention_mgr;
+        interventions::init(intervention_mgr, scenario->getInterventions(), *population, *transmission );
         Clinical::ClinicalModel::setHS( scenario->getHealthSystem() ); // Depends on interventions, PK/PD (from humanPop)
         mon::initCohorts( scenario->getMonitoring() ); // Depends on interventions
 
@@ -228,7 +230,7 @@ int main(int argc, char* argv[])
         if (startedFromCheckpoint)
         {
             mon::Continuous::init(scenario->getMonitoring(), true);
-            readCheckpoint(checkpointFileName, endTime, estEndTime, *population, *transmission, master_rng);
+            readCheckpoint(checkpointFileName, endTime, estEndTime, *population, *transmission, intervention_mgr, master_rng);
 
             /** Calculate ento availability percentiles **/
             transmission->speciesParams.calcAvailabilityPercentiles();
@@ -247,7 +249,7 @@ int main(int argc, char* argv[])
              * complete lifespan (sim::maxHumanAge()) to reach immunological
              * equilibrium in all age classes. Don't report any events. */
             endTime = humanWarmupLength;
-            run(*population, *transmission, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "Warmup");
+            run(*population, *transmission, intervention_mgr, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "Warmup");
 
             /** Transmission init phase:
              * Fit the emergence rate to the input EIR */
@@ -257,7 +259,7 @@ int main(int argc, char* argv[])
                 endTime = endTime + iterate;
                 // adjust estimation of final time step: end of current period + length of main phase
                 estEndTime = endTime + (sim::endDate() - sim::startDate()) + sim::oneTS();
-                run(*population, *transmission, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "EIR Calibration");
+                run(*population, *transmission, intervention_mgr, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "EIR Calibration");
                 iterate = transmission->initIterate();
             }
 
@@ -280,14 +282,14 @@ int main(int argc, char* argv[])
 
             if(util::CommandLine::option (util::CommandLine::CHECKPOINT))
             {
-                writeCheckpoint(startedFromCheckpoint, checkpointFileName, endTime, estEndTime, *population, *transmission, master_rng);
+                writeCheckpoint(startedFromCheckpoint, checkpointFileName, endTime, estEndTime, *population, *transmission, intervention_mgr, master_rng);
                 if( util::CommandLine::option (util::CommandLine::CHECKPOINT_STOP) )
                     throw util::cmd_exception ("Checkpoint test: checkpoint written", util::Error::None);
             }
         }
 
         // Main phase loop
-        run(*population, *transmission, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "Intervention period");
+        run(*population, *transmission, intervention_mgr, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "Intervention period");
        
         cerr << '\r' << flush;  // clean last line of progress-output
         

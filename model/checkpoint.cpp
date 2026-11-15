@@ -53,7 +53,7 @@ int readCheckpointNum (const string &checkpointFileName)
     return checkpointNum;
 }
 
-void checkpoint (istream& stream, SimTime &endTime, SimTime &estEndTime, Population &population, Transmission::TransmissionModel &transmission, util::MasterRng& master_rng)
+void checkpoint (istream& stream, SimTime &endTime, SimTime &estEndTime, Population &population, Transmission::TransmissionModel &transmission, interventions::InterventionManager& intervention_mgr, util::MasterRng& master_rng)
 {
     try
     {
@@ -74,8 +74,8 @@ void checkpoint (istream& stream, SimTime &endTime, SimTime &estEndTime, Populat
         estEndTime & stream;
         transmission & stream;
         population.checkpoint(stream);
-        interventions::InterventionManager::checkpoint(stream);
-        interventions::InterventionManager::loadFromCheckpoint(population.humans, transmission);
+        interventions::checkpoint(intervention_mgr, stream);
+        interventions::loadFromCheckpoint(intervention_mgr, population.humans, transmission);
         
         // read last, because other loads may use random numbers or expect time
         // to be negative
@@ -100,7 +100,7 @@ void checkpoint (istream& stream, SimTime &endTime, SimTime &estEndTime, Populat
         throw util::checkpoint_error ("stream read error");
 }
 
-void checkpoint (ostream& stream, SimTime &endTime, SimTime &estEndTime, Population &population, Transmission::TransmissionModel &transmission, util::MasterRng& master_rng) {
+void checkpoint (ostream& stream, SimTime &endTime, SimTime &estEndTime, Population &population, Transmission::TransmissionModel &transmission, interventions::InterventionManager& intervention_mgr, util::MasterRng& master_rng) {
     util::checkpoint::header (stream);
     if (!stream.good())
         throw util::checkpoint_error ("Unable to write to file");
@@ -121,7 +121,7 @@ void checkpoint (ostream& stream, SimTime &endTime, SimTime &estEndTime, Populat
     estEndTime & stream;
     transmission & stream;
     population.checkpoint(stream);
-    interventions::InterventionManager::checkpoint( stream );
+    interventions::checkpoint( intervention_mgr, stream );
     
     sim::s_t0 & stream;
     sim::s_t1 & stream;
@@ -131,7 +131,7 @@ void checkpoint (ostream& stream, SimTime &endTime, SimTime &estEndTime, Populat
         throw util::checkpoint_error ("stream write error");
 }
 
-void writeCheckpoint(const bool startedFromCheckpoint, const string &checkpointFileName, SimTime &endTime, SimTime &estEndTime, Population &population, Transmission::TransmissionModel &transmission, util::MasterRng& master_rng)
+void writeCheckpoint(const bool startedFromCheckpoint, const string &checkpointFileName, SimTime &endTime, SimTime &estEndTime, Population &population, Transmission::TransmissionModel &transmission, interventions::InterventionManager& intervention_mgr, util::MasterRng& master_rng)
 {
     // We alternate between two checkpoints, in case program is closed while writing.
     const int NUM_CHECKPOINTS = 2;
@@ -147,7 +147,7 @@ void writeCheckpoint(const bool startedFromCheckpoint, const string &checkpointF
         ostringstream name;
         name << checkpointFileName << checkpointNum << ".gz";
         ogzstream out(name.str().c_str(), ios::out | ios::binary);
-        checkpoint (out, endTime, estEndTime, population, transmission, master_rng);
+        checkpoint (out, endTime, estEndTime, population, transmission, intervention_mgr, master_rng);
         out.close();
     }
     
@@ -169,7 +169,7 @@ void writeCheckpoint(const bool startedFromCheckpoint, const string &checkpointF
     }
 }
 
-void readCheckpoint(const string &checkpointFileName, SimTime &endTime, SimTime &estEndTime, Population &population, Transmission::TransmissionModel &transmission, util::MasterRng& master_rng)
+void readCheckpoint(const string &checkpointFileName, SimTime &endTime, SimTime &estEndTime, Population &population, Transmission::TransmissionModel &transmission, interventions::InterventionManager& intervention_mgr, util::MasterRng& master_rng)
 {
     int checkpointNum = readCheckpointNum(checkpointFileName);
     
@@ -180,7 +180,7 @@ void readCheckpoint(const string &checkpointFileName, SimTime &endTime, SimTime 
     //Note: gzstreams are considered "good" when file not open!
     if ( !( in.good() && in.rdbuf()->is_open() ) )
         throw util::checkpoint_error ("Unable to read file");
-    checkpoint (in, endTime, estEndTime, population, transmission, master_rng);
+    checkpoint (in, endTime, estEndTime, population, transmission, intervention_mgr, master_rng);
     in.close();
   
     cerr << sim::inSteps(sim::now()) << "t loaded checkpoint" << endl;

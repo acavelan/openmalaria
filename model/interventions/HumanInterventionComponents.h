@@ -53,8 +53,8 @@ HumanIntervention::HumanIntervention(
 {
     components.reserve( componentList.size() );
     for( auto it = componentList.begin(), end = componentList.end(); it != end; ++it ) {
-        ComponentId id = InterventionManager::getComponentId( it->getId() );
-        const HumanInterventionComponent* component = &InterventionManager::getComponent( id );
+        ComponentId id = getComponentId( it->getId() );
+        const HumanInterventionComponent* component = &getComponent( id );
         components.push_back( component );
     }
     
@@ -76,8 +76,8 @@ HumanIntervention::HumanIntervention(
 {
     components.reserve( componentList.size() );
     for( auto it = componentList.begin(), end = componentList.end(); it != end; ++it ) {
-        ComponentId id = InterventionManager::getComponentId( it->getId() );
-        const HumanInterventionComponent* component = &InterventionManager::getComponent( id );
+        ComponentId id = getComponentId( it->getId() );
+        const HumanInterventionComponent* component = &getComponent( id );
         components.push_back( component );
     }
     
@@ -102,8 +102,8 @@ HumanIntervention::HumanIntervention(
 HumanIntervention::HumanIntervention( const xsd::cxx::tree::sequence<scnXml::DTDeploy>& componentList ){
     components.reserve( componentList.size() );
     for( auto it = componentList.begin(), end = componentList.end(); it != end; ++it ) {
-        ComponentId id = InterventionManager::getComponentId( it->getComponent() );
-        const HumanInterventionComponent* component = &InterventionManager::getComponent( id );
+        ComponentId id = getComponentId( it->getComponent() );
+        const HumanInterventionComponent* component = &getComponent( id );
         components.push_back( component );
     }
     

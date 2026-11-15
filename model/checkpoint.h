@@ -29,13 +29,14 @@
 
 namespace OM
 {
+namespace interventions { struct InterventionManager; }
     /** @brief checkpointing functions
     *
     * readCheckpoint/writeCheckpoint prepare to read/write the file,
     * and read/write read and write the actual data. */
-    void writeCheckpoint(const bool startedFromCheckpoint, const string &checkpointFileName, SimTime &endTime, SimTime &estEndTime, Population &population, Transmission::TransmissionModel &transmission, util::MasterRng& master_rng);
+    void writeCheckpoint(const bool startedFromCheckpoint, const string &checkpointFileName, SimTime &endTime, SimTime &estEndTime, Population &population, Transmission::TransmissionModel &transmission, interventions::InterventionManager& intervention_mgr, util::MasterRng& master_rng);
 
-    void readCheckpoint(const string &checkpointFileName, SimTime &endTime, SimTime &estEndTime, Population &population, Transmission::TransmissionModel &transmission, util::MasterRng& master_rng);
+    void readCheckpoint(const string &checkpointFileName, SimTime &endTime, SimTime &estEndTime, Population &population, Transmission::TransmissionModel &transmission, interventions::InterventionManager& intervention_mgr, util::MasterRng& master_rng);
 }
 
 #endif

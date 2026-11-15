@@ -606,7 +606,7 @@ private:
         const std::string component,
         const CMDecisionTree& positive,
         const CMDecisionTree& negative ) :
-        component(interventions::InterventionManager::getComponentId(component)), positive(positive), negative(negative)
+        component(interventions::getComponentId(component)), positive(positive), negative(negative)
     {
     }
     

@@ -42,21 +42,28 @@ namespace interventions
 
 // static memory:
 
-std::map<std::string, ComponentId> InterventionManager::identifierMap;
-vector<unique_ptr<HumanInterventionComponent>> InterventionManager::humanComponents;
-vector<ContinuousHumanDeployment> InterventionManager::continuous;
-vector<unique_ptr<TimedDeployment>> InterventionManager::timed;
-uint32_t InterventionManager::nextTimed;
-OM::Host::ImportedInfections InterventionManager::importedInfections;
+// Map of textual identifiers to numeric identifiers for components
+std::map<std::string, ComponentId> identifierMap;
+// All human intervention components, indexed by a number. This list is used
+// during initialisation and thereafter only for memory management.
+vector<unique_ptr<HumanInterventionComponent>> humanComponents;
+
+InterventionManager::~InterventionManager() = default;
 
 // declared in HumanComponents.h:
 vector<ComponentId> removeAtIds[SubPopRemove::NUM];
 
 // static functions:
 
-void InterventionManager::init(const scnXml::Interventions &intervElt, const Population &population,
-                               Transmission::TransmissionModel &transmission)
+void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, const Population &population,
+          Transmission::TransmissionModel &transmission)
 {
+    // ponytail: aliases keep these (soon-to-be-rewritten) bodies untouched;
+    // remove together with the Phase-4 interventions rewrite.
+    auto& continuous = mgr.continuous;
+    auto& timed = mgr.timed;
+    uint32_t& nextTimed = mgr.nextTimed;
+    auto& importedInfections = mgr.importedInfections;
     nextTimed = 0;
 
     if (intervElt.getChangeHS().present())
@@ -498,7 +505,13 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
     }
 }
 
-ComponentId InterventionManager::getComponentId(const string textId)
+const HumanInterventionComponent& getComponent( ComponentId id ){
+    if( id.id >= humanComponents.size() )
+        throw util::base_exception( "invalid component id" );
+    return *humanComponents[id.id];
+}
+
+ComponentId getComponentId(const string textId)
 {
     auto it = identifierMap.find(textId);
     if (it == identifierMap.end())
@@ -511,8 +524,15 @@ ComponentId InterventionManager::getComponentId(const string textId)
     return it->second;
 }
 
-void InterventionManager::loadFromCheckpoint(vector<Host::Human> &population, Transmission::TransmissionModel &transmission)
+void loadFromCheckpoint(InterventionManager& mgr, vector<Host::Human> &population, Transmission::TransmissionModel &transmission)
 {
+    // ponytail: aliases keep these (soon-to-be-rewritten) bodies untouched;
+    // remove together with the Phase-4 interventions rewrite.
+    auto& continuous = mgr.continuous;
+    auto& timed = mgr.timed;
+    uint32_t& nextTimed = mgr.nextTimed;
+    auto& importedInfections = mgr.importedInfections;
+
     SimTime date = sim::intervDate();
     // We need to re-deploy changeHS and changeEIR interventions, but nothing
     // else. nextTimed should be zero so we can go through all past interventions.
@@ -532,8 +552,15 @@ void InterventionManager::loadFromCheckpoint(vector<Host::Human> &population, Tr
     }
 }
 
-void InterventionManager::deploy(vector<Host::Human> &population, Transmission::TransmissionModel &transmission)
+void deploy(InterventionManager& mgr, vector<Host::Human> &population, Transmission::TransmissionModel &transmission)
 {
+    // ponytail: aliases keep these (soon-to-be-rewritten) bodies untouched;
+    // remove together with the Phase-4 interventions rewrite.
+    auto& continuous = mgr.continuous;
+    auto& timed = mgr.timed;
+    uint32_t& nextTimed = mgr.nextTimed;
+    auto& importedInfections = mgr.importedInfections;
+
     if (sim::intervTime() < sim::zero()) return;
 
     // deploy imported infections (not strictly speaking an intervention)

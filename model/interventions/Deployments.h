@@ -136,7 +136,7 @@ public:
     }
 };
 
-void VaccineLimits::set( const scnXml::DeploymentBase& deploy ){
+inline void VaccineLimits::set( const scnXml::DeploymentBase& deploy ){
     if( deploy.getVaccMinPrevDoses().present() ){
         int v = deploy.getVaccMinPrevDoses().get();
         if( v < 0 ) throw util::xml_scenario_error( "vaccMinPrevDoses: min value is 0" );
@@ -243,7 +243,7 @@ public:
     }
     
     virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {
-        for(Human& human : population) {
+        for(Host::Human& human : population) {
             const SimTime age = human.age(sim::now());
             if( age >= minAge && age < maxAge ){
                 double availability = 0.0;
@@ -383,7 +383,7 @@ public:
             // selected from the list unprotected.
             double additionalCoverage = (coverage - propProtected) / (1.0 - propProtected);
             cerr << "cum deployment: prop protected " << propProtected << "; additionalCoverage " << additionalCoverage << "; total " << total << endl;
-            for(Human* human : unprotected) {
+            for(Host::Human* human : unprotected) {
                 if( human->rng.uniform_01() < additionalCoverage ){
                     deployToHuman( *human, mon::Deploy::TIMED );
                 }
@@ -707,6 +707,6 @@ struct ByDeployTime {
     bool operator()(const ContinuousHumanDeployment& a, const ContinuousHumanDeployment& b) const{
         return a.deployAge < b.deployAge;
     }
-} byDeployTime;
+} inline byDeployTime;
 
 } }

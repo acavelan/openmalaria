@@ -150,7 +150,7 @@ void PerHost::checkpointIntervs( istream& stream ){
         interventions::ComponentId id( stream );
         try{
             const interventions::HumanInterventionComponent& gen_params =
-                interventions::InterventionManager::getComponent( id );   // may throw
+                interventions::getComponent( id );   // may throw
             const HumanVectorInterventionComponent *params =
                 dynamic_cast<const HumanVectorInterventionComponent*>( &gen_params );
             if( params == 0 )
