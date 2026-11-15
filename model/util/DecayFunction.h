@@ -20,8 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_DecayFunction
-#define Hmod_DecayFunction
+#ifndef hzzDecayFunction
+#define hzzDecayFunction
 
 #include <limits>
 #include <memory>
@@ -35,7 +35,7 @@ namespace scnXml { class DecayFunction; }
 namespace OM {
 namespace util {
 
-/** An interface for a few types of decay function (some of which may also be
+/** One of a few types of decay function (some of which may also be
  * suitible survival functions).
  *
  * Heterogeneity is implemented by passing a DecayFunction object to the eval
@@ -44,16 +44,33 @@ namespace util {
 class DecayFunction
 {
 public:
-    DecayFunction(bool increasing = false, double initialEfficacy = 1.0, double CV = 0.0) : 
-        increasing(increasing), initialEfficacy(initialEfficacy), het(*LognormalSampler::fromMeanCV(1.0, CV)) {}
+    enum class Kind {
+        Constant, Step, Linear, Exponential, Weibull, Hill, SmoothCompact,
+        Plus, Minus, Divides, Multiplies, Emax
+    };
 
+    DecayFunction(Kind kind, bool increasing = false, double initialEfficacy = 1.0, double CV = 0.0) : 
+        kind(kind),
+        increasing(increasing),
+        initialEfficacy(initialEfficacy),
+        het(*LognormalSampler::fromMeanCV(1.0, CV)) {}
+
+    /// Deep copy (including the sub-functions of operator/Emax functions).
     DecayFunction(const DecayFunction& other) : 
+        kind(other.kind),
         increasing(other.increasing),
         initialEfficacy(other.initialEfficacy),
         het(other.het),
+        invL(other.invL),
+        k(other.k),
+        constOverLambda(other.constOverLambda),
+        Emax(other.Emax),
+        IC50(other.IC50),
+        slope(other.slope),
+        initialConcentration(other.initialConcentration),
+        f1(other.f1 ? new DecayFunction(*other.f1) : nullptr),
+        f2(other.f2 ? new DecayFunction(*other.f2) : nullptr),
         hetFactor(other.hetFactor) {}
-
-    virtual ~DecayFunction() {}
 
     /** Return a new decay function, constructed from an XML element.
      * 
@@ -93,7 +110,7 @@ public:
      * This is only valid where mu and sigma parameters are zero.
      * 
      * @returns Age at which an object should decay. */
-    virtual SimTime sampleAgeOfDecay (LocalRng& rng) const =0;
+    SimTime sampleAgeOfDecay (LocalRng& rng) const;
     
     inline double eval(double ageDays) const {
         if(increasing)
@@ -102,19 +119,31 @@ public:
             return compute( ageDays ) * initialEfficacy;
     }
 
-    virtual double compute(double ageDays) const = 0;
+    double compute(double ageDays) const;
 
     /** Checkpoint a sampled copy, recreating it from this configured function. */
     void checkpointSample(const unique_ptr<DecayFunction>& sample, ostream& stream) const;
     void checkpointSample(unique_ptr<DecayFunction>& sample, istream& stream) const;
 
+    /** Deep copy this function; with sub-functions het-sampled at factor. */
+    unique_ptr<DecayFunction> makeHetSample(double factor) const;
+
 public:
+    Kind kind;
     bool increasing;
     double initialEfficacy;
     util::LognormalSampler het;
+    // Parameters, as used by the relevant kind(s):
+    double invL = 0.0;          ///< 1 / lifetime (days)
+    double k = 0.0;             ///< Weibull / Hill / SmoothCompact shape
+    double constOverLambda = 0.0;   ///< Weibull
+    double Emax = 0.0;          ///< Emax, IC50^slope, slope, C0:
+    double IC50 = 0.0;          ///<   Emax function parameters
+    double slope = 0.0;
+    double initialConcentration = 0.0;
+    unique_ptr<DecayFunction> f1, f2;   ///< operator / Emax sub-functions
 
 public:
-    virtual unique_ptr<DecayFunction> makeHetSample(double factor) const = 0;
     double hetFactor = 0.0;
 };
 
