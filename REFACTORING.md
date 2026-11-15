@@ -362,6 +362,23 @@ Deliberately left file-static:
   read (never written) at ~60 sites afterwards; a startup constant, so
   threading it as a value is churn without any state to protect.
 
+Contract-blocked behaviour notes (fixing these changes outputs; needs a
+decision to regenerate expected files, same class as the §6 checkpoint
+gaps):
+
+- `Human::removeFromCohort` (ITN fade-out) erases `subPopExp` but leaves
+  the `cohortSet` monitoring bit set; episodes additionally report with
+  the cohort snapshot taken at episode creation. Both are observable in
+  survey output, so the asymmetry stays byte-identical.
+
+Remaining big Phase-6 cluster (not started, deliberately — no
+half-threaded state exists): the clinical health-system parameters
+(`CM5DayCommon`, `ImmediateOutcomes`, `ESCaseManagement`,
+`EventScheduler`, `ClinicalModel` statics). They are rewritten by
+changeHS at runtime and read from per-human clinical code and from
+static decision-tree paths; threading ≈30 statics through ≈40
+signatures is a multi-day pass of its own.
+
 Phase 5 (XML interface at the boundary) — first slice:
 
 - 5a `ec45f786` XML parsing moved out of widely-included headers:
