@@ -56,10 +56,10 @@ namespace Host {
          *  person.
          * 
          * @param pop The Population class encapsulating all humans */
-        void import(vector<Human> &population)
+        void import(vector<Human> &population, SimTime intervTime)
         {
             if( rate.size() == 0 ) return;      // no imported infections
-            SimTime now = sim::intervTime();
+            SimTime now = intervTime;
             assert( now >= sim::zero() );
             if( period > sim::zero() ){
                 now = mod_nn(now, period);

@@ -1384,7 +1384,7 @@ void deploy(Model& model, const SimClock& clock)
     if (clock.intervTime < sim::zero()) return;
 
     // deploy imported infections (not strictly speaking an intervention)
-    importedInfections.import(population);
+    importedInfections.import(population, clock.intervTime);
 
     // deploy timed interventions
     SimTime now = clock.intervDate;
