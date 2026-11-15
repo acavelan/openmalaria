@@ -66,7 +66,7 @@ void checkpoint (istream& stream, SimTime &endTime, SimTime &estEndTime, Model &
         util::checkpoint::header (stream);
         util::CommandLine::staticCheckpoint (stream);
         model.neonatal & stream;
-        Host::InfectionIncidenceModel::staticCheckpoint (stream);
+        model.ctsNewInfections & stream;
         model.infant_mortality & stream;
         WithinHost::Genotypes::staticCheckpoint(stream);
         mon::Continuous::checkpoint(stream);
@@ -119,7 +119,7 @@ void checkpoint (ostream& stream, SimTime &endTime, SimTime &estEndTime, Model &
 
     util::CommandLine::staticCheckpoint (stream);
     model.neonatal & stream;
-    Host::InfectionIncidenceModel::staticCheckpoint (stream);
+    model.ctsNewInfections & stream;
     model.infant_mortality & stream;
     WithinHost::Genotypes::staticCheckpoint(stream);
     mon::Continuous::checkpoint(stream);

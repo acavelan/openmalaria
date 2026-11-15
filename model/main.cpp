@@ -170,7 +170,8 @@ int main(int argc, char* argv[])
         mon::initReporting( *scenario ); // Reporting init depends on diagnostics and monitoring
 
         // Init models used by humans
-        Host::InfectionIncidenceModel::init( parameters );
+        Host::InfectionIncidenceParams incidence_params;
+        incidence_params.init( parameters );
         WithinHost::WHInterface::init( parameters, *scenario );
         Clinical::ClinicalParams clinical_params( parameters, *scenario );
         AgeStructure::init( scenario->getDemography() );
@@ -182,9 +183,11 @@ int main(int argc, char* argv[])
         size_t popSize = scenario->getDemography().getPopSize();
 
         Model model(popSize, scenario->getModel().getComputationParameters().getIseed(),
-                    scenario->getEntomology(), clinical_params,
+                    scenario->getEntomology(), clinical_params, incidence_params,
                     scenario->getModel().getHuman().getAvailabilityToMosquitoes());
         model.neonatal.init( scenario->getModel().getClinical() );
+        mon::Continuous::registerCallback( "new infections", "\tnew infections",
+            [&model](ostream& stream){ stream << '\t' << model.ctsNewInfections; model.ctsNewInfections = 0; } );
         model.infant_mortality.init( parameters );
 
         registerContinousPopulationCallbacks();
@@ -274,7 +277,7 @@ int main(int argc, char* argv[])
             // reset endTime and estEndTime to their exact value after initIterate()
             estEndTime = endTime = endTime + (sim::endDate() - sim::startDate()) + sim::oneTS();
             sim::s_interv = sim::zero();
-            Host::InfectionIncidenceModel::preMainSimInit();
+            model.ctsNewInfections = 0;
             model.infant_mortality.preMainSimInit();
             WithinHost::Genotypes::preMainSimInit();
             model.humans.resetRecentBirths();

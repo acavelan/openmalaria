@@ -38,147 +38,115 @@ using util::LocalRng;
  * (roughly when bites from infected mosquitos infect the host).
  *
  * There are four versions of this model, with different availability models:
- * - InfectionIncidenceModel (the default): Smith et al, AJTMH 2006 75 Suppl 2
- * - HeterogeneityWorkaroundII: emulates old, presumably unintended, behaviour
+ * - Plain (the default): Smith et al, AJTMH 2006 75 Suppl 2
+ * - HeterogeneityWorkaround: emulates old, presumably unintended, behaviour
  * - NegBinomMAII: NEGATIVE_BINOMIAL_MASS_ACTION
  * - LogNormalMAII: LOGNORMAL_MASS_ACTION
  * 
  * There are also two susceptibility models which should be compatible with all
  * of these (see susceptibility()). */
-class InfectionIncidenceModel
-{
-public:
-  ///@brief Static initialisation & constructors
-  //@{
-  /// Read in/initialise parameters
-  static void init(const Parameters& parameters);
-  /// Create a new instance
-  static InfectionIncidenceModel* createModel ();
-  
-  /// Reset summary outputs at beginning of main simulation
-  static inline void preMainSimInit() {
-      ctsNewInfections = 0;
-  }
-  //@}
-  
-  /// Checkpointing
-  template<class S>
-  void operator& (S& stream) {
-      m_pInfected & stream;
-      m_cumulativeEIRa & stream;
-  }
-  
-  /// Static checkpointing
-  template<class S>
-  static void staticCheckpoint (S& stream){
-      ctsNewInfections & stream;
-  }
-  
-public:
-  /// Create a new model
-  InfectionIncidenceModel ();
-public:
-  virtual ~InfectionIncidenceModel() {}
-  
-  /** Return an availability multiplier, dependant on the model (NegBinomMAII
-   * and LogNormalMAII models use this). Ideally availability adjustments
-   * should have nothing to do with the InfectionIncidenceModel though.
-   * 
-   * @param baseAvailability This was BaselineAvailabilityMean from Constant.h,
-   *	and had the value 1.0. Whether it should be anything else I don't know.
-   */
-  virtual double getAvailabilityFactor(LocalRng& rng, double baseAvailability = 1.0);
-  
-  /// Output _pinfected to the summary
-  void summarize (const Host::Human& human);
-  
-    /** Calculate the expected number of new infections to introduce.
-   * 
-   * Firstly converts the EIR into an expected number of infections (what
-   * getExpectedNumberOfInfections() used to do):
-   * 1. Calculates h from the EIR measured on adults where h is the expected
-   * number of epidemiological inoculations.
-   * 2. Calculates the updated values of the pre-erythrocytic exposure.
-   * 
-   * Secondly calculates the number of new infections to introduce via a
-   * stochastic process.
-   * 
-   * @param human   Reference to human
-   * @param effectiveEIR    EIR adjusted for availability (age, het,
-   *        outside transmission due to hospitalisation)
-   */
-  double expectedNumNewInfections(OM::Host::Human& human, double effectiveEIR);
-
-  /** Calculate the number of new infections to introduce.
-   * 
-   * @param human   Reference to human
-   * @param expectedNumNewInfections   Expected number of infections
-   * to be introduced
-   */
-  int numNewInfections(OM::Host::Human& human, double expectedNumNewInfections);
-
-  /** Report the number of new infections
-   * 
-   * This number might be lower than the numNewInfections from this model
-   * due to vaccine factors being applied in the WithinHost model
-   * 
-   * @param int newNumInfections_i  Number of introduced infections to be reported
-   * @param int newNumInfections_l  Number of local (indigenous) infections to be reported
-   */
-  void reportNumNewInfections(Human& human, int newNumInfections_i, int newNumInfections_l);
-  
-public:
-  /// Calculates the expected number of infections, excluding vaccine effects
-  virtual double getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost& phTrans);
-  
-  double susceptibility ();
-  
-  static void ctsReportNewInfections (const vector<Host::Human> &, ostream& stream);
-  
-  /** Probability of infection (cumulative or reset to zero in massTreatment).
-   *
-   * Appears to be used only for calculating expected inoculations for the
-   * analysis of pre-erythrocytic immunity. */
-  double m_pInfected;
-  
-  //!Number of infective bites since birth
-  double m_cumulativeEIRa;//TODO(memory opt): not needed by NegBinomMAII and LogNormalMAII
-  
-    /// Number of new infections introduced, per continuous reporting period
-    static int ctsNewInfections;
+struct InfectionIncidenceParams {
+    enum Kind { Plain, HeterogeneityWorkaround, NegBinomMAII, LogNormalMAII };
+    
+    /** Read in/initialise parameters (kind selected from model options). */
+    void init( const OM::Parameters& parameters );
+    
+    Kind kind = Plain;
+    
+    /// Shape constant of (Gamma) distribution of availability
+    double baselineAvailShapeParam = 0.0, baselineAvailOffset = 0.0;
+    
+    //! Describes the shape of the Infectionrate distribution, related to the
+    //! baseline availabilty distr.
+    double infRateShapeParam = 0.0, infRateOffset = 0.0;
+    
+    ///@brief Parameters used in the "expected number of infections" model
+    //@{
+    /// Steepness of relationship between success of inoculation and Xp in Phase A model
+    double gammaP = 0.0;
+    /// Lower limit of success probability of inoculations at high exposure in Phase A model
+    double Sinf = 0.0;
+    /// Lower limit of success probability of inoculations in immune individuals in Phase A model
+    double Simm = 0.0;
+    /// 1 over the critical value of cumulative number of entomologic inoculations in Phase A model
+    double XstarPInv = 0.0;
+    /// 1 over the critical value of EIR in Phase A pre-erythrocytic model
+    double EstarInv = 0.0;
+    //@}
+    
+    /// Model options (NO_PRE_ERYTHROCYTIC, VACCINE_GENOTYPE):
+    bool noPreErythrocytic = false, vaccineGenotype = false;
 };
 
-//TODO(optimisation): none of these add data members, so should we be using
-// inheritance and dynamic type? Could instead use static function pointers.
-/** A workaround to produce the same results as with heterogeneity work-units.
- *
- * The EIR passed into the function was not in one place adjusted by the
- * availability factor used in transmission heterogeneity, where it possibly
- * should have been. In any case, this should allow reproducing those results.
+/** Per-host infection incidence state; the free functions below do the work,
+ * dispatched by params.kind where the models differ. */
+struct InfectionIncidenceModel {
+    /// Checkpointing
+    template<class S>
+    void operator& (S& stream) {
+        m_pInfected & stream;
+        m_cumulativeEIRa & stream;
+    }
+    
+    /// Output _pinfected to the summary
+    void summarize (const Host::Human& human) const;
+    
+    /** Probability of infection (cumulative or reset to zero in massTreatment).
+     *
+     * Appears to be used only for calculating expected inoculations for the
+     * analysis of pre-erythrocytic immunity. */
+    double m_pInfected = 0.0;
+    
+    //!Number of infective bites since birth
+    double m_cumulativeEIRa = 0.0;//TODO(memory opt): not needed by NegBinomMAII and LogNormalMAII
+};
+
+/** Return an availability multiplier, dependant on the model kind (NegBinomMAII
+ * and LogNormalMAII differ from the rest).
+ * 
+ * @param baseAvailability This was BaselineAvailabilityMean from Constant.h,
+ *	and had the value 1.0. Whether it should be anything else I don't know.
  */
-class HeterogeneityWorkaroundII : public InfectionIncidenceModel {
-public:
-  HeterogeneityWorkaroundII () {}
-  virtual ~HeterogeneityWorkaroundII() {}
-public:
-  double getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost& phTrans);
-};
-class NegBinomMAII : public InfectionIncidenceModel {
-public:
-  NegBinomMAII () {}
-  virtual ~NegBinomMAII() {}
-  virtual double getAvailabilityFactor(LocalRng& rng, double baseAvailability = 1.0);
-public:
-  double getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost&);
-};
-class LogNormalMAII : public InfectionIncidenceModel {
-public:
-  LogNormalMAII () {}
-  virtual ~LogNormalMAII() {}
-  virtual double getAvailabilityFactor(LocalRng& rng, double baseAvailability = 1.0);
-public:
-  double getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost&);
-};
+double getAvailabilityFactor (LocalRng& rng, double baseAvailability,
+                              const InfectionIncidenceParams& params);
+
+/** Calculates the expected number of infections, excluding vaccine effects */
+double getModelExpectedInfections (const InfectionIncidenceModel& model,
+                                   LocalRng& rng, double effectiveEIR,
+                                   const Transmission::PerHost& phTrans,
+                                   const InfectionIncidenceParams& params);
+
+double susceptibility (const InfectionIncidenceModel& model,
+                       const InfectionIncidenceParams& params);
+
+/** Calculate the expected number of new infections to introduce: converts the
+ * EIR into an expected number of infections, introduces the effect of
+ * vaccination and updates the pre-erythrocytic immunity state.
+ * 
+ * @param human   Reference to human
+ * @param effectiveEIR    EIR adjusted for availability (age, het,
+ *        outside transmission due to hospitalisation) */
+double expectedNumNewInfections (InfectionIncidenceModel& model, Human& human,
+                                 double effectiveEIR,
+                                 const InfectionIncidenceParams& params);
+
+/** Calculate the number of new infections to introduce.
+ * 
+ * @param expectedNumNewInfections   Expected number of infections
+ * to be introduced */
+int numNewInfections (Human& human, double expectedNumNewInfections);
+
+/** Report the number of new infections
+ * 
+ * This number might be lower than the numNewInfections from this model
+ * due to vaccine factors being applied in the WithinHost model
+ * 
+ * @param ctsNewInfections  per-continuous-reporting-period counter (Model-owned)
+ * @param int newNumInfections_i  Number of introduced infections to be reported
+ * @param int newNumInfections_l  Number of local (indigenous) infections to be reported
+ */
+void reportNumNewInfections (Human& human, int newNumInfections_i,
+                             int newNumInfections_l, int& ctsNewInfections);
 
 } }
 #endif

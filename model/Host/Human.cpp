@@ -109,8 +109,8 @@ HumanHet hetSample(util::LocalRng& rng)
 
 Human::Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& species_params,
         const Transmission::AgeGroupInterpolator& age_availability, util::MasterRng& master_rng,
-        const Clinical::ClinicalParams& clinical_params) :
-    infIncidence(InfectionIncidenceModel::createModel()),
+        const Clinical::ClinicalParams& clinical_params,
+        const InfectionIncidenceParams& incidence_params) :
     rng(master_rng),
     dateOfBirth(dateOfBirth),
     species_params(&species_params)
@@ -120,7 +120,7 @@ Human::Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& speci
 
     HumanHet het = hetSample(rng);
     withinHostModel = WithinHost::WHInterface::createWithinHostModel( rng, het.comorbidityFactor );
-    double iiFactor = infIncidence->getAvailabilityFactor(rng, 1.0);
+    double iiFactor = getAvailabilityFactor(rng, 1.0, incidence_params);
     perHostTransmission.initialise (rng, het.availabilityFactor * iiFactor, *this->species_params, age_availability);
     clinicalModel = Clinical::ClinicalModel::createClinicalModel(het.treatmentSeekingFactor, clinical_params);
 }
@@ -218,7 +218,7 @@ void summarize(Human &human, bool surveyOnlyNewEp, const Clinical::ClinicalParam
     mon::recordStat(mon::measure("nHost"), human);
     mon::recordStat(mon::measure("sumAge"), human, sim::inYears(human.age(sim::now())) );
     bool patent = human.withinHostModel->summarize (human);
-    human.infIncidence->summarize (human);
+    human.infIncidence.summarize (human);
     
     if( patent && mon::isReported() ){
         // this should happen after all other reporting!
@@ -263,17 +263,17 @@ void update(Human &human, Model& model)
     if(EIR > 0)
         x = EIR_i / EIR;
 
-    double expectedNNewInfs = human.infIncidence->expectedNumNewInfections( human, EIR);
+    double expectedNNewInfs = expectedNumNewInfections( human.infIncidence, human, EIR, model.incidence_params );
     double expectedNNewInfs_i = x * expectedNNewInfs;
     double expectedNNewInfs_l = (1.0-x) * expectedNNewInfs;
 
     // One more rng call if imported infection
-    int nNewInfs_l = human.infIncidence->numNewInfections( human, expectedNNewInfs_l);
-    int nNewInfs_i = human.infIncidence->numNewInfections( human, expectedNNewInfs_i);
+    int nNewInfs_l = numNewInfections( human, expectedNNewInfs_l);
+    int nNewInfs_i = numNewInfections( human, expectedNNewInfs_i);
 
     // age1 used when medicating drugs (small effect) and in immunity model (which was parameterised for it)
     human.withinHostModel->update(human, human.rng, nNewInfs_i, nNewInfs_l, EIR_per_genotype_i, EIR_per_genotype_l, age1);
-    human.infIncidence->reportNumNewInfections(human, nNewInfs_i, nNewInfs_l);
+    reportNumNewInfections(human, nNewInfs_i, nNewInfs_l, model.ctsNewInfections);
 
     // age1 used to get case fatality and sequelae probabilities, determine pathogenesis
     human.clinicalModel->update( human, age1, age0 == sim::zero(), neonatal, model.clinical_params );

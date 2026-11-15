@@ -55,7 +55,8 @@ public:
     * @param dateOfBirth date of birth (usually start of next time step) */
     Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& species_params,
         const Transmission::AgeGroupInterpolator& age_availability, util::MasterRng& master_rng,
-        const Clinical::ClinicalParams& clinical_params);
+        const Clinical::ClinicalParams& clinical_params,
+        const InfectionIncidenceParams& incidence_params);
 
     /// Allow move construction
     Human(Human&&) = default;
@@ -109,7 +110,7 @@ public:
     unique_ptr<WithinHost::WHInterface> withinHostModel;
 
     /** The InfectionIncidenceModel translates per-host EIR into new infections */
-    unique_ptr<InfectionIncidenceModel> infIncidence;
+    InfectionIncidenceModel infIncidence;
 
     /** The ClinicalModel encapsulates pathogenesis (sickness status),
     * case management (medicating drugs)

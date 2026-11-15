@@ -46,6 +46,10 @@ struct Model {
     /** Clinical/health-system parameters (read by the human update chain;
      * reloaded by ChangeHS interventions). */
     Clinical::ClinicalParams clinical_params;
+    /** Infection-incidence parameters (scenario parameters + model options). */
+    Host::InfectionIncidenceParams incidence_params;
+    /** Number of new infections since the last continuous report. */
+    int ctsNewInfections = 0;
     /** Human hosts. */
     Population humans;
     /** Neonatal mortality state. */
@@ -57,6 +61,7 @@ struct Model {
 
     Model(size_t popSize, uint64_t iseed, const scnXml::Entomology& entomology,
           const Clinical::ClinicalParams& clinical_params,
+          const Host::InfectionIncidenceParams& incidence_params,
           const scnXml::AgeGroupValues& availabilityToMosquitoes);
     ~Model(); // defined where the deployment types are complete
 };

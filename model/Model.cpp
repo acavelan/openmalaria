@@ -30,12 +30,14 @@ namespace OM
 {
 Model::Model(size_t popSize, uint64_t iseed, const scnXml::Entomology& entomology,
              const Clinical::ClinicalParams& clinical_params,
+             const Host::InfectionIncidenceParams& incidence_params,
              const scnXml::AgeGroupValues& availabilityToMosquitoes)
     : master_rng(iseed, 0) /* == (0,0) then seed(iseed, 0): seed() overwrites all state */
     , transmission(Transmission::createTransmissionModel(entomology, popSize, master_rng))
     , clinical_params(clinical_params)
+    , incidence_params(incidence_params)
     , humans(popSize, transmission->speciesParams, transmission->ageAvailability, master_rng,
-             clinical_params)
+             clinical_params, incidence_params)
 {
     transmission->setAgeAvailability(availabilityToMosquitoes);
 }
