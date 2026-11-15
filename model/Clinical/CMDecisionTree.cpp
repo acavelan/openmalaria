@@ -55,16 +55,6 @@ public:
     static const CMDecisionTree& create( const ::scnXml::DTMultiple& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTMultiple* p = dynamic_cast<const CMDTMultiple*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( children.size() != p->children.size() ) return false;
-        for( size_t i = 0; i < children.size(); ++i ){
-            if( children[i] != p->children[i] ) return false;
-        }
-        return true;    // no tests failed; must be the same
-    }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         CMDTOut result(false);
@@ -94,14 +84,6 @@ public:
     static const CMDecisionTree& create( const ::scnXml::DTCaseType& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTCaseType* p = dynamic_cast<const CMDTCaseType*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( firstLine != p->firstLine ) return false;
-        if( secondLine != p->secondLine ) return false;
-        return true;    // no tests failed; must be the same
-    }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         // Uses of this in complicated cases should trigger an exception during initialisation.
@@ -129,15 +111,6 @@ public:
     static const CMDecisionTree& create( const ::scnXml::DTInfectionOrigin& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTInfectionOrigin* p = dynamic_cast<const CMDTInfectionOrigin*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( imported != p->imported ) return false;
-        if( introduced != p->introduced ) return false;
-        if( indigenous != p->indigenous ) return false;
-        return true;    // no tests failed; must be the same
-    }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         WithinHost::InfectionOrigin InfectionOrigin = hostData.withinHost().getInfectionOrigin();
@@ -167,15 +140,6 @@ public:
     static const CMDecisionTree& create( const ::scnXml::DTDiagnostic& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTDiagnostic* p = dynamic_cast<const CMDTDiagnostic*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( diagnostic != p->diagnostic ) return false;
-        if( positive != p->positive ) return false;
-        if( negative != p->negative ) return false;
-        return true;    // no tests failed; must be the same
-    }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         CMDTOut result;
@@ -207,15 +171,6 @@ public:
     static const CMDecisionTree& create( const ::scnXml::DTUncomplicated& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTUncomplicated* p = dynamic_cast<const CMDTUncomplicated*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        // if( diagnostic != p->diagnostic ) return false;
-        if( positive != p->positive ) return false;
-        if( negative != p->negative ) return false;
-        return true;    // no tests failed; must be the same
-    }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         const Clinical::Episode &latest = hostData.human.clinicalModel->getLatestReport();
@@ -252,15 +207,6 @@ public:
     static const CMDecisionTree& create( const ::scnXml::DTSevere& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTSevere* p = dynamic_cast<const CMDTSevere*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        // if( diagnostic != p->diagnostic ) return false;
-        if( positive != p->positive ) return false;
-        if( negative != p->negative ) return false;
-        return true;    // no tests failed; must be the same
-    }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         CMDTOut result;
@@ -296,19 +242,6 @@ public:
     static const CMDecisionTree& create( const ::scnXml::DTRandom& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTRandom* p = dynamic_cast<const CMDTRandom*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( branches.size() != p->branches.size() ) return false;
-        for( auto it1 = branches.begin(), it2 = p->branches.begin();
-            it1 != branches.end(); ++it1, ++it2 )
-        {
-            if( it1->first != it2->first ) return false;
-            if( it1->second != it2->second ) return false;
-        }
-        return true;    // no tests failed; must be the same
-    }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         auto it = branches.upper_bound( hostData.human.rng.uniform_01() );
@@ -332,19 +265,6 @@ public:
     static const CMDecisionTree& create( const ::scnXml::DTAge& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTAge* p = dynamic_cast<const CMDTAge*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( branches.size() != p->branches.size() ) return false;
-        for( auto it1 = branches.begin(), it2 = p->branches.begin();
-            it1 != branches.end(); ++it1, ++it2 )
-        {
-            if( it1->first != it2->first ) return false;
-            if( it1->second != it2->second ) return false;
-        }
-        return true;    // no tests failed; must be the same
-    }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         // age is that of human at start of time step (i.e. may be as low as 0)
@@ -368,11 +288,6 @@ private:
 /** Do nothing. **/
 class CMDTNoTreatment : public CMDecisionTree {
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTNoTreatment* p = dynamic_cast<const CMDTNoTreatment*>( &that );
-        return p != 0;  // same type: is equivalent
-    }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         return CMDTOut(false);
@@ -389,18 +304,6 @@ public:
         assert( outIds.size() > 0 );        // CMDTTreatPKPD should not be used in this case
     }
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-     if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTReport* p = dynamic_cast<const CMDTReport*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( outIds.size() != p->outIds.size() ) return false;
-        for( auto it1 = outIds.begin(), it2 = p->outIds.begin();
-            it1 != outIds.end(); ++it1, ++it2 )
-        {
-            if( *it1 != *it2 ) return false;
-        }
-        return true;    // no tests failed; must be the same
-    }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         for( const int outId : outIds ){
@@ -415,11 +318,6 @@ private:
 /** Report treament without affecting parasites. **/
 class CMDTTreatFailure : public CMDecisionTree {
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTTreatFailure* p = dynamic_cast<const CMDTTreatFailure*>( &that );
-        return p != 0;  // same type: is equivalent
-    }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         return CMDTOut(true /*report treatment*/);
@@ -444,18 +342,6 @@ public:
     }
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTTreatPKPD* p = dynamic_cast<const CMDTTreatPKPD*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( treatments.size() != p->treatments.size() ) return false;
-        for( auto it1 = treatments.begin(), it2 = p->treatments.begin();
-            it1 != treatments.end(); ++it1, ++it2 )
-        {
-            if( *it1 != *it2 ) return false;
-        }
-        return true;    // no tests failed; must be the same
-    }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         for( const TreatInfo& treatment : treatments ){
@@ -508,19 +394,6 @@ public:
     }
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-     if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTTreatSimple* p = dynamic_cast<const CMDTTreatSimple*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( timeLiver.size() != p->timeLiver.size() ) return false;
-        if( timeBlood.size() != p->timeBlood.size() ) return false;
-        for( auto it1 = timeLiver.begin(), it2 = p->timeLiver.begin();
-            it1 != timeLiver.end(); ++it1, ++it2 )
-        {
-            if( *it1 != *it2 ) return false;
-        }
-        return true;    // no tests failed; must be the same
-    }
 
     
     virtual CMDTOut exec( CMHostData hostData ) const{
@@ -547,19 +420,6 @@ public:
         HumanIntervention(seq, reg) {}
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTDeploy* p = dynamic_cast<const CMDTDeploy*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( components.size() != p->components.size() ) return false;
-        for( auto it1 = components.begin(), it2 = p->components.begin();
-            it1 != components.end(); ++it1, ++it2 )
-        {
-            // here we can compare pointers since components are always de-duplicated
-            if( *it1 != *it2 ) return false;
-        }
-        return true;    // no tests failed; must be the same
-    }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         deploy( hostData.human,
@@ -578,15 +438,6 @@ public:
     static const CMDecisionTree& create( const ::scnXml::DTCohort& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTCohort* p = dynamic_cast<const CMDTCohort*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        // if( diagnostic != p->diagnostic ) return false;
-        if( positive != p->positive ) return false;
-        if( negative != p->negative ) return false;
-        return true;    // no tests failed; must be the same
-    }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         CMDTOut result;
@@ -622,19 +473,10 @@ private:
 // We store pointers into this list, so elements must not move.
 vector<unique_ptr<CMDecisionTree>> decision_library;
 
-// Saves a decision to decision_library, making it const.
-// Also optimises away duplicates
+// Takes ownership of a new decision and returns a const reference to it.
+// Trees are also created at runtime by changeHS interventions; old ones are
+// kept forever (a few per event, never freed — negligible).
 const CMDecisionTree& save_decision( CMDecisionTree* decision ){
-    // We search the library for a duplicate, and delete this one if there is
-    // a duplicate. Note that this is not implemented efficiently, but a little
-    // wasted time at start up is hardly a concern.
-    for( auto& d : decision_library ){
-        if( *d == *decision ){
-            return *d;
-        }
-    }
-    
-    // No match: add to the library.
     decision_library.push_back( unique_ptr<CMDecisionTree>(decision) );
     return *decision_library.back();
 }

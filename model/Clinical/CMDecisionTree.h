@@ -81,14 +81,6 @@ public:
     static const CMDecisionTree& create( const ::scnXml::DecisionTree& node, bool isUC,
         const interventions::InterventionRegistry& reg );
     
-    /** Test for equivalence in two decision trees. Nodes are equivalent if
-     * they have the same type, same deployments and treatments, and their
-     * sub-nodes are equivalent. */
-    virtual bool operator==( const CMDecisionTree& that ) const =0;
-    inline bool operator!=( const CMDecisionTree& that ) const{
-        return !(*this == that);
-    }
-    
     /** Execute the decision tree.
      * 
      * Reporting: use of diagnostics is reported. Treatment is not, but the
