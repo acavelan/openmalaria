@@ -388,49 +388,29 @@ void AnophelesModel::init2(int nHumans, double meanPopAvail, double sum_avail, d
 bool AnophelesModel::initIterate() { return true; }
 //@}
 
-void AnophelesModel::initVectorInterv(const scnXml::VectorSpeciesIntervention &elt, size_t instance)
+void AnophelesModel::initVectorInterv(VectorPopIntervDesc &elt, size_t instance)
 {
     if (emergenceReduction.size() <= instance) emergenceReduction.resize(instance + 1);
-
-    if (elt.getEmergenceReduction().present())
-    {
-        const scnXml::EmergenceReduction &elt2 = elt.getEmergenceReduction().get();
-        if (elt2.getInitial() > 1.0) throw util::xml_scenario_error("emergenceReduction intervention: initial effect must be ≤ 1");
-        emergenceReduction[instance].set(elt2.getInitial(), elt2.getDecay(), "emergenceReduction");
-    }
+    if (elt.emergenceReduction)
+        emergenceReduction[instance].set(elt.emergenceReduction->initial, std::move(elt.emergenceReduction->decay));
     if (probAdditionalDeathSugarFeedingIntervs.size() <= instance) probAdditionalDeathSugarFeedingIntervs.resize(instance + 1);
     if (seekingDeathRateIntervs.size() <= instance) seekingDeathRateIntervs.resize(instance + 1);
     if (probDeathOvipositingIntervs.size() <= instance) probDeathOvipositingIntervs.resize(instance + 1);
-
-    if (elt.getProbAdditionalDeathSugarFeeding().present())
-    {
-        const scnXml::ProbAdditionalDeathSugarFeeding &elt2 = elt.getProbAdditionalDeathSugarFeeding().get();
-        if (elt2.getInitial() < -1.0) throw util::xml_scenario_error("probAdditionalDeathSugarFeeding intervention: initial effect must be ≥ -1");
-        probAdditionalDeathSugarFeedingIntervs[instance].set(elt2.getInitial(), elt2.getDecay(), "seekingDeathRateIncrease");
-    }
-    if (elt.getSeekingDeathRateIncrease().present())
-    {
-        const scnXml::SeekingDeathRateIncrease &elt2 = elt.getSeekingDeathRateIncrease().get();
-        if (elt2.getInitial() < -1.0) throw util::xml_scenario_error("seekingDeathRateIncrease intervention: initial effect must be ≥ -1");
-        seekingDeathRateIntervs[instance].set(elt2.getInitial(), elt2.getDecay(), "seekingDeathRateIncrease");
-    }
-    if (elt.getProbDeathOvipositing().present())
-    {
-        const scnXml::ProbDeathOvipositing &elt2 = elt.getProbDeathOvipositing().get();
-        if (elt2.getInitial() < 0.0 || elt2.getInitial() > 1.0)
-            throw util::xml_scenario_error("probDeathOvipositing intrevention: initial effect must be in range [0,1]");
-        probDeathOvipositingIntervs[instance].set(elt2.getInitial(), elt2.getDecay(), "probDeathOvipositing");
-    }
+    if (elt.probAdditionalDeathSugarFeeding)
+        probAdditionalDeathSugarFeedingIntervs[instance].set(elt.probAdditionalDeathSugarFeeding->initial, std::move(elt.probAdditionalDeathSugarFeeding->decay));
+    if (elt.seekingDeathRateIncrease)
+        seekingDeathRateIntervs[instance].set(elt.seekingDeathRateIncrease->initial, std::move(elt.seekingDeathRateIncrease->decay));
+    if (elt.probDeathOvipositing)
+        probDeathOvipositingIntervs[instance].set(elt.probDeathOvipositing->initial, std::move(elt.probDeathOvipositing->decay));
 }
-void AnophelesModel::initVectorTrap(const scnXml::Description1 &desc, size_t instance)
+void AnophelesModel::initVectorTrap(VectorTrapDesc &desc, size_t instance)
 {
     assert(trapParams.size() == instance); // if triggered, this is a code error not XML
     TrapParams params;
-    params.relAvail = desc.getRelativeAvailability().getValue();
-    params.availDecay = DecayFunction::makeObject(desc.getDecayOfAvailability(), "decayOfAvailability");
+    params.relAvail = desc.relAvail;
+    params.availDecay = std::move(desc.availDecay);
     trapParams.push_back(std::move(params));
 }
-
 void AnophelesModel::deployVectorPopInterv(LocalRng &rng, size_t instance)
 {
     assert(instance < emergenceReduction.size());

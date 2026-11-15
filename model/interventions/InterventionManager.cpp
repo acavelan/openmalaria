@@ -55,6 +55,60 @@ using Host::Human;
 using WithinHost::Diagnostic;
 using WithinHost::diagnostics;
 
+// ———  vector-intervention XML parsing (boundary → plain descriptions)  ———
+
+using Transmission::Anopheles::VectorPopIntervDesc;
+using Transmission::Anopheles::VectorTrapDesc;
+
+/** Per-species vector-population intervention entries, validated and with
+ * decay functions built; validation/messages as AnophelesModel used to do. */
+std::vector<VectorPopIntervDesc> parseVectorPopInterv(const scnXml::Description::AnophelesSequence &list)
+{
+    std::vector<VectorPopIntervDesc> out;
+    for (const scnXml::VectorSpeciesIntervention &anoph : list)
+    {
+        VectorPopIntervDesc desc;
+        desc.species = anoph.getMosquito();
+        if (anoph.getEmergenceReduction().present()) {
+            const scnXml::EmergenceReduction &elt = anoph.getEmergenceReduction().get();
+            if (elt.getInitial() > 1.0) throw util::xml_scenario_error("emergenceReduction intervention: initial effect must be ≤ 1");
+            desc.emergenceReduction = VectorPopIntervDesc::Part{elt.getInitial(), util::DecayFunction::makeObject(elt.getDecay(), "emergenceReduction")};
+        }
+        if (anoph.getProbAdditionalDeathSugarFeeding().present()) {
+            const scnXml::ProbAdditionalDeathSugarFeeding &elt = anoph.getProbAdditionalDeathSugarFeeding().get();
+            if (elt.getInitial() < -1.0) throw util::xml_scenario_error("probAdditionalDeathSugarFeeding intervention: initial effect must be ≥ -1");
+            desc.probAdditionalDeathSugarFeeding = VectorPopIntervDesc::Part{elt.getInitial(), util::DecayFunction::makeObject(elt.getDecay(), "seekingDeathRateIncrease")};
+        }
+        if (anoph.getSeekingDeathRateIncrease().present()) {
+            const scnXml::SeekingDeathRateIncrease &elt = anoph.getSeekingDeathRateIncrease().get();
+            if (elt.getInitial() < -1.0) throw util::xml_scenario_error("seekingDeathRateIncrease intervention: initial effect must be ≥ -1");
+            desc.seekingDeathRateIncrease = VectorPopIntervDesc::Part{elt.getInitial(), util::DecayFunction::makeObject(elt.getDecay(), "seekingDeathRateIncrease")};
+        }
+        if (anoph.getProbDeathOvipositing().present()) {
+            const scnXml::ProbDeathOvipositing &elt = anoph.getProbDeathOvipositing().get();
+            if (elt.getInitial() < 0.0 || elt.getInitial() > 1.0)
+                throw util::xml_scenario_error("probDeathOvipositing intrevention: initial effect must be in range [0,1]");
+            desc.probDeathOvipositing = VectorPopIntervDesc::Part{elt.getInitial(), util::DecayFunction::makeObject(elt.getDecay(), "probDeathOvipositing")};
+        }
+        out.push_back(std::move(desc));
+    }
+    return out;
+}
+
+std::vector<VectorTrapDesc> parseVectorTrapInterv(const scnXml::VectorTrap::DescriptionSequence &list)
+{
+    std::vector<VectorTrapDesc> out;
+    for (const scnXml::Description1 &anoph : list)
+    {
+        VectorTrapDesc desc;
+        desc.species = anoph.getMosquito();
+        desc.relAvail = anoph.getRelativeAvailability().getValue();
+        desc.availDecay = util::DecayFunction::makeObject(anoph.getDecayOfAvailability(), "decayOfAvailability");
+        out.push_back(std::move(desc));
+    }
+    return out;
+}
+
 // ———  HumanIntervention  ———
 
 bool componentCmp(const HumanInterventionComponent *a, const HumanInterventionComponent *b){
@@ -744,35 +798,35 @@ static void initReduceNhh(size_t instance, const std::string &intervName,
             {
                 const scnXml::AvailabilityReduction &decayFunc = anoph.getAvailabilityReduction().get();
                 if (decayFunc.getInitial() > 1.0) throw util::xml_scenario_error("availabilityReduction intervention: initial effect must be <= 1");
-                anophModel->reduceNhhAvailability[intervName][instance].set(decayFunc.getInitial(), decay, "availabilityReduction");
+                anophModel->reduceNhhAvailability[intervName][instance].set(decayFunc.getInitial(), util::DecayFunction::makeObject(decay, "availabilityReduction"));
             }
             if (anoph.getPreprandialKillingEffect().present())
             {
                 const scnXml::PreprandialKillingEffect &decayFunc = anoph.getPreprandialKillingEffect().get();
                 if (decayFunc.getInitial() < 0 || decayFunc.getInitial() > 1)
                     throw util::xml_scenario_error("PreprandialKillingEffect intervention: initial effect must be between 0 and 1");
-                anophModel->reduceP_B_I[intervName][instance].set(decayFunc.getInitial(), decay, "reduceP_B_I");
+                anophModel->reduceP_B_I[intervName][instance].set(decayFunc.getInitial(), util::DecayFunction::makeObject(decay, "reduceP_B_I"));
             }
             if (anoph.getPostprandialKillingEffect().present())
             {
                 const scnXml::PostprandialKillingEffect &decayFunc = anoph.getPostprandialKillingEffect().get();
                 if (decayFunc.getInitial() < 0 || decayFunc.getInitial() > 1)
                     throw util::xml_scenario_error("PostprandialKillingEffect intervention: initial effect must be between 0 and 1");
-                anophModel->reduceP_C_I[intervName][instance].set(decayFunc.getInitial(), decay, "reduceP_C_I");
+                anophModel->reduceP_C_I[intervName][instance].set(decayFunc.getInitial(), util::DecayFunction::makeObject(decay, "reduceP_C_I"));
             }
             if (anoph.getRestingKillingEffect().present())
             {
                 const scnXml::RestingKillingEffect &decayFunc = anoph.getRestingKillingEffect().get();
                 if (decayFunc.getInitial() < 0 || decayFunc.getInitial() > 1)
                     throw util::xml_scenario_error("RestingKillingEffect intervention: initial effect must be be between 0 and 1");
-                anophModel->reduceP_D_I[intervName][instance].set(decayFunc.getInitial(), decay, "reduceP_D_I");
+                anophModel->reduceP_D_I[intervName][instance].set(decayFunc.getInitial(), util::DecayFunction::makeObject(decay, "reduceP_D_I"));
             }
             if (anoph.getFecundityReduction().present())
             {
                 const scnXml::FecundityReduction &decayFunc = anoph.getFecundityReduction().get();
                 if (decayFunc.getInitial() < 0 || decayFunc.getInitial() > 1)
                     throw util::xml_scenario_error("FecundityReduction intervention: initial effect must be be between 0 and 1");
-                anophModel->reduceFecundity[intervName][instance].set(decayFunc.getInitial(), decay, "reduceFecundity");
+                anophModel->reduceFecundity[intervName][instance].set(decayFunc.getInitial(), util::DecayFunction::makeObject(decay, "reduceFecundity"));
             }
         }
         checker.checkNoneMissed();
@@ -1194,7 +1248,7 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
                 const scnXml::VectorIntervention &elt = *it;
                 if (elt.getTimed().present())
                 {
-                    vectorModel->initVectorInterv(elt.getDescription().getAnopheles(), instance, elt.getName());
+                    vectorModel->initVectorInterv(parseVectorPopInterv(elt.getDescription().getAnopheles()), instance, elt.getName());
 
                     const scnXml::TimedBaseList::DeploySequence &seq = elt.getTimed().get().getDeploy();
                     for (auto it = seq.begin(); it != seq.end(); ++it)
@@ -1273,7 +1327,8 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
             size_t instance = 0;
             for (const scnXml::VectorTrap &trap : intervElt.getVectorTrap().get().getIntervention())
             {
-                vectorModel->initVectorTrap(trap.getDescription(), instance, trap.getName());
+                vectorModel->initVectorTrap(parseVectorTrapInterv(trap.getDescription()), instance,
+                    trap.getName().present() ? std::optional<std::string>(trap.getName().get()) : std::nullopt);
                 if (trap.getTimed().present())
                 {
                     for (const scnXml::Deploy1 &deploy : trap.getTimed().get().getDeploy())

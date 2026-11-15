@@ -29,8 +29,6 @@
 #include "Transmission/Anopheles/EmergenceRateEstimator.h"
 #include "Host/Human.h"
 
-#include "schema/interventions.h"  // nested sequence types in virtual signatures
-
 namespace scnXml
 {
 class Vector;
@@ -62,9 +60,11 @@ public:
      * information from the human population structure. */
     virtual void init2(const vector<Host::Human> &population);
 
-    virtual void initVectorInterv(const scnXml::Description::AnophelesSequence &list, size_t instance, const string &name);
-    virtual void initVectorTrap(const scnXml::VectorTrap::DescriptionSequence list, size_t instance,
-                                const scnXml::VectorTrap::NameOptional name);
+    /** Deployment setup: pre-parsed XML descriptions (see
+     * Anopheles::VectorPopIntervDesc); name is the intervention name. */
+    void initVectorInterv(std::vector<Anopheles::VectorPopIntervDesc> list, size_t instance, const string &name);
+    /** name_opt: nullopt when the XML omitted the name. */
+    void initVectorTrap(std::vector<Anopheles::VectorTrapDesc> list, size_t instance, std::optional<std::string> name_opt);
 
     virtual void scaleEIR(double factor);
 

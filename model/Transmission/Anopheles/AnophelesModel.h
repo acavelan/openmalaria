@@ -32,8 +32,8 @@
 
 #include <vector>
 #include <limits>
+#include <optional>
 
-namespace scnXml { class VectorSpeciesIntervention; class Description1; }
 
 namespace OM {
 namespace Transmission {
@@ -177,6 +177,28 @@ struct TrapParams {
     unique_ptr<util::DecayFunction> availDecay; // Decay of availability
 };
 
+/** One species' entry of a vector-population intervention, pre-parsed from
+ * XML (parts absent from the XML are nullopt). Built by the XML boundary
+ * (InterventionManager.cpp); consumed by AnophelesModel::initVectorInterv. */
+struct VectorPopIntervDesc {
+    struct Part {
+        double initial;
+        std::unique_ptr<util::DecayFunction> decay;
+    };
+    std::string species; // mosquito name, for routing by VectorModel
+    std::optional<Part> emergenceReduction;
+    std::optional<Part> probAdditionalDeathSugarFeeding;
+    std::optional<Part> seekingDeathRateIncrease;
+    std::optional<Part> probDeathOvipositing;
+};
+
+/** One species' baited-trap entry, pre-parsed from XML. */
+struct VectorTrapDesc {
+    std::string species;
+    double relAvail;
+    std::unique_ptr<util::DecayFunction> availDecay;
+};
+
 struct TrapData {
     size_t instance; // index in trapParams
     double initialAvail; // initial availability (avail per trap * num traps)
@@ -275,10 +297,10 @@ public:
         double sum_avail, double sigma_f, double sigma_df, double sigma_dff);
     
     /** Set up the non-host-specific interventions. */
-    void initVectorInterv( const scnXml::VectorSpeciesIntervention& elt, size_t instance );
+    void initVectorInterv( VectorPopIntervDesc& elt, size_t instance );
     
     /** Set up trap parameters. */
-    void initVectorTrap( const scnXml::Description1& desc, size_t instance );
+    void initVectorTrap( VectorTrapDesc& desc, size_t instance );
     
     /** Work out whether another interation is needed for initialisation and if
      * so, make necessary changes.

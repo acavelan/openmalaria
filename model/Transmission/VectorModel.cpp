@@ -260,31 +260,24 @@ void VectorModel::init2(const vector<Host::Human> &population)
     simulationMode = forcedEIR; // now we should be ready to start
 }
 
-void VectorModel::initVectorInterv(const scnXml::Description::AnophelesSequence &list, size_t instance, const string &name)
+void VectorModel::initVectorInterv(std::vector<Anopheles::VectorPopIntervDesc> list, size_t instance, const string &name)
 {
     SpeciesIndexChecker checker(name, speciesIndex);
-    for (const scnXml::VectorSpeciesIntervention &anoph : list)
-    {
-        const string &mosq = anoph.getMosquito();
-        species[checker.getIndex(mosq)]->initVectorInterv(anoph, instance);
-    }
+    for (Anopheles::VectorPopIntervDesc &anoph : list)
+        species[checker.getIndex(anoph.species)]->initVectorInterv(anoph, instance);
     checker.checkNoneMissed();
 }
-void VectorModel::initVectorTrap(const scnXml::VectorTrap::DescriptionSequence list, size_t instance,
-                                 const scnXml::VectorTrap::NameOptional name_opt)
+void VectorModel::initVectorTrap(std::vector<Anopheles::VectorTrapDesc> list, size_t instance, std::optional<std::string> name_opt)
 {
     stringstream name_ss;
-    if (name_opt.present())
-        name_ss << name_opt.get();
+    if (name_opt)
+        name_ss << *name_opt;
     else
         name_ss << "vector trap intervention " << (instance + 1);
     string name = name_ss.str();
     SpeciesIndexChecker checker(name, speciesIndex);
-    for (const scnXml::Description1 &anoph : list)
-    {
-        const string &mosq = anoph.getMosquito();
-        species[checker.getIndex(mosq)]->initVectorTrap(anoph, instance);
-    }
+    for (Anopheles::VectorTrapDesc &anoph : list)
+        species[checker.getIndex(anoph.species)]->initVectorTrap(anoph, instance);
     checker.checkNoneMissed();
 }
 void VectorModel::scaleEIR(double factor)
