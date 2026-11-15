@@ -530,7 +530,7 @@ transmission/PerHost path; intervention deployment state, the component
 registry, the master RNG and the neonatal model are caller-owned (`Model`
 members). The XML boundary is complete — schema headers reach only the
 loader and the `.cpp` files that parse. Cumulative branch diff vs `main`:
-+5063/−5260 across 130 files — the model tree is 31,450 lines.
++5498/−5877 across 135 files — the model tree is 31,240 lines.
 
 ---
 
@@ -650,14 +650,19 @@ bit-identical by construction — same arithmetic, same RNG order):
   (linear, none) plus a throwing dummy; the whole hierarchy collapsed into
   `AgeGroupInterpolator` itself — `Kind{None,PiecewiseConstant,PiecewiseLinear}`
   + one `map<double,double>`, no heap, no dummy singleton.
+- `26a473a4` `LSTMDrug`: `LSTMDrugOneComp`/`ThreeComp`/`Conversion` (18
+  virtuals) → one Kind-tagged struct — flat fields for all three PK models,
+  the virtual-method bodies as `lstmdrug::oneComp/threeComp/conversion` free
+  functions in the same .cpp files (GSL workspaces and `Params_*` structs now
+  file-local), dispatched by switch in `LSTMDrug.cpp`; per-model construction
+  (sample order preserved) moved into `LSTMDrugType::createInstance`; the
+  three-constructor ThreeComp cache went `mutable` so `drugFactor` stays
+  const. Per-kind checkpoint field order byte-identical (−209 lines).
 
 Remaining virtual clusters are the by-design strategy families (WH models,
 vector/transmission/pathogenesis models) plus a handful of small component
 classes (`InterventionManager.cpp`'s six trivial `HumanInterventionComponent`
 kinds and `VaccineComponent` — cold-path deploy only, not worth a Kind tag).
-Next de-virtual candidate: `LSTMDrug` (4 classes ×
-6 virtuals, closed set; checkpoint streams differ per class — preserve
-byte-for-byte), same recipe as DecayFunction.
 
 ---
 
