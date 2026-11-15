@@ -456,18 +456,44 @@ Phase 8 (access control) — friends and private data gone (52/52 throughout):
   `SimData` became a plain struct. Pure access change — layout, names,
   draw order untouched.
 
+Phase 5b (XML boundary) — no model header outside the boundary includes
+the schema (52/52 throughout):
+
+- `de4048c3` `sampler.h` (the `createSampler<T>` template only served two
+  samplers → two file-local builders in `sampler.cpp`, every error message
+  preserved); `255f8715` ITN/IRS/GVI/Vaccine — the nested XSD spellings
+  (`ITNDescription::AnophelesParamsType`) turned out to be typedefs of
+  top-level classes (`scnXml::AnophelesParams1` etc.), so forward
+  declarations suffice; `82fc04fb` `InterventionManager`/`Deployments`/
+  `Interfaces`/`LSTMMedicate` + CMake `-DXSD_CXX11` (generated headers
+  defined it themselves before the XSD prelude; making it global lets
+  `containers.hxx` be included in any order); `eb7fb020` deleted
+  `HumanInterventionComponents.h` (definitions-only header included by
+  exactly one source — inlined into `InterventionManager.cpp`) and cleaned
+  the clinical headers. Removing the old includes also removed crutches:
+  several transmission/clinical headers had relied on transitive schema
+  includes and now forward-declare or include what they parse themselves.
+
 Status of the remaining plan (what is *not* done yet):
 
-- **XML boundary (Phase 5)**: 5a done — the core headers
-  (`Parameters`, `ModelOptions`, `TransmissionModel`, `ImportedInfections`,
-  `ESCaseManagement`, `ModelNameProvider`) parse XML in their `.cpp` and no
-  longer include the schema. Still schema-typed: 8 intervention headers
-  (`Deployments`, `Interfaces`, `InterventionManager`, `ITN`, `IRS`, `GVI`,
-  `Vaccine`, `HumanInterventionComponents`), `CMDecisionTree.h`,
-  `LSTMMedicate.h`, `sampler.h` (inline `createSampler*` XML parsing);
-  `DocumentLoader`/`XMLChecker` *are* the boundary and may keep it.
-  → next: move the intervention component ctors' XML parsing behind
-  `read*(...)` free functions in `.cpp` files, then `sampler.h`.
+- **XML boundary (Phase 5)**: DONE. 5a moved core-header parsing to
+  `.cpp` files; 5b removed the schema include from every remaining target
+  header: `sampler.h` (XML construction → two builders in `sampler.cpp`),
+  `ITN`/`IRS`/`GVI`/`Vaccine` (nested XSD spellings like
+  `ITNDescription::AnophelesParamsType` are just typedefs of top-level
+  classes — forward-declare the real name instead), `InterventionManager`,
+  `Deployments` (plus `initReduceNhh`/`readAddNhh` became file-local in
+  `InterventionManager.cpp`), `Interfaces`, `LSTMMedicate`, and
+  `CMDecisionTree`/clinical headers. `HumanInterventionComponents.h` —
+  definitions only, included by exactly one source — was inlined into
+  `InterventionManager.cpp` and deleted. Schema headers are now included
+  only by: the boundary (`DocumentLoader.h`, `XMLChecker.h`), every `.cpp`
+  that actually parses XML, and the three entomology-factory headers
+  (`transmission.h`, `NonVectorModel.h`, `VectorModel.h` — inline XML
+  factories; `VectorModel.h` also needs the real types for nested-sequence
+  virtual signatures). Global `-DXSD_CXX11` in CMake lets
+  `xsd/cxx/tree/containers.hxx` be included in any order (the generated
+  headers always defined it themselves before their prelude).
 - **Interventions rewrite (Phase 4)**: 4a (deployment class hierarchy →
   variant data + free functions) and 4b (one shared entomo filter) done.
   Left: shared `factors::` for ITN/IRS (two near-identical
