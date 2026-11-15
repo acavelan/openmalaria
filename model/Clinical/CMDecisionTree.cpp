@@ -44,20 +44,14 @@ using WithinHost::diagnostics;
 using namespace OM::util;
 using std::map;
 using std::vector;
+using Kind = CMDecisionTree::Kind;
 
+// ———  execution  ———
 
-// ———  special 'multiple' node  ———
-
-/**
- * Branch out to multiple descendants.
- */
-class CMDTMultiple : public CMDecisionTree {
-public:
-    static const CMDecisionTree& create( const ::scnXml::DTMultiple& node, bool isUC, const interventions::InterventionRegistry& reg);
-    
-public:
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
+CMDTOut CMDecisionTree::exec( CMHostData hostData ) const {
+    switch (kind) {
+    case Kind::Multiple: {
+        // Branch out to multiple descendants.
         CMDTOut result(false);
         for( auto it = children.begin(), end = children.end(); it != end; ++it ) {
             CMDTOut r2 = (*it)->exec( hostData );
@@ -65,339 +59,106 @@ public:
         }
         return result;
     }
-    
-public:
-    CMDTMultiple( /*size_t capacity*/ ){
-//         children.reserve( capacity );
-    }
-    
-    typedef vector<const CMDecisionTree*> Children_t;
-    Children_t children;
-};
-
-// ———  branching nodes  ———
-
-/**
- * Should the patient recieve first or second line treatment?
- */
-class CMDTCaseType : public CMDecisionTree {
-public:
-    static const CMDecisionTree& create( const ::scnXml::DTCaseType& node, bool isUC, const interventions::InterventionRegistry& reg);
-    
-public:
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    case Kind::CaseType: {
+        // Should the patient recieve first or second line treatment?
         // Uses of this in complicated cases should trigger an exception during initialisation.
         assert( (hostData.pgState & Episode::SICK) && !(hostData.pgState & Episode::COMPLICATED) );
         
-        if( hostData.pgState & Episode::SECOND_CASE ) return secondLine.exec( hostData );
-        else return firstLine.exec( hostData );
+        if( hostData.pgState & Episode::SECOND_CASE ) return secondLine->exec( hostData );
+        else return firstLine->exec( hostData );
     }
-    
-public:
-    CMDTCaseType( const CMDecisionTree& firstLine,
-                  const CMDecisionTree& secondLine ) :
-                  firstLine(firstLine), secondLine(secondLine)
-                  {}
-    
-    const CMDecisionTree& firstLine;
-    const CMDecisionTree& secondLine;
-};
-
-/**
- * Should the patient recieve a different treatment based on its infection type?
- */
-class CMDTInfectionOrigin : public CMDecisionTree {
-public:
-    static const CMDecisionTree& create( const ::scnXml::DTInfectionOrigin& node, bool isUC, const interventions::InterventionRegistry& reg);
-    
-public:
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    case Kind::InfectionOrigin: {
+        // Should the patient recieve a different treatment based on its infection type?
         WithinHost::InfectionOrigin InfectionOrigin = hostData.withinHost().getInfectionOrigin();
         if(InfectionOrigin == WithinHost::InfectionOrigin::Imported)
-            return imported.exec( hostData );
+            return imported->exec( hostData );
         else if (InfectionOrigin == WithinHost::InfectionOrigin::Introduced)
-            return introduced.exec( hostData );
+            return introduced->exec( hostData );
         else
-            return indigenous.exec( hostData );
+            return indigenous->exec( hostData );
     }
-    
-public:
-    CMDTInfectionOrigin( const CMDecisionTree& imported,
-                  const CMDecisionTree& introduced,
-                  const CMDecisionTree& indigenous ) :
-                  imported(imported), introduced(introduced), indigenous(indigenous)
-                  {}
-    
-    const CMDecisionTree& imported, &introduced, &indigenous;
-};
-
-/**
- * Use a diagnostic, and call another decision tree based on the outcome.
- */
-class CMDTDiagnostic : public CMDecisionTree {
-public:
-    static const CMDecisionTree& create( const ::scnXml::DTDiagnostic& node, bool isUC, const interventions::InterventionRegistry& reg);
-    
-public:
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    case Kind::Diagnostic: {
+        // Use a diagnostic, and call another decision tree based on the outcome.
         CMDTOut result;
         
-        if( hostData.withinHost().diagnosticResult( hostData.human.rng, diagnostic ) )
-            result = positive.exec( hostData );
+        if( hostData.withinHost().diagnosticResult( hostData.human.rng, *diagnostic ) )
+            result = positive->exec( hostData );
         else
-            result = negative.exec( hostData );
+            result = negative->exec( hostData );
         result.screened = true;
 
         return result;
     }
-    
-public:
-    CMDTDiagnostic( const Diagnostic& diagnostic,
-        const CMDecisionTree& positive,
-        const CMDecisionTree& negative ) :
-        diagnostic(diagnostic),
-        positive(positive), negative(negative)
-    {}
-    
-    const Diagnostic& diagnostic;
-    const CMDecisionTree& positive;
-    const CMDecisionTree& negative;
-};
-
-class CMDTUncomplicated : public CMDecisionTree {
-public:
-    static const CMDecisionTree& create( const ::scnXml::DTUncomplicated& node, bool isUC, const interventions::InterventionRegistry& reg);
-    
-public:
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    case Kind::Uncomplicated: {
         const Clinical::Episode &latest = hostData.human.clinicalModel->getLatestReport();
 
         if ( ((hostData.pgState & Episode::SICK) && !(hostData.pgState & Episode::COMPLICATED)) || (hostData.pgState & Episode::MALARIA) )
         {
             if (latest.time + memory >= sim::nowOrTs0())
-                return positive.exec( hostData );
+                return positive->exec( hostData );
             else
-                return negative.exec( hostData );
+                return negative->exec( hostData );
         }
         else
-            return negative.exec( hostData );
+            return negative->exec( hostData );
     }
-    
-public:
-    CMDTUncomplicated(
-        const SimTime memory,
-        const CMDecisionTree& positive,
-        const CMDecisionTree& negative ) :
-        memory(memory), positive(positive), negative(negative)
-    {
-        if(memory > ClinicalModel::hsMemory())
-            throw util::xml_scenario_error( "<uncomplicated> memory parameter must be less than or equal to the healthsystem memory (hsmemory parameter)" );
-    }
-    
-    const SimTime memory;
-    const CMDecisionTree& positive;
-    const CMDecisionTree& negative;
-};
-
-class CMDTSevere : public CMDecisionTree {
-public:
-    static const CMDecisionTree& create( const ::scnXml::DTSevere& node, bool isUC, const interventions::InterventionRegistry& reg);
-    
-public:
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    case Kind::Severe: {
         CMDTOut result;
 
         if (hostData.pgState & Episode::COMPLICATED)
-            result = positive.exec( hostData );
+            result = positive->exec( hostData );
         else
-            result = negative.exec( hostData );
+            result = negative->exec( hostData );
 
         // result.screened = true;
         return result;
     }
-    
-public:
-    CMDTSevere(
-        const CMDecisionTree& positive,
-        const CMDecisionTree& negative ) :
-        positive(positive), negative(negative)
-    {}
-    
-    const CMDecisionTree& positive;
-    const CMDecisionTree& negative;
-};
-
-/**
- * Choose a branch randomly.
- * 
- * TODO(optimisation): can we re-order the trees such that this can be abstracted out or
- * used only once?
- */
-class CMDTRandom : public CMDecisionTree {
-public:
-    static const CMDecisionTree& create( const ::scnXml::DTRandom& node, bool isUC, const interventions::InterventionRegistry& reg);
-    
-public:
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    case Kind::Random: {
+        // Choose a branch randomly.
         auto it = branches.upper_bound( hostData.human.rng.uniform_01() );
         assert( it != branches.end() );
         return it->second->exec( hostData );
     }
-    
-public:
-    CMDTRandom(){}
-    
-    // keys are cumulative probabilities; last entry should equal 1
-    typedef map<double,const CMDecisionTree*> Branches_t;
-    Branches_t branches;
-};
-
-/**
- * Choose what to do based on the patient's age.
- */
-class CMDTAge : public CMDecisionTree {
-public:
-    static const CMDecisionTree& create( const ::scnXml::DTAge& node, bool isUC, const interventions::InterventionRegistry& reg);
-    
-public:
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    case Kind::Age: {
+        // Choose what to do based on the patient's age.
         // age is that of human at start of time step (i.e. may be as low as 0)
         auto it = branches.upper_bound( hostData.ageYears );
         if( it == branches.end() )
             throw TRACED_EXCEPTION( "bad age-based decision tree switch", util::Error::PkPd );
         return it->second->exec( hostData );
     }
-    
-public:
-    CMDTAge() {}
-    
-    // keys are upper bounds of age categories
-    typedef map<double,const CMDecisionTree*> Branches_t;
-    Branches_t branches;
-};
+    case Kind::Cohort: {
+        CMDTOut result;
 
+        // Rely on the health system memory to not count the same episode twice
+        if(hostData.human.isInSubPop(*component))
+            result = positive->exec( hostData );
+        else
+            result = negative->exec( hostData );
 
-// ———  action nodes  ———
-
-/** Do nothing. **/
-class CMDTNoTreatment : public CMDecisionTree {
-public:
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
+        // result.screened = true;
+        return result;
+    }
+    case Kind::NoTreatment:
         return CMDTOut(false);
-    }
-};
-
-class CMDTReport : public CMDecisionTree {
-public:
-    CMDTReport( const scnXml::DecisionTree::ReportSequence& seq ){
-        outIds.reserve( seq.size() );
-        for( const scnXml::DTReport& reportElt : seq ){
-            outIds.push_back( reportElt.getOutputNumber() );
-        }
-        assert( outIds.size() > 0 );        // CMDTTreatPKPD should not be used in this case
-    }
-public:
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    case Kind::Report: {
         for( const int outId : outIds ){
             mon::recordEvent(mon::measure("nCMDTReport"), hostData.human, 1, outId);
         }
         return CMDTOut(false);
     }
-public:
-    vector<int> outIds;
-};
-
-/** Report treament without affecting parasites. **/
-class CMDTTreatFailure : public CMDecisionTree {
-public:
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    case Kind::TreatFailure:
+        // Report treatment without affecting parasites.
         return CMDTOut(true /*report treatment*/);
-    }
-};
-
-/**
- * Deliver one or more treatments via the PK/PD model.
- */
-class CMDTTreatPKPD : public CMDecisionTree {
-public:
-    CMDTTreatPKPD( const scnXml::DecisionTree::TreatPKPDSequence& seq ){
-        treatments.reserve( seq.size() );
-        for( const scnXml::DTTreatPKPD& treatElt : seq ){
-            treatments.push_back( TreatInfo(
-                treatElt.getSchedule(),
-                treatElt.getDosage(),
-                treatElt.getDelay_h()
-            ) );
-        }
-        assert( treatments.size() > 0 );        // CMDTTreatPKPD should not be used in this case
-    }
-    
-public:
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    case Kind::TreatPKPD: {
+        // Deliver one or more treatments via the PK/PD model.
         for( const TreatInfo& treatment : treatments ){
             hostData.withinHost().treatPkPd( treatment.schedule, treatment.dosage, hostData.ageYears, 0.0 );
         }
         return CMDTOut(true);
     }
-    
-public:
-    struct TreatInfo{
-        TreatInfo( const string& s, const string& d, double h ) :
-            schedule(PkPd::LSTMTreatments::findSchedule(s)),
-            dosage(PkPd::LSTMTreatments::findDosages(d)),
-            delay_h(h) {}
-        inline bool operator!=( const TreatInfo& that )const{
-            return schedule != that.schedule ||
-                dosage != that.dosage ||
-                delay_h != that.delay_h;
-        }
-        size_t schedule;        // index of the schedule
-        size_t dosage;          // name of the dosage table
-        double delay_h;         // delay in hours
-    };
-    vector<TreatInfo> treatments;
-};
-
-/**
- * Deliver one or more simple treatments
- */
-class CMDTTreatSimple : public CMDecisionTree {
-public:
-    CMDTTreatSimple( const scnXml::DecisionTree::TreatSimpleSequence& elt ) :
-        timeLiver(sim::zero()), timeBlood(sim::zero())
-    {
-        for (const auto &treatElt : elt) {
-            //NOTE: this code is currently identical to that in SimpleTreatComponent
-            try{
-                SimTime durL = UnitParse::readShortDuration( treatElt.getDurationLiver(), UnitParse::NONE ),
-                    durB = UnitParse::readShortDuration( treatElt.getDurationBlood(), UnitParse::NONE );
-                SimTime neg1 = -sim::oneTS();
-                if( durL < neg1 || durB < neg1 ){
-                    throw util::xml_scenario_error( "treatSimple: cannot have durationBlood or durationLiver less than -1" );
-                }
-                timeLiver.push_back(durL);
-                timeBlood.push_back(durB);
-            }catch( const util::format_error& e ){
-                throw util::xml_scenario_error( string("treatSimple: ").append(e.message()) );
-            }
-        }
-    }
-    
-public:
-
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    case Kind::TreatSimple: {
+        // Deliver one or more simple treatments.
         bool bsTreatment = false;
         for(size_t i=0; i<timeLiver.size(); i++)
         {
@@ -405,25 +166,9 @@ public:
         }
         return CMDTOut(bsTreatment);
     }
-    
-public:
-    vector<SimTime> timeLiver, timeBlood;
-};
-
-/**
- * Deploy one or more interventions.
- */
-/*NOTE: we use interventions::HumanIntervention to read and sort the list of
- * interventions to be deployed, though we don't use pointers it finds. */
-class CMDTDeploy : public CMDecisionTree, interventions::HumanIntervention {
-public:
-    CMDTDeploy( const scnXml::DecisionTree::DeploySequence& seq, const interventions::InterventionRegistry& reg ) :
-        HumanIntervention(seq, reg) {}
-    
-public:
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
-        deploy( hostData.human,
+    case Kind::Deploy: {
+        // Deploy one or more interventions.
+        deployment->deploy( hostData.human,
                   mon::Deploy::TREAT,
                   interventions::VaccineLimits(/*default initialise: no limits*/),
                   sim::nowOrTs1() );
@@ -433,43 +178,11 @@ public:
         // repeat seekers get second-line treatment.
         return CMDTOut(false);
     }
-};
-
-class CMDTCohort : public CMDecisionTree {
-public:
-    static const CMDecisionTree& create( const ::scnXml::DTCohort& node, bool isUC, const interventions::InterventionRegistry& reg);
-    
-public:
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
-        CMDTOut result;
-
-        // Rely on the health system memory to not count the same episode twice
-        if(hostData.human.isInSubPop(component))
-            result = positive.exec( hostData );
-        else
-            result = negative.exec( hostData );
-
-        // result.screened = true;
-        return result;
     }
-    
-public:
-    CMDTCohort(
-        const std::string component,
-        const CMDecisionTree& positive,
-        const CMDecisionTree& negative,
-        const interventions::InterventionRegistry& reg ) :
-        component(interventions::getComponentId(reg, component)), positive(positive), negative(negative)
-    {
-    }
-    
-    interventions::ComponentId component;
-    const CMDecisionTree& positive;
-    const CMDecisionTree& negative;
-};
+    return CMDTOut(false);   // unreachable: every Kind is handled above
+}
 
-// ———  static functions  ———
+// ———  construction  ———
 
 // Memory management: lists all decisions and frees memory at program exit.
 // We store pointers into this list, so elements must not move.
@@ -483,127 +196,118 @@ const CMDecisionTree& save_decision( CMDecisionTree* decision ){
     return *decision_library.back();
 }
 
-const CMDecisionTree& CMDecisionTree::create( const scnXml::DecisionTree& node, bool isUC, const interventions::InterventionRegistry& reg){
-    if( node.getMultiple().present() ) return CMDTMultiple::create( node.getMultiple().get(), isUC, reg);
-    // branching nodes
-    if( node.getCaseType().present() ) return CMDTCaseType::create( node.getCaseType().get(), isUC, reg);
-    if( node.getInfectionOrigin().present() ) return CMDTInfectionOrigin::create( node.getInfectionOrigin().get(), isUC, reg);
-    if( node.getDiagnostic().present() ) return CMDTDiagnostic::create( node.getDiagnostic().get(), isUC, reg);
-    if( node.getUncomplicated().present() ) return CMDTUncomplicated::create( node.getUncomplicated().get(), isUC, reg);
-    if( node.getSevere().present() ) return CMDTSevere::create( node.getSevere().get(), true, reg);
-    if( node.getRandom().present() ) return CMDTRandom::create( node.getRandom().get(), isUC, reg);
-    if( node.getAge().present() ) return CMDTAge::create( node.getAge().get(), isUC, reg);
-    if( node.getCohort().present() ) return CMDTCohort::create( node.getCohort().get(), isUC, reg);
+CMDecisionTree::TreatInfo::TreatInfo( const string& s, const string& d, double h ) :
+    schedule(PkPd::LSTMTreatments::findSchedule(s)),
+    dosage(PkPd::LSTMTreatments::findDosages(d)),
+    delay_h(h) {}
 
-    // action nodes
-    if( node.getNoTreatment().present() ) return save_decision( new CMDTNoTreatment() );
-    if( node.getReport().size() ) return save_decision( new CMDTReport(node.getReport()) );
-    if( node.getTreatFailure().present() ) return save_decision( new CMDTTreatFailure() );
-    if( node.getTreatPKPD().size() ) return save_decision(
-        new CMDTTreatPKPD( node.getTreatPKPD() ) );
-    if( node.getTreatSimple().size() ) return save_decision(
-        new CMDTTreatSimple( node.getTreatSimple() ) );
-    if( node.getDeploy().size() ) return save_decision(
-        new CMDTDeploy( node.getDeploy(), reg ) );
-    throw xml_scenario_error( "unterminated decision tree" );
+namespace {
+
+using Reg = const interventions::InterventionRegistry&;
+
+unique_ptr<CMDecisionTree> make( Kind kind ){
+    return std::make_unique<CMDecisionTree>(kind);
 }
 
-const CMDecisionTree& CMDTMultiple::create( const scnXml::DTMultiple& node, bool isUC, const interventions::InterventionRegistry& reg){
-    CMDTMultiple* self = new CMDTMultiple();
+const CMDecisionTree& createCaseType( const scnXml::DTCaseType& node, bool isUC, Reg reg);
+const CMDecisionTree& createInfectionOrigin( const scnXml::DTInfectionOrigin& node, bool isUC, Reg reg);
+const CMDecisionTree& createDiagnostic( const scnXml::DTDiagnostic& node, bool isUC, Reg reg);
+const CMDecisionTree& createUncomplicated( const scnXml::DTUncomplicated& node, bool isUC, Reg reg);
+const CMDecisionTree& createSevere( const scnXml::DTSevere& node, bool isUC, Reg reg);
+const CMDecisionTree& createRandom( const scnXml::DTRandom& node, bool isUC, Reg reg);
+const CMDecisionTree& createAge( const scnXml::DTAge& node, bool isUC, Reg reg);
+const CMDecisionTree& createCohort( const scnXml::DTCohort& node, bool isUC, Reg reg);
+const CMDecisionTree& createReport( const scnXml::DecisionTree::ReportSequence& seq, bool isUC, Reg reg);
+const CMDecisionTree& createTreatPKPD( const scnXml::DecisionTree::TreatPKPDSequence& seq, bool isUC, Reg reg);
+const CMDecisionTree& createTreatSimple( const scnXml::DecisionTree::TreatSimpleSequence& seq, bool isUC, Reg reg);
+const CMDecisionTree& createDeploy( const scnXml::DecisionTree::DeploySequence& seq, bool isUC, Reg reg);
+
+const CMDecisionTree& createMultiple( const scnXml::DTMultiple& node, bool isUC, Reg reg){
+    unique_ptr<CMDecisionTree> self = make(Kind::Multiple);
     for( const scnXml::DTCaseType& sn : node.getCaseType() ){
-        self->children.push_back( &CMDTCaseType::create(sn, isUC, reg) );
+        self->children.push_back( &createCaseType(sn, isUC, reg) );
     }
     for( const scnXml::DTInfectionOrigin& sn : node.getInfectionOrigin() ){
-        self->children.push_back( &CMDTInfectionOrigin::create(sn, isUC, reg) );
+        self->children.push_back( &createInfectionOrigin(sn, isUC, reg) );
     }
     for( const scnXml::DTDiagnostic& sn : node.getDiagnostic() ){
-        self->children.push_back( &CMDTDiagnostic::create(sn, isUC, reg) );
+        self->children.push_back( &createDiagnostic(sn, isUC, reg) );
     }
     for( const scnXml::DTUncomplicated& sn : node.getUncomplicated() ){
-        self->children.push_back( &CMDTUncomplicated::create(sn, isUC, reg) );
+        self->children.push_back( &createUncomplicated(sn, isUC, reg) );
     }
     for( const scnXml::DTSevere& sn : node.getSevere() ){
-        self->children.push_back( &CMDTSevere::create(sn, isUC, reg) );
+        self->children.push_back( &createSevere(sn, isUC, reg) );
     }
     for( const scnXml::DTRandom& sn : node.getRandom() ){
-        self->children.push_back( &CMDTRandom::create(sn, isUC, reg) );
+        self->children.push_back( &createRandom(sn, isUC, reg) );
     }
     for( const scnXml::DTAge& sn : node.getAge() ){
-        self->children.push_back( &CMDTAge::create(sn, isUC, reg) );
+        self->children.push_back( &createAge(sn, isUC, reg) );
     }
     for( const scnXml::DTCohort& sn : node.getCohort() ){
-        self->children.push_back( &CMDTCohort::create(sn, isUC, reg) );
+        self->children.push_back( &createCohort(sn, isUC, reg) );
     }
     if( node.getTreatPKPD().size() ){
-        self->children.push_back( &save_decision(new CMDTTreatPKPD(node.getTreatPKPD())) );
+        self->children.push_back( &createTreatPKPD(node.getTreatPKPD(), isUC, reg) );
     }
     if( node.getTreatSimple().size() ){
-        self->children.push_back( &save_decision(new CMDTTreatSimple(node.getTreatSimple())) );
+        self->children.push_back( &createTreatSimple(node.getTreatSimple(), isUC, reg) );
     }
     if( node.getReport().size() ){
-        self->children.push_back( &save_decision(new CMDTReport(node.getReport())) );
+        self->children.push_back( &createReport(node.getReport(), isUC, reg) );
     }
     if( node.getDeploy().size() ){
-        self->children.push_back( &save_decision(new CMDTDeploy(node.getDeploy(), reg)) );
+        self->children.push_back( &createDeploy(node.getDeploy(), isUC, reg) );
     }
-    return save_decision( self );
+    return save_decision( self.release() );
 }
 
-const CMDecisionTree& CMDTCaseType::create( const scnXml::DTCaseType& node, bool isUC, const interventions::InterventionRegistry& reg){
+const CMDecisionTree& createCaseType( const scnXml::DTCaseType& node, bool isUC, Reg reg){
     if( !isUC ){
         throw util::xml_scenario_error( "decision tree: caseType can only be used for uncomplicated cases" );
     }
-    return save_decision( new CMDTCaseType(
-        CMDecisionTree::create( node.getFirstLine(), isUC, reg),
-        CMDecisionTree::create( node.getSecondLine(), isUC, reg)
-    ) );
+    unique_ptr<CMDecisionTree> self = make(Kind::CaseType);
+    self->firstLine = &CMDecisionTree::create( node.getFirstLine(), isUC, reg);
+    self->secondLine = &CMDecisionTree::create( node.getSecondLine(), isUC, reg);
+    return save_decision( self.release() );
 }
 
-const CMDecisionTree& CMDTInfectionOrigin::create( const scnXml::DTInfectionOrigin& node, bool isUC, const interventions::InterventionRegistry& reg){
-    return save_decision( new CMDTInfectionOrigin(
-        CMDecisionTree::create( node.getImported(), isUC, reg),
-        CMDecisionTree::create( node.getIntroduced(), isUC, reg),
-        CMDecisionTree::create( node.getIndigenous(), isUC, reg)
-    ) );
+const CMDecisionTree& createInfectionOrigin( const scnXml::DTInfectionOrigin& node, bool isUC, Reg reg){
+    unique_ptr<CMDecisionTree> self = make(Kind::InfectionOrigin);
+    self->imported = &CMDecisionTree::create( node.getImported(), isUC, reg);
+    self->introduced = &CMDecisionTree::create( node.getIntroduced(), isUC, reg);
+    self->indigenous = &CMDecisionTree::create( node.getIndigenous(), isUC, reg);
+    return save_decision( self.release() );
 }
 
-const CMDecisionTree& CMDTDiagnostic::create( const scnXml::DTDiagnostic& node, bool isUC, const interventions::InterventionRegistry& reg){
-    return save_decision( new CMDTDiagnostic(
-        diagnostics::get( node.getDiagnostic() ),
-        CMDecisionTree::create( node.getPositive(), isUC, reg),
-        CMDecisionTree::create( node.getNegative(), isUC, reg)
-    ) );
+const CMDecisionTree& createDiagnostic( const scnXml::DTDiagnostic& node, bool isUC, Reg reg){
+    unique_ptr<CMDecisionTree> self = make(Kind::Diagnostic);
+    self->diagnostic = &diagnostics::get( node.getDiagnostic() );
+    self->positive = &CMDecisionTree::create( node.getPositive(), isUC, reg);
+    self->negative = &CMDecisionTree::create( node.getNegative(), isUC, reg);
+    return save_decision( self.release() );
 }
 
-const CMDecisionTree& CMDTUncomplicated::create( const scnXml::DTUncomplicated& node, bool isUC, const interventions::InterventionRegistry& reg){
-    return save_decision( new CMDTUncomplicated(
-        UnitParse::readShortDuration(node.getMemory(), UnitParse::STEPS),
-        CMDecisionTree::create( node.getPositive(), isUC, reg),
-        CMDecisionTree::create( node.getNegative(), isUC, reg)
-    ) );
+const CMDecisionTree& createUncomplicated( const scnXml::DTUncomplicated& node, bool isUC, Reg reg){
+    unique_ptr<CMDecisionTree> self = make(Kind::Uncomplicated);
+    self->positive = &CMDecisionTree::create( node.getPositive(), isUC, reg);
+    self->negative = &CMDecisionTree::create( node.getNegative(), isUC, reg);
+    self->memory = UnitParse::readShortDuration(node.getMemory(), UnitParse::STEPS);
+    if(self->memory > ClinicalModel::hsMemory())
+        throw util::xml_scenario_error( "<uncomplicated> memory parameter must be less than or equal to the healthsystem memory (hsmemory parameter)" );
+    return save_decision( self.release() );
 }
 
-const CMDecisionTree& CMDTSevere::create( const scnXml::DTSevere& node, bool isUC, const interventions::InterventionRegistry& reg){
-    return save_decision( new CMDTSevere(
-        CMDecisionTree::create( node.getPositive(), isUC, reg),
-        CMDecisionTree::create( node.getNegative(), isUC, reg)
-    ) );
+const CMDecisionTree& createSevere( const scnXml::DTSevere& node, bool isUC, Reg reg){
+    unique_ptr<CMDecisionTree> self = make(Kind::Severe);
+    self->positive = &CMDecisionTree::create( node.getPositive(), isUC, reg);
+    self->negative = &CMDecisionTree::create( node.getNegative(), isUC, reg);
+    return save_decision( self.release() );
 }
 
-const CMDecisionTree& CMDTCohort::create( const scnXml::DTCohort& node, bool isUC, const interventions::InterventionRegistry& reg){
-    return save_decision( new CMDTCohort(
-        node.getComponent(),
-        CMDecisionTree::create( node.getPositive(), isUC, reg),
-        CMDecisionTree::create( node.getNegative(), isUC, reg),
-        reg
-    ) );
-}
-
-
-const CMDecisionTree& CMDTRandom::create(
-    const scnXml::DTRandom& node, bool isUC, const interventions::InterventionRegistry& reg)
-{
-    CMDTRandom* result = new CMDTRandom();
+const CMDecisionTree& createRandom( const scnXml::DTRandom& node, bool isUC, Reg reg){
+    unique_ptr<CMDecisionTree> result = make(Kind::Random);
     
     double cum_p = 0.0;
     for( const scnXml::Outcome& outcome : node.getOutcome() ){
@@ -619,11 +323,11 @@ const CMDecisionTree& CMDTRandom::create(
             "decision tree (random node): expected probability sum to be 1.0 but found " + to_string(cum_p));
     }
     
-    return save_decision( result );
+    return save_decision( result.release() );
 }
 
-const CMDecisionTree& CMDTAge::create(const scnXml::DTAge& node, bool isUC, const interventions::InterventionRegistry& reg){
-    CMDTAge* result = new CMDTAge();
+const CMDecisionTree& createAge( const scnXml::DTAge& node, bool isUC, Reg reg){
+    unique_ptr<CMDecisionTree> result = make(Kind::Age);
     
     double lastAge = numeric_limits<double>::quiet_NaN();
     const CMDecisionTree* lastNode = nullptr;
@@ -644,7 +348,91 @@ const CMDecisionTree& CMDTAge::create(const scnXml::DTAge& node, bool isUC, cons
     double noLb = numeric_limits<double>::infinity();
     result->branches.insert( make_pair(noLb, lastNode) );
     
-    return save_decision( result );
+    return save_decision( result.release() );
+}
+
+const CMDecisionTree& createCohort( const scnXml::DTCohort& node, bool isUC, Reg reg){
+    unique_ptr<CMDecisionTree> self = make(Kind::Cohort);
+    self->positive = &CMDecisionTree::create( node.getPositive(), isUC, reg);
+    self->negative = &CMDecisionTree::create( node.getNegative(), isUC, reg);
+    self->component = interventions::getComponentId(reg, node.getComponent());
+    return save_decision( self.release() );
+}
+
+const CMDecisionTree& createReport( const scnXml::DecisionTree::ReportSequence& seq, bool /*isUC*/, Reg /*reg*/){
+    unique_ptr<CMDecisionTree> self = make(Kind::Report);
+    self->outIds.reserve( seq.size() );
+    for( const scnXml::DTReport& reportElt : seq ){
+        self->outIds.push_back( reportElt.getOutputNumber() );
+    }
+    assert( self->outIds.size() > 0 );        // a Report node should not be empty
+    return save_decision( self.release() );
+}
+
+const CMDecisionTree& createTreatPKPD( const scnXml::DecisionTree::TreatPKPDSequence& seq, bool /*isUC*/, Reg /*reg*/){
+    unique_ptr<CMDecisionTree> self = make(Kind::TreatPKPD);
+    self->treatments.reserve( seq.size() );
+    for( const scnXml::DTTreatPKPD& treatElt : seq ){
+        self->treatments.push_back( CMDecisionTree::TreatInfo(
+            treatElt.getSchedule(),
+            treatElt.getDosage(),
+            treatElt.getDelay_h()
+        ) );
+    }
+    assert( self->treatments.size() > 0 );        // a TreatPKPD node should not be empty
+    return save_decision( self.release() );
+}
+
+const CMDecisionTree& createTreatSimple( const scnXml::DecisionTree::TreatSimpleSequence& seq, bool /*isUC*/, Reg /*reg*/){
+    unique_ptr<CMDecisionTree> self = make(Kind::TreatSimple);
+    for (const auto &treatElt : seq) {
+        //NOTE: this code is currently identical to that in SimpleTreatComponent
+        try{
+            SimTime durL = UnitParse::readShortDuration( treatElt.getDurationLiver(), UnitParse::NONE ),
+                durB = UnitParse::readShortDuration( treatElt.getDurationBlood(), UnitParse::NONE );
+            SimTime neg1 = -sim::oneTS();
+            if( durL < neg1 || durB < neg1 ){
+                throw util::xml_scenario_error( "treatSimple: cannot have durationBlood or durationLiver less than -1" );
+            }
+            self->timeLiver.push_back(durL);
+            self->timeBlood.push_back(durB);
+        }catch( const util::format_error& e ){
+            throw util::xml_scenario_error( string("treatSimple: ").append(e.message()) );
+        }
+    }
+    return save_decision( self.release() );
+}
+
+/*NOTE: we use interventions::HumanIntervention to read and sort the list of
+ * interventions to be deployed, though we don't use pointers it finds. */
+const CMDecisionTree& createDeploy( const scnXml::DecisionTree::DeploySequence& seq, bool /*isUC*/, Reg reg){
+    unique_ptr<CMDecisionTree> self = make(Kind::Deploy);
+    self->deployment.emplace( seq, reg );
+    return save_decision( self.release() );
+}
+
+} // anonymous namespace
+
+const CMDecisionTree& CMDecisionTree::create( const scnXml::DecisionTree& node, bool isUC, const interventions::InterventionRegistry& reg){
+    if( node.getMultiple().present() ) return createMultiple( node.getMultiple().get(), isUC, reg);
+    // branching nodes
+    if( node.getCaseType().present() ) return createCaseType( node.getCaseType().get(), isUC, reg);
+    if( node.getInfectionOrigin().present() ) return createInfectionOrigin( node.getInfectionOrigin().get(), isUC, reg);
+    if( node.getDiagnostic().present() ) return createDiagnostic( node.getDiagnostic().get(), isUC, reg);
+    if( node.getUncomplicated().present() ) return createUncomplicated( node.getUncomplicated().get(), isUC, reg);
+    if( node.getSevere().present() ) return createSevere( node.getSevere().get(), true, reg);
+    if( node.getRandom().present() ) return createRandom( node.getRandom().get(), isUC, reg);
+    if( node.getAge().present() ) return createAge( node.getAge().get(), isUC, reg);
+    if( node.getCohort().present() ) return createCohort( node.getCohort().get(), isUC, reg);
+
+    // action nodes
+    if( node.getNoTreatment().present() ) return save_decision( make(Kind::NoTreatment).release() );
+    if( node.getReport().size() ) return createReport( node.getReport(), isUC, reg );
+    if( node.getTreatFailure().present() ) return save_decision( make(Kind::TreatFailure).release() );
+    if( node.getTreatPKPD().size() ) return createTreatPKPD( node.getTreatPKPD(), isUC, reg );
+    if( node.getTreatSimple().size() ) return createTreatSimple( node.getTreatSimple(), isUC, reg );
+    if( node.getDeploy().size() ) return createDeploy( node.getDeploy(), isUC, reg );
+    throw xml_scenario_error( "unterminated decision tree" );
 }
 
 } }

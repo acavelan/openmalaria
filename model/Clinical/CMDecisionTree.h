@@ -26,15 +26,17 @@
 #include "Host/Human.h"
 #include "Host/WithinHost/Pathogenesis/State.h"
 #include "Clinical/Episode.h"
+#include "interventions/Interfaces.h"
+
+#include <map>
+#include <optional>
 
 namespace scnXml { class DecisionTree; }
 
 namespace OM {
 namespace WithinHost {
     class WHInterface;
-}
-namespace interventions {
-    struct InterventionRegistry;
+    class Diagnostic;
 }
 namespace Clinical {
 using WithinHost::WHInterface;
@@ -42,7 +44,7 @@ using WithinHost::WHInterface;
 /** All data which needs to be passed to the decision tree evaluators. */
 struct  CMHostData {
     /** Initialise, from a human h with age aY (years), and pathogenesis state
-     * pS. Note that pS is only needed for uncomplicated trees
+     * pS. Note that pS is only needed for uncomplicated cases
      * (see CMDecisionTree::create()). */
     CMHostData (Host::Human& h, double aY, Episode::State pS) :
         human(h), ageYears(aY), pgState(pS) {}
@@ -61,14 +63,32 @@ struct CMDTOut {
 
 
 /**
- * Decision tree node abstraction.
- * 
- * Sub-classes represent either a decision node (first/second line case, a
+ * A decision tree node: either a decision node (first/second line case, a
  * diagnostic with positive/negative outcome, a random decision) or an action.
+ * 
+ * Which fields are used depends on kind:
+ *  - Multiple: children
+ *  - CaseType: firstLine, secondLine
+ *  - InfectionOrigin: imported, introduced, indigenous
+ *  - Diagnostic: diagnostic, positive, negative
+ *  - Uncomplicated: memory, positive, negative
+ *  - Severe, Cohort: positive, negative (Cohort also component)
+ *  - Random, Age: branches (keys: cumulative probabilities / age upper bounds)
+ *  - Report: outIds
+ *  - TreatPKPD: treatments
+ *  - TreatSimple: timeLiver, timeBlood
+ *  - Deploy: deployment
+ *  - NoTreatment, TreatFailure: nothing
  *****************************************************************************/
 class CMDecisionTree {
 public:
-    virtual ~CMDecisionTree() {}
+    enum class Kind {
+        Multiple, CaseType, InfectionOrigin, Diagnostic, Uncomplicated, Severe,
+        Random, Age, Cohort, NoTreatment, Report, TreatFailure, TreatPKPD,
+        TreatSimple, Deploy
+    };
+    
+    explicit CMDecisionTree(Kind kind) : kind(kind) {}
     
     /** Create a user-configured decision from an XML node.
      * 
@@ -86,7 +106,32 @@ public:
      * 
      * Reporting: use of diagnostics is reported. Treatment is not, but the
      * output may be used to determine whether any treatment took place. */
-    virtual CMDTOut exec( CMHostData hostData ) const =0;
+    CMDTOut exec( CMHostData hostData ) const;
+
+public:
+    /** One treatment to be delivered via the PK/PD model. */
+    struct TreatInfo {
+        TreatInfo( const std::string& s, const std::string& d, double h );
+        size_t schedule;        // index of the schedule
+        size_t dosage;          // name of the dosage table
+        double delay_h;         // delay in hours
+    };
+    
+    Kind kind;
+    // Branch targets (all owned by the decision library):
+    std::vector<const CMDecisionTree*> children;    // Multiple
+    const CMDecisionTree *firstLine = nullptr, *secondLine = nullptr;   // CaseType
+    const CMDecisionTree *imported = nullptr, *introduced = nullptr,
+                         *indigenous = nullptr;     // InfectionOrigin
+    const CMDecisionTree *positive = nullptr, *negative = nullptr;  // several
+    std::map<double, const CMDecisionTree*> branches;   // Random, Age
+    const WithinHost::Diagnostic* diagnostic = nullptr; // Diagnostic
+    SimTime memory = sim::zero();                 // Uncomplicated
+    std::vector<int> outIds;                      // Report
+    std::vector<TreatInfo> treatments;            // TreatPKPD
+    std::vector<SimTime> timeLiver, timeBlood;    // TreatSimple
+    std::optional<interventions::ComponentId> component;  // Cohort
+    std::optional<interventions::HumanIntervention> deployment; // Deploy
 };
 
 } }
