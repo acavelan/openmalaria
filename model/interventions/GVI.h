@@ -27,7 +27,10 @@
 #include "interventions/Interfaces.h"
 #include "util/DecayFunction.h"
 #include "util/sampler.h"
-#include "schema/interventions.h"
+namespace scnXml {
+    class GVIDescription;
+    class AnophelesParams11;
+}
 
 namespace OM { namespace interventions {
     using util::DecayFunction;
@@ -67,7 +70,7 @@ public:
             postprandialKilling( numeric_limits<double>::signaling_NaN() ),
             fecundityReduction( numeric_limits<double>::signaling_NaN() )
         {}
-        void init(const scnXml::GVIDescription::AnophelesParamsType& elt, double proportionUse);
+        void init(const scnXml::AnophelesParams11& elt, double proportionUse);
         
         /// Return x*proportionProtected + proportionUnprotected
         inline double byProtection(double x) const{

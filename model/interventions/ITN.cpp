@@ -21,6 +21,7 @@
  */
 
 #include "interventions/ITN.h"
+#include "schema/interventions.h"
 #include "util/random.h"
 #include "util/errors.h"
 #include "util/SpeciesIndexChecker.h"

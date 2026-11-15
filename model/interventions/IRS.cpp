@@ -22,6 +22,7 @@
 
 #include "Global.h"
 #include "interventions/IRS.h"
+#include "schema/interventions.h"
 #include "Host/Human.h"
 #include "util/errors.h"
 #include "util/SpeciesIndexChecker.h"

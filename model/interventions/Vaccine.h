@@ -24,7 +24,9 @@
 #define Hmod_interventions_Vaccine
 
 #include "interventions/HumanComponents.h"
-#include "schema/interventions.h"
+namespace scnXml {
+    class VaccineDescription;
+}
 
 namespace OM {
 namespace Host {

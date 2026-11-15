@@ -25,7 +25,12 @@
 
 #include "util/DecayFunction.h"
 #include "Transmission/PerHost.h"
-#include "schema/interventions.h"
+namespace scnXml {
+    class IRSDescription;
+    class IRSDeterrency;
+    class IRSKillingEffect;
+    class AnophelesParams2;
+}
 
 namespace OM {
 namespace interventions {
@@ -57,7 +62,7 @@ public:
             proportionProtected( numeric_limits<double>::signaling_NaN() ),
             proportionUnprotected( numeric_limits<double>::signaling_NaN() )
         {}
-        void init(const scnXml::IRSDescription::AnophelesParamsType& elt,
+        void init(const scnXml::AnophelesParams2& elt,
                  double proportionUse, double maxInsecticide);
         
         /// Get deterrency. See ComponentParams::effect for a more detailed description.
