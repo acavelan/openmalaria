@@ -233,9 +233,6 @@ public:
     
     virtual Component::Type componentType() const override { return Component::ITN; }
     
-    inline double getHoleIndex()const{
-        return holeIndex;
-    }
     inline double getInsecticideContent(const ITNComponent& params)const{
             SimTime age = sim::nowOrTs1() - deployTime;  // implies age 1 TS on first use
         double effectSurvival = insecticideDecayHet->eval( age );

@@ -102,8 +102,6 @@ public:
     static constexpr uint64_t max() { return std::numeric_limits<uint64_t>::max(); }
 
 private:
-    void generate_block();
-    void chacha_core();
 
     uint64_t s[4];
 };
