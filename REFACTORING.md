@@ -377,13 +377,9 @@ gaps):
   the cohort snapshot taken at episode creation. Both are observable in
   survey output, so the asymmetry stays byte-identical.
 
-Remaining big Phase-6 cluster (not started, deliberately — no
-half-threaded state exists): the clinical health-system parameters
-(`CM5DayCommon`, `ImmediateOutcomes`, `ESCaseManagement`,
-`EventScheduler`, `ClinicalModel` statics). They are rewritten by
-changeHS at runtime and read from per-human clinical code and from
-static decision-tree paths; threading ≈30 statics through ≈40
-signatures is a multi-day pass of its own.
+Remaining Phase-6 clusters (not started, deliberately): `InfantMortality`
+statics (checkpointed reporting counters) and the mon/WithinHost clusters.
+The clinical health-system statics cluster is done — see Phase 6c below.
 
 Phase 5 (XML interface at the boundary) — first slice:
 
@@ -521,16 +517,18 @@ Status of the remaining plan (what is *not* done yet):
   (the owner — reads there are final or die with the last slices); each
   needs its update-chain functions to take the clock as a parameter,
   mechanically, per directory.
-- **Phase 6**: `NeonatalMortality` done; the clinical/HS statics cluster
-  (~30 statics, ~40 signatures), mon and WithinHost clusters remain.
+- **Phase 6**: `NeonatalMortality` (6a), component registry (6b) and the
+  clinical/HS statics cluster (6c, `Clinical::ClinicalParams`) done;
+  `InfantMortality` statics and the mon/WithinHost clusters remain.
 - 59 `ModelOptions::option()` reads remain (Phase 5 wants init-time caches).
 
 Net effect so far: no mutable process-wide state left in the
 transmission/PerHost path; intervention deployment state, the component
-registry, the master RNG and the neonatal model are caller-owned (`Model`
-members). The XML boundary is complete — schema headers reach only the
-loader and the `.cpp` files that parse. Cumulative branch diff vs `main`:
-+5498/−5877 across 135 files — the model tree is 31,240 lines.
+registry, the master RNG, the neonatal model and all clinical/health-system
+parameters are caller-owned (`Model` members). The XML boundary is complete —
+schema headers reach only the loader and the `.cpp` files that parse.
+Cumulative branch diff vs `main`: +5871/−6247 across 137 files — the model
+tree is 31,241 lines.
 
 ---
 
@@ -663,6 +661,42 @@ Remaining virtual clusters are the by-design strategy families (WH models,
 vector/transmission/pathogenesis models) plus a handful of small component
 classes (`InterventionManager.cpp`'s six trivial `HumanInterventionComponent`
 kinds and `VaccineComponent` — cold-path deploy only, not worth a Kind tag).
+
+---
+
+Phase 6c — clinical/HS statics → one plain `Clinical::ClinicalParams`
+struct (52/52 byte-identical, net −2 lines):
+
+- `46013e1f` — new `Clinical/ClinicalParams.h`: one public-data struct with
+  all former clinical statics — kind/option flags, shared HS data
+  (`healthSystemMemory`, CFR + sequelae interpolators, `oddsRatioThreshold`),
+  the `CM5DayCommon` case-management arrays and severe treatment,
+  `ImmediateOutcomes` cure rates + diagnostic flag, the two
+  `DecisionTree5Day` tree roots, and the whole `ClinicalEventScheduler`
+  parameter set (durations, immunity curve, NMF log-odds/interpolators, its
+  two tree roots). The `CaseType` enum moved to namespace scope. Ctor +
+  `loadHealthSystem` + `getCommunityCFR` implemented in `ClinicalModel.cpp`.
+- Static init/load became free functions: `ClinicalModel::init`/`setHS` →
+  the `ClinicalParams` ctor + `loadHealthSystem` (dispatches to free
+  `esInit`/`loadHSEventScheduler`/`loadHSImmediateOutcomes`/`loadHSDT5Day`
+  in the kind files); the `ESCaseManagement` class → free
+  `loadHSEventScheduler`/`esExecute`; `createClinicalModel(tSF, params)`
+  reads kind flags from params.
+- Ownership/threading: a value member of `Model` (declared between
+  `transmission` and `humans`), constructed in `main` before the Model (the
+  Human ctors call `createClinicalModel`); threaded `const ClinicalParams&`
+  through `Population`/`Human` ctors, `ClinicalModel::update`/
+  `doClinicalUpdate`/`isExistingCase`/`Host::summarize` and
+  `Episode::update` (which now takes `hsMemory`); mutated only via
+  `model.clinical_params.loadHealthSystem` (`main` after
+  `interventions::init`, and the `ChangeHS` timed action). Not
+  checkpointed — rebuilt from XML, exactly like the old statics.
+- `CMDecisionTree::create` gained a trailing `SimTime hsMemory` (validates
+  `<uncomplicated>` nodes; replaces the `ClinicalModel::hsMemory()` static
+  read) threaded through the branching creator chain; `interventions::init`
+  takes it for `DecisionTreeComponent` (the old static happened to be set
+  by then); `CM5DayCommon`/ES keep their per-model virtuals — that
+  polymorphism earns its keep (§3).
 
 ---
 
