@@ -168,7 +168,6 @@ int main(int argc, char* argv[])
         mon::initReporting( *scenario ); // Reporting init depends on diagnostics and monitoring
 
         // Init models used by humans
-        Transmission::PerHost::init( scenario->getModel().getHuman().getAvailabilityToMosquitoes() );
         Host::InfectionIncidenceModel::init( parameters );
         WithinHost::WHInterface::init( parameters, *scenario );
         Clinical::ClinicalModel::init( parameters, *scenario );
@@ -179,11 +178,11 @@ int main(int argc, char* argv[])
         // Transmission model initialisation depends on Transmission::PerHost and
         // genotypes (both from Human, from Population::init()) and
         // monitoring age groups (from Surveys.init()):
-        // Note: PerHost dependency can be postponed; it is only used to set adultAge
         size_t popSize = scenario->getDemography().getPopSize();
 
         std::unique_ptr<TransmissionModel> transmission = std::unique_ptr<TransmissionModel>(Transmission::createTransmissionModel(scenario->getEntomology(), popSize));
-        std::unique_ptr<Population> population = std::unique_ptr<Population>(new Population(popSize, transmission->speciesParams));
+        transmission->setAgeAvailability(scenario->getModel().getHuman().getAvailabilityToMosquitoes());
+        std::unique_ptr<Population> population = std::unique_ptr<Population>(new Population(popSize, transmission->speciesParams, transmission->ageAvailability));
 
         registerContinousPopulationCallbacks();
 

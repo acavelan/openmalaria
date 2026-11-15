@@ -106,7 +106,8 @@ HumanHet hetSample(util::LocalRng& rng)
     return het;
 }
 
-Human::Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& species_params) :
+Human::Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& species_params,
+        const Transmission::AgeGroupInterpolator& age_availability) :
     infIncidence(InfectionIncidenceModel::createModel()),
     rng(util::master_RNG),
     dateOfBirth(dateOfBirth),
@@ -118,7 +119,7 @@ Human::Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& speci
     HumanHet het = hetSample(rng);
     withinHostModel = WithinHost::WHInterface::createWithinHostModel( rng, het.comorbidityFactor );
     double iiFactor = infIncidence->getAvailabilityFactor(rng, 1.0);
-    perHostTransmission.initialise (rng, het.availabilityFactor * iiFactor, *this->species_params);
+    perHostTransmission.initialise (rng, het.availabilityFactor * iiFactor, *this->species_params, age_availability);
     clinicalModel = Clinical::ClinicalModel::createClinicalModel(het.treatmentSeekingFactor);
 }
 

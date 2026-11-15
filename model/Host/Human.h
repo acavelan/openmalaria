@@ -50,7 +50,8 @@ public:
     /** Initialise all variables of a human datatype.
     * 
     * @param dateOfBirth date of birth (usually start of next time step) */
-    Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& species_params);
+    Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& species_params,
+        const Transmission::AgeGroupInterpolator& age_availability);
 
     /// Allow move construction
     Human(Human&&) = default;

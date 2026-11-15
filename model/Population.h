@@ -35,7 +35,8 @@ namespace OM {
 class Population
 {
 public:
-    Population(size_t size, const Transmission::VectorSpeciesParams& species_params);
+    Population(size_t size, const Transmission::VectorSpeciesParams& species_params,
+             const Transmission::AgeGroupInterpolator& age_availability);
 
     /** Create the initial population of Humans */
     void createInitialHumans();
@@ -70,6 +71,7 @@ private:
     int recentBirths = 0;
 
     const Transmission::VectorSpeciesParams& species_params;
+    const Transmission::AgeGroupInterpolator& age_availability;
 };
 
 void registerContinousPopulationCallbacks();

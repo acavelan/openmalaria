@@ -245,16 +245,11 @@ protected:
 class PerHost
 {
 public:
-    /// @brief Static member functions
-    //@{
-    /** Static initialisation. */
-    static void init (const scnXml::AgeGroupValues& availabilityToMosquitoes);
-    //@}
-    
     ///@brief Initialisation / checkpionting
     //@{
     PerHost ();
-    void initialise (LocalRng& rng, double availabilityFactor, const VectorSpeciesParams& species_params);
+    void initialise (LocalRng& rng, double availabilityFactor, const VectorSpeciesParams& species_params,
+                   const AgeGroupInterpolator& age_availability);
     //@}
     
     /// Call once per time step. Updates net holes.
@@ -279,7 +274,7 @@ public:
      * 
      * Also has a switch to put individuals entirely outside transmission. */
     inline double relativeAvailabilityAge (double ageYears) const {
-        return outsideTransmission ? 0.0 : relAvailAge.eval( ageYears );
+        return outsideTransmission ? 0.0 : ageAvailability->eval( ageYears );
     }
     
     /** Get the availability of this host to mosquitoes relative to an average
@@ -337,12 +332,6 @@ public:
     
     ///@brief Miscellaneous
     //@{
-    /** Get the age at which individuals are considered adults (i.e. where
-     * availability to mosquitoes reaches its maximum). */
-    static inline SimTime adultAge() {
-        return sim::fromYearsD( relAvailAge.firstGlobalMaximum() );
-    }
-    
     /** Get whether the user has any active deployments of interventions of
      * the given type, where type is one of those interventions deriving the
      * PerHostInterventionData class (in other cases this will always return
@@ -398,7 +387,8 @@ private:
 
     vector<unique_ptr<PerHostInterventionData>> activeComponents;
     
-    static AgeGroupInterpolator relAvailAge;
+    /** Age-dependent availability curve; shared, owned by TransmissionModel. */
+    const AgeGroupInterpolator* ageAvailability = nullptr;
 };
 
 }

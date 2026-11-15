@@ -137,7 +137,6 @@ protected:
         , tsAdultEIR(0.0)
         , surveyInputEIR(0.0)
         , surveySimulatedEIR(0.0)
-        , adultAge(PerHost::adultAge())
         , numTransmittingHumans(0)
     {
         // Set VACCINE_GENOTYPE option
@@ -155,6 +154,16 @@ public:
 
     /// Species-level mosquito parameters (empty for the non-vector model).
     VectorSpeciesParams speciesParams;
+
+    /** Age-dependent availability of humans to mosquitoes (read from XML). */
+    AgeGroupInterpolator ageAvailability;
+
+    /** Set the age-dependent availability curve; sets adultAge from it. */
+    void setAgeAvailability(const scnXml::AgeGroupValues& availabilityToMosquitoes)
+    {
+        ageAvailability.set(availabilityToMosquitoes, "availabilityToMosquitoes");
+        adultAge = sim::fromYearsD(ageAvailability.firstGlobalMaximum());
+    }
 
     /** Extra initialisation when not loading from a checkpoint, requiring
      * information from the human population structure. */
