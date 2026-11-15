@@ -418,22 +418,22 @@ Phase 7 (sweep) — first pass:
 
 Phase 7 (sweep) — dead-code hunt (−595 lines, 52/52 throughout):
 
-- `475e13ce` deleted `DescriptiveIPTInfection` (never listed in
+- `cab6d3b3` deleted `DescriptiveIPTInfection` (never listed in
   CMakeLists, never referenced); free functions/macros/methods with zero
   call sites anywhere: `util::addTo`, `RNG::gen_seed`, `OM_ASSERT_EQ(_TOL)`
   + `do_assertion(_tol)`, `addProphylacticEffects` stub,
   `samplePatentValue`, `numDrugTypes`, `argmax`, `initIterateScale`,
   `IPTattenuateAsexualDensity` virtual, `VivaxBrood` `hasHad*` getters
   (the members stay — they are checkpointed).
-- `7b31ce21` commented-out code blocks deleted (old treatment-probability
+- `80b993c6` commented-out code blocks deleted (old treatment-probability
   formula, hypnozoite partial-clearance alternative, GSL spline
   interpolator, disabled Molineaux tests, debug life-cycle loop) and the
   three never-registered, fully-commented `VectorModel::cts*` callbacks.
-- `92d0db3d` `62eba769` unused assert macros and the stale LCEmergence
+- `960e2073` `3fe8d99a` unused assert macros and the stale LCEmergence
   comment; the hardcoded-on `USE_DERIVATIVE` root-solver `#else` branch
   and the never-defined `WHVivaxSamples` debug blocks deleted (alternate
   GSL solver methods stay listed as comments — they are tuning knobs).
-- `c5e606b2` `-Wall -Wextra` fallout: counters set but never read
+- `e4d8fc69` `-Wall -Wextra` fallout: counters set but never read
   (`nImported`, `sumLogDens`, AddNonHumanHosts `instance`), unused
   `deploy()` aliases, eight `return std::move(copy)` → `return copy`
   (NRVO) in `DecayFunction`.
@@ -459,15 +459,15 @@ Phase 8 (access control) — friends and private data gone (52/52 throughout):
 Phase 5b (XML boundary) — no model header outside the boundary includes
 the schema (52/52 throughout):
 
-- `de4048c3` `sampler.h` (the `createSampler<T>` template only served two
+- `04862052` `sampler.h` (the `createSampler<T>` template only served two
   samplers → two file-local builders in `sampler.cpp`, every error message
-  preserved); `255f8715` ITN/IRS/GVI/Vaccine — the nested XSD spellings
+  preserved); `d645d342` ITN/IRS/GVI/Vaccine — the nested XSD spellings
   (`ITNDescription::AnophelesParamsType`) turned out to be typedefs of
   top-level classes (`scnXml::AnophelesParams1` etc.), so forward
-  declarations suffice; `82fc04fb` `InterventionManager`/`Deployments`/
+  declarations suffice; `b5ade779` `InterventionManager`/`Deployments`/
   `Interfaces`/`LSTMMedicate` + CMake `-DXSD_CXX11` (generated headers
   defined it themselves before the XSD prelude; making it global lets
-  `containers.hxx` be included in any order); `eb7fb020` deleted
+  `containers.hxx` be included in any order); `b22354a7` deleted
   `HumanInterventionComponents.h` (definitions-only header included by
   exactly one source — inlined into `InterventionManager.cpp`) and cleaned
   the clinical headers. Removing the old includes also removed crutches:
@@ -513,9 +513,9 @@ Status of the remaining plan (what is *not* done yet):
 Net effect so far: no mutable process-wide state left in the
 transmission/PerHost path; intervention deployment state, the component
 registry, the master RNG and the neonatal model are caller-owned (`Model`
-members). Cumulative branch diff vs `main`: ~1800+/2300− in
-model+unittest — the tree is now ~600 lines smaller than before this
-sweep with no behaviour change. The vector-side (string-keyed decay maps,
+members). Cumulative branch diff vs `main`: +2639/−3224 across
+121 files — the model tree is ~600 lines smaller than when the
+dead-code sweep started, with no behaviour change. The vector-side (string-keyed decay maps,
 traps, NHH) checkpoint gaps remain as noted in §6 — gated by the
 byte-identical contract.
 
