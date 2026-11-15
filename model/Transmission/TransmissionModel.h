@@ -31,16 +31,12 @@
 #include "util/errors.h"
 
 #include "Transmission/PerHost.h"
-#include "Population.h"
-#include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/Genotypes.h"
 #include "mon/Continuous.h"
 #include "mon/Monitoring.h"
 #include "util/StreamValidator.h"
 #include "util/CommandLine.h"
 #include "util/vectors.h"
 #include "util/ModelOptions.h"
-#include "Transmission/PerHost.h"
 
 #include <cmath>
 #include <cfloat>
@@ -246,28 +242,6 @@ public:
      * calculation. The vector model uses this to update net holes. */
     virtual void startHumanUpdate(Host::Human &human) {}
 
-    double getEIR(Host::Human &human, SimTime age, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l)
-    {
-        startHumanUpdate(human);
-        /* For the NonVector model, the EIR should just be multiplied by the
-         * availability. For the Vector model, the availability is also required
-         * for internal calculations, but again the EIR should be multiplied by the
-         * availability. */
-        calculateEIR(human, ageYears, EIR_i, EIR_l);
-
-        double sum_EIR_i = util::vectors::sum(EIR_i);
-        double sum_EIR_l = util::vectors::sum(EIR_l);
-
-        double allEIR = sum_EIR_i + sum_EIR_l;
-        if (age >= adultAge)
-        {
-            tsAdultEntoInocs_i += sum_EIR_i;
-            tsAdultEntoInocs_l += sum_EIR_l;
-            tsAdultEntoInocs += allEIR;
-            tsNumAdults += 1;
-        }
-        return allEIR;
-    }
 
     /** Remove all current infections to mosquitoes, such that without re-
      * infection, humans will then be exposed to zero EIR. */
@@ -276,70 +250,10 @@ public:
     /** Needs to be called each time-step after Human::update() to update summary
      * statististics related to transmission. Also returns kappa (the average
      * human infectiousness weighted by availability to mosquitoes). */
-    virtual double updateKappa(const vector<Host::Human> &population)
-    {
-        // We calculate kappa for output and the non-vector model.
-        double sumWt_kappa = 0.0;
-        double sumWeight = 0.0;
-        numTransmittingHumans = 0;
 
-        for (const Host::Human &human : population)
-        {
-            // NOTE: calculate availability relative to age at end of time step;
-            // not my preference but consistent with TransmissionModel::getEIR().
-            const double avail = human.perHostTransmission.relativeAvailabilityHetAge(sim::inYears(human.age(sim::ts1())));
-            sumWeight += avail;
+    double getEIR(Host::Human &human, SimTime age, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l);
 
-            vector<double> probTransGenotype_i(WithinHost::Genotypes::N());
-            vector<double> probTransGenotype_l(WithinHost::Genotypes::N());
-            const double pTransmit = human.withinHostModel->probTransmissionToMosquito(probTransGenotype_i, probTransGenotype_l);
-
-            double riskTrans = 0.0;
-
-            // Only to be consistent with old simulation runs when set to false
-            // Setting this option to true will only affect reporting
-            if (opt_vaccine_genotype == false)
-                riskTrans = avail * pTransmit * human.vaccine.getFactor(interventions::Vaccine::TBV);
-            else
-            {
-                for (size_t g = 0; g < WithinHost::Genotypes::N(); ++g)
-                    riskTrans += (probTransGenotype_i[g] + probTransGenotype_l[g]) * human.vaccine.getFactor(interventions::Vaccine::TBV, g);
-                riskTrans *= avail;
-            }
-
-            if (riskTrans > 0.0) ++numTransmittingHumans;
-
-            sumWt_kappa += riskTrans;
-        }
-
-        size_t lKMod = sim::moduloSteps(sim::ts1(), laggedKappa.size()); // now
-        if (population.size() == 0)
-        {                             // this is valid
-            laggedKappa[lKMod] = 0.0; // no humans: no infectiousness
-        }
-        else
-        {
-            if (!(sumWeight > DBL_MIN * 10.0))
-            { // if approx. eq. 0, negative or an NaN
-                ostringstream msg;
-                msg << "sumWeight is invalid: " << sumWeight << ", " << sumWt_kappa << ", " << population.size();
-                throw TRACED_EXCEPTION(msg.str(), util::Error::SumWeight);
-            }
-            laggedKappa[lKMod] = sumWt_kappa / sumWeight;
-        }
-
-        size_t tmod = sim::moduloYearSteps(sim::ts0());
-
-        // Calculate time-weighted average of kappa
-        _sumAnnualKappa += laggedKappa[lKMod] * initialisationEIR[tmod];
-        if (tmod == sim::stepsPerYear() - 1)
-        {
-            _annualAverageKappa = _sumAnnualKappa / annualEIR; // inf or NaN when annualEIR is 0
-            _sumAnnualKappa = 0.0;
-        }
-
-        return laggedKappa[lKMod]; // kappa now
-    }
+    virtual double updateKappa(const vector<Host::Human> &population);
 
     virtual void surveyEIR()
     {
