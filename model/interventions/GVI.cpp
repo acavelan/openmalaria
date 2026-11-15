@@ -69,10 +69,10 @@ void GVIComponent::print_details( std::ostream& out )const{
 }
 
 unique_ptr<PerHostInterventionData> GVIComponent::makeHumanPart(LocalRng& rng) const{
-    return unique_ptr<PerHostInterventionData>(new HumanGVI( rng, *this ));
+    return make_unique<HumanGVI>( rng, *this );
 }
 unique_ptr<PerHostInterventionData> GVIComponent::makeHumanPart( istream& stream, ComponentId ) const{
-    return unique_ptr<PerHostInterventionData>(new HumanGVI( stream, *this ));
+    return make_unique<HumanGVI>( stream, *this );
 }
 
 void GVIComponent::GVIAnopheles::init(const scnXml::GVIDescription::AnophelesParamsType& elt,

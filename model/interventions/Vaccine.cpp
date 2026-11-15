@@ -185,16 +185,6 @@ double VaccineComponent::getInitialEfficacy (LocalRng& rng, size_t numPrevDoses,
     }
 }
 
-#if 0
-/* R_0: this used to use _the_ vaccine configuration; this is just a check.
- * If reimplementing, use a new vaccine instance; implement some hook to ensure
- * that TBV is given to everyone after enabling the intervention, etc. */
-void Vaccine::verifyEnabledForR_0 (){
-    if( !types[PEV].active || !types[TBV].active )
-        throw util::xml_scenario_error("PEV and TBV vaccines must have a "
-                "description to use the insertR_0Case intervention");
-}
-#endif
 
 // this is only used for checkpointing; loaded values are unimportant
 PerEffectPerHumanVaccine::PerEffectPerHumanVaccine() :

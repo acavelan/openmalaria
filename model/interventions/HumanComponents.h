@@ -121,14 +121,6 @@ public:
     bool possiblyVaccinate( Host::Human& human, ComponentId componentId,
                            interventions::VaccineLimits vaccLimits );
 
-#if 0
-    /// Hack for R_0 experiment: make current human the infection source
-    inline void specialR_0(){
-        // At this point special TBV should have been given to everyone but the PEV to no-one
-        effects[R_0_PEV].initialEfficacy = 1.0;
-        effects[R_0_TBV].initialEfficacy = 0.0;
-    }
-#endif
     
     /// Checkpointing
     template<class S>

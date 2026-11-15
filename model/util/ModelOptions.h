@@ -35,17 +35,6 @@ namespace OM { namespace util {
     
     /** Flags signalling which versions of some models to use. */
     enum OptionCodes {
-	/* @brief Clinical episodes reduce the level of acquired immunity
-	* 
-	* Effective cumulative exposure to blood stage parasites is reduced by a
-	* clinical sickness event, so that clinical bouts have a negative effect on
-	* blood stage immunity.
-	* 
-	* (ImmediateOutcomes model: per event; EventScheduler: once per bout.)
-	* 
-	* Default: Clinical events have no effect on immune status except
-	* secondarily via effects of treatment. */
-// 	PENALISATION_EPISODES,
 	
 	/** @brief Baseline availability of humans is sampled from a gamma distribution
 	* Infections introduced by mass action with negative binomial
@@ -55,10 +44,6 @@ namespace OM { namespace util {
 	* in AJTMH 75 (suppl 2) pp11-18. */
 	NEGATIVE_BINOMIAL_MASS_ACTION,
 	
-	/* @brief An IPT model, no longer used
-	* 
-	* Does nothing if IPT is not present. */
-// 	ATTENUATION_ASEXUAL_DENSITY,
 	
 	/** @brief Baseline availability of humans is sampled from a log normal distribution
 	* 
@@ -83,7 +68,6 @@ namespace OM { namespace util {
 	// @{
 	MAX_DENS_CORRECTION,
 	INNATE_MAX_DENS,
-// 	MAX_DENS_RESET,
 	//@}
 	
 	/** @brief Parasite densities are predicted from an autoregressive process
@@ -103,19 +87,6 @@ namespace OM { namespace util {
 	* Default: Non-malaria fevers are not simulated. */
 	NON_MALARIA_FEVERS,
 	
-        //Deprecated: PK/PD code is enabled in all compatible within-host models
-	/** @brief Use a PK & PD model for drug effects
-	 *
-	 * This enables simulation of the pharmacokinetics and pharmacodynamics
-         * of drugs, allowing simulation of partial treatment. The alternate
-         * treatment model gives drugs all-or-nothing effects, and is available
-         * regardless of whether this option is enabled.
-	 * 
-         * The available PK/PD model, "LSTM", is that developed by colleagues
-         * at the Liverpool School of Tropical Medicine.
-         * 
-         * Use of a 1-day infection model is required. */
-// 	INCLUDES_PK_PD,
 	
 	/** @brief Use revised clinical and case management model, ClinicalEventScheduler
 	* 
@@ -191,12 +162,7 @@ namespace OM { namespace util {
 	 * estimations from a probability function. */
 	GARKI_DENSITY_BIAS,
 	
-	/** This has been removed; mass drug interventions can be used as a
-         * replacement. */
-// 	IPTI_SP_MODEL,
 	
-	/* Replaced by "onlyNewEpisode" attribute on SurveyOptions. */
-// 	REPORT_ONLY_AT_RISK,
         
         /** Turn on vector life-cycle model. Allows better larviciding and
          * vector population dynamics modelling.
@@ -220,8 +186,6 @@ namespace OM { namespace util {
          * Hardy, Chitnis (unpublished?). */
         VIVAX_SIMPLE_MODEL,
         
-        /** No longer used. */
-//         PROPHYLACTIC_DRUG_ACTION_MODEL,
         
         /** Bug fixes:
          * 

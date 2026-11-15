@@ -74,10 +74,10 @@ void IRSComponent::print_details( std::ostream& out )const{
 }
 
 unique_ptr<PerHostInterventionData> IRSComponent::makeHumanPart(LocalRng& rng) const{
-    return unique_ptr<PerHostInterventionData>(new HumanIRS( rng, *this ));
+    return make_unique<HumanIRS>( rng, *this );
 }
 unique_ptr<PerHostInterventionData> IRSComponent::makeHumanPart( istream& stream, ComponentId ) const{
-    return unique_ptr<PerHostInterventionData>(new HumanIRS( stream, *this ));
+    return make_unique<HumanIRS>( stream, *this );
 }
 
 void IRSComponent::IRSAnopheles::init(

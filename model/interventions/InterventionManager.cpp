@@ -828,18 +828,6 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
         throw util::xml_scenario_error("R_0 code is disabled to reduce "
                                        "maintenance. If you need it, either use an old OpenMalaria "
                                        "version (pre 32) or request it be reenabled.");
-        // code disabled; search for R_0 to find more blocks like this:
-#if 0
-        const scnXml::InsertR_0Case& elt = intervElt.getInsertR_0Case().get();
-        if( elt.getTimedDeployment().size() > 0 ){
-            Vaccine::verifyEnabledForR_0();
-            // timed deployments:
-            for( auto it = elt.getTimedDeployment().begin(); it != elt.getTimedDeployment().end(); ++it ){
-                SimTime date = UnitParse::readDate(it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
-                timed.push_back( new TimedR_0Deployment( date ) );
-            }
-        }
-#endif
     }
     if (intervElt.getUninfectVectors().present())
     {
