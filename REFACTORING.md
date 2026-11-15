@@ -499,10 +499,12 @@ Status of the remaining plan (what is *not* done yet):
   (one shared `factors::` survival/attractiveness model for ITN and IRS —
   IRS sets the hole factors to 0 and evaluates at holeIndex=0, which is
   bit-exact, plus a `clamp` flag for ITN's out-of-bounds handling) done.
-  Left: one checkpointed
-  `VectorInterventionState` replacing the five string-keyed `reduce*` maps
-  (the silent checkpoint gap — contract-blocked until an output change is
-  accepted), component classes still live in headers.
+Left: the component classes (Phase 4d — collapse
+   `HumanInterventionComponent`/`PerHostInterventionData` to Kind-tagged
+   data + free functions, like Sampler/DecayFunction/CMDecisionTree did).
+   The silent checkpoint gap is CLOSED (see below): the five string-keyed
+   `reduce*` maps, `nhhInstances`, `baitedTraps` and
+   `probAdditionalDeathSugarFeedingIntervs` are now checkpointed.
 - **Phase 3 (clock global)**: in progress — `SimClock`/`sim::now` etc.
   conversions landed for `mon/Continuous`, the whole human-intervention
   deploy chain, vaccine decay and the per-host intervention/effect chain
@@ -556,6 +558,23 @@ Phase 3 (clock global) — first four slices (52/52, bit-identical):
 
 ---
 
+Checkpoint-gap fix (`15b30e78`, 52/52): the byte-identical checkpoint FORMAT
+restriction was lifted (the output goldens remain the contract).
+`AnophelesModel`'s stream now carries what deployments create but never
+survived a resume: the five string-keyed `reduce*` NHH maps, `nhhInstances`,
+`baitedTraps`, `probAdditionalDeathSugarFeedingIntervs`. Pattern: decay
+parameters are rebuilt from the scenario XML before the checkpoint is read,
+so only deployment state streams — reduce* maps overlay their existing
+entries (sizes verified), traps/NHH rebuild in full with `validateListSize`
+guards; `SimpleDecayingValue::operator&` and
+`DecayFunction::checkpointSample` do the rest. Boxtests exercise the pair on
+populated maps (NHH/reduce state exists at init; a misaligned stream
+corrupts every later field and fails the golden comparison). Mid-run
+deployment restore is symmetric by construction but exercised only by
+inspection — the harness checkpoints at the init boundary only.
+
+---
+
 De-polymorphisation sweep (virtuals → Kind tags + switch; 52/52 each,
 bit-identical by construction — same arithmetic, same RNG order):
 
@@ -606,7 +625,9 @@ per-human:    cohorts: Human::subPopExp map + cohortSet bit-cache (+1 stale path
               PerHumanVaccine (bypasses PerHost entirely — fine)
 vector-side:  AnophelesModel string-keyed decay maps + traps + NHH instances
 checkpoint:   ids written per object; dynamic_cast factory on read; timed lists
-              rebuilt from XML, only changeHS/changeEIR replays survive
+              rebuilt from XML, changeHS/changeEIR replayed; vector-side NHH/
+              trap/reduce*/sugar-feeding state now checkpointed in
+              AnophelesModel
 ```
 
 What ITN actually computes (nothing more): per (human, ITN component):
