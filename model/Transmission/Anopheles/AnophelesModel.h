@@ -313,8 +313,6 @@ public:
                      double initNvFromSv, double initOvFromSv,
                      const std::vector<double>& forcedS_v);
     
-    /// Helper function for initialisation.
-    void initIterateScale ( double factor );
     
     virtual double getEmergenceRate(const SimTime &d0, const std::vector<double>& mosqEmergeRate, double nOvipositing)
     {   

@@ -57,7 +57,7 @@ namespace OM { namespace util {
 	/** Infections are introduced without using preerythrocytic immunity. */
 	NO_PRE_ERYTHROCYTIC,
 	
-	/** @brief Bug fixes in Descriptive & DescriptiveIPT within-host models.
+	/** @brief Bug fixes in Descriptive within-host model.
 	*
       * For new parameterisations, both MAX_DENS_CORRECTION and INNATE_MAX_DENS
       * should be used. When using parameter sets from an old fitting run which

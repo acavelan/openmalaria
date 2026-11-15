@@ -55,7 +55,6 @@ public:
     virtual void update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
         vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears);
     
-    virtual void addProphylacticEffects(const vector<double>& pClearanceByTime);
     
     /** \brief Factory functions to create infections.
      *

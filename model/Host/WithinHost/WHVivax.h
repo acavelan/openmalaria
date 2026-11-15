@@ -81,9 +81,7 @@ public:
     UpdResult update(LocalRng& rng);
     
     inline void setHadEvent( bool hadEvent ){ this->hadEvent = hadEvent; }
-    inline bool hasHadEvent()const{ return hadEvent; }
     inline void setHadRelapse( bool hadRelapse ){ this->hadRelapse = hadRelapse; }
-    inline bool hasHadRelapse()const{ return hadRelapse; }
     
     /** Equivalent to a blood stage existing. We do not model incidence of
      * gametocytes independently, thus this also tests existance of

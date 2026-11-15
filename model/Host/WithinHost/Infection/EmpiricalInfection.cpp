@@ -239,16 +239,6 @@ double EmpiricalInfection::sampleSubPatentValue(LocalRng& rng, double alpha, dou
     return inflatedValue;
 }
 
-// NOTE: method is unused — why?
-double EmpiricalInfection::samplePatentValue(LocalRng& rng, double mu, double sigma, double lowerBound){
-  double returnValue;
-  do {
-    double nonInflatedValue=rng.gauss(mu, sigma);
-    returnValue=getInflatedDensity(rng, nonInflatedValue);
-  } while (returnValue<lowerBound);
-  return returnValue;
-}
-
 double EmpiricalInfection::sigma_noise(int ageDays) {
   return _sigma0_res+_sigmat_res*((double)ageDays);
 }

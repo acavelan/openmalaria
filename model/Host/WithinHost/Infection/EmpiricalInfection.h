@@ -63,7 +63,6 @@ protected:
 private:
   double getInflatedDensity(LocalRng& rng, double nonInflatedDensity);
   double sigma_noise(int ageDays);
-  double samplePatentValue(LocalRng& rng, double mu, double sigma, double lowerBound);
   double sampleSubPatentValue(LocalRng& rng, double mu, double sigma, double upperBound);
   
   double _laggedLogDensities[3];

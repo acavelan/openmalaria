@@ -109,7 +109,6 @@ public:
     static SimTime infectionDuration(LocalRng& rng);
     
     /// Includes the effect of attenuated infections by SP concentrations, when using IPT
-    virtual void IPTattenuateAsexualDensity () {}
     
 protected:
     virtual void checkpoint (ostream& stream);

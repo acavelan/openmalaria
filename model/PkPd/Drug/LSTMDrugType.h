@@ -113,7 +113,6 @@ public:
     static void clear();
     
     /** Get the number of drug types. */
-    static size_t numDrugTypes();
     
     /** Find a DrugType by its abbreviation, and returns its index.
      *

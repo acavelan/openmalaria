@@ -101,10 +101,6 @@ void LSTMDrugType::clear()
     drugTypeNames.clear();
 }
 
-size_t LSTMDrugType::numDrugTypes(){
-    return drugTypes.size();
-}
-
 // Add index to drugsInUse if not already present. Not fast but doesn't need to be.
 void drugIsUsed(size_t index){
     for( size_t i : drugsInUse ){

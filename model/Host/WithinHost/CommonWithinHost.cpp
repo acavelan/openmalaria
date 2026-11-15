@@ -274,11 +274,6 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
         nNewInfs_l += nNewInfsIgnored;
 }
 
-void CommonWithinHost::addProphylacticEffects(const vector<double>& pClearanceByTime) {
-    // this should actually be easy; it just isn't needed yet
-    throw util::unimplemented_exception( "prophylactic effects on 1-day time step" );
-}
-
 InfectionOrigin CommonWithinHost::getInfectionOrigin()const
 {
     return get_infection_origin(infections);
