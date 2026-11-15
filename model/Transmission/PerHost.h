@@ -202,6 +202,9 @@ public:
     /// Index of effect describing the intervention
     inline interventions::ComponentId id() const { return m_id; }
     
+    /// Which kind of component this deployment belongs to.
+    virtual interventions::Component::Type componentType() const =0;
+    
     /// Return true if this component is deployed (i.e. currently active)
     inline bool isDeployed() const{ return deployTime != sim::never(); }
     

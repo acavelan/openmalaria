@@ -161,6 +161,8 @@ public:
     
     virtual void redeploy(LocalRng& rng, const Transmission::HumanVectorInterventionComponent& params);
     
+    virtual Component::Type componentType() const override { return Component::IRS; }
+    
     /// Get remaining insecticide content based on initial amount and decay.
     inline double getInsecticideContent(const IRSComponent& params)const{
         SimTime age = sim::nowOrTs1() - deployTime;  // implies age 1 TS on first use

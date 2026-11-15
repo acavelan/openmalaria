@@ -128,7 +128,7 @@ double PerHost::relMosqFecundity (size_t species) const {
 bool PerHost::hasActiveInterv(interventions::Component::Type type) const{
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
         if( (*iter)->isDeployed() ){
-            if( interventions::InterventionManager::getComponent( (*iter)->id() ).componentType() == type )
+            if( (*iter)->componentType() == type )
                 return true;
         }
     }

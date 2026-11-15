@@ -103,6 +103,8 @@ public:
     
     virtual void redeploy( LocalRng& rng, const Transmission::HumanVectorInterventionComponent& );
     
+    virtual Component::Type componentType() const override { return Component::GVI; }
+    
     /** This is the survival factor of the effect. */
     inline double getEffectSurvival(const GVIComponent& params)const{
         SimTime age = sim::nowOrTs1() - deployTime;  // implies age 1 TS on first use

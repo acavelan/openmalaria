@@ -231,6 +231,8 @@ public:
     
     virtual void redeploy(LocalRng& rng, const Transmission::HumanVectorInterventionComponent& params);
     
+    virtual Component::Type componentType() const override { return Component::ITN; }
+    
     inline double getHoleIndex()const{
         return holeIndex;
     }
