@@ -79,18 +79,18 @@ const scnXml::TreatmentActions::CQOptional& getHealthSystemTreatmentOptional(
     if( drug == "QN" ) return treatActs.getQN();
     throw util::xml_scenario_error ("healthSystem.drugRegimen: firstLine / secondLine / inpatient has bad value");
 }
-WithinHost::TreatmentId getHealthSystemTreatmentByName( const scnXml::TreatmentActions& treatActs, const string& drug )
+WithinHost::TreatmentId getHealthSystemTreatmentByName( const scnXml::TreatmentActions& treatActs, const string& drug, const interventions::InterventionRegistry& reg )
 {
     const scnXml::TreatmentActions::CQOptional& elt = getHealthSystemTreatmentOptional( treatActs, drug );
     if( !elt.present() )
         throw util::xml_scenario_error( string("healthSystem.treatmentActions: description required for ").append(drug) );
-    return WithinHost::WHInterface::addTreatment( elt.get() );
+    return WithinHost::WHInterface::addTreatment( elt.get(), reg );
 }
 
 
 // ———  static, init  ———
 
-void ImmediateOutcomes::setHealthSystem (const scnXml::HSImmediateOutcomes& hsDescription) {
+void ImmediateOutcomes::setHealthSystem (const scnXml::HSImmediateOutcomes& hsDescription, const interventions::InterventionRegistry& reg) {
     const string &firstLine = hsDescription.getDrugRegimen().getFirstLine(),
         &secondLine = hsDescription.getDrugRegimen().getSecondLine(),
         &inpatient = hsDescription.getDrugRegimen().getInpatient();
@@ -148,14 +148,14 @@ void ImmediateOutcomes::setHealthSystem (const scnXml::HSImmediateOutcomes& hsDe
     
     cureRateSevere = getHealthSystemACRByName (hsDescription.getInitialACR(), inpatient);
     
-    treatmentUC[FirstLine] = getHealthSystemTreatmentByName(hsDescription.getTreatmentActions(), firstLine);
+    treatmentUC[FirstLine] = getHealthSystemTreatmentByName(hsDescription.getTreatmentActions(), firstLine, reg);
     
     if( secondLine == firstLine ) treatmentUC[SecondLine] = treatmentUC[FirstLine];
-    else treatmentUC[SecondLine] = getHealthSystemTreatmentByName(hsDescription.getTreatmentActions(), secondLine);
+    else treatmentUC[SecondLine] = getHealthSystemTreatmentByName(hsDescription.getTreatmentActions(), secondLine, reg);
     
     if( inpatient == firstLine ) treatmentSevere = treatmentUC[FirstLine];
     else if( inpatient == secondLine ) treatmentSevere = treatmentUC[SecondLine];
-    else treatmentSevere = getHealthSystemTreatmentByName(hsDescription.getTreatmentActions(), inpatient);
+    else treatmentSevere = getHealthSystemTreatmentByName(hsDescription.getTreatmentActions(), inpatient, reg);
     
     useDiagnosticUC = hsDescription.getUseDiagnosticUC();
     

@@ -32,8 +32,8 @@ namespace WithinHost {
 
 vector<Treatments> Treatments::treatments;
 
-TreatmentId Treatments::addTreatment( const scnXml::TreatmentOption& desc ){
-    Treatments treatment( desc );
+TreatmentId Treatments::addTreatment( const scnXml::TreatmentOption& desc, const interventions::InterventionRegistry& reg ){
+    Treatments treatment( desc, reg );
     TreatmentId id( treatments.size() );
     treatments.push_back( std::move(treatment) );
     return id;
@@ -48,8 +48,8 @@ Treatments::Stages stageFromString( const std::string& str ){
     if( str == "both" ) return Treatments::BOTH;
     throw util::format_error( std::string("stage must be liver, blood or both, not ").append(str) );
 }
-Treatments::Treatments( const scnXml::TreatmentOption& elt ) :
-    TriggeredDeployments(elt), timeLiver(sim::zero()), timeBlood(sim::zero())
+Treatments::Treatments( const scnXml::TreatmentOption& elt, const interventions::InterventionRegistry& reg ) :
+    TriggeredDeployments(elt, reg), timeLiver(sim::zero()), timeBlood(sim::zero())
 {
     for( auto it = elt.getClearInfections().begin(), end = elt.getClearInfections().end();
         it != end; ++it )

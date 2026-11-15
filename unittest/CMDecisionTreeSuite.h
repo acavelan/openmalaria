@@ -27,6 +27,7 @@
 
 #include <cxxtest/TestSuite.h>
 #include "Clinical/CMDecisionTree.h"
+#include "interventions/InterventionManager.h"
 #include "util/random.h"
 #include "UnittestUtil.h"
 #include "WHMock.h"
@@ -74,7 +75,8 @@ public:
      * returns the proportion of these runs where the output was any treatment
      */
     double propTreatmentsNReps (int N, const scnXml::DecisionTree& dt) {
-        const CMDecisionTree& cmdt = CMDecisionTree::create( dt, true );
+        static const interventions::InterventionRegistry empty_reg; // no deploy/cohort nodes in test trees
+        const CMDecisionTree& cmdt = CMDecisionTree::create( dt, true, empty_reg );
         
 	whm->nTreatments = 0;
         int secondCounter = 0;

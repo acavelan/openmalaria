@@ -25,6 +25,7 @@
 
 #include "Clinical/CM5DayCommon.h"
 
+namespace OM { namespace interventions { struct InterventionRegistry; } }
 namespace OM {
 namespace Clinical {
 
@@ -48,7 +49,8 @@ class ImmediateOutcomes : public CM5DayCommon
 public:
     /** Load health system data from initial data or an intervention's data (both from XML).
      * (Re)loads all data affected by this healthSystem element. */
-    static void setHealthSystem (const scnXml::HSImmediateOutcomes& hsioData);
+    static void setHealthSystem (const scnXml::HSImmediateOutcomes& hsioData,
+        const interventions::InterventionRegistry& reg);
     
     ImmediateOutcomes (double tSF) : CM5DayCommon(tSF) {}
     

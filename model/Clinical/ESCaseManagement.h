@@ -28,6 +28,7 @@
 #include "Host/WithinHost/WHInterface.h"
 #include "schema/pharmacology.h"
 
+namespace OM { namespace interventions { struct InterventionRegistry; } }
 namespace OM { namespace Clinical {
 using WithinHost::WHInterface;
 
@@ -39,7 +40,8 @@ class ESCaseManagement {
 public:
     /** Load health system data from initial data or an intervention's data (both from XML).
     * (Re)loads all data affected by this healthSystem element. */
-    static void setHealthSystem (const scnXml::HSEventScheduler& esData);
+    static void setHealthSystem (const scnXml::HSEventScheduler& esData,
+        const interventions::InterventionRegistry& reg);
     
     static CMDTOut execute( const CMHostData& hostData );
 };

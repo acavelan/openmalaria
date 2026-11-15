@@ -39,7 +39,7 @@ const CMDecisionTree *treeUCOfficial = 0, *treeUCSelfTreat = 0;
 
 // ———  static, init  ———
 
-void DecisionTree5Day::setHealthSystem(const scnXml::HSDT5Day& hsDescription){
+void DecisionTree5Day::setHealthSystem(const scnXml::HSDT5Day& hsDescription, const interventions::InterventionRegistry& reg){
     double accessUCOfficial1 = hsDescription.getPSeekOfficialCareUncomplicated1().getValue();
     double accessUCOfficial2 = hsDescription.getPSeekOfficialCareUncomplicated2().getValue();
     // Note: this asymmetry is historical, and probably matters little:
@@ -60,11 +60,11 @@ void DecisionTree5Day::setHealthSystem(const scnXml::HSDT5Day& hsDescription){
             "be in range [0,1]");
     }
     
-    treeUCOfficial = &CMDecisionTree::create( hsDescription.getTreeUCOfficial(), true );
-    treeUCSelfTreat = &CMDecisionTree::create( hsDescription.getTreeUCSelfTreat(), true );
+    treeUCOfficial = &CMDecisionTree::create( hsDescription.getTreeUCOfficial(), true, reg );
+    treeUCSelfTreat = &CMDecisionTree::create( hsDescription.getTreeUCSelfTreat(), true, reg );
     
     cureRateSevere = hsDescription.getCureRateSevere().getValue();
-    treatmentSevere = WHInterface::addTreatment( hsDescription.getTreatmentSevere() );
+    treatmentSevere = WHInterface::addTreatment( hsDescription.getTreatmentSevere(), reg );
     
     if( ModelOptions::option(util::VIVAX_SIMPLE_MODEL) ){
         WithinHost::WHVivax::setHSParameters(

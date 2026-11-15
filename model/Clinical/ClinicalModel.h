@@ -31,6 +31,7 @@ namespace scnXml{
     class Scenario;
     class HealthSystem;
 }
+namespace OM { namespace interventions { struct InterventionRegistry; } }
 namespace OM { namespace Host { struct NeonatalMortality; } }
 namespace OM { namespace Clinical {
     using Host::Human;
@@ -57,7 +58,8 @@ public:
     /** Second stage of initialisation, done after interventions are configured
      * 
      * Also done when a certain intervention is deployed. */
-    static void setHS (const scnXml::HealthSystem& healthSystem);
+    static void setHS (const scnXml::HealthSystem& healthSystem,
+        const interventions::InterventionRegistry& reg);
     
     /** Return a new ClinicalModel.
      *

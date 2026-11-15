@@ -78,7 +78,7 @@ void ClinicalModel::init( const Parameters& parameters, const scnXml::Scenario& 
     }
 }
 
-void ClinicalModel::setHS( const scnXml::HealthSystem& healthSystem ){
+void ClinicalModel::setHS( const scnXml::HealthSystem& healthSystem, const interventions::InterventionRegistry& reg ){
     caseFatalityRate.set( healthSystem.getCFR(), "CFR" );
     pSequelaeInpatient.set( healthSystem.getPSequelaeInpatient(), "pSequelaeInpatient" );
     if( opt_event_scheduler ){
@@ -86,19 +86,19 @@ void ClinicalModel::setHS( const scnXml::HealthSystem& healthSystem ){
             throw util::xml_scenario_error ("Expected EventScheduler "
                 "section in healthSystem data (initial or intervention)");
         }
-        ESCaseManagement::setHealthSystem(healthSystem.getEventScheduler().get());
+        ESCaseManagement::setHealthSystem(healthSystem.getEventScheduler().get(), reg);
     }else if( opt_imm_outcomes ){
         if ( !healthSystem.getImmediateOutcomes().present() ){
             throw util::xml_scenario_error ("Expected ImmediateOutcomes "
                 "section in healthSystem data (initial or intervention)");
         }
-        ImmediateOutcomes::setHealthSystem(healthSystem.getImmediateOutcomes().get());
+        ImmediateOutcomes::setHealthSystem(healthSystem.getImmediateOutcomes().get(), reg);
     }else{
         if( !healthSystem.getDecisionTree5Day().present() ){
             throw util::xml_scenario_error ("Expected DecisionTree5Day "
                 "section in healthSystem data (initial or intervention)");
         }
-        DecisionTree5Day::setHealthSystem(healthSystem.getDecisionTree5Day().get());
+        DecisionTree5Day::setHealthSystem(healthSystem.getDecisionTree5Day().get(), reg);
     }
 }
 

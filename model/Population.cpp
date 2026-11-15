@@ -114,14 +114,14 @@ void Population::update()
     }
 }
 
-void Population::checkpoint(istream& stream)
+void Population::checkpoint(istream& stream, const interventions::InterventionRegistry& reg)
 {
     size & stream;
     recentBirths & stream;
 
     for(size_t i = 0; i < size && !stream.eof(); ++i) {
         humans.push_back( Host::Human (sim::zero(), species_params, age_availability, master_rng) );
-        humans.back().checkpoint(stream);
+        humans.back().checkpoint(stream, reg);
     }
     if (humans.size() != size)
         throw util::checkpoint_error("Population: out of data (read " + to_string(humans.size()) + " humans)");

@@ -38,18 +38,25 @@ namespace OM {
 
 namespace interventions {
 
-/** Registry lookups. Components are read once from XML and live for the
- * whole simulation (Phase 4 replaces this with owned registry storage). */
+/** All intervention components read from XML at scenario load. Immutable
+ * afterwards; resolved ids and component pointers held by deployments,
+ * decision trees and treatments point into this storage. */
+struct InterventionRegistry {
+    std::map<std::string, ComponentId> identifiers;
+    std::vector<std::unique_ptr<HumanInterventionComponent>> components;
+};
+
+/** Registry lookups. */
 //@{
 /** Get a constant reference to a component class with a certain index.
  *
  * @throws util::base_exception if the index is out-of-range */
-const HumanInterventionComponent& getComponent( ComponentId id );
+const HumanInterventionComponent& getComponent( const InterventionRegistry& reg, ComponentId id );
 
 /** Get a numeric ComponentId from the textual identifier used in the XML.
  *
  * If textId is unknown, an xml_scenario_error is thrown. */
-ComponentId getComponentId( const std::string textId );
+ComponentId getComponentId( const InterventionRegistry& reg, const std::string textId );
 //@}
 
 /** All runtime deployment state; plain data, manipulated through the free
@@ -60,6 +67,10 @@ struct InterventionManager {
     // List of all timed interventions. Should be sorted (time weakly increasing).
     vector<TimedDeployment> timed;
     uint32_t nextTimed = 0;  // not checkpointed (see loadFromCheckpoint)
+
+    // All components, read once by init(); everything referencing components
+    // (deployments, decision trees, treatments) points into this.
+    InterventionRegistry registry;
 
     // imported infections are not really interventions, and handled by a separate class
     // (but are grouped here for convenience and due toassociation in schema)

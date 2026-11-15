@@ -52,7 +52,7 @@ using std::vector;
  */
 class CMDTMultiple : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTMultiple& node, bool isUC );
+    static const CMDecisionTree& create( const ::scnXml::DTMultiple& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -91,7 +91,7 @@ private:
  */
 class CMDTCaseType : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTCaseType& node, bool isUC );
+    static const CMDecisionTree& create( const ::scnXml::DTCaseType& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -126,7 +126,7 @@ private:
  */
 class CMDTInfectionOrigin : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTInfectionOrigin& node, bool isUC );
+    static const CMDecisionTree& create( const ::scnXml::DTInfectionOrigin& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -164,7 +164,7 @@ private:
  */
 class CMDTDiagnostic : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTDiagnostic& node, bool isUC );
+    static const CMDecisionTree& create( const ::scnXml::DTDiagnostic& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -204,7 +204,7 @@ private:
 
 class CMDTUncomplicated : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTUncomplicated& node, bool isUC );
+    static const CMDecisionTree& create( const ::scnXml::DTUncomplicated& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -249,7 +249,7 @@ private:
 
 class CMDTSevere : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTSevere& node, bool isUC );
+    static const CMDecisionTree& create( const ::scnXml::DTSevere& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -293,7 +293,7 @@ private:
  */
 class CMDTRandom : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTRandom& node, bool isUC );
+    static const CMDecisionTree& create( const ::scnXml::DTRandom& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -329,7 +329,7 @@ private:
  */
 class CMDTAge : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTAge& node, bool isUC );
+    static const CMDecisionTree& create( const ::scnXml::DTAge& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -543,8 +543,8 @@ private:
  * interventions to be deployed, though we don't use pointers it finds. */
 class CMDTDeploy : public CMDecisionTree, interventions::HumanIntervention {
 public:
-    CMDTDeploy( const scnXml::DecisionTree::DeploySequence& seq ) :
-        HumanIntervention(seq) {}
+    CMDTDeploy( const scnXml::DecisionTree::DeploySequence& seq, const interventions::InterventionRegistry& reg ) :
+        HumanIntervention(seq, reg) {}
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -575,7 +575,7 @@ protected:
 
 class CMDTCohort : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTCohort& node, bool isUC );
+    static const CMDecisionTree& create( const ::scnXml::DTCohort& node, bool isUC, const interventions::InterventionRegistry& reg);
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -605,8 +605,9 @@ private:
     CMDTCohort(
         const std::string component,
         const CMDecisionTree& positive,
-        const CMDecisionTree& negative ) :
-        component(interventions::getComponentId(component)), positive(positive), negative(negative)
+        const CMDecisionTree& negative,
+        const interventions::InterventionRegistry& reg ) :
+        component(interventions::getComponentId(reg, component)), positive(positive), negative(negative)
     {
     }
     
@@ -638,17 +639,17 @@ const CMDecisionTree& save_decision( CMDecisionTree* decision ){
     return *decision_library.back();
 }
 
-const CMDecisionTree& CMDecisionTree::create( const scnXml::DecisionTree& node, bool isUC){
-    if( node.getMultiple().present() ) return CMDTMultiple::create( node.getMultiple().get(), isUC);
+const CMDecisionTree& CMDecisionTree::create( const scnXml::DecisionTree& node, bool isUC, const interventions::InterventionRegistry& reg){
+    if( node.getMultiple().present() ) return CMDTMultiple::create( node.getMultiple().get(), isUC, reg);
     // branching nodes
-    if( node.getCaseType().present() ) return CMDTCaseType::create( node.getCaseType().get(), isUC);
-    if( node.getInfectionOrigin().present() ) return CMDTInfectionOrigin::create( node.getInfectionOrigin().get(), isUC);
-    if( node.getDiagnostic().present() ) return CMDTDiagnostic::create( node.getDiagnostic().get(), isUC);
-    if( node.getUncomplicated().present() ) return CMDTUncomplicated::create( node.getUncomplicated().get(), isUC);
-    if( node.getSevere().present() ) return CMDTSevere::create( node.getSevere().get(), true);
-    if( node.getRandom().present() ) return CMDTRandom::create( node.getRandom().get(), isUC);
-    if( node.getAge().present() ) return CMDTAge::create( node.getAge().get(), isUC);
-    if( node.getCohort().present() ) return CMDTCohort::create( node.getCohort().get(), isUC);
+    if( node.getCaseType().present() ) return CMDTCaseType::create( node.getCaseType().get(), isUC, reg);
+    if( node.getInfectionOrigin().present() ) return CMDTInfectionOrigin::create( node.getInfectionOrigin().get(), isUC, reg);
+    if( node.getDiagnostic().present() ) return CMDTDiagnostic::create( node.getDiagnostic().get(), isUC, reg);
+    if( node.getUncomplicated().present() ) return CMDTUncomplicated::create( node.getUncomplicated().get(), isUC, reg);
+    if( node.getSevere().present() ) return CMDTSevere::create( node.getSevere().get(), true, reg);
+    if( node.getRandom().present() ) return CMDTRandom::create( node.getRandom().get(), isUC, reg);
+    if( node.getAge().present() ) return CMDTAge::create( node.getAge().get(), isUC, reg);
+    if( node.getCohort().present() ) return CMDTCohort::create( node.getCohort().get(), isUC, reg);
 
     // action nodes
     if( node.getNoTreatment().present() ) return save_decision( new CMDTNoTreatment() );
@@ -659,35 +660,35 @@ const CMDecisionTree& CMDecisionTree::create( const scnXml::DecisionTree& node, 
     if( node.getTreatSimple().size() ) return save_decision(
         new CMDTTreatSimple( node.getTreatSimple() ) );
     if( node.getDeploy().size() ) return save_decision(
-        new CMDTDeploy( node.getDeploy() ) );
+        new CMDTDeploy( node.getDeploy(), reg ) );
     throw xml_scenario_error( "unterminated decision tree" );
 }
 
-const CMDecisionTree& CMDTMultiple::create( const scnXml::DTMultiple& node, bool isUC ){
+const CMDecisionTree& CMDTMultiple::create( const scnXml::DTMultiple& node, bool isUC, const interventions::InterventionRegistry& reg){
     CMDTMultiple* self = new CMDTMultiple();
     for( const scnXml::DTCaseType& sn : node.getCaseType() ){
-        self->children.push_back( &CMDTCaseType::create(sn, isUC) );
+        self->children.push_back( &CMDTCaseType::create(sn, isUC, reg) );
     }
     for( const scnXml::DTInfectionOrigin& sn : node.getInfectionOrigin() ){
-        self->children.push_back( &CMDTInfectionOrigin::create(sn, isUC) );
+        self->children.push_back( &CMDTInfectionOrigin::create(sn, isUC, reg) );
     }
     for( const scnXml::DTDiagnostic& sn : node.getDiagnostic() ){
-        self->children.push_back( &CMDTDiagnostic::create(sn, isUC) );
+        self->children.push_back( &CMDTDiagnostic::create(sn, isUC, reg) );
     }
     for( const scnXml::DTUncomplicated& sn : node.getUncomplicated() ){
-        self->children.push_back( &CMDTUncomplicated::create(sn, isUC) );
+        self->children.push_back( &CMDTUncomplicated::create(sn, isUC, reg) );
     }
     for( const scnXml::DTSevere& sn : node.getSevere() ){
-        self->children.push_back( &CMDTSevere::create(sn, isUC) );
+        self->children.push_back( &CMDTSevere::create(sn, isUC, reg) );
     }
     for( const scnXml::DTRandom& sn : node.getRandom() ){
-        self->children.push_back( &CMDTRandom::create(sn, isUC) );
+        self->children.push_back( &CMDTRandom::create(sn, isUC, reg) );
     }
     for( const scnXml::DTAge& sn : node.getAge() ){
-        self->children.push_back( &CMDTAge::create(sn, isUC) );
+        self->children.push_back( &CMDTAge::create(sn, isUC, reg) );
     }
     for( const scnXml::DTCohort& sn : node.getCohort() ){
-        self->children.push_back( &CMDTCohort::create(sn, isUC) );
+        self->children.push_back( &CMDTCohort::create(sn, isUC, reg) );
     }
     if( node.getTreatPKPD().size() ){
         self->children.push_back( &save_decision(new CMDTTreatPKPD(node.getTreatPKPD())) );
@@ -699,70 +700,71 @@ const CMDecisionTree& CMDTMultiple::create( const scnXml::DTMultiple& node, bool
         self->children.push_back( &save_decision(new CMDTReport(node.getReport())) );
     }
     if( node.getDeploy().size() ){
-        self->children.push_back( &save_decision(new CMDTDeploy(node.getDeploy())) );
+        self->children.push_back( &save_decision(new CMDTDeploy(node.getDeploy(), reg)) );
     }
     return save_decision( self );
 }
 
-const CMDecisionTree& CMDTCaseType::create( const scnXml::DTCaseType& node, bool isUC ){
+const CMDecisionTree& CMDTCaseType::create( const scnXml::DTCaseType& node, bool isUC, const interventions::InterventionRegistry& reg){
     if( !isUC ){
         throw util::xml_scenario_error( "decision tree: caseType can only be used for uncomplicated cases" );
     }
     return save_decision( new CMDTCaseType(
-        CMDecisionTree::create( node.getFirstLine(), isUC ),
-        CMDecisionTree::create( node.getSecondLine(), isUC )
+        CMDecisionTree::create( node.getFirstLine(), isUC, reg),
+        CMDecisionTree::create( node.getSecondLine(), isUC, reg)
     ) );
 }
 
-const CMDecisionTree& CMDTInfectionOrigin::create( const scnXml::DTInfectionOrigin& node, bool isUC ){
+const CMDecisionTree& CMDTInfectionOrigin::create( const scnXml::DTInfectionOrigin& node, bool isUC, const interventions::InterventionRegistry& reg){
     return save_decision( new CMDTInfectionOrigin(
-        CMDecisionTree::create( node.getImported(), isUC ),
-        CMDecisionTree::create( node.getIntroduced(), isUC ),
-        CMDecisionTree::create( node.getIndigenous(), isUC )
+        CMDecisionTree::create( node.getImported(), isUC, reg),
+        CMDecisionTree::create( node.getIntroduced(), isUC, reg),
+        CMDecisionTree::create( node.getIndigenous(), isUC, reg)
     ) );
 }
 
-const CMDecisionTree& CMDTDiagnostic::create( const scnXml::DTDiagnostic& node, bool isUC ){
+const CMDecisionTree& CMDTDiagnostic::create( const scnXml::DTDiagnostic& node, bool isUC, const interventions::InterventionRegistry& reg){
     return save_decision( new CMDTDiagnostic(
         diagnostics::get( node.getDiagnostic() ),
-        CMDecisionTree::create( node.getPositive(), isUC ),
-        CMDecisionTree::create( node.getNegative(), isUC )
+        CMDecisionTree::create( node.getPositive(), isUC, reg),
+        CMDecisionTree::create( node.getNegative(), isUC, reg)
     ) );
 }
 
-const CMDecisionTree& CMDTUncomplicated::create( const scnXml::DTUncomplicated& node, bool isUC ){
+const CMDecisionTree& CMDTUncomplicated::create( const scnXml::DTUncomplicated& node, bool isUC, const interventions::InterventionRegistry& reg){
     return save_decision( new CMDTUncomplicated(
         UnitParse::readShortDuration(node.getMemory(), UnitParse::STEPS),
-        CMDecisionTree::create( node.getPositive(), isUC ),
-        CMDecisionTree::create( node.getNegative(), isUC )
+        CMDecisionTree::create( node.getPositive(), isUC, reg),
+        CMDecisionTree::create( node.getNegative(), isUC, reg)
     ) );
 }
 
-const CMDecisionTree& CMDTSevere::create( const scnXml::DTSevere& node, bool isUC ){
+const CMDecisionTree& CMDTSevere::create( const scnXml::DTSevere& node, bool isUC, const interventions::InterventionRegistry& reg){
     return save_decision( new CMDTSevere(
-        CMDecisionTree::create( node.getPositive(), isUC ),
-        CMDecisionTree::create( node.getNegative(), isUC )
+        CMDecisionTree::create( node.getPositive(), isUC, reg),
+        CMDecisionTree::create( node.getNegative(), isUC, reg)
     ) );
 }
 
-const CMDecisionTree& CMDTCohort::create( const scnXml::DTCohort& node, bool isUC ){
+const CMDecisionTree& CMDTCohort::create( const scnXml::DTCohort& node, bool isUC, const interventions::InterventionRegistry& reg){
     return save_decision( new CMDTCohort(
         node.getComponent(),
-        CMDecisionTree::create( node.getPositive(), isUC ),
-        CMDecisionTree::create( node.getNegative(), isUC )
+        CMDecisionTree::create( node.getPositive(), isUC, reg),
+        CMDecisionTree::create( node.getNegative(), isUC, reg),
+        reg
     ) );
 }
 
 
 const CMDecisionTree& CMDTRandom::create(
-    const scnXml::DTRandom& node, bool isUC )
+    const scnXml::DTRandom& node, bool isUC, const interventions::InterventionRegistry& reg)
 {
     CMDTRandom* result = new CMDTRandom();
     
     double cum_p = 0.0;
     for( const scnXml::Outcome& outcome : node.getOutcome() ){
         cum_p += outcome.getP();
-        result->branches.insert( make_pair(cum_p, &CMDecisionTree::create( outcome, isUC )) );
+        result->branches.insert( make_pair(cum_p, &CMDecisionTree::create( outcome, isUC, reg)) );
     }
     
     // Test cum_p is approx. 1.0 in case the input tree is wrong. We require no
@@ -776,7 +778,7 @@ const CMDecisionTree& CMDTRandom::create(
     return save_decision( result );
 }
 
-const CMDecisionTree& CMDTAge::create(const scnXml::DTAge& node, bool isUC){
+const CMDecisionTree& CMDTAge::create(const scnXml::DTAge& node, bool isUC, const interventions::InterventionRegistry& reg){
     CMDTAge* result = new CMDTAge();
     
     double lastAge = numeric_limits<double>::quiet_NaN();
@@ -792,7 +794,7 @@ const CMDecisionTree& CMDTAge::create(const scnXml::DTAge& node, bool isUC){
             double lb = age.getLb();
             result->branches.insert( make_pair(lb, lastNode) );
         }
-        lastNode = &CMDecisionTree::create(age, isUC);
+        lastNode = &CMDecisionTree::create(age, isUC, reg);
         lastAge = age.getLb();
     }
     double noLb = numeric_limits<double>::infinity();

@@ -30,12 +30,13 @@ class Scenario;
 class Monitoring;
 }
 
+namespace OM { namespace interventions { struct InterventionRegistry; } }
 namespace OM {
 namespace mon {
 
 SimTime readSurveyDates(const scnXml::Monitoring& monitoring);
 void initReporting(const scnXml::Scenario& scenario);
-void initCohorts(const scnXml::Monitoring& monitoring);
+void initCohorts(const scnXml::Monitoring& monitoring, const interventions::InterventionRegistry& reg);
 
 } // namespace mon
 } // namespace OM

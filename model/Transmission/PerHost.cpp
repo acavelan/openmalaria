@@ -141,7 +141,17 @@ void PerHost::checkpointIntervs( ostream& stream ){
         *iter & stream;
     }
 }
-void PerHost::checkpointIntervs( istream& stream ){
+void PerHost::load( istream& stream, const interventions::InterventionRegistry& reg ) {
+    anophEntoAvailabilityRaw & stream;
+    anophEntoAvailability & stream;
+    anophProbMosqBiting & stream;
+    anophProbMosqResting & stream;
+    relativeAvailabilityHet & stream;
+    outsideTransmission & stream;
+    copulaGaussianSamples & stream;
+    checkpointIntervs( stream, reg );
+}
+void PerHost::checkpointIntervs( istream& stream, const interventions::InterventionRegistry& reg ){
     size_t l;
     l & stream;
     validateListSize(l);
@@ -150,7 +160,7 @@ void PerHost::checkpointIntervs( istream& stream ){
         interventions::ComponentId id( stream );
         try{
             const interventions::HumanInterventionComponent& gen_params =
-                interventions::getComponent( id );   // may throw
+                interventions::getComponent( reg, id );   // may throw
             const HumanVectorInterventionComponent *params =
                 dynamic_cast<const HumanVectorInterventionComponent*>( &gen_params );
             if( params == 0 )

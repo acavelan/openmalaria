@@ -49,12 +49,13 @@ bool componentCmp(const HumanInterventionComponent *a, const HumanInterventionCo
     return a->componentType() < b->componentType();
 }
 HumanIntervention::HumanIntervention(
-    const xsd::cxx::tree::sequence<scnXml::Component>& componentList )
+    const xsd::cxx::tree::sequence<scnXml::Component>& componentList,
+    const InterventionRegistry& reg )
 {
     components.reserve( componentList.size() );
     for( auto it = componentList.begin(), end = componentList.end(); it != end; ++it ) {
-        ComponentId id = getComponentId( it->getId() );
-        const HumanInterventionComponent* component = &getComponent( id );
+        ComponentId id = getComponentId( reg, it->getId() );
+        const HumanInterventionComponent* component = &getComponent( reg, id );
         components.push_back( component );
     }
     
@@ -72,12 +73,13 @@ HumanIntervention::HumanIntervention(
 }
 HumanIntervention::HumanIntervention(
     const xsd::cxx::tree::sequence<scnXml::Component>& componentList,
-    const xsd::cxx::tree::sequence<scnXml::Condition>& conditionList )
+    const xsd::cxx::tree::sequence<scnXml::Condition>& conditionList,
+    const InterventionRegistry& reg )
 {
     components.reserve( componentList.size() );
     for( auto it = componentList.begin(), end = componentList.end(); it != end; ++it ) {
-        ComponentId id = getComponentId( it->getId() );
-        const HumanInterventionComponent* component = &getComponent( id );
+        ComponentId id = getComponentId( reg, it->getId() );
+        const HumanInterventionComponent* component = &getComponent( reg, id );
         components.push_back( component );
     }
     
@@ -99,11 +101,12 @@ HumanIntervention::HumanIntervention(
         conditions.push_back(mon::setupCondition( it->getMeasure(), min, max, it->getInitialState() ));
     }
 }
-HumanIntervention::HumanIntervention( const xsd::cxx::tree::sequence<scnXml::DTDeploy>& componentList ){
+HumanIntervention::HumanIntervention( const xsd::cxx::tree::sequence<scnXml::DTDeploy>& componentList,
+    const InterventionRegistry& reg ){
     components.reserve( componentList.size() );
     for( auto it = componentList.begin(), end = componentList.end(); it != end; ++it ) {
-        ComponentId id = getComponentId( it->getComponent() );
-        const HumanInterventionComponent* component = &getComponent( id );
+        ComponentId id = getComponentId( reg, it->getComponent() );
+        const HumanInterventionComponent* component = &getComponent( reg, id );
         components.push_back( component );
     }
     
@@ -146,10 +149,10 @@ void HumanIntervention::print_details( std::ostream& out )const{
 
 // ———  Utilities  ———
 
-TriggeredDeployments::TriggeredDeployments(const scnXml::TriggeredDeployments& elt){
+TriggeredDeployments::TriggeredDeployments(const scnXml::TriggeredDeployments& elt, const InterventionRegistry& reg){
     lists.reserve( elt.getDeploy().size() );
     for( auto it = elt.getDeploy().begin(), end = elt.getDeploy().end(); it != end; ++it ) {
-        lists.push_back( SubList( *it ) );
+        lists.push_back( SubList( *it, reg ) );
     }
 }
 void TriggeredDeployments::deploy(Human& human,
@@ -160,8 +163,8 @@ void TriggeredDeployments::deploy(Human& human,
     }
 }
 
-TriggeredDeployments::SubList::SubList( const scnXml::TriggeredDeployments::DeployType& elt ) :
-        HumanIntervention( elt.getComponent() ),
+TriggeredDeployments::SubList::SubList( const scnXml::TriggeredDeployments::DeployType& elt, const InterventionRegistry& reg ) :
+        HumanIntervention( elt.getComponent(), reg ),
         minAge( sim::fromYearsN( elt.getMinAge() ) ),
         maxAge( sim::future() ),
         coverage( elt.getP() )
@@ -221,11 +224,11 @@ public:
 
 class ScreenComponent : public HumanInterventionComponent {
 public:
-    ScreenComponent( ComponentId id, const scnXml::Screen& elt ) :
+    ScreenComponent( ComponentId id, const scnXml::Screen& elt, const InterventionRegistry& reg ) :
         HumanInterventionComponent(id),
         diagnostic(diagnostics::get(elt.getDiagnostic())),
-        positive( elt.getPositive() ),
-        negative( elt.getNegative() )
+        positive( elt.getPositive(), reg ),
+        negative( elt.getNegative(), reg )
     {}
     
     void deploy( Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits ) const{
@@ -320,9 +323,9 @@ private:
 
 class DecisionTreeComponent : public HumanInterventionComponent {
 public:
-    DecisionTreeComponent( ComponentId id, const scnXml::DecisionTree& elt ) :
+    DecisionTreeComponent( ComponentId id, const scnXml::DecisionTree& elt, const InterventionRegistry& reg ) :
         HumanInterventionComponent(id),
-        tree(Clinical::CMDecisionTree::create(elt, false))
+        tree(Clinical::CMDecisionTree::create(elt, false, reg))
     {}
     
     void deploy( Human& human, mon::Deploy::Method method, VaccineLimits )const{

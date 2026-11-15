@@ -31,6 +31,7 @@
 
 #include "util/random.h"
 
+namespace OM { namespace interventions { struct InterventionRegistry; } }
 namespace OM {
 namespace Transmission {
 
@@ -341,9 +342,8 @@ public:
      * false). */
     bool hasActiveInterv( interventions::Component::Type type ) const;
     
-    /// Checkpointing
-    template<class S>
-    void operator& (S& stream) {
+    /// Checkpointing: write
+    void operator& (ostream& stream) {
         anophEntoAvailabilityRaw & stream;
         anophEntoAvailability & stream;
         anophProbMosqBiting & stream;
@@ -353,6 +353,9 @@ public:
         copulaGaussianSamples & stream;
         checkpointIntervs( stream );
     }
+
+    /// Checkpointing: read (intervention ids are validated against reg)
+    void load( istream& stream, const interventions::InterventionRegistry& reg );
     //@}
     
     // Determines whether human is outside transmission
@@ -386,7 +389,7 @@ public:
 
 private:
     void checkpointIntervs( ostream& stream );
-    void checkpointIntervs( istream& stream );
+    void checkpointIntervs( istream& stream, const interventions::InterventionRegistry& reg );
 
     vector<unique_ptr<PerHostInterventionData>> activeComponents;
     

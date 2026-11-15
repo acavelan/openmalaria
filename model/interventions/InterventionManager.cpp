@@ -43,14 +43,6 @@ namespace interventions
 
 // ———  InterventionManager  ———
 
-// static memory:
-
-// Map of textual identifiers to numeric identifiers for components
-std::map<std::string, ComponentId> identifierMap;
-// All human intervention components, indexed by a number. This list is used
-// during initialisation and thereafter only for memory management.
-vector<unique_ptr<HumanInterventionComponent>> humanComponents;
-
 // ———  Deployments: free functions over the data structs  ———
 
 void VaccineLimits::set( const scnXml::DeploymentBase& deploy ){
@@ -195,15 +187,17 @@ bool inAvailabilityRange(const Host::Human& human, bool raw, SimTime minAvail, S
 }
 }
 
-void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::TransmissionModel& transmission)
+void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::TransmissionModel& transmission,
+    const InterventionRegistry& reg)
 {
     struct Action {
         vector<Host::Human>& population;
         Transmission::TransmissionModel& transmission;
+        const InterventionRegistry& reg;
 
         void operator() (std::monostate) const {}  // list-end marker
         void operator() (TimedDeployment::ChangeHS& a) const {
-            Clinical::ClinicalModel::setHS( *a.newHS );
+            Clinical::ClinicalModel::setHS( *a.newHS, reg );
             a.newHS.reset();
         }
         void operator() (TimedDeployment::ChangeEIR& a) const {
@@ -381,7 +375,7 @@ void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::
             }
         }
     };
-    std::visit(Action{population, transmission}, dep.action);
+    std::visit(Action{population, transmission, reg}, dep.action);
 }
 
 void initReduceNhh(size_t instance, const std::string &intervName,
@@ -619,15 +613,15 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
         for (auto it = human.getComponent().begin(), end = human.getComponent().end(); it != end; ++it)
         {
             const scnXml::HumanInterventionComponent &component = *it;
-            if (identifierMap.count(component.getId()) > 0)
+            if (mgr.registry.identifiers.count(component.getId()) > 0)
             {
                 ostringstream msg;
                 msg << "The id attribute of interventions.human.component elements must be unique; found \"" << component.getId()
                     << "\" twice.";
                 throw util::xml_scenario_error(msg.str());
             }
-            ComponentId id(humanComponents.size()); // i.e. index of next item
-            identifierMap.insert(make_pair(component.getId(), id));
+            ComponentId id(mgr.registry.components.size()); // i.e. index of next item
+            mgr.registry.identifiers.insert(make_pair(component.getId(), id));
 
             SimTime expireAfter = sim::future();
             if (component.getSubPopRemoval().present())
@@ -640,7 +634,7 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
             }
 
             HumanInterventionComponent *hiComponent;
-            if (component.getScreen().present()) { hiComponent = new ScreenComponent(id, component.getScreen().get()); }
+            if (component.getScreen().present()) { hiComponent = new ScreenComponent(id, component.getScreen().get(), mgr.registry); }
             else if (component.getTreatSimple().present())
             {
                 hiComponent = new TreatSimpleComponent(id, component.getTreatSimple().get());
@@ -651,7 +645,7 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
             }
             else if (component.getDecisionTree().present())
             {
-                hiComponent = new DecisionTreeComponent(id, component.getDecisionTree().get());
+                hiComponent = new DecisionTreeComponent(id, component.getDecisionTree().get(), mgr.registry);
             }
             else if (component.getPEV().present())
             {
@@ -691,7 +685,7 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
                                                "child, didn't find it (perhaps I need updating)");
             }
             hiComponent->setExpireAfter(expireAfter);
-            humanComponents.push_back(unique_ptr<HumanInterventionComponent>(hiComponent));
+            mgr.registry.components.push_back(unique_ptr<HumanInterventionComponent>(hiComponent));
         }
 
         // 2. Read the list of deployments
@@ -699,7 +693,7 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
         {
             const scnXml::Deployment &elt = *it;
             // 2.a intervention components
-            auto intervention = shared_ptr<HumanIntervention>(new HumanIntervention(elt.getComponent(), elt.getCondition()));
+            auto intervention = shared_ptr<HumanIntervention>(new HumanIntervention(elt.getComponent(), elt.getCondition(), mgr.registry));
 
             // 2.b intervention deployments
             for (auto ctsIt = elt.getContinuous().begin(); ctsIt != elt.getContinuous().end(); ++ctsIt)
@@ -709,7 +703,7 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
                 if (ctsIt->getRestrictToSubPop().present())
                 {
                     const string &subPopStr = ctsIt->getRestrictToSubPop().get().getId();
-                    subPop = getComponentId(subPopStr);
+                    subPop = getComponentId(mgr.registry, subPopStr);
                     complement = ctsIt->getRestrictToSubPop().get().getComplement();
                 }
                 const scnXml::ContinuousList::DeploySequence &ctsSeq = ctsIt->getDeploy();
@@ -743,7 +737,7 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
                 if (timedIt->getRestrictToSubPop().present())
                 {
                     const string &subPopStr = timedIt->getRestrictToSubPop().get().getId();
-                    subPop = getComponentId(subPopStr);
+                    subPop = getComponentId(mgr.registry, subPopStr);
                     complement = timedIt->getRestrictToSubPop().get().getComplement();
                 }
                 try
@@ -800,7 +794,7 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
                     if (timedIt->getCumulativeCoverage().present())
                     {
                         const scnXml::CumulativeCoverage &cumCov = timedIt->getCumulativeCoverage().get();
-                        ComponentId cumCovComponent = getComponentId(cumCov.getComponent());
+                        ComponentId cumCovComponent = getComponentId(mgr.registry, cumCov.getComponent());
                         for (auto deploy = deployTimes.begin(), end = deployTimes.end(); deploy != end; ++deploy)
                         {
                             timed.push_back(TimedDeployment{checkDeployDate(deploy->first), TimedDeployment::CumulativeHuman(
@@ -998,7 +992,7 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
             cout << endl;
         }
         cout << "Human components:" << endl;
-        for (auto &component : humanComponents)
+        for (auto &component : mgr.registry.components)
         {
             component->print_details(cout);
             cout << endl;
@@ -1006,16 +1000,16 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
     }
 }
 
-const HumanInterventionComponent& getComponent( ComponentId id ){
-    if( id.id >= humanComponents.size() )
+const HumanInterventionComponent& getComponent( const InterventionRegistry& reg, ComponentId id ){
+    if( id.id >= reg.components.size() )
         throw util::base_exception( "invalid component id" );
-    return *humanComponents[id.id];
+    return *reg.components[id.id];
 }
 
-ComponentId getComponentId(const string textId)
+ComponentId getComponentId(const InterventionRegistry& reg, const string textId)
 {
-    auto it = identifierMap.find(textId);
-    if (it == identifierMap.end())
+    auto it = reg.identifiers.find(textId);
+    if (it == reg.identifiers.end())
     {
         ostringstream msg;
         msg << "unable to find an intervention component with id \"" << textId
@@ -1047,7 +1041,7 @@ void loadFromCheckpoint(InterventionManager& mgr, vector<Host::Human> &populatio
             // Note: neither changeHS nor changeEIR interventions care what the
             // current time step is when they are deployed, so we don't need to
             // tell them the deployment date.
-            apply(timed[nextTimed], population, transmission);
+            apply(timed[nextTimed], population, transmission, mgr.registry);
         }
         nextTimed += 1;
     }
@@ -1078,7 +1072,7 @@ void deploy(InterventionManager& mgr, vector<Host::Human> &population, Transmiss
             cout << endl;
         }
 
-        apply(timed[nextTimed], population, transmission);
+        apply(timed[nextTimed], population, transmission, mgr.registry);
         nextTimed += 1;
     }
 

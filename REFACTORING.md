@@ -329,14 +329,37 @@ Phase 6 — remaining statics, one cluster at a time:
 
 - 6a `af8abdb5` `NeonatalMortality` statics → `Model::neonatal` member;
   `ClinicalModel::update` / `Host::update` take it by reference.
+- 6b (this commit) component registry de-static: `struct
+  InterventionRegistry { identifiers; components }` is now a member of
+  `InterventionManager` (built by `init()`, immutable afterwards). The
+  free `getComponent`/`getComponentId` take it by const reference, and
+  it is threaded explicitly to every construction site that resolves
+  component ids: `HumanIntervention`/`TriggeredDeployments`/`Treatments`
+  ctors, the whole `CMDecisionTree::create` chain (`CMDTDeploy`,
+  `CMDTCohort`), `ScreenComponent`, `DecisionTreeComponent`,
+  `ClinicalModel::setHS` → `DecisionTree5Day`/`ESCaseManagement`
+  `setHealthSystem` → `WHInterface::addTreatment`, `mon::initCohorts`,
+  and the checkpoint read path (`PerHost::load(istream, registry)`
+  replaces the templated `operator&`, which stays ostream-only).
+  File-statics `identifierMap`/`humanComponents` deleted.
+
+Deliberately left file-static:
+
+- `removeAtIds[SubPopRemove::NUM]` (HumanComponents.h) — written only
+  during `init()`, read from deep inside `Human.cpp`; an init-only table,
+  threading it through `Human::update` buys nothing yet.
+- `decision_library` (CMDecisionTree.cpp) — arena owning decision-tree
+  nodes; it *grows at runtime* (changeHS replays create new trees and
+  old trees may still be referenced), so moving it into `Model` means
+  threading an arena reference through every `create()` call on top of
+  the registry. The tree interpreter keeps its virtuals by the §3 rule.
 
 Net effect so far: no mutable process-wide state left in the
-transmission/PerHost path; intervention deployment state, the master RNG
-and the neonatal model are caller-owned (`Model` members). The
-intervention component registry is still a file-static in
-`InterventionManager.cpp` (read-only after init), and the vector-side
-(string-keyed decay maps, traps, NHH) checkpoint gaps remain as noted in
-§6 — both are Phase-4/6 follow-ups, gated by the byte-identical contract.
+transmission/PerHost path; intervention deployment state, the component
+registry, the master RNG and the neonatal model are caller-owned (`Model`
+members). The vector-side (string-keyed decay maps, traps, NHH)
+checkpoint gaps remain as noted in §6 — gated by the byte-identical
+contract.
 
 ---
 

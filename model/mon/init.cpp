@@ -198,7 +198,7 @@ SimTime readSurveyDates(const scnXml::Monitoring& monitoring)
     return runtime.surveyDates.back().date;
 }
 
-void initCohorts(const scnXml::Monitoring& monitoring)
+void initCohorts(const scnXml::Monitoring& monitoring, const interventions::InterventionRegistry& reg)
 {
     runtime.cohortSubPopNumbers.clear();
     runtime.cohortSubPopIds.clear();
@@ -207,7 +207,7 @@ void initCohorts(const scnXml::Monitoring& monitoring)
     const scnXml::Cohorts monCohorts = monitoring.getCohorts().get();
     uint32_t nextId = 0;
     for (auto it = monCohorts.getSubPop().begin(), end = monCohorts.getSubPop().end(); it != end; ++it) {
-        const interventions::ComponentId compId = interventions::getComponentId(it->getId());
+        const interventions::ComponentId compId = interventions::getComponentId(reg, it->getId());
         const bool inserted = runtime.cohortSubPopIds.insert(std::make_pair(compId, nextId)).second;
         if (!inserted) {
             throw util::xml_scenario_error(

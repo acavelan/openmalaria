@@ -29,6 +29,7 @@
 
 #include <vector>
 
+namespace OM { namespace interventions { struct InterventionRegistry; } }
 namespace OM {
 
 /** The simulated human population. */
@@ -55,7 +56,7 @@ public:
     inline void resetRecentBirths();
 
     /** Checkpoint (read) */
-    void checkpoint(istream& stream);
+    void checkpoint(istream& stream, const interventions::InterventionRegistry& reg);
 
     /** Checkpoint (write) */
     void checkpoint(ostream& stream);

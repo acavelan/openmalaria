@@ -87,8 +87,8 @@ void WHInterface::init( const OM::Parameters& parameters, const scnXml::Scenario
     }
 }
 
-TreatmentId WHInterface::addTreatment(const scnXml::TreatmentOption& desc){
-    return Treatments::addTreatment( desc );
+TreatmentId WHInterface::addTreatment(const scnXml::TreatmentOption& desc, const interventions::InterventionRegistry& reg){
+    return Treatments::addTreatment( desc, reg );
 }
 
 unique_ptr<WHInterface> WHInterface::createWithinHostModel(LocalRng& rng, double comorbidityFactor) {

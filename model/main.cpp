@@ -191,8 +191,8 @@ int main(int argc, char* argv[])
         // Depends on transmission model (for species indexes):
         // MDA1D may depend on health system (too complex to verify)
         interventions::init(model.interventions, scenario->getInterventions(), model.humans, *model.transmission );
-        Clinical::ClinicalModel::setHS( scenario->getHealthSystem() ); // Depends on interventions, PK/PD (from humanPop)
-        mon::initCohorts( scenario->getMonitoring() ); // Depends on interventions
+        Clinical::ClinicalModel::setHS( scenario->getHealthSystem(), model.interventions.registry ); // Depends on interventions, PK/PD (from humanPop)
+        mon::initCohorts( scenario->getMonitoring(), model.interventions.registry ); // Depends on interventions
 
         bool surveyOnlyNewEp = scenario->getMonitoring().getSurveyOptions().getOnlyNewEpisode();
 

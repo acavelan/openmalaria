@@ -40,6 +40,7 @@ namespace scnXml{
 }
 class UnittestUtil;
 
+namespace OM { namespace interventions { struct InterventionRegistry; } }
 namespace OM {
 namespace Host {
     class Human;
@@ -83,7 +84,7 @@ public:
     
     /** Configure a new treatment option, and return the code used to select
      * that option later. */
-    static TreatmentId addTreatment( const scnXml::TreatmentOption& desc );
+    static TreatmentId addTreatment( const scnXml::TreatmentOption& desc, const interventions::InterventionRegistry& reg );
 
     /// Create an instance using the appropriate model
     static unique_ptr<WHInterface> createWithinHostModel( LocalRng& rng, double comorbidityFactor );

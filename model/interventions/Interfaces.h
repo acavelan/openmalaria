@@ -140,6 +140,8 @@ private:
     SimTime m_duration = sim::never();
 };
 
+struct InterventionRegistry;
+
 /** A description of a human intervention (as a list of components). */
 class HumanIntervention {
 public:
@@ -150,16 +152,19 @@ public:
     /** Create from a list of XML elements: list of intervention components
      * with unconditional deployment (for triggered deployments). **/
     explicit HumanIntervention(
-        const xsd::cxx::tree::sequence<scnXml::Component>& componentList );
+        const xsd::cxx::tree::sequence<scnXml::Component>& componentList,
+        const InterventionRegistry& reg );
     /** Create from a list of XML elements: list of intervention components
      * and list of conditions of deployment. **/
     explicit HumanIntervention(
         const xsd::cxx::tree::sequence<scnXml::Component>& componentList,
-        const xsd::cxx::tree::sequence<scnXml::Condition>& conditionList );
+        const xsd::cxx::tree::sequence<scnXml::Condition>& conditionList,
+        const InterventionRegistry& reg );
     /** Create from a list of XML elements: list of intervention components
      * with unconditional deployment (for triggered deployments). **/
     explicit HumanIntervention(
-        const xsd::cxx::tree::sequence<scnXml::DTDeploy>& componentList );
+        const xsd::cxx::tree::sequence<scnXml::DTDeploy>& componentList,
+        const InterventionRegistry& reg );
     
     /** Deploy all components to a pre-selected human. */
     void deploy( Host::Human& human, mon::Deploy::Method method,
@@ -168,7 +173,7 @@ public:
     void print_details( std::ostream& out )const;
     
 protected:
-    // List of pointers to components. Does not manage memory (InterventionManager::humanComponents does that).
+    // List of pointers to components. Does not manage memory (InterventionRegistry does that).
     vector<const HumanInterventionComponent*> components;
     // List of conditions of deployment. All must be satisfied to deploy.
     vector<size_t> conditions;
@@ -178,14 +183,14 @@ protected:
 // could just store ComponentId instead of inheriting HumanIntervention)
 class TriggeredDeployments {
 public:
-    TriggeredDeployments( const scnXml::TriggeredDeployments& elt );
+    TriggeredDeployments( const scnXml::TriggeredDeployments& elt, const InterventionRegistry& reg );
     
     void deploy( Host::Human& human, mon::Deploy::Method method,
             VaccineLimits vaccLimits )const;
     
 private:
     struct SubList : protected HumanIntervention{
-        SubList( const scnXml::TriggeredDeployments::DeployType& elt );
+        SubList( const scnXml::TriggeredDeployments::DeployType& elt, const InterventionRegistry& reg );
         
         void deploy( Host::Human& human, mon::Deploy::Method method,
             VaccineLimits vaccLimits )const;

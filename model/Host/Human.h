@@ -29,6 +29,7 @@
 #include "util/checkpoint_containers.h"
 #include <map>
 
+namespace OM { namespace interventions { struct InterventionRegistry; } }
 namespace OM {
 namespace Clinical {
     class ClinicalModel;
@@ -93,7 +94,7 @@ public:
     void updateCohortSet();
 
     /** Checkpoint (read) */
-    void checkpoint(istream &stream);
+    void checkpoint(istream &stream, const interventions::InterventionRegistry& reg);
 
     /** Checkpoint (write) */
     void checkpoint(ostream &stream);

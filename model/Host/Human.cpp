@@ -175,9 +175,9 @@ void Human::updateCohortSet()
     }
 }
 
-void Human::checkpoint(istream &stream)
+void Human::checkpoint(istream &stream, const interventions::InterventionRegistry& reg)
 {
-    perHostTransmission & stream;
+    perHostTransmission.load( stream, reg );
     infIncidence & stream;
     withinHostModel & stream;
     clinicalModel & stream;
