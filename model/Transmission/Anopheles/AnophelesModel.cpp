@@ -28,6 +28,7 @@
 #include "Host/WithinHost/Genotypes.h"
 #include "util/vectors.h"
 #include "util/errors.h"
+#include "schema/interventions.h"
 #include "util/ModelOptions.h"
 #include "util/StreamValidator.h"
 

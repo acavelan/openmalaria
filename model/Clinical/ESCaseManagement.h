@@ -24,9 +24,8 @@
 #define Hmod_ESCaseManagement
 
 #include "Global.h"
-#include "Clinical/CMDecisionTree.h"    // needed for ESDecisionMap
+#include "Clinical/CMDecisionTree.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "schema/pharmacology.h"
 
 namespace OM { namespace interventions { struct InterventionRegistry; } }
 namespace OM { namespace Clinical {

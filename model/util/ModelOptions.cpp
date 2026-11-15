@@ -23,6 +23,7 @@
 #include "util/ModelOptions.h"
 #include "util/CommandLine.h"
 #include "util/errors.h"
+#include "schema/scenario.h"
 #include "schema/util.h"
 
 #include <sstream>
@@ -140,9 +141,9 @@ namespace OM { namespace util {
         return defaultOptSet;
     }
 
-    void ModelOptions::init(scnXml::Model::ModelOptionsOptional& optionsElt,
-                            util::ModelNameProvider mnp)
+    void ModelOptions::init(const scnXml::Model& model, util::ModelNameProvider mnp)
     {
+    const scnXml::Model::ModelOptionsOptional& optionsElt = model.getModelOptions();
     OptionCodeMap codeMap;
 
 	// Set options to legacy defaults, then override any given in the XML file:

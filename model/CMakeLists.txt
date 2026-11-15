@@ -35,11 +35,13 @@ configure_file(
 set (Model_CPP
   sim.cpp
   Model.cpp
+  Parameters.cpp
   Population.cpp
   PopulationAgeStructure.cpp
   checkpoint.cpp
   
   Host/Human.cpp
+  Host/ImportedInfections.cpp
   Host/InfectionIncidenceModel.cpp
   Host/NeonatalMortality.cpp
   
@@ -97,6 +99,7 @@ set (Model_CPP
   util/DocumentLoader.cpp
   util/random.cpp
   util/UnitParse.cpp
+  util/ModelNameProvider.cpp
   util/DecayFunction.cpp
   
   interventions/InterventionManager.cpp

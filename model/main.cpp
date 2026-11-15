@@ -161,8 +161,8 @@ int main(int argc, char* argv[])
         sim::init(*scenario, modelNameProvider); // Also reads survey dates.
 
         // 3) elements depending on only elements initialised in (2).
-        Parameters parameters( scenario->getModel().getParameters(), modelNameProvider ); // Depends on ModelNameProvider.
-        util::ModelOptions::init( scenario->getModel().getModelOptions(), modelNameProvider ); // Depends on ModelNameProvider.
+        Parameters parameters( scenario->getModel(), modelNameProvider ); // Depends on ModelNameProvider.
+        util::ModelOptions::init( scenario->getModel(), modelNameProvider ); // Depends on ModelNameProvider.
 
         // 4) elements depending on only elements initialised in (3).
         WithinHost::diagnostics::init( parameters, *scenario ); // Depends on Parameters.

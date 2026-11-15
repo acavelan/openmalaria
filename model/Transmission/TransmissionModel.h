@@ -27,7 +27,6 @@
 #include <fstream>
 
 #include "Global.h"
-#include "schema/interventions.h"
 #include "util/errors.h"
 
 #include "Transmission/PerHost.h"
@@ -44,9 +43,12 @@
 
 using namespace std::placeholders;
 
+namespace scnXml { class NonVector; class DailyValues; class AgeGroupValues; }
+
 namespace OM
 {
 class Summary;
+
 class Population;
 namespace Host
 {
@@ -55,31 +57,10 @@ class Human;
 namespace Transmission
 {
 
-inline double averageEIR(const scnXml::NonVector &nonVectorData)
-{
-    // Calculates the arithmetic mean of the whole daily EIR vector read from the .XML file
-    double valaverageEIR = 0.0;
-    size_t i = 0;
-    for (const scnXml::NonVector::EIRDailySequence &daily = nonVectorData.getEIRDaily(); i < daily.size(); ++i)
-    {
-        valaverageEIR += (double)daily[i];
-    }
-    if (i == 0) throw util::xml_scenario_error("no EIRDaily values given"); // pedantic check
-    return valaverageEIR / i;
-}
-
-inline double averageEIR(const scnXml::DailyValues &vectorData)
-{
-    // Calculates the arithmetic mean of the whole daily EIR vector read from the .XML file
-    double valaverageEIR = 0.0;
-    size_t i = 0;
-    for (const scnXml::DailyValues::ValueSequence &daily = vectorData.getValue(); i < daily.size(); ++i)
-    {
-        valaverageEIR += (double)daily[i];
-    }
-    if (i == 0) throw util::xml_scenario_error("no daily values given"); // pedantic check
-    return valaverageEIR / i;
-}
+/** Arithmetic mean of the whole daily EIR vector read from the .XML file.
+ * @throws util::xml_scenario_error if there are no values */
+double averageEIR(const scnXml::NonVector &nonVectorData);
+double averageEIR(const scnXml::DailyValues &vectorData);
 
 /** Variable describing current simulation mode. */
 enum SimulationMode
@@ -155,11 +136,7 @@ public:
     AgeGroupInterpolator ageAvailability;
 
     /** Set the age-dependent availability curve; sets adultAge from it. */
-    void setAgeAvailability(const scnXml::AgeGroupValues& availabilityToMosquitoes)
-    {
-        ageAvailability.set(availabilityToMosquitoes, "availabilityToMosquitoes");
-        adultAge = sim::fromYearsD(ageAvailability.firstGlobalMaximum());
-    }
+    void setAgeAvailability(const scnXml::AgeGroupValues& availabilityToMosquitoes);
 
     /** Extra initialisation when not loading from a checkpoint, requiring
      * information from the human population structure. */

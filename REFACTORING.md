@@ -353,6 +353,26 @@ Deliberately left file-static:
   old trees may still be referenced), so moving it into `Model` means
   threading an arena reference through every `create()` call on top of
   the registry. The tree interpreter keeps its virtuals by the §3 rule.
+- `ModelOptions` — set once from scenario/CLI before the simulation and
+  read (never written) at ~60 sites afterwards; a startup constant, so
+  threading it as a value is churn without any state to protect.
+
+Phase 5 (XML interface at the boundary) — first slice:
+
+- 5a (this commit) XML parsing moved out of widely-included headers:
+  `Parameters.h`, `util/ModelNameProvider.h`, `util/ModelOptions.h`,
+  `Transmission/TransmissionModel.h`, `Host/ImportedInfections.h` and
+  `Clinical/ESCaseManagement.h` no longer include any generated schema
+  header. New `Parameters.cpp`, `util/ModelNameProvider.cpp`,
+  `Host/ImportedInfections.cpp` hold the moved XML-reading bodies;
+  `ModelOptions::init`/`Parameters` ctor now take `const scnXml::Model&`
+  (forward-declared) instead of nested Optional types; `averageEIR` and
+  `setAgeAvailability` are out-of-line in `TransmissionModel.cpp`.
+  new ctor shapes. `averageEIR` keeps both overloads (NonVector and
+  DailyValues — the latter is used by AnophelesModel via
+  `transmission.h`); the unused `schema/pharmacology.h` include in
+  `ESCaseManagement.h` deleted. `unittest/UnittestUtil.h` call sites updated to the
+  new ctor shapes.
 
 Net effect so far: no mutable process-wide state left in the
 transmission/PerHost path; intervention deployment state, the component

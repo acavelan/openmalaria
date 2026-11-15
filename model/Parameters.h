@@ -27,12 +27,10 @@
 #include <optional>
 #include <unordered_map>
 #include <utility>
-#include <schema/scenario.h>
 #include "util/ModelNameProvider.h"
-#include "util/CommandLine.h"
 #include "util/errors.h"
 
-namespace scnXml { class Parameters; }
+namespace scnXml { class Model; class Parameters; }
 namespace OM {
 
 /*
@@ -145,39 +143,7 @@ public:
     * Expects that the scenario XML either explicitly describes a collection of parameters and values
     * or describes the name of a model to use.
     */
-    Parameters( const scnXml::Model::ParametersOptional& xmlParameterValues, util::ModelNameProvider mnp )
-    {
-        for (const std::pair<int, Parameter> pair : idCodeToNameMap)
-        {
-            const Parameter name = pair.second;
-            nameToValueMap[name] = std::nullopt;
-        }
-
-        const util::ModelNames namedModelToUse = mnp.GetModelName();
-        const bool useNamedModel = namedModelToUse != util::ModelNames::none;
-        if (useNamedModel)
-        {
-            if (namedModelToUse == util::ModelNames::base)
-            {
-                initializeParamsBaseModel();
-            }
-            else
-            {
-                throw util::xml_scenario_error(
-                    "No pre-set parameter values are available for the specified model name.");
-            }
-        }
-
-        // Get parameters specified expicitly in input XML, if any.
-        // In the event where a named model was used to set parameter values earlier, it is intended
-        // that any parameter values written explicitly in XML will override any values set by the
-        // named model.
-        const bool useExplicitParamValues = xmlParameterValues.present();
-        if (useExplicitParamValues)
-        {
-            initializeParamsFromXML(xmlParameterValues.get());
-        }
-    }
+    Parameters( const scnXml::Model& model, util::ModelNameProvider mnp );
 
     /**
      * Get a parameter, using one of the Parameter codes.
@@ -192,7 +158,7 @@ public:
                 if (pair.second == name)
                 {
                     const int paramCode = pair.first;
-                    throw util::xml_scenario_error("Parameter with index " + to_string(paramCode) +
+                    throw util::xml_scenario_error("Parameter with index " + std::to_string(paramCode) +
                             " required but not described.");
                 }
             }
@@ -210,50 +176,7 @@ private:
     * This method will be used if the user does not use the "base" model or any
     * other pre-set collection of parameter values.
     */
-    void initializeParamsFromXML(const scnXml::Parameters& parameters)
-    {
-        const scnXml::Parameters::ParameterSequence& paramSeq = parameters.getParameter();
-
-        // It's okay if a user overwrites the value of a parameter that was set before this
-        // method was called.  E.g. if they used a named model, and then chose to manually
-        // override the value of a parameter set by it.  It's not okay if a user sets a value
-        // for the same parameter twice.  That represents a mistake in the input XML which
-        // we need to handle here.  This has the potential to save users time debugging inputs.
-        std::set<int> paramIdsSetByUser;
-
-        for (auto param : paramSeq)
-        {
-            const int paramId = param.getNumber();
-            const double paramValueFromXML = param.getValue();
-
-            // C++20 offers "contains" which would be more expressive than "count" here.
-            const bool paramIdIsValid = idCodeToNameMap.count(paramId);
-            if (!paramIdIsValid)
-            {
-                if( util::CommandLine::option(util::CommandLine::DEPRECATION_WARNINGS) ){
-                    cerr << "Deprecation warning: <parameter> index" << to_string(paramId) <<
-                        " is no longer used" << endl;
-                }
-
-                // If we throw here, old scenarios containing the deprecated parameter
-                // will need more manual work to migrate to new OpenMalaria versions.
-                // This isn't unacceptable.  But it's simpler here to just skip over the
-                // deprecated parameter.  In particular, many tests specify values for
-                // deprecated some parameters.
-                continue;
-            }
-            const Parameter nameOfParamToSet = idCodeToNameMap.at(paramId);
-
-            const bool paramValueAlreadySet = !paramIdsSetByUser.insert(paramId).second;
-            if (paramValueAlreadySet)
-            {
-                throw util::xml_scenario_error("Parameter with index " + to_string(paramId) +
-                        " described twice in XML.");
-            }
-
-            nameToValueMap[nameOfParamToSet] = paramValueFromXML;
-        }
-    }
+    void initializeParamsFromXML(const scnXml::Parameters& parameters);
 
     /*
     * Helper method to initialize the parameter identified by paramId with the specified value.

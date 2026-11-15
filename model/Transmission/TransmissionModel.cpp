@@ -21,6 +21,8 @@
  */
 
 #include "Transmission/TransmissionModel.h"
+#include "schema/interventions.h"
+#include "schema/util.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Genotypes.h"
@@ -29,6 +31,32 @@ namespace OM
 {
 namespace Transmission
 {
+
+double averageEIR(const scnXml::NonVector &nonVectorData)
+{
+    double valaverageEIR = 0.0;
+    size_t i = 0;
+    for (const scnXml::NonVector::EIRDailySequence &daily = nonVectorData.getEIRDaily(); i < daily.size(); ++i)
+        valaverageEIR += (double)daily[i];
+    if (i == 0) throw util::xml_scenario_error("no EIRDaily values given"); // pedantic check
+    return valaverageEIR / i;
+}
+
+double averageEIR(const scnXml::DailyValues &vectorData)
+{
+    double valaverageEIR = 0.0;
+    size_t i = 0;
+    for (const scnXml::DailyValues::ValueSequence &daily = vectorData.getValue(); i < daily.size(); ++i)
+        valaverageEIR += (double)daily[i];
+    if (i == 0) throw util::xml_scenario_error("no daily values given"); // pedantic check
+    return valaverageEIR / i;
+}
+
+void TransmissionModel::setAgeAvailability(const scnXml::AgeGroupValues& availabilityToMosquitoes)
+{
+    ageAvailability.set(availabilityToMosquitoes, "availabilityToMosquitoes");
+    adultAge = sim::fromYearsD(ageAvailability.firstGlobalMaximum());
+}
 double TransmissionModel::getEIR(Host::Human &human, SimTime age, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l)
 {
     startHumanUpdate(human);

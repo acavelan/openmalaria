@@ -25,13 +25,12 @@
 
 #include "Global.h"
 #include "util/ModelNameProvider.h"
-#include <schema/scenario.h>
 #include <bitset>
 #include <optional>
 
 class UnittestUtil;
 
-namespace scnXml{ class OptionSet; }
+namespace scnXml{ class Model; }
 namespace OM { namespace util {
     
     /** Flags signalling which versions of some models to use. */
@@ -299,8 +298,7 @@ namespace OM { namespace util {
     /*
     * Initialize the set of model options to use, based on input XML contents.
     */
-    static void init(scnXml::Model::ModelOptionsOptional& optionsElt,
-                            util::ModelNameProvider mnp);
+    static void init(const scnXml::Model& model, util::ModelNameProvider mnp);
 
     private:
     /*
