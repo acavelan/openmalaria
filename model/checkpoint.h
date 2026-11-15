@@ -25,7 +25,6 @@
 
 #include "Global.h"
 #include "Population.h"
-#include "Transmission/transmission.h"
 
 namespace OM
 {
