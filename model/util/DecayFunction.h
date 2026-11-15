@@ -45,12 +45,12 @@ class DecayFunction
 {
 public:
     DecayFunction(bool increasing = false, double initialEfficacy = 1.0, double CV = 0.0) : 
-        increasing(increasing), initialEfficacy(initialEfficacy), het(std::move(LognormalSampler::fromMeanCV(1.0, CV))) {}
+        increasing(increasing), initialEfficacy(initialEfficacy), het(*LognormalSampler::fromMeanCV(1.0, CV)) {}
 
     DecayFunction(const DecayFunction& other) : 
         increasing(other.increasing),
         initialEfficacy(other.initialEfficacy),
-        het(other.het ? other.het->clone() : nullptr),
+        het(other.het),
         hetFactor(other.hetFactor) {}
 
     virtual ~DecayFunction() {}
@@ -70,12 +70,12 @@ public:
      * is not wanted. If sigma = 0 then the random number stream will not be
      * touched. */
     unique_ptr<DecayFunction> hetSample(LocalRng& rng) const {
-        return hetSample(het->sample(rng));
+        return hetSample(het.sample(rng));
     }
     
     /** Generate a DecayFunction value from an existing sample. */
     std::unique_ptr<DecayFunction> hetSample(NormalSample sample) const {
-        return hetSample(het->sample(sample));
+        return hetSample(het.sample(sample));
     }
     
     /** Generate a DecayFunction value from an existing sample. */
@@ -111,7 +111,7 @@ public:
 public:
     bool increasing;
     double initialEfficacy;
-    std::unique_ptr<util::Sampler> het;
+    util::LognormalSampler het;
 
 public:
     virtual unique_ptr<DecayFunction> makeHetSample(double factor) const = 0;

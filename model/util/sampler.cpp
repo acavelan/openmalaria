@@ -365,9 +365,9 @@ std::unique_ptr<util::Sampler> createSampler(double mean, const scnXml::SampledV
 {
     const std::string& d = elt.getDistr();
     if (d == "const" || d == "lognormal")
-        return createLognormalSampler(mean, elt);
+        return std::make_unique<util::Sampler>(*createLognormalSampler(mean, elt));
     else if (d == "gamma")
-        return createGammaSampler(mean, elt);
+        return std::make_unique<util::Sampler>(*createGammaSampler(mean, elt));
     else
         throw util::xml_scenario_error("\"distr=" + d + "\": expected \"const\", \"lognormal\" or \"gamma\"");
 }

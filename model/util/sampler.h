@@ -25,6 +25,7 @@
 
 #include <limits>
 #include <optional>
+#include <variant>
 
 #include "Global.h"
 #include "util/random.h"
@@ -111,26 +112,11 @@ namespace OM { namespace util {
         double mu, sigma;
     };
     
-    class Sampler
-    {
-    public:
-        virtual ~Sampler() = default;
-        virtual std::unique_ptr<Sampler> clone() const = 0;
-        virtual double sample(LocalRng& rng) const = 0;
-        virtual double sample(NormalSample sample) const{ throw std::runtime_error("sample(NormalSample) not implemented for this distribution");}
-        virtual double mean() const = 0;
-        virtual double cdf(double x) const { throw std::runtime_error("cdf() not implemented for this distribution"); }
-    };
-    
     /** Sampler for log-normal values */
-    class LognormalSampler : public Sampler {
+    class LognormalSampler {
     public:
         LognormalSampler() = default;
         LognormalSampler& operator=(const LognormalSampler&) = default;
-
-        std::unique_ptr<Sampler> clone() const override {
-            return std::make_unique<LognormalSampler>(*this);
-        }
 
         /**
          * Configure the log-normal distribution from a target mean and coefficient of variation.
@@ -174,13 +160,13 @@ namespace OM { namespace util {
         void scaleMean( double scalar );
         
         /** Get the mean. */
-        double mean() const override;
+        double mean() const;
 
         /** Sample a value. */
-        double sample(LocalRng& rng) const override;
+        double sample(LocalRng& rng) const;
         
         /** Create a log-normal sample from an existing normal sample. */
-        double sample(NormalSample sample) const override {
+        double sample(NormalSample sample) const {
             return sample.asLognormal( mu, sigma );
         }
 
@@ -196,7 +182,7 @@ namespace OM { namespace util {
          * @param x  The point at which to evaluate the CDF (must be a real number).
          * @return   P(X ≤ x), where X ~ LogNormal(mu, sigma²).
          */
-        double cdf(double x) const override;
+        double cdf(double x) const;
         
     public:
         // log-space parameters
@@ -207,14 +193,10 @@ namespace OM { namespace util {
     };
 
     /** Sampler for gamma values */
-    class GammaSampler : public Sampler {
+    class GammaSampler {
     public:
         GammaSampler() = default;
         GammaSampler& operator=(const GammaSampler&) = default;
-
-        std::unique_ptr<Sampler> clone() const override {
-            return std::make_unique<GammaSampler>(*this);
-        }
 
         /**
          * Configure the gamma distribution from a target mean and coefficient of variation.
@@ -251,11 +233,16 @@ namespace OM { namespace util {
         static unique_ptr<util::GammaSampler> fromMeanVariance( double mean, double variance, std::optional<double> truncate = std::nullopt);
         
         /** Get the mean. */
-        double mean() const override;
+        double mean() const;
 
         /** Sample a value. */
-        double sample(LocalRng& rng) const override;
+        double sample(LocalRng& rng) const;
         
+        /** Not supported for gamma distributions. */
+        double sample(NormalSample) const {
+            throw std::runtime_error("sample(NormalSample) not implemented for this distribution");
+        }
+
         /**
          * Compute the cumulative distribution function (CDF) of this gamma sampler.
          *
@@ -270,7 +257,7 @@ namespace OM { namespace util {
          * @param x  The point at which to evaluate the CDF (must be a real number).
          * @return   P(X ≤ x), where X ~ Gamma(k, θ).
          */
-        double cdf(double x) const override;
+        double cdf(double x) const;
         
     public:
         double mu       = std::numeric_limits<double>::signaling_NaN();
@@ -279,6 +266,30 @@ namespace OM { namespace util {
         double variance = std::numeric_limits<double>::signaling_NaN();
         double CV       = std::numeric_limits<double>::signaling_NaN();
         std::optional<double> truncate = std::nullopt;
+    };
+
+    /** Either a log-normal or a gamma sampler, whichever the scenario
+     * XML asked for. */
+    class Sampler {
+    public:
+        Sampler(LognormalSampler sampler) : value(std::move(sampler)) {}
+        Sampler(GammaSampler sampler) : value(std::move(sampler)) {}
+
+        double sample(LocalRng& rng) const {
+            return std::visit([&rng](const auto& s) { return s.sample(rng); }, value);
+        }
+        double sample(NormalSample sample) const {
+            return std::visit([sample](const auto& s) { return s.sample(sample); }, value);
+        }
+        double mean() const {
+            return std::visit([](const auto& s) { return s.mean(); }, value);
+        }
+        double cdf(double x) const {
+            return std::visit([x](const auto& s) { return s.cdf(x); }, value);
+        }
+        
+    public:
+        std::variant<LognormalSampler, GammaSampler> value;
     };
 
     /** Create a Sampler from a SampledValueCV xml snippet (lognormal,
