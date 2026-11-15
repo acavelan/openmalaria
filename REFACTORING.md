@@ -518,8 +518,9 @@ Status of the remaining plan (what is *not* done yet):
   needs its update-chain functions to take the clock as a parameter,
   mechanically, per directory.
 - **Phase 6**: `NeonatalMortality` (6a), component registry (6b), clinical/HS
-  statics (6c, `Clinical::ClinicalParams`) and `InfantMortality` (6d) done;
-  the mon/WithinHost static clusters remain.
+  statics (6c, `Clinical::ClinicalParams`), `InfantMortality` (6d) and
+  `InfectionIncidenceModel` (6e, also de-virtualised) done; the
+  mon/WithinHost/PkPd-registry static clusters remain.
 - 59 `ModelOptions::option()` reads remain (Phase 5 wants init-time caches).
 
 Net effect so far: no mutable process-wide state left in the
@@ -527,8 +528,8 @@ transmission/PerHost path; intervention deployment state, the component
 registry, the master RNG, the neonatal and infant-mortality models and all
 clinical/health-system parameters are caller-owned (`Model` members). The XML
 boundary is complete — schema headers reach only the loader and the `.cpp`
-files that parse. Cumulative branch diff vs `main`: +6017/−6343 across 140
-files — the model tree is 31,257 lines.
+files that parse. Cumulative branch diff vs `main`: +6252/−6626 across 140
+files — the model tree is 31,192 lines.
 
 ---
 
@@ -713,6 +714,25 @@ Phase 6d — InfantMortality statics → struct (52/52 byte-identical):
   takes the `allCause()` value (computed in `main`, threaded through the
   file-local writer chain) so `Monitoring.cpp` no longer includes any
   clinical header.
+
+---
+
+Phase 6e — InfectionIncidenceModel de-static + de-virtual (52/52):
+
+- `c01305e2` — the ~14 file-static parameters/option flags and the
+  four-class `virtual` hierarchy (base + HeterogeneityWorkaroundII/
+  NegBinomMAII/LogNormalMAII, no subclass data members — exactly the
+  header's `TODO(optimisation)`) became: a plain
+  `Host::InfectionIncidenceParams` (kind tag + doubles + two option flags,
+  `init()` in main, value member of `Model`, threaded to the `Human` ctor
+  and update calls) and one per-host state struct (`m_pInfected`,
+  `m_cumulativeEIRa` — now a by-value `Human` member, checkpoint stream
+  unchanged); the per-kind bodies are a switch in the free
+  `getAvailabilityFactor`/`getModelExpectedInfections` (draw order kept).
+  `ctsNewInfections` (checkpointed at its old stream position, in `Model`)
+  is written by `reportNumNewInfections` and read/reset by a lambda
+  registered with `mon::Continuous` from `main` (callback map is
+  name-keyed, so registration order is not observable).
 
 ---
 
