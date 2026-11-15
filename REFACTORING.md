@@ -486,12 +486,15 @@ Status of the remaining plan (what is *not* done yet):
   `InterventionManager.cpp`), `Interfaces`, `LSTMMedicate`, and
   `CMDecisionTree`/clinical headers. `HumanInterventionComponents.h` —
   definitions only, included by exactly one source — was inlined into
-  `InterventionManager.cpp` and deleted. Schema headers are now included
-  only by: the boundary (`DocumentLoader.h`, `XMLChecker.h`), every `.cpp`
-  that actually parses XML, and the three entomology-factory headers
-  (`transmission.h`, `NonVectorModel.h`, `VectorModel.h` — inline XML
-  factories; `VectorModel.h` also needs the real types for nested-sequence
-  virtual signatures). Global `-DXSD_CXX11` in CMake lets
+  `InterventionManager.cpp` and deleted. The three entomology-factory
+  headers were the last tail: `transmission.cpp` (`20a63ea5`) took the
+  inline factories, `NonVectorModel.cpp` (`6d2fc059`) its ctor/`changeEIR`
+  bodies, and `3a4130e3` replaced `VectorModel`/`AnophelesModel`'s
+  nested-sequence signatures with pre-parsed `VectorPopIntervDesc`/
+  `VectorTrapDesc` structs built at the `InterventionManager` boundary.
+  Schema headers are now included only by `DocumentLoader.h`, `XMLChecker.h`
+  and the `.cpp` files that actually parse XML — **no model header includes
+  the schema anymore.** Global `-DXSD_CXX11` in CMake lets
   `xsd/cxx/tree/containers.hxx` be included in any order (the generated
   headers always defined it themselves before their prelude).
 - **Interventions rewrite (Phase 4)**: 4a (deployment class hierarchy →
@@ -522,11 +525,9 @@ Left: the component classes (Phase 4d — collapse
 Net effect so far: no mutable process-wide state left in the
 transmission/PerHost path; intervention deployment state, the component
 registry, the master RNG and the neonatal model are caller-owned (`Model`
-members). Cumulative branch diff vs `main`: +3935/−4267 across
-128 files — the model tree is 31,400 lines, shrinking further with
-every de-virtualised family, with no behaviour change. The vector-side (string-keyed decay maps,
-traps, NHH) checkpoint gaps remain as noted in §6 — gated by the
-byte-identical contract.
+members). The XML boundary is complete — schema headers reach only the
+loader and the `.cpp` files that parse. Cumulative branch diff vs `main`:
++4699/−4755 across 130 files — the model tree is 31,600 lines.
 
 ---
 
@@ -555,6 +556,27 @@ Phase 3 (clock global) — first four slices (52/52, bit-identical):
   `PerHost` aggregators and `makeHumanPart`. Every caller passes the same
   value the code used to read internally, so all outputs are unchanged; the
   interventions directory no longer reads a time global.
+
+---
+
+Phase-5 tail (XML out of the last three headers, 52/52 each):
+
+- `20a63ea5` — `transmission.h`'s ~370 lines of inline entomology factories
+  moved to a new `transmission.cpp` (anonymous-namespace helpers; the header
+  now only declares `createTransmissionModel`); `checkpoint.h` dropped its
+  now-unneeded schema-reachable include.
+- `6d2fc059` — `NonVectorModel`'s ctor + `changeEIRIntervention` bodies moved
+  to a new `NonVectorModel.cpp`; the ctor's unused `Entomology` parameter
+  dropped; header keeps a `scnXml::NonVector` forward declaration.
+- `3a4130e3` — the last nested-type signatures: `VectorModel::initVectorInterv`/
+  `initVectorTrap` (and `AnophelesModel`'s consumers) now take pre-parsed
+  `Anopheles::VectorPopIntervDesc`/`VectorTrapDesc` (plain data +
+  `unique_ptr<DecayFunction>`, built by parse helpers in
+  `InterventionManager.cpp`, validation and error strings preserved; trap
+  name becomes `std::optional<std::string>`); `SimpleDecayingValue::set`
+  takes the built decay function instead of XML. The two `init*` methods lost
+  their never-overridden `virtual`. **No model header includes the schema now**
+  (only `DocumentLoader.h`/`XMLChecker.h`, the boundary itself).
 
 ---
 
