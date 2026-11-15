@@ -30,7 +30,10 @@
 #include "Global.h"
 #include "PkPd/LSTMModel.h"
 #include "util/errors.h"
-#include "schema/pharmacology.h"
+#include <xsd/cxx/tree/containers.hxx>
+
+namespace scnXml { class PKPDMedication; class PKPDDosageRange; }
+
 
 #include <vector>
 #include <map>
@@ -43,7 +46,7 @@ class UnittestUtil;
 namespace OM { namespace PkPd {
 
 struct Schedule {
-    void load( const scnXml::PKPDSchedule::MedicateSequence& seq );
+    void load( const xsd::cxx::tree::sequence<scnXml::PKPDMedication>& seq );
     
     vector<MedicateData> medications;
 };

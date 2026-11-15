@@ -30,6 +30,8 @@
 #include "Transmission/TransmissionModel.h"
 #include "interventions/InterventionManager.h"
 
+namespace scnXml { class Entomology; class AgeGroupValues; }
+
 namespace OM {
 
 /** Everything the simulation owns, in construction order. Members refer to

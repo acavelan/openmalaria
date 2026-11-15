@@ -25,10 +25,18 @@
 
 #include "Global.h"
 #include "mon/Monitoring.h"
-#include <schema/interventions.h>
+#include <xsd/cxx/tree/containers.hxx>
 #include <limits>
 
-namespace scnXml{ class DeploymentBase; }
+namespace scnXml {
+    class Component;
+    class Condition;
+    class DTDeploy;
+    class Deploy;
+    class DeploymentBase;
+    class TriggeredDeployments;
+}
+
 
 namespace OM {
 namespace Host {
@@ -190,7 +198,7 @@ public:
     
 public:
     struct SubList : protected HumanIntervention{
-        SubList( const scnXml::TriggeredDeployments::DeployType& elt, const InterventionRegistry& reg );
+        SubList( const scnXml::Deploy& elt, const InterventionRegistry& reg );
         
         void deploy( Host::Human& human, mon::Deploy::Method method,
             VaccineLimits vaccLimits )const;

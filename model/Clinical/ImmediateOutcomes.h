@@ -25,6 +25,10 @@
 
 #include "Clinical/CM5DayCommon.h"
 
+namespace scnXml {
+    class HSImmediateOutcomes;
+}
+
 namespace OM { namespace interventions { struct InterventionRegistry; } }
 namespace OM {
 namespace Clinical {

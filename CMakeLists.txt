@@ -25,6 +25,11 @@ cmake_minimum_required (VERSION 3.15)
 
 project (OpenMalaria CXX)
 
+# The generated schema headers define this themselves; define it here too so
+# that XSD runtime headers (xsd/cxx/tree/containers.hxx) can be included in
+# either order.
+add_definitions (-DXSD_CXX11)
+
 # The FindXXX.cmake files included are not quite the same as standard ones.
 # They abort if not found, and look in a few extra places (e.g. ${CMAKE_SOURCE_DIR}/lib).
 set (CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)

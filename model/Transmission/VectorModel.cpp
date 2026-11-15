@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "schema/interventions.h"
+#include "schema/entomology.h"
 #include "Transmission/VectorModel.h"
 #include "Population.h"
 #include "Host/WithinHost/WHInterface.h"

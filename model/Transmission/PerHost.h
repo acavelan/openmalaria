@@ -31,6 +31,10 @@
 
 #include "util/random.h"
 
+namespace scnXml {
+    class Mosq;
+}
+
 namespace OM { namespace interventions { struct InterventionRegistry; } }
 namespace OM {
 namespace Transmission {

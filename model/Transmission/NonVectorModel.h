@@ -28,6 +28,8 @@
 #include "Host/Human.h"
 #include "mon/Monitoring.h"
 
+#include "schema/entomology.h"  // inline ctor/changeEIR parse EIRDaily
+
 namespace scnXml
 {
 class NonVector;

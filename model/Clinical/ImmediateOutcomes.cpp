@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "schema/healthSystem.h"
 #include "Clinical/ImmediateOutcomes.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/WHVivax.h"

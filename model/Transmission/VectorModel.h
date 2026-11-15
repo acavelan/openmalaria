@@ -29,6 +29,8 @@
 #include "Transmission/Anopheles/EmergenceRateEstimator.h"
 #include "Host/Human.h"
 
+#include "schema/interventions.h"  // nested sequence types in virtual signatures
+
 namespace scnXml
 {
 class Vector;

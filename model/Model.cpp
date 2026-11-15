@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "schema/healthSystem.h"
+#include "schema/entomology.h"
 #include "Model.h"
 #include "Transmission/transmission.h"
 #include "Clinical/ClinicalModel.h" // ClinicalModel is complete (Population dtor via Human members)

@@ -23,6 +23,7 @@
 #ifndef Hmod_Transmission
 #define Hmod_Transmission
 
+#include "schema/entomology.h"
 #include "Transmission/NonVectorModel.h"
 #include "Transmission/VectorModel.h"
 #include "Transmission/Anopheles/AnophelesModel.h"

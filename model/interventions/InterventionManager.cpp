@@ -21,6 +21,7 @@
  */
 
 #include "interventions/InterventionManager.h"
+#include "schema/interventions.h"
 #include "Population.h"
 #include "util/CommandLine.h"
 #include "util/UnitParse.h"
@@ -379,7 +380,7 @@ void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::
     std::visit(Action{population, transmission, reg}, dep.action);
 }
 
-void initReduceNhh(size_t instance, const std::string &intervName,
+static void initReduceNhh(size_t instance, const std::string &intervName,
                    const scnXml::Description2::AnophelesSequence list,
                    const scnXml::DecayFunction &decay, Transmission::TransmissionModel& transmission)
 {
@@ -439,7 +440,7 @@ void initReduceNhh(size_t instance, const std::string &intervName,
     }
 }
 
-TimedDeployment::AddNhh readAddNhh(const std::string &intervName, SimTime lifespan,
+static TimedDeployment::AddNhh readAddNhh(const std::string &intervName, SimTime lifespan,
                                    const scnXml::Description3::AnophelesSequence list,
                                    Transmission::TransmissionModel& transmission)
 {

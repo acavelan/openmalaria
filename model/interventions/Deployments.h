@@ -33,7 +33,14 @@
 #include "Global.h"
 #include "interventions/Interfaces.h"
 #include "Transmission/TransmissionModel.h"
-#include "schema/interventions.h"
+namespace scnXml {
+    class ContinuousDeployment;
+    class DecayFunction;
+    class DeploymentBase;
+    class HealthSystem;
+    class MassDeployment;
+    class NonVector;
+}
 
 #include <map>
 #include <memory>
@@ -126,18 +133,6 @@ SimTime checkDeployDate(SimTime date);
 /** Do one timed deployment (now). */
 void apply (TimedDeployment& dep, vector<Host::Human>& population,
             Transmission::TransmissionModel& transmission);
-
-/** Apply non-human-host reduction effects from XML to the vector model
- * (at init; deployment itself only re-applies the decayed effect). */
-void initReduceNhh (size_t instance, const std::string& intervName,
-                    const scnXml::Description2::AnophelesSequence list,
-                    const scnXml::DecayFunction& decay,
-                    Transmission::TransmissionModel& transmission);
-
-/** Read added-non-human-host params from XML (at init). */
-TimedDeployment::AddNhh readAddNhh (const std::string& intervName, SimTime lifespan,
-                                    const scnXml::Description3::AnophelesSequence list,
-                                    Transmission::TransmissionModel& transmission);
 
 /** Apply filters and potentially deploy.
  *

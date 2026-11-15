@@ -28,6 +28,8 @@
 #include "Clinical/Episode.h"
 #include <schema/healthSystem.h>
 
+namespace scnXml { class DecisionTree; }
+
 namespace OM {
 namespace WithinHost {
     class WHInterface;
