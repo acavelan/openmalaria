@@ -503,9 +503,16 @@ Status of the remaining plan (what is *not* done yet):
   `VectorInterventionState` replacing the five string-keyed `reduce*` maps
   (the silent checkpoint gap — contract-blocked until an output change is
   accepted), component classes still live in headers.
-- **Phase 3 (clock global)**: untouched — `sim::now()/intervDate()` statics
-  remain; ~170 read sites, mechanical per-directory conversion to a
-  `SimClock` parameter.
+- **Phase 3 (clock global)**: in progress — `SimClock`/`sim::now` etc.
+  conversions landed for `mon/Continuous`, the whole human-intervention
+  deploy chain, vaccine decay and the per-host intervention/effect chain
+  (`model/interventions/` now has zero clock-global reads). Remaining
+  reads (~160) are in the transmission update chain
+  (`Anopheles`/`VectorModel`/`NonVectorModel`/`TransmissionModel`), the
+  within-host and clinical models, `Human`/`Population` and `main.cpp`
+  (the owner — reads there are final or die with the last slices); each
+  needs its update-chain functions to take the clock as a parameter,
+  mechanically, per directory.
 - **Phase 6**: `NeonatalMortality` done; the clinical/HS statics cluster
   (~30 statics, ~40 signatures), mon and WithinHost clusters remain.
 - 59 `ModelOptions::option()` reads remain (Phase 5 wants init-time caches).
@@ -531,6 +538,21 @@ ITN and IRS (−209 lines, 52/52):
   evaluates at `holeIndex=0` — the extra terms are exact IEEE no-ops, so
   results are bit-identical — plus one `clamp` flag distinguishing ITN's
   out-of-bounds clamping from IRS's assert-only path.
+
+---
+
+Phase 3 (clock global) — first four slices (52/52, bit-identical):
+
+- `f69d61c4` added `struct SimClock{now, intervTime, intervDate}` and made
+  `mon/Continuous::update` take it (one caller). `6d0489f8` threaded a
+  `SimTime now` (== `sim::nowOrTs1()`) through `HumanInterventionComponent::
+  deploy` and the `HumanIntervention`/`TriggeredDeployments` wrappers, and a
+  `SimClock` through the deploy loop / timed-visitor / `loadFromCheckpoint`.
+  `6c3f6c69` gave `PerHumanVaccine` the clock; `af125d80` threaded the clock
+  through `PerHostInterventionData` redeploy/update/effect virtuals, the
+  `PerHost` aggregators and `makeHumanPart`. Every caller passes the same
+  value the code used to read internally, so all outputs are unchanged; the
+  interventions directory no longer reads a time global.
 
 ---
 
