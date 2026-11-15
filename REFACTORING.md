@@ -310,6 +310,9 @@ Phase 2 — de-static — in progress:
   `struct InterventionManager` (deployment state) owned by `main` +
   free `interventions::init/deploy/checkpoint/loadFromCheckpoint`.
   Component registry still file-static (Phase 4 replaces it).
+- 2.3 `d4ef2ca5` `struct Model { master_rng, transmission, humans,
+  interventions }` (model/Model.{h,cpp}) constructed in dependency order;
+  `main()` owns one value, `run()`/checkpoint read/write take `Model&`.
 
 Net effect so far: no mutable process-wide state left in the
 transmission/PerHost path; intervention deployment state and the master
