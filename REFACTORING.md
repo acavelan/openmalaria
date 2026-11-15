@@ -502,9 +502,12 @@ Status of the remaining plan (what is *not* done yet):
   (one shared `factors::` survival/attractiveness model for ITN and IRS —
   IRS sets the hole factors to 0 and evaluates at holeIndex=0, which is
   bit-exact, plus a `clamp` flag for ITN's out-of-bounds handling) done.
-Left: the component classes (Phase 4d — collapse
-   `HumanInterventionComponent`/`PerHostInterventionData` to Kind-tagged
-   data + free functions, like Sampler/DecayFunction/CMDecisionTree did).
+   4d collapsed the vector-intervention components: `PerHostInterventionData`
+   is one Kind-tagged struct with per-kind free functions, and ITN/IRS/GVI
+   components are one concrete `HumanVectorInterventionComponent` (Kind +
+   public data, parse functions at the boundary). Left in this family: the
+   six trivial IM-local component classes and `VaccineComponent` — cold-path
+   `deploy()` only, low value; not started.
    The silent checkpoint gap is CLOSED (see below): the five string-keyed
    `reduce*` maps, `nhhInstances`, `baitedTraps` and
    `probAdditionalDeathSugarFeedingIntervs` are now checkpointed.
@@ -527,7 +530,7 @@ transmission/PerHost path; intervention deployment state, the component
 registry, the master RNG and the neonatal model are caller-owned (`Model`
 members). The XML boundary is complete — schema headers reach only the
 loader and the `.cpp` files that parse. Cumulative branch diff vs `main`:
-+4699/−4755 across 130 files — the model tree is 31,600 lines.
++5063/−5260 across 130 files — the model tree is 31,450 lines.
 
 ---
 
@@ -556,6 +559,28 @@ Phase 3 (clock global) — first four slices (52/52, bit-identical):
   `PerHost` aggregators and `makeHumanPart`. Every caller passes the same
   value the code used to read internally, so all outputs are unchanged; the
   interventions directory no longer reads a time global.
+
+---
+
+Phase 4d — vector-intervention component hierarchy → data (52/52 each):
+
+- `e25780b6` — `PerHostInterventionData`'s three-class hierarchy (`HumanITN`/
+  `HumanIRS`/`HumanGVI`, 16 virtuals) collapsed into one Kind-tagged
+  public-data struct (per-host deployment state: decay heterogeneity sample +
+  ITN hole/net fields + shared initial insecticide) plus 27 per-kind free
+  functions (`itn*`/`irs*`/`gvi*` InitNew/Redeploy/Update/4 effects/
+  Checkpoint/Read, declared in PerHost.h, defined in the kind's .cpp,
+  dispatched by switch in PerHost.cpp's anonymous namespace). Per-kind
+  checkpoint field order untouched.
+- `6701e72c` — `ITNComponent`/`IRSComponent`/`GVIComponent` merged into one
+  concrete `Transmission::HumanVectorInterventionComponent` (kind tag + flat
+  fields; per-species `SpeciesParams` holds the ITN/IRS response curves and
+  the GVI constant effects; GVI's `decay` folded into `insecticideDecay`).
+  `deploy`/`print_details` implemented once (kind switch for the monitoring
+  measures); `sampleInitialInsecticide` shared (identical clamp order →
+  bit-exact). Each header shrank to its `parseXComponent(id, xml, species)`
+  factory declaration — the XML boundary builds the struct, validation and
+  error strings preserved. −122 lines net.
 
 ---
 
@@ -627,8 +652,10 @@ bit-identical by construction — same arithmetic, same RNG order):
   + one `map<double,double>`, no heap, no dummy singleton.
 
 Remaining virtual clusters are the by-design strategy families (WH models,
-vector/transmission/pathogenesis models) and the intervention-component
-hierarchy (Phase 4d). Next de-virtual candidate: `LSTMDrug` (4 classes ×
+vector/transmission/pathogenesis models) plus a handful of small component
+classes (`InterventionManager.cpp`'s six trivial `HumanInterventionComponent`
+kinds and `VaccineComponent` — cold-path deploy only, not worth a Kind tag).
+Next de-virtual candidate: `LSTMDrug` (4 classes ×
 6 virtuals, closed set; checkpoint streams differ per class — preserve
 byte-for-byte), same recipe as DecayFunction.
 
