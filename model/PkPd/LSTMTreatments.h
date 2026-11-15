@@ -53,7 +53,7 @@ public:
     /** Get the index of a named dosage table. */
     static size_t findDosages( const string& name );
     
-private:
+public:
     LSTMTreatments();  // not constructible
 };
 

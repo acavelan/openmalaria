@@ -57,10 +57,10 @@ public:
   
     virtual bool updateDensity( LocalRng& rng, double survivalFactor, SimTime bsAge, double );
   
-protected:
+public:
     virtual void checkpoint (ostream& stream);
     
-private:
+public:
   double getInflatedDensity(LocalRng& rng, double nonInflatedDensity);
   double sigma_noise(int ageDays);
   double sampleSubPatentValue(LocalRng& rng, double mu, double sigma, double upperBound);

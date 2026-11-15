@@ -91,7 +91,7 @@ public:
         checkpoint(stream);
     }
 
-protected:
+public:
     virtual void checkpoint (istream& stream){}
     virtual void checkpoint (ostream& stream){}
     

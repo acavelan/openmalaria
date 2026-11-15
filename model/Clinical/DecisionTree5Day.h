@@ -53,7 +53,7 @@ public:
     
     DecisionTree5Day (double tSF) : CM5DayCommon(tSF) {}
     
-protected:
+public:
     virtual void uncomplicatedEvent(Human& human, Episode::State pgState);
 };
 

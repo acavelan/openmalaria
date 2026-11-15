@@ -160,7 +160,7 @@ public:
         return !(scaled && rotated);
     }
 
-private:
+public:
     double scaleFactor, shiftAngle;
     bool rotated, scaled;
 };
@@ -248,7 +248,7 @@ public:
         return false;
     }
 
-private:
+public:
     int populationSize;
 };
 

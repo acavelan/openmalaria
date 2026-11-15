@@ -94,7 +94,7 @@ namespace Host {
             lastIndex & stream;
         }
         
-    private:
+    public:
         SimTime period = sim::never();
         uint32_t lastIndex;
         struct Rate {

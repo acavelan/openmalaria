@@ -86,7 +86,7 @@ public:
     }
     inline double max_killing_rate() const{ return V; }
     
-private:
+public:
     /// Slope of the dose response curve (no unit)
     double n;   // slope
     /// Concentration with 50% of the maximal parasite killing
@@ -178,7 +178,7 @@ public:
     const LSTMDrugPD& getPD( uint32_t genotype ) const;
     //@}
   
-private:
+public:
     // non-copyable (due to allocation of members of drugPhenotype)
     LSTMDrugType( const LSTMDrugType& ) = delete;
     LSTMDrugType& operator= ( const LSTMDrugType& ) = delete;
@@ -227,7 +227,6 @@ private:
     std::unique_ptr<LognormalSampler> k12, k21, k13, k31;
     
     // Allow LSTMDrug to access private members
-    friend class LSTMDrugPD;
 };
 
 } }

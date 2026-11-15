@@ -47,11 +47,11 @@ inline int floorToInt( double x ){
 
 /// Internal use only
 // Required to avoid use-before-definition
-class SimData {
+struct SimData {
+public:
     static inline int interval;        // days per time step
     static inline size_t steps_per_year;
     static inline double years_per_step;
-    friend class sim;
 };
 
 
@@ -227,7 +227,6 @@ public:
     static inline SimTime intervDate(){ return s_start + s_interv; }
     //@}
     
-// private:
     // Initial set-up: called by Simulator
     static void init( const scnXml::Scenario& scenario, util::ModelNameProvider mnp);
 

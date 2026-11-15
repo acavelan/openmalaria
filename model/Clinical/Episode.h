@@ -120,7 +120,7 @@ public:
 
     WithinHost::InfectionOrigin infectionType = WithinHost::InfectionOrigin::Indigenous;
     
-private:
+public:
     /** Report a clinical episode.
      *
      * From _state, an episode is reported based on severity (SICK,

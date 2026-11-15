@@ -52,7 +52,7 @@ public:
         return sim::now() > m_tLastTreatment && sim::now() <= m_tLastTreatment + healthSystemMemory;
     }
     
-protected:
+public:
     enum CaseType { FirstLine, SecondLine, NumCaseTypes };
     static mon::Measure measures[NumCaseTypes];
     static double accessUCAny[NumCaseTypes];
@@ -72,7 +72,7 @@ protected:
     //! treatment seeking for heterogeneity
     double m_treatmentSeekingFactor;
     
-private:
+public:
     /** Called when a severe/complicated (with co-infection) malaria sickness occurs.
      *
      * Note: sets doomed = 4 if patient dies. */

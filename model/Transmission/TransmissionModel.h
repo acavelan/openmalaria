@@ -98,7 +98,7 @@ enum SimulationMode
 /// Abstract base class, defines behaviour of transmission models
 class TransmissionModel
 {
-protected:
+public:
     /// Reads all entomological parameters from the input datafile.
     /// @param entoData input configuration for model
     /// @param nGenotypes number of genotypes transmission model is using
@@ -252,7 +252,7 @@ public:
         surveySimulatedEIR_l += tsAdultEIR_l;
     }
 
-protected:
+public:
     /** Calculates the EIR individuals are exposed to.
      *
      * Call once per time-step: updates ITNs in vector model.
@@ -303,7 +303,7 @@ protected:
         numTransmittingHumans &stream;
     }
 
-private:
+public:
     // The times here should be for the last updated index of arrays:
     void ctsCbInputEIR(ostream &stream)
     {
@@ -358,7 +358,7 @@ public:
      * Checkpointed. */
     double annualEIR;
 
-private:
+public:
     /*! annAvgKappa is the overall proportion of mosquitoes that get infected
      * allowing for the different densities in different seasons (approximating
      * relative mosquito density with the EIR).

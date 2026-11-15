@@ -64,7 +64,7 @@ public:
     /** The simulated human hosts */
     vector<Host::Human> humans;
 
-private:
+public:
     /** Size of the human population */
     size_t size = 0;
     

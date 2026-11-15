@@ -79,7 +79,7 @@ public:
     inline SimTime bloodEffect()const{ return timeBlood; }
     //@}
     
-private:
+public:
     // static:
     static vector<Treatments> treatments;
     
@@ -87,8 +87,6 @@ private:
     Treatments( const scnXml::TreatmentOption& elt, const interventions::InterventionRegistry& reg );
     
     SimTime timeLiver, timeBlood;
-    
-    friend class ::UnittestUtil;
 };
 
 }

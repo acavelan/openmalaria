@@ -110,7 +110,7 @@ public:
     
     /// Includes the effect of attenuated infections by SP concentrations, when using IPT
     
-protected:
+public:
     virtual void checkpoint (ostream& stream);
     
     // Arbitrary predetermined maximum duration of the infection
@@ -118,7 +118,7 @@ protected:
     
     bool notPrintedMDWarning;
     
-private:
+public:
     /// @brief Static parameters set by init()
     //@{
     /* A triangular matrix: meanLogParasiteCount[i][j] is the

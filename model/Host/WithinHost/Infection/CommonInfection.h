@@ -70,7 +70,7 @@ public:
     
     map<size_t, double> Kn; // IC50^slope per drug type, if sampled
     
-protected:
+public:
     /** Update: calculate new density.
      *
      * @param survivalFactor Density multiplier to introduce drug & vaccine

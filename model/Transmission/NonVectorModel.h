@@ -213,7 +213,7 @@ public:
         mon::recordStat(mon::measure("innoculationsPerVector"), human, EIR_l[0]);
     }
 
-private:
+public:
     virtual void checkpoint(istream &stream)
     {
         TransmissionModel::checkpoint(stream);

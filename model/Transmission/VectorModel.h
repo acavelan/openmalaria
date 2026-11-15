@@ -87,11 +87,11 @@ public:
 
     virtual void summarize();
 
-protected:
+public:
     virtual void checkpoint(istream &stream);
     virtual void checkpoint(ostream &stream);
 
-private:
+public:
     void ctsCbN_v0(ostream &stream);
     void ctsCbP_A(ostream &stream);
     void ctsCbP_Amu(ostream &stream);
@@ -138,8 +138,6 @@ public:
     map<string, size_t> speciesIndex;
 
     bool opt_vaccine_genotype = false;
-    
-    friend class AnophelesModelSuite;
 };
 
 } // namespace Transmission

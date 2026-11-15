@@ -60,10 +60,10 @@ public:
     
     virtual bool updateDensity( LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass );
     
-protected:
+public:
     virtual void checkpoint (ostream& stream);
     
-private:
+public:
     double getVariantSpecificSummation(int i, double P_current);
     
     // Note: we also have inherited parameters:
@@ -97,7 +97,6 @@ private:
     vector<Variant> variants;
     
     // allow unittest to access private vars
-    friend class ::MolineauxInfectionSuite;
 };
 
 }}

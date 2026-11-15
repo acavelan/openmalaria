@@ -96,7 +96,7 @@ public:
     /** Fully clear liver stage parasites. */
     void treatmentLS();
     
-private:
+public:
     VivaxBrood() {}     // not default constructible
     
     // list of times at which the merozoite and hypnozoites release, ordered by
@@ -172,7 +172,7 @@ public:
 
 	
     
-protected:
+public:
     virtual void treatment( Host::Human& human, TreatmentId treatId );
     virtual bool treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlood );
     virtual void optionalPqTreatment( Host::Human& human );
@@ -186,7 +186,7 @@ protected:
     virtual double getCumulative_h() const;
     virtual double getCumulative_Y() const;
     
-private:
+public:
     // not copy constructible
     WHVivax( const WHVivax& ) = delete;
     WHVivax& operator= (const WHVivax& ) = delete;
@@ -217,8 +217,6 @@ private:
     
     // Used for reporting; updated by update()
     double pSevere;
-
-    friend class ::UnittestUtil;
 };
 
 }

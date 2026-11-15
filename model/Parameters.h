@@ -168,7 +168,7 @@ public:
         return nameToValueMap.at(name).value();
     }
 
-private:
+public:
 
     /*
     * Initializes parameters using explicit values specified in the input XML,

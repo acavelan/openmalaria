@@ -52,13 +52,13 @@ public:
     
     virtual bool isExistingCase();
 
-protected:
+public:
     virtual void doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg);
 
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
 
-private:
+public:
     /// Maximum number of time steps (including first of case) an individual
     /// will remember they are sick before resetting.
     static SimTime maxUCSeekingMemory;

@@ -57,7 +57,7 @@ public:
     double getMetaboliteConcentration() const;
     double getParentConcentration() const;
     
-protected:
+public:
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
     
@@ -87,7 +87,7 @@ protected:
     double last_bm;
     //@}
     
-private:
+public:
     void setConversionParameters(Params_convFactor& p, double body_mass) const;
     void setKillingParameters(LocalRng& rng, Params_convFactor& p, WithinHost::CommonInfection *inf) const;
 };

@@ -172,7 +172,7 @@ public:
     virtual void checkpoint(istream &stream) { (*this) & stream; }
     virtual void checkpoint(ostream &stream) { (*this) & stream; }
 
-private:
+public:
     template <class S>
     void operator&(S &stream)
     {

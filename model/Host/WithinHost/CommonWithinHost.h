@@ -71,13 +71,13 @@ public:
     
     virtual bool summarize( Host::Human& human )const;
     
-protected:
+public:
     virtual void clearInfections( Treatments::Stages stage );
     
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
     
-private:
+public:
     /// Multiplies the mean mass (for this age) as a heterogeneity factor.
     double hetMassMultiplier;
     

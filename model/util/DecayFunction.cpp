@@ -86,7 +86,7 @@ public:
         return copy;
     }
     
-private:
+public:
     double invL;
 };
 
@@ -114,7 +114,7 @@ public:
         return copy;
     }
     
-private:
+public:
     double invL;
 };
 
@@ -138,7 +138,7 @@ public:
         return copy;
     }
     
-private:
+public:
     double invL;
 };
 
@@ -167,7 +167,7 @@ public:
         return copy;
     }
     
-private:
+public:
     double constOverLambda, k;
 };
 
@@ -192,7 +192,7 @@ public:
         return copy;
     }
     
-private:
+public:
     double invL, k;
 };
 
@@ -220,7 +220,7 @@ public:
         return copy;
     }
     
-private:
+public:
     double invL, k;
 };
 
@@ -256,7 +256,7 @@ public:
         return copy;
     }
 
-private:
+public:
     unique_ptr<DecayFunction> f1, f2;
     T op;
 };
@@ -335,7 +335,7 @@ public:
         return copy;
     }
 
-private:
+public:
     std::unique_ptr<DecayFunction> f;
     double Emax, IC50, slope, initialConcentration;
 };

@@ -88,7 +88,7 @@ public:
     static void staticCheckpoint( std::ostream& stream );
     static void staticCheckpoint( std::istream& stream );
     
-private:
+public:
     static size_t N_genotypes;
 };
 

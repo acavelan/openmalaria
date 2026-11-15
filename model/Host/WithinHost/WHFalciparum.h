@@ -78,7 +78,7 @@ public:
         return m_cumulative_Y;
     }
     
-protected:
+public:
     /** Clear infections of the appropriate stages.
      * 
      * @param stage Which stages of the infection are affected
@@ -146,7 +146,6 @@ protected:
     static int y_lag_len;
     
     static void setParams(double cumYStar, double cumHStar, double aM, double dM);   // for unit test only
-    friend class ::InfectionImmunitySuite;
 };
 
 }

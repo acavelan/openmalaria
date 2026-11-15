@@ -54,7 +54,7 @@ class CMDTMultiple : public CMDecisionTree {
 public:
     static const CMDecisionTree& create( const ::scnXml::DTMultiple& node, bool isUC, const interventions::InterventionRegistry& reg);
     
-protected:
+public:
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         CMDTOut result(false);
@@ -65,7 +65,7 @@ protected:
         return result;
     }
     
-private:
+public:
     CMDTMultiple( /*size_t capacity*/ ){
 //         children.reserve( capacity );
     }
@@ -83,7 +83,7 @@ class CMDTCaseType : public CMDecisionTree {
 public:
     static const CMDecisionTree& create( const ::scnXml::DTCaseType& node, bool isUC, const interventions::InterventionRegistry& reg);
     
-protected:
+public:
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         // Uses of this in complicated cases should trigger an exception during initialisation.
@@ -93,7 +93,7 @@ protected:
         else return firstLine.exec( hostData );
     }
     
-private:
+public:
     CMDTCaseType( const CMDecisionTree& firstLine,
                   const CMDecisionTree& secondLine ) :
                   firstLine(firstLine), secondLine(secondLine)
@@ -110,7 +110,7 @@ class CMDTInfectionOrigin : public CMDecisionTree {
 public:
     static const CMDecisionTree& create( const ::scnXml::DTInfectionOrigin& node, bool isUC, const interventions::InterventionRegistry& reg);
     
-protected:
+public:
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         WithinHost::InfectionOrigin InfectionOrigin = hostData.withinHost().getInfectionOrigin();
@@ -122,7 +122,7 @@ protected:
             return indigenous.exec( hostData );
     }
     
-private:
+public:
     CMDTInfectionOrigin( const CMDecisionTree& imported,
                   const CMDecisionTree& introduced,
                   const CMDecisionTree& indigenous ) :
@@ -139,7 +139,7 @@ class CMDTDiagnostic : public CMDecisionTree {
 public:
     static const CMDecisionTree& create( const ::scnXml::DTDiagnostic& node, bool isUC, const interventions::InterventionRegistry& reg);
     
-protected:
+public:
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         CMDTOut result;
@@ -153,7 +153,7 @@ protected:
         return result;
     }
     
-private:
+public:
     CMDTDiagnostic( const Diagnostic& diagnostic,
         const CMDecisionTree& positive,
         const CMDecisionTree& negative ) :
@@ -170,7 +170,7 @@ class CMDTUncomplicated : public CMDecisionTree {
 public:
     static const CMDecisionTree& create( const ::scnXml::DTUncomplicated& node, bool isUC, const interventions::InterventionRegistry& reg);
     
-protected:
+public:
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         const Clinical::Episode &latest = hostData.human.clinicalModel->getLatestReport();
@@ -186,7 +186,7 @@ protected:
             return negative.exec( hostData );
     }
     
-private:
+public:
     CMDTUncomplicated(
         const SimTime memory,
         const CMDecisionTree& positive,
@@ -206,7 +206,7 @@ class CMDTSevere : public CMDecisionTree {
 public:
     static const CMDecisionTree& create( const ::scnXml::DTSevere& node, bool isUC, const interventions::InterventionRegistry& reg);
     
-protected:
+public:
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         CMDTOut result;
@@ -220,7 +220,7 @@ protected:
         return result;
     }
     
-private:
+public:
     CMDTSevere(
         const CMDecisionTree& positive,
         const CMDecisionTree& negative ) :
@@ -241,7 +241,7 @@ class CMDTRandom : public CMDecisionTree {
 public:
     static const CMDecisionTree& create( const ::scnXml::DTRandom& node, bool isUC, const interventions::InterventionRegistry& reg);
     
-protected:
+public:
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         auto it = branches.upper_bound( hostData.human.rng.uniform_01() );
@@ -249,7 +249,7 @@ protected:
         return it->second->exec( hostData );
     }
     
-private:
+public:
     CMDTRandom(){}
     
     // keys are cumulative probabilities; last entry should equal 1
@@ -264,7 +264,7 @@ class CMDTAge : public CMDecisionTree {
 public:
     static const CMDecisionTree& create( const ::scnXml::DTAge& node, bool isUC, const interventions::InterventionRegistry& reg);
     
-protected:
+public:
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         // age is that of human at start of time step (i.e. may be as low as 0)
@@ -274,7 +274,7 @@ protected:
         return it->second->exec( hostData );
     }
     
-private:
+public:
     CMDTAge() {}
     
     // keys are upper bounds of age categories
@@ -287,7 +287,7 @@ private:
 
 /** Do nothing. **/
 class CMDTNoTreatment : public CMDecisionTree {
-protected:
+public:
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         return CMDTOut(false);
@@ -303,7 +303,7 @@ public:
         }
         assert( outIds.size() > 0 );        // CMDTTreatPKPD should not be used in this case
     }
-protected:
+public:
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         for( const int outId : outIds ){
@@ -311,13 +311,13 @@ protected:
         }
         return CMDTOut(false);
     }
-private:
+public:
     vector<int> outIds;
 };
 
 /** Report treament without affecting parasites. **/
 class CMDTTreatFailure : public CMDecisionTree {
-protected:
+public:
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         return CMDTOut(true /*report treatment*/);
@@ -341,7 +341,7 @@ public:
         assert( treatments.size() > 0 );        // CMDTTreatPKPD should not be used in this case
     }
     
-protected:
+public:
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         for( const TreatInfo& treatment : treatments ){
@@ -350,7 +350,7 @@ protected:
         return CMDTOut(true);
     }
     
-private:
+public:
     struct TreatInfo{
         TreatInfo( const string& s, const string& d, double h ) :
             schedule(PkPd::LSTMTreatments::findSchedule(s)),
@@ -393,7 +393,7 @@ public:
         }
     }
     
-protected:
+public:
 
     
     virtual CMDTOut exec( CMHostData hostData ) const{
@@ -405,7 +405,7 @@ protected:
         return CMDTOut(bsTreatment);
     }
     
-private:
+public:
     vector<SimTime> timeLiver, timeBlood;
 };
 
@@ -419,7 +419,7 @@ public:
     CMDTDeploy( const scnXml::DecisionTree::DeploySequence& seq, const interventions::InterventionRegistry& reg ) :
         HumanIntervention(seq, reg) {}
     
-protected:
+public:
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         deploy( hostData.human,
@@ -437,7 +437,7 @@ class CMDTCohort : public CMDecisionTree {
 public:
     static const CMDecisionTree& create( const ::scnXml::DTCohort& node, bool isUC, const interventions::InterventionRegistry& reg);
     
-protected:
+public:
     
     virtual CMDTOut exec( CMHostData hostData ) const{
         CMDTOut result;
@@ -452,7 +452,7 @@ protected:
         return result;
     }
     
-private:
+public:
     CMDTCohort(
         const std::string component,
         const CMDecisionTree& positive,

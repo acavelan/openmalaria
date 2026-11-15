@@ -74,7 +74,7 @@ public:
       ctsNewInfections & stream;
   }
   
-protected:
+public:
   /// Create a new model
   InfectionIncidenceModel ();
 public:
@@ -127,7 +127,7 @@ public:
    */
   void reportNumNewInfections(Human& human, int newNumInfections_i, int newNumInfections_l);
   
-protected:
+public:
   /// Calculates the expected number of infections, excluding vaccine effects
   virtual double getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost& phTrans);
   
@@ -160,7 +160,7 @@ class HeterogeneityWorkaroundII : public InfectionIncidenceModel {
 public:
   HeterogeneityWorkaroundII () {}
   virtual ~HeterogeneityWorkaroundII() {}
-protected:
+public:
   double getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost& phTrans);
 };
 class NegBinomMAII : public InfectionIncidenceModel {
@@ -168,7 +168,7 @@ public:
   NegBinomMAII () {}
   virtual ~NegBinomMAII() {}
   virtual double getAvailabilityFactor(LocalRng& rng, double baseAvailability = 1.0);
-protected:
+public:
   double getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost&);
 };
 class LogNormalMAII : public InfectionIncidenceModel {
@@ -176,7 +176,7 @@ public:
   LogNormalMAII () {}
   virtual ~LogNormalMAII() {}
   virtual double getAvailabilityFactor(LocalRng& rng, double baseAvailability = 1.0);
-protected:
+public:
   double getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost&);
 };
 

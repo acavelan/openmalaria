@@ -118,7 +118,7 @@ public:
     /** Time of the last treatment (sim::never() if never treated). */
     SimTime m_tLastTreatment = sim::never();
     
-protected:
+public:
     /// Constructor.
     ClinicalModel ();
     

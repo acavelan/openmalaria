@@ -55,7 +55,7 @@ public:
     /// True if false positives are possible
     bool allowsFalsePositives() const;
     
-private:
+public:
     /** Construct from XML parameters. */
     Diagnostic( const Parameters& parameters, const scnXml::Diagnostic& elt );
     /** Construct as deterministic. */
@@ -69,8 +69,6 @@ private:
     
     // if true, the diagnostic is dependent on the HRP2 antigen
     bool uses_hrp2;
-    
-    friend class diagnostics;
 };
 
 /** Static members to do with Diagnostic: library of parameterised Diagnostic
@@ -97,10 +95,9 @@ public:
     }
 
     
-private:
+public:
     static void clear();        // for unit tests
     static const Diagnostic* monitoring_diagnostic;
-    friend class ::UnittestUtil;
 };
 
 } }

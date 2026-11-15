@@ -63,10 +63,9 @@ struct TreatmentId{
     
     /// Default constructor: construct to an initial value. Don't pass this value to WHInterface::treatment()!
     TreatmentId() : id(numeric_limits<uint32_t>::max()) {}
-private:
+public:
     explicit TreatmentId(uint32_t id) : id(id) {}
     uint32_t id;
-    friend class Treatments;
 };
 
 /**
@@ -205,14 +204,12 @@ public:
      * Exact constraint is: _MOI <= MAX_INFECTIONS. */
     static const int MAX_INFECTIONS = 21;
 
-protected:    
+public:    
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
 
     /// Multiplicity of infection
     int numInfs;
-
-    friend class ::UnittestUtil;
 };
 
 /// True if any by-genotype reporting is enabled (read-only)

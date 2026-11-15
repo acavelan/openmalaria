@@ -78,14 +78,14 @@ public:
         checkpoint (stream);
     }
 
-protected:
+public:
     /** Create a PathogenesisModel. */
     PathogenesisModel(double cF);
 
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
 
-protected:
+public:
     virtual double getPEpisode(double timeStepMaxDensity, double totalDensity)=0;
 
     //! comorbidity factor for heterogeneity

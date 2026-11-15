@@ -45,7 +45,7 @@ public:
 
 /// Pyrogenic threshold presentation model.
 class PyrogenPathogenesis : public PathogenesisModel {
-protected:
+public:
     /// Critical density for fever (clinical episodes)
     double _pyrogenThres;
     /// Determine the current pyrogenic threshold.
@@ -60,7 +60,7 @@ public:
     /// Read parameters from XML
     static void init( const OM::Parameters& parameters );
     
-protected:
+public:
     
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);

@@ -52,10 +52,10 @@ public:
         return seqDensities[todayV];
     }
 
-protected:
+public:
     virtual void checkpoint (ostream& stream);
 
-private:
+public:
     // function to obtain the summation component of variant specific immunity
     double getVariantSpecificSummation(LocalRng& rng, int ageDays);
     // function to obtain the summation component of clonal immunity
@@ -88,7 +88,6 @@ private:
     double clonalSummation;
     
     // allow unittest to access private vars
-    friend class ::PennyInfectionSuite;
 };
 
 }}

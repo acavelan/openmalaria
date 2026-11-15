@@ -56,7 +56,7 @@ public:
     virtual double calculateDrugFactor(LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const;
     virtual void updateConcentration (double body_mass);
     
-protected:
+public:
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
     
@@ -87,7 +87,7 @@ protected:
     mutable double na, nb, ng;      // -α, -β, -γ, -k_a
     mutable double A, B, C;     // A, B, C
     
-private:
+public:
     double calculateFactor(const Params_fC& p, double duration) const;
     
     friend double func_fC( double t, void* pp );        // function used in calculateFactor

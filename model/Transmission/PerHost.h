@@ -159,7 +159,7 @@ public:
         else throw util::xml_scenario_error("Availability percentiles in intervention specifications can only be in [0 and 100]");
     }
 
-private:
+public:
     vector<PerHostAnophParams> params;
     vector<double> entoAvailabilityPercentiles;
 };
@@ -216,7 +216,7 @@ public:
         checkpoint( stream );
     }
     
-protected:
+public:
     /// Set the component id
     explicit PerHostInterventionData( interventions::ComponentId id ) :
             deployTime( sim::now() ),
@@ -238,7 +238,7 @@ public:
     virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng&) const =0;
     virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream,
             interventions::ComponentId id ) const =0;
-protected:
+public:
     explicit HumanVectorInterventionComponent(interventions::ComponentId id) :
             HumanInterventionComponent(id) {}
 };
@@ -387,7 +387,7 @@ public:
      * deployment attempt. */
     std::map<interventions::ComponentId, double> copulaGaussianSamples; 
 
-private:
+public:
     void checkpointIntervs( ostream& stream );
     void checkpointIntervs( istream& stream, const interventions::InterventionRegistry& reg );
 

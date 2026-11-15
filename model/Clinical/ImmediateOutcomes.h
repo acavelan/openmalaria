@@ -54,11 +54,11 @@ public:
     
     ImmediateOutcomes (double tSF) : CM5DayCommon(tSF) {}
     
-protected:
+public:
     /** Called when a non-severe/complicated malaria sickness occurs. */
     virtual void uncomplicatedEvent(Human& human, Episode::State pgState);
     
-private:
+public:
     static double cureRateUCOfficial[CM5DayCommon::NumCaseTypes];
     static double cureRateUCSelfTreat[CM5DayCommon::NumCaseTypes];
     static WithinHost::TreatmentId treatmentUC[CM5DayCommon::NumCaseTypes];

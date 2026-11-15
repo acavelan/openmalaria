@@ -125,7 +125,7 @@ public:
     /** The next continuous distribution in the series */
     uint32_t nextCtsDist = 0;
 
-private:
+public:
     SimTime dateOfBirth = sim::never();        // date of birth; humans are always born at the end of a time step
 
     const Transmission::VectorSpeciesParams* species_params;

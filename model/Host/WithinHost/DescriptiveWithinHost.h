@@ -58,7 +58,7 @@ public:
 
     virtual bool summarize( Host::Human& human ) const;
     
-protected:
+public:
     virtual void clearInfections( Treatments::Stages stage );
     
     virtual void checkpoint (istream& stream);

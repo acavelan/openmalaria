@@ -58,7 +58,7 @@ struct NeonatalMortality {
     /** Calculate risk of a neonatal mortality based on humans 20-25 years old. */
     void update (vector<Human> &population);
 
-private:
+public:
     /// Probability for a newborn to die (indirect death) because the mother is infected.
     /// Depends on the prevalence of parasitaemia in mother at some previous t.
     double riskFromMaternalInfection = 0.0;

@@ -53,7 +53,7 @@ public:
     virtual double calculateDrugFactor(LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const;
     virtual void updateConcentration (double body_mass);
     
-protected:
+public:
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
     

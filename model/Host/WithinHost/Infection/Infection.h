@@ -123,7 +123,7 @@ public:
         checkpoint (stream);
     }
     
-protected:
+public:
     inline virtual void checkpoint (ostream& stream) {
         m_startDate & stream;
         m_density & stream;
@@ -142,17 +142,15 @@ protected:
     /// Cumulative parasite density, since start of this infection
     double m_cumulativeExposureJ;
     
-private:
+public:
     /// Genotype of infection (a code; see Genotypes class).
     uint32_t m_genotype;
 
     int m_origin;
     
-protected:
+public:
     /// Pre-erythrocytic latent period (instantiated in WHFalciparum.cpp)
     static SimTime s_latentP;
-    
-    friend class ::UnittestUtil;
 };
 
 template <typename T>

@@ -45,7 +45,7 @@ namespace OM
         * older, based on a total population size of targetPop. */
         static int targetCumPop( size_t ageTSteps, int targetPop );
     
-    private:
+    public:
         /*! Estimates demography parameters to define a smooth curve for the target
         population age-distribution (age in years) */
         static void estimateRemovalRates( const scnXml::Demography& demography );

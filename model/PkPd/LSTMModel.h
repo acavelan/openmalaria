@@ -52,7 +52,7 @@ struct MedicateData {
         time & stream;
     }
     
-private:
+public:
     void load( const scnXml::PKPDMedication& med );
     
     inline MedicateData multiplied( double doseMult ){
@@ -64,10 +64,6 @@ private:
     size_t drug;      /// Drug type index
     double qty;         /// Quantity of drug prescribed in mg
     double time;        /// Time to medicate at, in days (0 means start of time step, may be >= 1 (thus not today))
-    
-    friend struct Schedule;
-    friend class LSTMModel;
-    friend class ::UnittestUtil;
 };
 
 /** Pharmacokinetic and pharmacodynamics interface, used by each human's
@@ -135,7 +131,7 @@ public:
     /** Make summaries of drug concentration data. */
     void summarize( const Host::Human& human ) const;
     
-private:
+public:
     /** Medicate drugs to an individual, which act on infections the following
      * time steps, until rendered ineffective by decayDrugs().
      *
@@ -160,8 +156,6 @@ private:
     
     /// All pending medications
     list<MedicateData> medicateQueue;
-    
-    friend class ::UnittestUtil;
 };
 
 } }
