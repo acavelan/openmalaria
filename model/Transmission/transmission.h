@@ -77,15 +77,8 @@ inline Anopheles::AnophelesModel *createAnophelesModel(size_t i, const scnXml::A
     {
         throw util::xml_scenario_error("VECTOR_LIFE_CYCLE_MODEL not yet "
                                        "implemented. Use VECTOR_SIMPLE_MPD_MODEL instead.");
-        // TODO
-        //  * Note: this model is older than SimpleMPD and more complicated.
-        //  * Difficulties are in parameterisation and estimation of resources.
-        // if (!lcOpt.present())
-        //     throw util::xml_scenario_error(
-        //         "VECTOR_LIFE_CYCLE_MODEL: requires <lifeCycle> element with "
-        //         "model parameters for each anopheles species");
-        // emergence = unique_ptr<EmergenceModel>( new LCEmergence() );
-        // emergence->initLifeCycle( lcOpt.get() );
+        // TODO: this model is older than SimpleMPD and more complicated;
+        // difficulties are in parameterisation and estimation of resources.
     }
     else if (util::ModelOptions::option(util::VECTOR_SIMPLE_MPD_MODEL))
     {
