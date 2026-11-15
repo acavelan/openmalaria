@@ -183,10 +183,10 @@ public:
     virtual ~PerHostInterventionData() {}
     
     /** Deploy an intervention. */
-    virtual void redeploy( LocalRng& rng, const HumanVectorInterventionComponent& params ) =0;
+    virtual void redeploy( LocalRng& rng, const HumanVectorInterventionComponent& params, SimTime now ) =0;
     
     /** Per time step update. Used by ITNs to update hole decay. */
-    virtual void update(Host::Human& human) =0;
+    virtual void update(Host::Human& human, SimTime ts0) =0;
     
     /** Get effect of deterrencies of interventions, as an attractiveness multiplier.
      * 
@@ -194,15 +194,15 @@ public:
      * negative. 0 means mosquitoes are fully deterred, 1 that the intervention
      * has no effect, 2 that the intervention attracts twice as many mosquitoes
      * as would otherwise come. */
-    virtual double relativeAttractiveness(size_t species) const =0;
+    virtual double relativeAttractiveness(size_t species, SimTime now) const =0;
     /** Get the killing effect on mosquitoes before they've eaten as a survival
      * multiplier. */
-    virtual double preprandialSurvivalFactor(size_t species) const =0;
+    virtual double preprandialSurvivalFactor(size_t species, SimTime now) const =0;
     /** Get the killing effect on mosquitoes after they've eaten as a survival
      * multiplier. */
-    virtual double postprandialSurvivalFactor(size_t species) const =0;
+    virtual double postprandialSurvivalFactor(size_t species, SimTime now) const =0;
     /// Get the mosquito fecundity multiplier (1 for no effect).
-    virtual double relFecundity(size_t species) const =0;
+    virtual double relFecundity(size_t species, SimTime now) const =0;
     
     /// Index of effect describing the intervention
     inline interventions::ComponentId id() const { return m_id; }
@@ -239,7 +239,7 @@ public:
     virtual ~HumanVectorInterventionComponent() {}
     
     /** Create a new object to store human-specific details of deployment. */
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng&) const =0;
+    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng&, SimTime now) const =0;
     virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream,
             interventions::ComponentId id ) const =0;
 public:
@@ -261,10 +261,10 @@ public:
     //@}
     
     /// Call once per time step. Updates net holes.
-    void update(Host::Human& human);
+    void update(Host::Human& human, SimTime ts0);
   
     /// Deploy some intervention component
-    void deployComponent( LocalRng& rng, const HumanVectorInterventionComponent& params );
+    void deployComponent( LocalRng& rng, const HumanVectorInterventionComponent& params, SimTime now );
     //@}
     
     /** Calculates the adjustment for body size in exposure to mosquitoes,
@@ -304,8 +304,8 @@ public:
      * rate) as well as age (avail. relative to an adult). It does not divide
      * by the average availability of the population, which was incorrectly done
      * in the past. */
-    inline double entoAvailabilityFull (size_t species, double ageYears) const {
-        return entoAvailabilityHetVecItv (species) * relativeAvailabilityAge (ageYears);
+    inline double entoAvailabilityFull (size_t species, double ageYears, SimTime now) const {
+        return entoAvailabilityHetVecItv (species, now) * relativeAvailabilityAge (ageYears);
     }
     //@}
 
@@ -315,26 +315,26 @@ public:
      * rate factors.)
      * 
      * Assume mean is human-to-vector availability rate factor. */
-    double entoAvailabilityHetVecItv (size_t species) const;
+    double entoAvailabilityHetVecItv (size_t species, SimTime now) const;
     
     ///@brief Get effects of interventions pre/post biting
     //@{
     /** Probability of a mosquito succesfully biting a host (P_B_i). */
-    double probMosqBiting (size_t species) const;
+    double probMosqBiting (size_t species, SimTime now) const;
     /** Probability of a mosquito succesfully finding a resting
      * place after biting and then resting (P_C_i * P_D_i). */
-    double probMosqResting (size_t species) const;
+    double probMosqResting (size_t species, SimTime now) const;
     /** Multiplicative factor for the number of fertile eggs laid by mosquitoes
      * after feeding on this host. Should be 1 normally, less than 1 to reduce
      * fertility, greater than 1 to increase. */
-    double relMosqFecundity (size_t species) const;
+    double relMosqFecundity (size_t species, SimTime now) const;
     //@}
     
     ///@brief Convenience wrappers around several functions
     //@{
     /// entoAvailabilityHetVecItv * probMosqBiting
-    inline double availBite (size_t species) const{
-        return entoAvailabilityHetVecItv(species) * probMosqBiting(species);
+    inline double availBite (size_t species, SimTime now) const{
+        return entoAvailabilityHetVecItv(species, now) * probMosqBiting(species, now);
     }
     //@}
     

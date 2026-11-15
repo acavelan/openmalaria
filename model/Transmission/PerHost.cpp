@@ -71,24 +71,24 @@ void PerHost::initialise (LocalRng& rng, double availabilityFactor, const Vector
     }
 }
 
-void PerHost::update(Host::Human& human){
+void PerHost::update(Host::Human& human, SimTime ts0){
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        (*iter)->update(human);
+        (*iter)->update(human, ts0);
     }
 }
 
-void PerHost::deployComponent( LocalRng& rng, const HumanVectorInterventionComponent& params ){
+void PerHost::deployComponent( LocalRng& rng, const HumanVectorInterventionComponent& params, SimTime now ){
     // This adds per-host per-intervention details to the host's data set.
     // This data is never removed since it can contain per-host heterogeneity samples.
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
         if( (*iter)->id() == params.id() ){
             // already have a deployment for that description; just update it
-            (*iter)->redeploy( rng, params );
+            (*iter)->redeploy( rng, params, now );
             return;
         }
     }
     // no deployment for that description: must make a new one
-    activeComponents.push_back( params.makeHumanPart(rng) );
+    activeComponents.push_back( params.makeHumanPart(rng, now) );
 }
 
 // Note: in the case an intervention is not present, we can use the approximation
@@ -96,32 +96,32 @@ void PerHost::deployComponent( LocalRng& rng, const HumanVectorInterventionCompo
 // (easily large enough for conceivable Weibull params that the value is 0.0 when
 // rounded to a double. Performance-wise it's perhaps slightly slower than using
 // an if() when interventions aren't present.
-double PerHost::entoAvailabilityHetVecItv (size_t species) const {
+double PerHost::entoAvailabilityHetVecItv (size_t species, SimTime now) const {
     double alpha_i = anophEntoAvailability[species];
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        alpha_i *= (*iter)->relativeAttractiveness( species );
+        alpha_i *= (*iter)->relativeAttractiveness( species, now );
     }
     return alpha_i;
 }
-double PerHost::probMosqBiting (size_t species) const {
+double PerHost::probMosqBiting (size_t species, SimTime now) const {
     double P_B_i = anophProbMosqBiting[species];
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        P_B_i *= (*iter)->preprandialSurvivalFactor( species );
+        P_B_i *= (*iter)->preprandialSurvivalFactor( species, now );
     }
     return P_B_i;
 }
-double PerHost::probMosqResting (size_t species) const {
+double PerHost::probMosqResting (size_t species, SimTime now) const {
     double pRest = anophProbMosqResting[species];
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        pRest *= (*iter)->postprandialSurvivalFactor( species );
+        pRest *= (*iter)->postprandialSurvivalFactor( species, now );
     }
     return pRest;
 }
 
-double PerHost::relMosqFecundity (size_t species) const {
+double PerHost::relMosqFecundity (size_t species, SimTime now) const {
     double relFecundity = 1.0;
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        relFecundity *= (*iter)->relFecundity( species );
+        relFecundity *= (*iter)->relFecundity( species, now );
     }
     return relFecundity;
 }

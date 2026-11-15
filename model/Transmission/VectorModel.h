@@ -77,7 +77,7 @@ public:
     /** Update the human's net holes (per time step, before EIR calculation). */
     virtual void startHumanUpdate(Host::Human &human) override
     {
-        human.perHostTransmission.update(human);
+        human.perHostTransmission.update(human, sim::ts0());
     }
 
     virtual void deployVectorPopInterv(size_t instance);

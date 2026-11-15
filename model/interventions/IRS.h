@@ -52,7 +52,7 @@ public:
     
     virtual void print_details( std::ostream& out )const;
     
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng& rng) const;
+    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng& rng, SimTime /*now*/) const;
     virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream, ComponentId ) const;
     
 public:
@@ -117,30 +117,30 @@ public:
     /// Read from checkpoint; component params are known (id was read by the caller).
     HumanIRS( istream& stream, const IRSComponent& params );
     
-    virtual void redeploy(LocalRng& rng, const Transmission::HumanVectorInterventionComponent& params);
+    virtual void redeploy(LocalRng& rng, const Transmission::HumanVectorInterventionComponent& params, SimTime now);
     
     virtual Component::Type componentType() const override { return Component::IRS; }
     
     /// Get remaining insecticide content based on initial amount and decay.
-    inline double getInsecticideContent(const IRSComponent& params)const{
-        SimTime age = sim::nowOrTs1() - deployTime;  // implies age 1 TS on first use
+    inline double getInsecticideContent(const IRSComponent& params, SimTime now)const{
+        SimTime age = now - deployTime;  // implies age 1 TS on first use
         double effectSurvival = insecticideDecayHet->eval( age );
         return initialInsecticide * effectSurvival;
     }
     
     /// Call once per time step to update holes
-    virtual void update(Host::Human& human);
+    virtual void update(Host::Human& human, SimTime ts0);
     
     /// Get deterrency. See ComponentParams::effect for a more detailed description.
-    virtual double relativeAttractiveness(size_t speciesIndex) const;
+    virtual double relativeAttractiveness(size_t speciesIndex, SimTime now) const;
     /// Get killing effect on mosquitoes before they've eaten.
     /// See ComponentParams::effect for a more detailed description.
-    virtual double preprandialSurvivalFactor(size_t speciesIndex) const;
+    virtual double preprandialSurvivalFactor(size_t speciesIndex, SimTime now) const;
     /// Get killing effect on mosquitoes after they've eaten.
     /// See ComponentParams::effect for a more detailed description.
-    virtual double postprandialSurvivalFactor(size_t speciesIndex) const;
+    virtual double postprandialSurvivalFactor(size_t speciesIndex, SimTime now) const;
     /// Get the mosquito fecundity multiplier (1 for no effect).
-    virtual double relFecundity(size_t speciesIndex) const;
+    virtual double relFecundity(size_t speciesIndex, SimTime now) const;
     
 public:
     virtual void checkpoint( ostream& stream );

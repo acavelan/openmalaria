@@ -63,8 +63,8 @@ IRSComponent::IRSComponent( ComponentId id, const scnXml::IRSDescription& elt,
     checker.checkNoneMissed();
 }
 
-void IRSComponent::deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits, SimTime /*now*/ )const{
-    human.perHostTransmission.deployComponent(human.rng, *this);
+void IRSComponent::deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits, SimTime now )const{
+    human.perHostTransmission.deployComponent(human.rng, *this, now);
     mon::recordDeploy(mon::measure("nMassIRS"), mon::measure("nCtsIRS"), human, method);
 }
 
@@ -74,7 +74,7 @@ void IRSComponent::print_details( std::ostream& out )const{
     out << id().id << "\tIRS";
 }
 
-unique_ptr<PerHostInterventionData> IRSComponent::makeHumanPart(LocalRng& rng) const{
+unique_ptr<PerHostInterventionData> IRSComponent::makeHumanPart(LocalRng& rng, SimTime /*now*/) const{
     return make_unique<HumanIRS>( rng, *this );
 }
 unique_ptr<PerHostInterventionData> IRSComponent::makeHumanPart( istream& stream, ComponentId ) const{
@@ -185,36 +185,36 @@ HumanIRS::HumanIRS( LocalRng& rng, const IRSComponent& params ) :
     insecticideDecayHet = params.insecticideDecay->hetSample(rng);
 }
 
-void HumanIRS::redeploy( LocalRng& rng, const OM::Transmission::HumanVectorInterventionComponent& ) {
+void HumanIRS::redeploy( LocalRng& rng, const OM::Transmission::HumanVectorInterventionComponent&, SimTime now ) {
     // PerHost::deployComponent only redeploys when the component ids match,
     // so the passed params are always the same component we were built with.
-    deployTime = sim::nowOrTs1();
+    deployTime = now;
     initialInsecticide = component.sampleInitialInsecticide(rng);
 }
 
-void HumanIRS::update(Host::Human& human){
+void HumanIRS::update(Host::Human&, SimTime /*ts0*/){
 }
 
-double HumanIRS::relativeAttractiveness(size_t speciesIndex) const{
+double HumanIRS::relativeAttractiveness(size_t speciesIndex, SimTime now) const{
     const IRSComponent::IRSAnopheles& anoph = component.species[speciesIndex];
-    double effect = anoph.relativeAttractiveness( getInsecticideContent(component) );
+    double effect = anoph.relativeAttractiveness( getInsecticideContent(component, now) );
     return anoph.byProtection( effect );
 }
 
-double HumanIRS::preprandialSurvivalFactor(size_t speciesIndex) const{
+double HumanIRS::preprandialSurvivalFactor(size_t speciesIndex, SimTime now) const{
     const IRSComponent::IRSAnopheles& anoph = component.species[speciesIndex];
-    double effect = anoph.preprandialSurvivalFactor( getInsecticideContent(component) );
+    double effect = anoph.preprandialSurvivalFactor( getInsecticideContent(component, now) );
     return anoph.byProtection( effect );
 }
 
-double HumanIRS::postprandialSurvivalFactor(size_t speciesIndex) const{
+double HumanIRS::postprandialSurvivalFactor(size_t speciesIndex, SimTime now) const{
     const IRSComponent::IRSAnopheles& anoph = component.species[speciesIndex];
-    double effect = anoph.postprandialSurvivalFactor( getInsecticideContent(component) );
+    double effect = anoph.postprandialSurvivalFactor( getInsecticideContent(component, now) );
     return anoph.byProtection( effect );
 }
-double HumanIRS::relFecundity(size_t speciesIndex) const{
+double HumanIRS::relFecundity(size_t speciesIndex, SimTime now) const{
     const IRSComponent::IRSAnopheles& anoph = component.species[speciesIndex];
-    double effect = anoph.fecundityEffect( getInsecticideContent(component) );
+    double effect = anoph.fecundityEffect( getInsecticideContent(component, now) );
     return anoph.byProtection( effect );
 }
 

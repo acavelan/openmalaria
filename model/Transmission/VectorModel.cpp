@@ -103,7 +103,7 @@ void VectorModel::ctsCbAlpha(const vector<Host::Human> &population, ostream &str
         double total = 0.0;
         for (const Host::Human &human : population)
         {
-            total += human.perHostTransmission.entoAvailabilityFull(i, sim::inYears(human.age(sim::now())));
+            total += human.perHostTransmission.entoAvailabilityFull(i, sim::inYears(human.age(sim::now())), sim::nowOrTs1());
         }
         stream << '\t' << total / population.size();
     }
@@ -115,7 +115,7 @@ void VectorModel::ctsCbP_B(const vector<Host::Human> &population, ostream &strea
         double total = 0.0;
         for (const Host::Human &human : population)
         {
-            total += human.perHostTransmission.probMosqBiting(i);
+            total += human.perHostTransmission.probMosqBiting(i, sim::nowOrTs1());
         }
         stream << '\t' << total / population.size();
     }
@@ -127,7 +127,7 @@ void VectorModel::ctsCbP_CD(const vector<Host::Human> &population, ostream &stre
         double total = 0.0;
         for (const Host::Human &human : population)
         {
-            total += human.perHostTransmission.probMosqResting(i);
+            total += human.perHostTransmission.probMosqResting(i, sim::nowOrTs1());
         }
         stream << '\t' << total / population.size();
     }
@@ -247,12 +247,12 @@ void VectorModel::init2(const vector<Host::Human> &population)
         for (const Host::Human &human : population)
         {
             const OM::Transmission::PerHost &host = human.perHostTransmission;
-            double prod = host.entoAvailabilityFull(i, sim::inYears(human.age(sim::now())));
+            double prod = host.entoAvailabilityFull(i, sim::inYears(human.age(sim::now())), sim::nowOrTs1());
             sum_avail += prod;
-            prod *= host.probMosqBiting(i);
+            prod *= host.probMosqBiting(i, sim::nowOrTs1());
             sigma_f += prod;
-            sigma_df += prod * host.probMosqResting(i);
-            sigma_dff += prod * host.probMosqResting(i) * host.relMosqFecundity(i);
+            sigma_df += prod * host.probMosqResting(i, sim::nowOrTs1());
+            sigma_dff += prod * host.probMosqResting(i, sim::nowOrTs1()) * host.relMosqFecundity(i, sim::nowOrTs1());
         }
 
         species[i]->init2(population.size(), meanAvail, sum_avail, sigma_f, sigma_df, sigma_dff);
@@ -348,11 +348,11 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
-            double eir = species[i]->getInterventionEIR() * host.relativeAvailabilityAge(ageYears) * host.entoAvailabilityHetVecItv(i);
+            double eir = species[i]->getInterventionEIR() * host.relativeAvailabilityAge(ageYears) * host.entoAvailabilityHetVecItv(i, sim::nowOrTs1());
             mon::recordStat(mon::measure("innoculationsPerAgeGroup"), human, eir);
             mon::recordStat(mon::measure("innoculationsPerVector"), human, eir, i);
             // cout << host.availBite(i) << endl;
-            // cout << "species: " << eir << " " << host.entoAvailabilityHetVecItv(i) << " " << host.entoAvailabilityHetVecItv(i) * (1000*0.00112608) << endl;
+            // cout << "species: " << eir << " " << host.entoAvailabilityHetVecItv(i, sim::nowOrTs1()) << " " << host.entoAvailabilityHetVecItv(i, sim::nowOrTs1()) * (1000*0.00112608) << endl;
             EIR_l[0] += eir;
         }
     }
@@ -373,11 +373,11 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
-            double eir = species[i]->getInitPartialEIR() * host.relativeAvailabilityAge(ageYears) * host.entoAvailabilityHetVecItv(i);
+            double eir = species[i]->getInitPartialEIR() * host.relativeAvailabilityAge(ageYears) * host.entoAvailabilityHetVecItv(i, sim::nowOrTs1());
             mon::recordStat(mon::measure("innoculationsPerAgeGroup"), human, eir);
             mon::recordStat(mon::measure("innoculationsPerVector"), human, eir, i);
             // cout << host.availBite(i) << endl;
-            // cout << "species: " << eir << " " << host.entoAvailabilityHetVecItv(i) << " " << host.entoAvailabilityHetVecItv(i) * (1000*0.00112608) << endl;
+            // cout << "species: " << eir << " " << host.entoAvailabilityHetVecItv(i, sim::nowOrTs1()) << " " << host.entoAvailabilityHetVecItv(i, sim::nowOrTs1()) * (1000*0.00112608) << endl;
             EIR_l[0] += eir;
         }
     }
@@ -400,7 +400,7 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
-            double entoFactor = ageFactor * host.availBite(i);
+            double entoFactor = ageFactor * host.availBite(i, sim::nowOrTs1());
             for (size_t g = 0; g < EIR_i.size(); ++g)
             {
                 double eir_i = partialEIR_i[g] * entoFactor;
@@ -437,9 +437,9 @@ void VectorModel::vectorUpdate(const vector<Host::Human> &population)
             // NOTE: calculate availability relative to age at end of time step;
             // not my preference but consistent with TransmissionModel::getEIR().
             // TODO: even stranger since probTransmission comes from the previous time step
-            const double avail = host.entoAvailabilityFull(s, sim::inYears(human.age(sim::ts1())));
+            const double avail = host.entoAvailabilityFull(s, sim::inYears(human.age(sim::ts1())), sim::nowOrTs1());
             sum_avail[s] += avail;
-            const double df = avail * host.probMosqBiting(s) * host.probMosqResting(s);
+            const double df = avail * host.probMosqBiting(s, sim::nowOrTs1()) * host.probMosqResting(s, sim::nowOrTs1());
             sigma_df[s] += df;
             for (size_t g = 0; g < nGenotypes; ++g)
             {
@@ -447,7 +447,7 @@ void VectorModel::vectorUpdate(const vector<Host::Human> &population)
                 sigma_dif_i[s][g] += df * probTransmission_i[g] * tbvFac;
                 sigma_dif_l[s][g] += df * probTransmission_l[g] * tbvFac;
             }
-            sigma_dff[s] += df * host.relMosqFecundity(s);
+            sigma_dff[s] += df * host.relMosqFecundity(s, sim::nowOrTs1());
         }
     }
 
