@@ -547,8 +547,6 @@ vector<ComponentId> removeAtIds[SubPopRemove::NUM];
 void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, const Population &population,
           Transmission::TransmissionModel &transmission)
 {
-    // ponytail: aliases keep these (soon-to-be-rewritten) bodies untouched;
-    // remove together with the Phase-4 interventions rewrite.
     auto& continuous = mgr.continuous;
     auto& timed = mgr.timed;
     uint32_t& nextTimed = mgr.nextTimed;
@@ -878,7 +876,6 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
         {
             typedef scnXml::AddNonHumanHosts::NonHumanHostsSequence SeqT;
             const SeqT &seq = intervElt.getAddNonHumanHosts().get().getNonHumanHosts();
-            size_t instance = 0;
             for (auto it = seq.begin(), end = seq.end(); it != end; ++it)
             {
                 const scnXml::NonHumanHosts2 &elt = *it;
@@ -892,7 +889,6 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
                         timed.push_back(TimedDeployment{checkDeployDate(date), readAddNhh(elt.getName(), lifespan,
                             elt.getDescription().getAnopheles(), transmission)});
                     }
-                    instance++;
                 }
             }
         }
@@ -1013,12 +1009,8 @@ void loadFromCheckpoint(Model& model)
     InterventionManager& mgr = model.interventions;
     vector<Host::Human>& population = model.humans.humans;
     Transmission::TransmissionModel& transmission = *model.transmission;
-    // ponytail: aliases keep these (soon-to-be-rewritten) bodies untouched;
-    // remove together with the Phase-4 interventions rewrite.
-    auto& continuous = mgr.continuous;
     auto& timed = mgr.timed;
     uint32_t& nextTimed = mgr.nextTimed;
-    auto& importedInfections = mgr.importedInfections;
 
     SimTime date = sim::intervDate();
     // We need to re-deploy changeHS and changeEIR interventions, but nothing

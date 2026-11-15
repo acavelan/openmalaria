@@ -207,8 +207,6 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
         // every day, medicate drugs, update each infection, then decay drugs
         pkpdModel.medicate(rng);
         
-        double sumLogDens = 0.0;
-        
         for(auto inf = infections.begin(); inf != infections.end();) {
             // Note: this is only one treatment model; there is also the PK/PD model
             bool expires = ((*inf)->bloodStage() ? treatmentBlood : treatmentLiver);
@@ -235,7 +233,6 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
                 timeStepMaxDensity = max(timeStepMaxDensity, density);
                 if( density > 0 ){
                     // Base 10 logarithms are usually used; +1 because it avoids negatives in output while having very little affect on high densities
-                    sumLogDens += log10(1.0 + density);
                 }
                 ++inf;
             }

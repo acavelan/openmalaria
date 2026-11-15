@@ -58,7 +58,7 @@ public:
 
     unique_ptr<DecayFunction> makeHetSample(double) const {
         unique_ptr<ConstantDecayFunction> copy = std::make_unique<ConstantDecayFunction>(*this);
-        return std::move(copy);
+        return copy;
     }
 };
 
@@ -83,7 +83,7 @@ public:
 
     unique_ptr<DecayFunction> makeHetSample(double) const {
         unique_ptr<StepDecayFunction> copy = make_unique<StepDecayFunction>(*this);
-        return std::move(copy);
+        return copy;
     }
     
 private:
@@ -111,7 +111,7 @@ public:
 
     unique_ptr<DecayFunction> makeHetSample(double) const {
         unique_ptr<LinearDecayFunction> copy = make_unique<LinearDecayFunction>(*this);
-        return std::move(copy);
+        return copy;
     }
     
 private:
@@ -135,7 +135,7 @@ public:
 
     unique_ptr<DecayFunction> makeHetSample(double) const {
         unique_ptr<ExponentialDecayFunction> copy = make_unique<ExponentialDecayFunction>(*this);
-        return std::move(copy);
+        return copy;
     }
     
 private:
@@ -164,7 +164,7 @@ public:
 
     unique_ptr<DecayFunction> makeHetSample(double) const {
         unique_ptr<WeibullDecayFunction> copy = make_unique<WeibullDecayFunction>(*this);
-        return std::move(copy);
+        return copy;
     }
     
 private:
@@ -189,7 +189,7 @@ public:
 
     unique_ptr<DecayFunction> makeHetSample(double) const {
         unique_ptr<HillDecayFunction> copy = make_unique<HillDecayFunction>(*this);
-        return std::move(copy);
+        return copy;
     }
     
 private:
@@ -217,7 +217,7 @@ public:
 
     unique_ptr<DecayFunction> makeHetSample(double) const {
         unique_ptr<SmoothCompactDecayFunction> copy = make_unique<SmoothCompactDecayFunction>(*this);
-        return std::move(copy);
+        return copy;
     }
     
 private:
@@ -253,7 +253,7 @@ public:
         unique_ptr<DecayFunction> f1hetSample = f1->hetSample(hetFactor);
         unique_ptr<DecayFunction> f2hetSample = f2->hetSample(hetFactor);
         unique_ptr<OperatorDecayFunction> copy = make_unique<OperatorDecayFunction>(*this, std::move(f1hetSample), std::move(f2hetSample));
-        return std::move(copy);
+        return copy;
     }
 
 private:
@@ -332,7 +332,7 @@ public:
         std::unique_ptr<DecayFunction> fhetSample = f->hetSample(hetFactor);
         std::unique_ptr<EmaxFunction> copy =
             std::make_unique<EmaxFunction>(*this, std::move(fhetSample));
-        return std::move(copy);
+        return copy;
     }
 
 private:
