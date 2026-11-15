@@ -190,9 +190,9 @@ const string &reverseLookup(const map<string, size_t> &m, size_t i)
 
 VectorModel::VectorModel(vector<double> initEIR, int interventionMode, vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
                          vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList, map<string, size_t> speciesIndexList,
-                         int populationSize, VectorSpeciesParams species_store)
+                         int populationSize, VectorSpeciesParams species_store, util::MasterRng& master_rng)
     : TransmissionModel(std::move(initEIR), interventionMode, WithinHost::Genotypes::N())
-    , m_rng(util::master_RNG)
+    , m_rng(master_rng)
     , initIterations(0)
     , species(std::move(speciesList))
     , emergenceRateEstimators(std::move(emergenceRateEstimatorsList))

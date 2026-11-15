@@ -151,7 +151,8 @@ int main(int argc, char* argv[])
 
         // 1) elements with no dependencies on other elements initialised here:
         WithinHost::Genotypes::init( *scenario );
-        util::master_RNG.seed( scenario->getModel().getComputationParameters().getIseed(), 0 ); // Init RNG with Iseed
+        util::MasterRng master_rng(0, 0);  // master RNG, used only to seed local RNGs
+        master_rng.seed( scenario->getModel().getComputationParameters().getIseed(), 0 ); // Init RNG with Iseed
         util::ModelNameProvider modelNameProvider(scenario->getModel());
 
         // 2) elements depending on only elements initialised in (1):
@@ -180,9 +181,9 @@ int main(int argc, char* argv[])
         // monitoring age groups (from Surveys.init()):
         size_t popSize = scenario->getDemography().getPopSize();
 
-        std::unique_ptr<TransmissionModel> transmission = std::unique_ptr<TransmissionModel>(Transmission::createTransmissionModel(scenario->getEntomology(), popSize));
+        std::unique_ptr<TransmissionModel> transmission = std::unique_ptr<TransmissionModel>(Transmission::createTransmissionModel(scenario->getEntomology(), popSize, master_rng));
         transmission->setAgeAvailability(scenario->getModel().getHuman().getAvailabilityToMosquitoes());
-        std::unique_ptr<Population> population = std::unique_ptr<Population>(new Population(popSize, transmission->speciesParams, transmission->ageAvailability));
+        std::unique_ptr<Population> population = std::unique_ptr<Population>(new Population(popSize, transmission->speciesParams, transmission->ageAvailability, master_rng));
 
         registerContinousPopulationCallbacks();
 
@@ -227,7 +228,7 @@ int main(int argc, char* argv[])
         if (startedFromCheckpoint)
         {
             mon::Continuous::init(scenario->getMonitoring(), true);
-            readCheckpoint(checkpointFileName, endTime, estEndTime, *population, *transmission);
+            readCheckpoint(checkpointFileName, endTime, estEndTime, *population, *transmission, master_rng);
 
             /** Calculate ento availability percentiles **/
             transmission->speciesParams.calcAvailabilityPercentiles();
@@ -279,7 +280,7 @@ int main(int argc, char* argv[])
 
             if(util::CommandLine::option (util::CommandLine::CHECKPOINT))
             {
-                writeCheckpoint(startedFromCheckpoint, checkpointFileName, endTime, estEndTime, *population, *transmission);
+                writeCheckpoint(startedFromCheckpoint, checkpointFileName, endTime, estEndTime, *population, *transmission, master_rng);
                 if( util::CommandLine::option (util::CommandLine::CHECKPOINT_STOP) )
                     throw util::cmd_exception ("Checkpoint test: checkpoint written", util::Error::None);
             }

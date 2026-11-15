@@ -36,7 +36,7 @@ class Population
 {
 public:
     Population(size_t size, const Transmission::VectorSpeciesParams& species_params,
-             const Transmission::AgeGroupInterpolator& age_availability);
+             const Transmission::AgeGroupInterpolator& age_availability, util::MasterRng& master_rng);
 
     /** Create the initial population of Humans */
     void createInitialHumans();
@@ -72,6 +72,7 @@ private:
 
     const Transmission::VectorSpeciesParams& species_params;
     const Transmission::AgeGroupInterpolator& age_availability;
+    util::MasterRng& master_rng;
 };
 
 void registerContinousPopulationCallbacks();

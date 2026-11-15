@@ -478,7 +478,8 @@ public:
     static unique_ptr<Host::Human> createHuman(SimTime dateOfBirth){
         static const Transmission::VectorSpeciesParams NO_SPECIES;
         static const util::AgeGroupInterpolator NO_CURVE;
-        return unique_ptr<Host::Human>( new Host::Human(dateOfBirth, NO_SPECIES, NO_CURVE) );
+        static util::MasterRng NO_MASTER(0, 0);
+        return unique_ptr<Host::Human>( new Host::Human(dateOfBirth, NO_SPECIES, NO_CURVE, NO_MASTER) );
     }
     // Set the WithinHost model used by the human, and return a pointer to it. Do not delete this!
     static WithinHost::WHInterface* setHumanWH(Host::Human& human, unique_ptr<WithinHost::WHInterface> wh){

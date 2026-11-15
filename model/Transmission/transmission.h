@@ -317,7 +317,7 @@ inline Anopheles::AnophelesModel *createAnophelesModel(size_t i, const scnXml::A
     return anophModel;
 }
 
-inline VectorModel *createVectorModel(const scnXml::Entomology &entoData, int populationSize)
+inline VectorModel *createVectorModel(const scnXml::Entomology &entoData, int populationSize, util::MasterRng& master_rng)
 {
     const scnXml::Vector &vectorData = entoData.getVector().get();
     scnXml::Vector::AnophelesSequence anophelesList = vectorData.getAnopheles();
@@ -365,19 +365,19 @@ inline VectorModel *createVectorModel(const scnXml::Entomology &entoData, int po
         // speciesIndex.clear();
     }
 
-    return new VectorModel(initialisationEIR, interventionMode, std::move(species), std::move(emergenceRateEstimators), speciesIndex, populationSize, std::move(species_params));
+    return new VectorModel(initialisationEIR, interventionMode, std::move(species), std::move(emergenceRateEstimators), speciesIndex, populationSize, std::move(species_params), master_rng);
 }
 
 ///@brief Creation, destruction and checkpointing
 //@{
 /// Creates a derived class
-inline TransmissionModel *createTransmissionModel(const scnXml::Entomology &entoData, int populationSize)
+inline TransmissionModel *createTransmissionModel(const scnXml::Entomology &entoData, int populationSize, util::MasterRng& master_rng)
 {
     // Entomology contains either a list of at least one anopheles or a list of at
     // least one EIRDaily.
     TransmissionModel *model;
     if (entoData.getVector().present())
-        model = createVectorModel(entoData, populationSize);
+        model = createVectorModel(entoData, populationSize, master_rng);
     else
     {
         if (!entoData.getNonVector().present()) // should be a validation error, but anyway...

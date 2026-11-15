@@ -268,7 +268,36 @@ keep includes minimal. Trivial C++20-isms only where they delete characters
 
 ---
 
-## 5. Intervention subsystem map (for the Phase-4 rewrite)
+## 5. Progress log
+
+Phase 1 — break the PerHost knot — DONE (52/52 byte-identical throughout):
+
+- 1.1 `b075639e` ITN/IRS/GVI components pass themselves (`*this`) into
+  `makeHumanPart`; `componentsByIndex` static registries gone; unchecked
+  `dynamic_cast` in `HumanITN::redeploy` gone (component reference stored).
+- 1.2 `32ea03e6` `PerHostAnophParams::params` / `entoAvailabilityPercentiles`
+  statics → `Transmission::VectorSpeciesParams` value member of
+  `TransmissionModel`, threaded through `PerHost::initialise`, `Human`
+  (via `Population`), `AnophelesModel::initAvailability/deployVectorTrap`
+  and the entomo filters in `Deployments.h`. `main.cpp` builds the
+  transmission model before the population (neither ctor draws RNG, so
+  draw order is untouched).
+- 1.3 `ecf10b64` `PerHost::relAvailAge` static curve → public
+  `TransmissionModel::ageAvailability` (+ `setAgeAvailability` deriving
+  `adultAge`); `PerHost` holds a non-owning pointer.
+- 1.4 `0b3aa03d` net-hole tick: `VectorModel::calculateEIR` first line →
+  `TransmissionModel::getEIR` first line via virtual `startHumanUpdate`
+  hook (base no-op, vector overrides). RNG sequence position unchanged.
+- 1.5 `6ee0a202` `getEIR`/`updateKappa` moved to new
+  `TransmissionModel.cpp`; `TransmissionModel.h` no longer includes
+  `Population.h` / WithinHost headers.
+
+Net effect: `PerHost.h` includes nothing from Transmission; no mutable
+process-wide state left in the transmission/PerHost path.
+
+---
+
+## 6. Intervention subsystem map (for the Phase-4 rewrite)
 
 ```
 reading:      InterventionManager::init  (if/else chain over 13 component kinds)
@@ -294,7 +323,7 @@ All of this is ~50 lines of real math wearing 741 lines of scaffolding.
 
 ---
 
-## 6. Ground rules for every commit
+## 7. Ground rules for every commit
 
 1. Build clean; `unittest` green; `test/run.py` byte-identical. No exceptions.
 2. One mechanical change per commit; behavior-preserving by construction

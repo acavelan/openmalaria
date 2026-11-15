@@ -51,7 +51,7 @@ public:
     * 
     * @param dateOfBirth date of birth (usually start of next time step) */
     Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& species_params,
-        const Transmission::AgeGroupInterpolator& age_availability);
+        const Transmission::AgeGroupInterpolator& age_availability, util::MasterRng& master_rng);
 
     /// Allow move construction
     Human(Human&&) = default;

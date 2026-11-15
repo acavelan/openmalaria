@@ -52,7 +52,7 @@ public:
 
     VectorModel(vector<double> initEIR, int interventionMode, vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
                 vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList, map<string, size_t> speciesIndexList,
-                int populationSize, VectorSpeciesParams species_store);
+                int populationSize, VectorSpeciesParams species_store, util::MasterRng& master_rng);
 
     virtual ~VectorModel();
 

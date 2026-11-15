@@ -107,9 +107,9 @@ HumanHet hetSample(util::LocalRng& rng)
 }
 
 Human::Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& species_params,
-        const Transmission::AgeGroupInterpolator& age_availability) :
+        const Transmission::AgeGroupInterpolator& age_availability, util::MasterRng& master_rng) :
     infIncidence(InfectionIncidenceModel::createModel()),
-    rng(util::master_RNG),
+    rng(master_rng),
     dateOfBirth(dateOfBirth),
     species_params(&species_params)
 {
