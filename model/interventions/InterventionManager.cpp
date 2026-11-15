@@ -178,6 +178,23 @@ ContinuousHumanDeployment::ContinuousHumanDeployment(SimTime begin, SimTime end,
 
 const string vec_mode_err = "vector interventions can only be used in dynamic transmission mode (mode=\"dynamic\")";
 
+namespace {
+/** Is the human's total mosquito availability within [min,max] percentiles?
+ * Timed deployments test the current (intervention-adjusted) availability,
+ * continuous deployments the raw baseline value (behaviour kept as-is). */
+bool inAvailabilityRange(const Host::Human& human, bool raw, SimTime minAvail, SimTime maxAvail,
+                         const Transmission::VectorSpeciesParams& species_params)
+{
+    const vector<double>& values = raw ? human.perHostTransmission.anophEntoAvailabilityRaw
+                                       : human.perHostTransmission.anophEntoAvailability;
+    double availability = 0.0;
+    for (size_t i = 0; i < species_params.numSpecies(); ++i)
+        availability += values[i];
+    return availability >= species_params.getEntoAvailabilityPercentile(minAvail)
+        && availability <= species_params.getEntoAvailabilityPercentile(maxAvail);
+}
+}
+
 void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::TransmissionModel& transmission)
 {
     struct Action {
@@ -200,10 +217,6 @@ void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::
             for(Host::Human& human : population) {
                 const SimTime age = human.age(sim::now());
                 if( age >= a.minAge && age < a.maxAge ){
-                    double availability = 0.0;
-                    for(size_t i = 0; i < transmission.speciesParams.numSpecies(); ++i)
-                        availability += human.perHostTransmission.anophEntoAvailability[i];
-
                     double probability = a.base.coverage;
 
                     if(a.base.copula && a.base.coverage > 0)
@@ -262,7 +275,7 @@ void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::
                         }
                     }
 
-                    if( availability >= transmission.speciesParams.getEntoAvailabilityPercentile(a.minAvailability) && availability <= transmission.speciesParams.getEntoAvailabilityPercentile(a.maxAvailability) ) {
+                    if( inAvailabilityRange(human, false, a.minAvailability, a.maxAvailability, transmission.speciesParams) ) {
                         if( a.base.subPop == ComponentId::wholePop() || (human.isInSubPop( a.base.subPop ) != a.base.complement) ){
                             if( human.rng.bernoulli( probability ) ){
                                 a.base.intervention->deploy( human, mon::Deploy::TIMED, a.base.vaccLimits );
@@ -280,10 +293,7 @@ void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::
             for(Host::Human &human : population) {
                 SimTime age = human.age(sim::now());
                 if( age >= h.minAge && age < h.maxAge ){
-                    double availability = 0.0;
-                    for(size_t i = 0; i < transmission.speciesParams.numSpecies(); ++i)
-                        availability += human.perHostTransmission.anophEntoAvailability[i];
-                    if( availability >= transmission.speciesParams.getEntoAvailabilityPercentile(h.minAvailability) && availability <= transmission.speciesParams.getEntoAvailabilityPercentile(h.maxAvailability) ) {
+                    if( inAvailabilityRange(human, false, h.minAvailability, h.maxAvailability, transmission.speciesParams) ) {
                         if( h.base.subPop == ComponentId::wholePop() || (human.isInSubPop( h.base.subPop ) != h.base.complement) ){
                             total+=1;
                             if( !human.isInSubPop(a.cumCovId) )
@@ -471,11 +481,7 @@ bool filterAndDeploy(const ContinuousHumanDeployment& dep, Host::Human& human,
         // human for now because remaining ones happen in the future
         return false;
     }else if( dep.deployAge == age ){
-        double availability = 0.0;
-        for(size_t i = 0; i < species_params.numSpecies(); ++i)
-            availability += human.perHostTransmission.anophEntoAvailabilityRaw[i];
-
-        if( availability >= species_params.getEntoAvailabilityPercentile(dep.minAvailability) && availability <= species_params.getEntoAvailabilityPercentile(dep.maxAvailability) )
+        if( inAvailabilityRange(human, true, dep.minAvailability, dep.maxAvailability, species_params) )
         {
             auto now = sim::intervDate();
             if( dep.begin <= now && now < dep.end &&
