@@ -32,6 +32,9 @@
 #include "interventions/Deployments.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Transmission/VectorModel.h"
+#include "Clinical/ClinicalModel.h"
+#include "Transmission/PerHost.h"
+#include "util/SpeciesIndexChecker.h"
 
 namespace OM
 {
@@ -48,7 +51,492 @@ std::map<std::string, ComponentId> identifierMap;
 // during initialisation and thereafter only for memory management.
 vector<unique_ptr<HumanInterventionComponent>> humanComponents;
 
-InterventionManager::~InterventionManager() = default;
+// ———  Deployments: free functions over the data structs  ———
+
+void VaccineLimits::set( const scnXml::DeploymentBase& deploy ){
+    if( deploy.getVaccMinPrevDoses().present() ){
+        int v = deploy.getVaccMinPrevDoses().get();
+        if( v < 0 ) throw util::xml_scenario_error( "vaccMinPrevDoses: min value is 0" );
+        minPrevDoses = v;
+    }
+    if( deploy.getVaccMaxCumDoses().present() ){
+        int v = deploy.getVaccMaxCumDoses().get();
+        if( v < 0 ) throw util::xml_scenario_error( "vaccMaxCumDoses: min value is 0" );
+        maxCumDoses = v;
+    }
+}
+
+SimTime checkDeployDate(SimTime date) {
+    if( date < sim::startDate() ){
+        throw util::xml_scenario_error("timed intervention deployment: may not be negative");
+    }else if( date >= sim::endDate() ){
+        cerr << "Warning: timed intervention deployment at date "<< date;
+        cerr << " happens after last survey" << endl;
+    }
+    return date;
+}
+
+HumanDeployment::HumanDeployment(const scnXml::DeploymentBase& deploy,
+                                 std::shared_ptr<const HumanIntervention> intervention,
+                                 ComponentId subPop, bool complement) :
+        coverage( deploy.getCoverage() ),
+        subPop( subPop ),
+        complement( complement ),
+        intervention( intervention )
+{
+    if( !(coverage >= 0.0 && coverage <= 1.0) ){
+        throw util::xml_scenario_error("intervention deployment coverage must be in range [0,1]");
+    }
+    // If coverageCorr or coverageVar is present, then the user is asking for the copula
+    if(deploy.getCoverageCorr().present() || deploy.getCoverageVar().present())
+    {
+        if(!(deploy.getCoverageCorr().present() && deploy.getCoverageVar().present()))
+            throw std::runtime_error("[Gaussian copula]: both coverageCorr and coverageVar must be present");
+
+        if(deploy.getCoverageVar().get() < 0)
+            throw std::runtime_error("[Gaussian copula]: negative variance is not allowed");
+
+        // if variance is 0, then no copula and fall back to probability = coverage
+        if(deploy.getCoverageVar().get() > 0)
+        {
+            coverageCorr = deploy.getCoverageCorr().get();
+            coverageVar = deploy.getCoverageVar().get();
+            copula = true;
+        }
+    }
+
+    vaccLimits.set( deploy );
+}
+
+TimedDeployment::Human::Human(const scnXml::MassDeployment& mass,
+                              std::shared_ptr<const HumanIntervention> intervention,
+                              ComponentId subPop, bool complement) :
+    base( mass, intervention, subPop, complement ),
+    minAge( sim::fromYearsN( mass.getMinAge() ) ),
+    maxAge( sim::future() ),
+    minAvailability( 0 ),
+    maxAvailability( 100 )
+{
+    if( mass.getMaxAge().present() )
+        maxAge = sim::fromYearsN( mass.getMaxAge().get() );
+
+    if( minAge < sim::zero() || maxAge < minAge )
+        throw util::xml_scenario_error("timed intervention must have 0 <= minAvailability <= maxAvailability <= 100");
+
+    if( mass.getMaxAvailability().present() )
+        maxAvailability = mass.getMaxAvailability().get();
+
+    if( mass.getMinAvailability().present() )
+        minAvailability = mass.getMinAvailability().get();
+
+    if( minAvailability < sim::zero() || maxAvailability < minAvailability )
+        throw util::xml_scenario_error("timed intervention must have 0 <= minAvailability <= maxAvailability <= 100");
+}
+
+TimedDeployment::CumulativeHuman::CumulativeHuman(const scnXml::MassDeployment& mass,
+                              std::shared_ptr<const HumanIntervention> intervention,
+                              ComponentId subPop, bool complement, ComponentId cumCovId) :
+    human( mass, intervention, subPop, complement ), cumCovId( cumCovId )
+{
+}
+
+ContinuousHumanDeployment::ContinuousHumanDeployment(SimTime begin, SimTime end,
+                                 const ::scnXml::ContinuousDeployment& elt,
+                                 std::shared_ptr<const HumanIntervention> intervention,
+                                 ComponentId subPop, bool complement) :
+        base( elt, intervention, subPop, complement ),
+        begin( begin ), end( end ),
+        deployAge( sim::fromYearsN( elt.getTargetAgeYrs() ) ),
+        minAvailability( 0 ),
+        maxAvailability( 100 )
+{
+    if( begin < sim::startDate() || end < begin ){
+        throw util::xml_scenario_error("continuous intervention must have startDate <= begin <= end");
+    }
+    if( deployAge <= sim::zero() ){
+        ostringstream msg;
+        msg << "continuous intervention with target age "<<elt.getTargetAgeYrs();
+        msg << " years corresponds to time step " << sim::inSteps(deployAge);
+        msg << "; must be at least 1.";
+        throw util::xml_scenario_error( msg.str() );
+    }
+    if( deployAge > sim::maxHumanAge() ){
+        ostringstream msg;
+        msg << "continuous intervention must have target age no greater than ";
+        msg << sim::inYears(sim::maxHumanAge());
+        throw util::xml_scenario_error( msg.str() );
+    }
+    if( elt.getMaxAvailability().present() )
+        maxAvailability = elt.getMaxAvailability().get();
+
+    if( elt.getMinAvailability().present() )
+        minAvailability = elt.getMinAvailability().get();
+
+    if( minAvailability < sim::zero() || maxAvailability < minAvailability )
+        throw util::xml_scenario_error("timed intervention must have 0 <= minAvailability <= maxAvailability <= 100");
+}
+
+const string vec_mode_err = "vector interventions can only be used in dynamic transmission mode (mode=\"dynamic\")";
+
+void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::TransmissionModel& transmission)
+{
+    struct Action {
+        vector<Host::Human>& population;
+        Transmission::TransmissionModel& transmission;
+
+        void operator() (std::monostate) const {}  // list-end marker
+        void operator() (TimedDeployment::ChangeHS& a) const {
+            Clinical::ClinicalModel::setHS( *a.newHS );
+            a.newHS.reset();
+        }
+        void operator() (TimedDeployment::ChangeEIR& a) const {
+            transmission.changeEIRIntervention( *a.newEIR );
+            a.newEIR.reset();
+        }
+        void operator() (const TimedDeployment::UninfectVectors&) const {
+            transmission.uninfectVectors();
+        }
+        void operator() (const TimedDeployment::Human& a) const {
+            for(Host::Human& human : population) {
+                const SimTime age = human.age(sim::now());
+                if( age >= a.minAge && age < a.maxAge ){
+                    double availability = 0.0;
+                    for(size_t i = 0; i < transmission.speciesParams.numSpecies(); ++i)
+                        availability += human.perHostTransmission.anophEntoAvailability[i];
+
+                    double probability = a.base.coverage;
+
+                    if(a.base.copula && a.base.coverage > 0)
+                    {
+                        try
+                        {
+                            // Beta distribution for intervention (Beta distributed)
+                            const double beta_mean = a.base.coverage;  // Assuming this value is given
+                            const double beta_var = a.base.coverageVar;       // Given as well
+                            const double alpha = ((1.0 - beta_mean) / beta_var - 1.0 / beta_mean) * (beta_mean * beta_mean);
+                            const double beta = alpha * (1.0 / beta_mean - 1.0);
+
+                            if(transmission.speciesParams.numSpecies() > 1)
+                                throw std::runtime_error("only supports one mosquito species");
+
+                            const double ux = transmission.speciesParams.get(0).entoAvailability->cdf(human.perHostTransmission.anophEntoAvailabilityRaw[0]);
+                            if(ux < 1)
+                            {
+                                double xx = gsl_cdf_ugaussian_Pinv(ux);                      // Unit interval to Normal
+
+                                // Apply the Gaussian copula transformation for correlation
+                                const ComponentId cid = a.base.subPop;
+
+                                /** human.rng.gauss(0.0, 1.0) is calculated once per component and per human. Re-deployment of
+                                 * the same component on the same human must use the same gaussian sample. Therefore we store
+                                 * this value in the human the first time it is calculated. */
+                                double g = 0.0;
+                                const auto it = human.perHostTransmission.copulaGaussianSamples.find(cid);
+                                if (it != human.perHostTransmission.copulaGaussianSamples.end())
+                                    g = it->second;
+                                else
+                                {
+                                    g = human.rng.gauss(0.0, 1.0);
+                                    human.perHostTransmission.copulaGaussianSamples[cid] = g;
+                                }
+                                const double yy = a.base.coverageCorr * xx + g * sqrt(1 - a.base.coverageCorr * a.base.coverageCorr);
+
+                                // Transform back to unit interval
+                                const double uy = gsl_cdf_ugaussian_P(yy);
+
+                                if (alpha < 0 || beta < 0)
+                                    throw std::runtime_error("resulting alpha and beta parameters must be positive");
+
+                                // Get the final probability from Beta distribution
+                                probability = gsl_cdf_beta_Pinv(uy, alpha, beta);
+                            }
+                            else // Gamma with CV=0
+                                probability = human.rng.beta(alpha, beta);
+                        }
+                        catch (const std::exception& e) {
+                            std::ostringstream oss;
+                            oss << "[Gaussian copula]: computing correlated intervention probability using Gaussian copula and Beta distribution: "
+                                << e.what()
+                                << ". Possible reason: coverage might be too high and/or population size might be too small.";
+                            throw std::runtime_error(oss.str());
+                        }
+                    }
+
+                    if( availability >= transmission.speciesParams.getEntoAvailabilityPercentile(a.minAvailability) && availability <= transmission.speciesParams.getEntoAvailabilityPercentile(a.maxAvailability) ) {
+                        if( a.base.subPop == ComponentId::wholePop() || (human.isInSubPop( a.base.subPop ) != a.base.complement) ){
+                            if( human.rng.bernoulli( probability ) ){
+                                a.base.intervention->deploy( human, mon::Deploy::TIMED, a.base.vaccLimits );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        void operator() (const TimedDeployment::CumulativeHuman& a) const {
+            const TimedDeployment::Human& h = a.human;
+            // Cumulative case: bring target group's coverage up to target coverage
+            vector<Host::Human*> unprotected;
+            size_t total = 0;       // number of humans within age bound and optionally subPop
+            for(Host::Human &human : population) {
+                SimTime age = human.age(sim::now());
+                if( age >= h.minAge && age < h.maxAge ){
+                    double availability = 0.0;
+                    for(size_t i = 0; i < transmission.speciesParams.numSpecies(); ++i)
+                        availability += human.perHostTransmission.anophEntoAvailability[i];
+                    if( availability >= transmission.speciesParams.getEntoAvailabilityPercentile(h.minAvailability) && availability <= transmission.speciesParams.getEntoAvailabilityPercentile(h.maxAvailability) ) {
+                        if( h.base.subPop == ComponentId::wholePop() || (human.isInSubPop( h.base.subPop ) != h.base.complement) ){
+                            total+=1;
+                            if( !human.isInSubPop(a.cumCovId) )
+                                unprotected.push_back( &human );
+                        }
+                    }
+                }
+            }
+
+            if( total == 0 ) return;        // no humans to deploy to; avoid divide by zero
+            double propProtected = static_cast<double>( total - unprotected.size() ) / static_cast<double>( total );
+            if( propProtected < h.base.coverage ){
+                // Proportion propProtected are already covered, so need to
+                // additionally cover the proportion (coverage - propProtected),
+                // selected from the list unprotected.
+                double additionalCoverage = (h.base.coverage - propProtected) / (1.0 - propProtected);
+                cerr << "cum deployment: prop protected " << propProtected << "; additionalCoverage " << additionalCoverage << "; total " << total << endl;
+                for(Host::Human* human : unprotected) {
+                    if( human->rng.uniform_01() < additionalCoverage ){
+                        h.base.intervention->deploy( *human, mon::Deploy::TIMED, h.base.vaccLimits );
+                    }
+                }
+            }
+        }
+        void operator() (const TimedDeployment::VectorPop& a) const {
+            Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+            if(vectorModel)
+                vectorModel->deployVectorPopInterv(a.instance);
+        }
+        void operator() (const TimedDeployment::Trap& a) const {
+            Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+            if(vectorModel)
+            {
+                double number = population.size() * a.ratio;
+                vectorModel->deployVectorTrap(a.instance, number, a.lifespan);
+            }
+        }
+        void operator() (const TimedDeployment::ReduceNhh& a) const {
+            Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+            if(vectorModel)
+            {
+                for (size_t i = 0; i < vectorModel->speciesIndex.size(); ++i)
+                {
+                    Transmission::Anopheles::AnophelesModel *anophModel = vectorModel->species[i].get();
+
+                    if (anophModel->nhhInstances.count(a.intervName) == 0)
+                        throw util::xml_scenario_error("non human hosts type " + a.intervName + " not deployed during non human hosts intervention deployment");
+
+                    anophModel->reduceNhhAvailability[a.intervName][a.instance].deploy(vectorModel->m_rng, sim::now());
+                    anophModel->reduceP_B_I[a.intervName][a.instance].deploy(vectorModel->m_rng, sim::now());
+                    anophModel->reduceP_C_I[a.intervName][a.instance].deploy(vectorModel->m_rng, sim::now());
+                    anophModel->reduceP_D_I[a.intervName][a.instance].deploy(vectorModel->m_rng, sim::now());
+                    anophModel->reduceFecundity[a.intervName][a.instance].deploy(vectorModel->m_rng, sim::now());
+                }
+            }
+        }
+        void operator() (TimedDeployment::AddNhh& a) const {
+            Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+            if(vectorModel)
+            {
+                double popSize = population.size();
+                if (vectorModel->interventionMode != Transmission::SimulationMode::dynamicEIR) { throw util::xml_scenario_error(vec_mode_err); }
+                for (size_t i = 0; i < vectorModel->speciesIndex.size(); ++i)
+                {
+                    Transmission::Anopheles::AnophelesModel *anophModel = vectorModel->species[i].get();
+
+                    if (anophModel->nhhInstances.count(a.intervName) != 0)
+                        throw util::xml_scenario_error("non human hosts type " + a.intervName + " already deployed during non human hosts deployment");
+
+                    const TimedDeployment::AddNhh::SpeciesParams &p = a.params[anophModel->mosq.name];
+                    const double adultAvail = transmission.speciesParams.get(i).entoAvailability->mean();
+                    const double avail_i = transmission.speciesParams.get(i).entoAvailabilityFactor * popSize * adultAvail * p.mosqRelativeAvailabilityHuman;
+                    Transmission::Anopheles::Nhh nhh;
+
+                    nhh.avail_i = avail_i;
+                    nhh.P_B_I = p.mosqProbBiting;
+                    nhh.P_C_I = p.mosqProbFindingRestSite;
+                    nhh.P_D_I = p.mosqProbResting;
+                    nhh.rel_fecundity = p.hostFecundityFactor;
+                    nhh.expiry = sim::now() + a.lifespan;
+
+                    // add the nhh to the active nhh instances
+                    anophModel->nhhInstances[a.intervName] = nhh;
+                }
+            }
+        }
+    };
+    std::visit(Action{population, transmission}, dep.action);
+}
+
+void initReduceNhh(size_t instance, const std::string &intervName,
+                   const scnXml::Description2::AnophelesSequence list,
+                   const scnXml::DecayFunction &decay, Transmission::TransmissionModel& transmission)
+{
+    Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+    if(vectorModel)
+    {
+        util::SpeciesIndexChecker checker(intervName, vectorModel->speciesIndex);
+        for (const scnXml::NonHumanHostsSpeciesIntervention &anoph : list)
+        {
+            const string &mosqName = anoph.getMosquito();
+            size_t i = checker.getIndex(mosqName);
+
+            Transmission::Anopheles::AnophelesModel *anophModel = vectorModel->species[i].get();
+
+            if (anophModel->reduceNhhAvailability[intervName].size() <= instance) anophModel->reduceNhhAvailability[intervName].resize(instance + 1);
+            if (anophModel->reduceP_B_I[intervName].size() <= instance) anophModel->reduceP_B_I[intervName].resize(instance + 1);
+            if (anophModel->reduceP_C_I[intervName].size() <= instance) anophModel->reduceP_C_I[intervName].resize(instance + 1);
+            if (anophModel->reduceP_D_I[intervName].size() <= instance) anophModel->reduceP_D_I[intervName].resize(instance + 1);
+            if (anophModel->reduceFecundity[intervName].size() <= instance) anophModel->reduceFecundity[intervName].resize(instance + 1);
+
+            if (anoph.getAvailabilityReduction().present())
+            {
+                const scnXml::AvailabilityReduction &decayFunc = anoph.getAvailabilityReduction().get();
+                if (decayFunc.getInitial() > 1.0) throw util::xml_scenario_error("availabilityReduction intervention: initial effect must be <= 1");
+                anophModel->reduceNhhAvailability[intervName][instance].set(decayFunc.getInitial(), decay, "availabilityReduction");
+            }
+            if (anoph.getPreprandialKillingEffect().present())
+            {
+                const scnXml::PreprandialKillingEffect &decayFunc = anoph.getPreprandialKillingEffect().get();
+                if (decayFunc.getInitial() < 0 || decayFunc.getInitial() > 1)
+                    throw util::xml_scenario_error("PreprandialKillingEffect intervention: initial effect must be between 0 and 1");
+                anophModel->reduceP_B_I[intervName][instance].set(decayFunc.getInitial(), decay, "reduceP_B_I");
+            }
+            if (anoph.getPostprandialKillingEffect().present())
+            {
+                const scnXml::PostprandialKillingEffect &decayFunc = anoph.getPostprandialKillingEffect().get();
+                if (decayFunc.getInitial() < 0 || decayFunc.getInitial() > 1)
+                    throw util::xml_scenario_error("PostprandialKillingEffect intervention: initial effect must be between 0 and 1");
+                anophModel->reduceP_C_I[intervName][instance].set(decayFunc.getInitial(), decay, "reduceP_C_I");
+            }
+            if (anoph.getRestingKillingEffect().present())
+            {
+                const scnXml::RestingKillingEffect &decayFunc = anoph.getRestingKillingEffect().get();
+                if (decayFunc.getInitial() < 0 || decayFunc.getInitial() > 1)
+                    throw util::xml_scenario_error("RestingKillingEffect intervention: initial effect must be be between 0 and 1");
+                anophModel->reduceP_D_I[intervName][instance].set(decayFunc.getInitial(), decay, "reduceP_D_I");
+            }
+            if (anoph.getFecundityReduction().present())
+            {
+                const scnXml::FecundityReduction &decayFunc = anoph.getFecundityReduction().get();
+                if (decayFunc.getInitial() < 0 || decayFunc.getInitial() > 1)
+                    throw util::xml_scenario_error("FecundityReduction intervention: initial effect must be be between 0 and 1");
+                anophModel->reduceFecundity[intervName][instance].set(decayFunc.getInitial(), decay, "reduceFecundity");
+            }
+        }
+        checker.checkNoneMissed();
+    }
+}
+
+TimedDeployment::AddNhh readAddNhh(const std::string &intervName, SimTime lifespan,
+                                   const scnXml::Description3::AnophelesSequence list,
+                                   Transmission::TransmissionModel& transmission)
+{
+    TimedDeployment::AddNhh result;
+    result.intervName = intervName;
+    result.lifespan = lifespan;
+    Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+    if(vectorModel)
+    {
+        util::SpeciesIndexChecker checker(intervName, vectorModel->speciesIndex);
+        for (const scnXml::NonHumanHostsVectorSpecies &anoph : list)
+        {
+            const string &mosqName = anoph.getMosquito();
+            checker.getIndex(mosqName);
+
+            TimedDeployment::AddNhh::SpeciesParams &p = result.params[mosqName];
+            p.mosqRelativeAvailabilityHuman = anoph.getMosqRelativeAvailabilityHuman().getValue();
+            p.mosqProbBiting = anoph.getMosqProbBiting().getValue();
+            p.mosqProbFindingRestSite = anoph.getMosqProbFindRestSite().getValue();
+            p.mosqProbResting = anoph.getMosqProbResting().getValue();
+            p.hostFecundityFactor = anoph.getHostFecundityFactor().getValue();
+        }
+        checker.checkNoneMissed();
+    }
+    return result;
+}
+
+bool filterAndDeploy(const ContinuousHumanDeployment& dep, Host::Human& human,
+                     const Transmission::VectorSpeciesParams& species_params)
+{
+    SimTime age = human.age(sim::now());
+    if( dep.deployAge > age ){
+        // stop processing continuous deployments for this
+        // human for now because remaining ones happen in the future
+        return false;
+    }else if( dep.deployAge == age ){
+        double availability = 0.0;
+        for(size_t i = 0; i < species_params.numSpecies(); ++i)
+            availability += human.perHostTransmission.anophEntoAvailabilityRaw[i];
+
+        if( availability >= species_params.getEntoAvailabilityPercentile(dep.minAvailability) && availability <= species_params.getEntoAvailabilityPercentile(dep.maxAvailability) )
+        {
+            auto now = sim::intervDate();
+            if( dep.begin <= now && now < dep.end &&
+                ( dep.base.subPop == ComponentId::wholePop() ||
+                    (human.isInSubPop( dep.base.subPop ) != dep.base.complement)
+                ) &&
+                human.rng.uniform_01() < dep.base.coverage )     // RNG call should be last test
+            {
+                dep.base.intervention->deploy( human, mon::Deploy::CTS, dep.base.vaccLimits );
+            }
+        }
+    }//else: for some reason, a deployment age was missed; ignore it
+    return true;
+}
+
+void print_details(std::ostream& out, const TimedDeployment& dep)
+{
+    struct Print {
+        std::ostream& out;
+        void operator() (std::monostate) const { out << "Dummy"; }
+        void operator() (const TimedDeployment::ChangeHS&) const { out << "ChangeHS"; }
+        void operator() (const TimedDeployment::ChangeEIR&) const { out << "ChangeEIR"; }
+        void operator() (const TimedDeployment::UninfectVectors&) const { out << "UninfectVectors"; }
+        void operator() (const TimedDeployment::Human& a) const {
+            out << "Human:" << endl;
+            out << "	age: " << sim::inYears(a.minAge) << "y	max age: " << sim::inYears(a.maxAge) << "y	subpop: ";
+            if( a.base.subPop == ComponentId::wholePop() ) out << "whole";
+            else out << a.base.subPop.id;
+            out << "	complement: " << a.base.complement << "	coverage: " << a.base.coverage << "	";
+            a.base.intervention->print_details( out );
+        }
+        void operator() (const TimedDeployment::CumulativeHuman& a) const { (*this)(a.human); }
+        void operator() (const TimedDeployment::VectorPop&) const { out << "Vector"; }
+        void operator() (const TimedDeployment::Trap& a) const {
+            out << "VectorTrap:" << endl;
+            out << "	ratio: " << a.ratio << "	lifespan: " << a.lifespan;
+        }
+        void operator() (const TimedDeployment::ReduceNhh& a) const {
+            out << "NonHumanHosts(" << a.intervName << ")";
+        }
+        void operator() (const TimedDeployment::AddNhh& a) const {
+            out << "AddNonHumanHosts(" << a.intervName << "):" << endl;
+            out << "	lifespan: " << a.lifespan;
+        }
+    };
+    std::visit(Print{out}, dep.action);
+}
+
+void print_details(std::ostream& out, const ContinuousHumanDeployment& dep)
+{
+    out << "Human:" << endl;
+    out << "	begin: " << dep.begin << "	end: ";
+    if( dep.end == sim::future() ) out << "(none)";
+    else out << dep.end;
+    out << "	deployAge: " << sim::inYears(dep.deployAge) << "y	subpop: ";
+    if( dep.base.subPop == ComponentId::wholePop() ) out << "whole";
+    else out << dep.base.subPop.id;
+    out << "	complement: " << dep.base.complement << "	coverage: " << dep.base.coverage << "	";
+    dep.base.intervention->print_details( out );
+}
+
 
 // declared in HumanComponents.h:
 vector<ComponentId> removeAtIds[SubPopRemove::NUM];
@@ -77,7 +565,8 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
                 try
                 {
                     SimTime date = UnitParse::readDate(it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
-                    timed.push_back(unique_ptr<TimedDeployment>(new TimedChangeHSDeployment(date, *it)));
+                    timed.push_back(TimedDeployment{checkDeployDate(date), TimedDeployment::ChangeHS{
+                        unique_ptr<scnXml::HealthSystem>(it->_clone())}});
                 }
                 catch (const util::format_error &e)
                 {
@@ -97,7 +586,8 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
                 try
                 {
                     SimTime date = UnitParse::readDate(it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
-                    timed.push_back(unique_ptr<TimedDeployment>(new TimedChangeEIRDeployment(date, *it)));
+                    timed.push_back(TimedDeployment{checkDeployDate(date), TimedDeployment::ChangeEIR{
+                        unique_ptr<scnXml::NonVector>(it->_clone())}});
                 }
                 catch (const util::format_error &e)
                 {
@@ -307,16 +797,16 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
                         ComponentId cumCovComponent = getComponentId(cumCov.getComponent());
                         for (auto deploy = deployTimes.begin(), end = deployTimes.end(); deploy != end; ++deploy)
                         {
-                            timed.push_back(unique_ptr<TimedDeployment>(new TimedCumulativeHumanDeployment(
-                                deploy->first, *deploy->second, intervention, subPop, complement, cumCovComponent)));
+                            timed.push_back(TimedDeployment{checkDeployDate(deploy->first), TimedDeployment::CumulativeHuman(
+                                *deploy->second, intervention, subPop, complement, cumCovComponent)});
                         }
                     }
                     else
                     {
                         for (auto deploy = deployTimes.begin(), end = deployTimes.end(); deploy != end; ++deploy)
                         {
-                            timed.push_back(unique_ptr<TimedDeployment>(
-                                new TimedHumanDeployment(deploy->first, *deploy->second, intervention, subPop, complement)));
+                            timed.push_back(TimedDeployment{checkDeployDate(deploy->first), TimedDeployment::Human(
+                                *deploy->second, intervention, subPop, complement)});
                         }
                     }
                 }
@@ -360,7 +850,7 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
             for (auto it = elt.getTimedDeployment().begin(); it != elt.getTimedDeployment().end(); ++it)
             {
                 SimTime date = UnitParse::readDate(it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
-                timed.push_back(unique_ptr<TimedDeployment>(new TimedUninfectVectorsDeployment(date)));
+                timed.push_back(TimedDeployment{checkDeployDate(date), TimedDeployment::UninfectVectors{}});
             }
         }
     }
@@ -383,7 +873,7 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
                     for (auto it = seq.begin(); it != seq.end(); ++it)
                     {
                         SimTime date = UnitParse::readDate(it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
-                        timed.push_back(unique_ptr<TimedDeployment>(new TimedVectorDeployment(date, instance)));
+                        timed.push_back(TimedDeployment{checkDeployDate(date), TimedDeployment::VectorPop{instance}});
                     }
                     instance++;
                 }
@@ -410,7 +900,8 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
                         SimTime date =
                             UnitParse::readDate(deploy.getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
                         SimTime lifespan = UnitParse::readDuration(deploy.getLifespan(), UnitParse::NONE);
-                        timed.push_back(unique_ptr<TimedDeployment>(new TimedAddNonHumanHostsDeployment(date, elt.getName(), lifespan, elt.getDescription().getAnopheles(), transmission)));
+                        timed.push_back(TimedDeployment{checkDeployDate(date), readAddNhh(elt.getName(), lifespan,
+                            elt.getDescription().getAnopheles(), transmission)});
                     }
                     instance++;
                 }
@@ -437,8 +928,10 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
                     for (auto it = seq.begin(); it != seq.end(); ++it)
                     {
                         SimTime date = UnitParse::readDate(it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
-                        timed.push_back(
-                            unique_ptr<TimedDeployment>(new TimedNonHumanHostsDeployment(date, instance, elt.getNonHumanHostsName(), elt.getDescription().getAnopheles(), decay, transmission)));
+                        const string& nhhName = elt.getNonHumanHostsName();
+                        date = checkDeployDate(date);
+                        initReduceNhh(instance, nhhName, elt.getDescription().getAnopheles(), decay, transmission);
+                        timed.push_back(TimedDeployment{date, TimedDeployment::ReduceNhh{instance, nhhName}});
                     }
                     instance++;
                 }
@@ -463,7 +956,7 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
                         SimTime date = UnitParse::readDate(deploy.getTime(), UnitParse::STEPS);
                         double ratio = deploy.getRatioToHumans();
                         SimTime lifespan = UnitParse::readDuration(deploy.getLifespan(), UnitParse::NONE);
-                        timed.push_back(unique_ptr<TimedDeployment>(new TimedTrapDeployment(date, instance, ratio, lifespan)));
+                        timed.push_back(TimedDeployment{checkDeployDate(date), TimedDeployment::Trap{instance, ratio, lifespan}});
                     }
                 }
                 instance += 1;
@@ -475,25 +968,27 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
 
     // lists must be sorted, increasing
     // For reproducability, we need to use stable_sort, not sort.
-    stable_sort(continuous.begin(), continuous.end(), byDeployTime);
-    stable_sort(timed.begin(), timed.end(), byDeployTime);
+    stable_sort(continuous.begin(), continuous.end(),
+        [](const ContinuousHumanDeployment& a, const ContinuousHumanDeployment& b) { return a.deployAge < b.deployAge; });
+    stable_sort(timed.begin(), timed.end(),
+        [](const TimedDeployment& a, const TimedDeployment& b) { return a.date < b.date; });
 
     // make sure the list ends with something always in the future, so we don't
     // have to check nextTimed is within range:
-    timed.push_back(unique_ptr<TimedDeployment>(new DummyTimedDeployment()));
+    timed.push_back(TimedDeployment{sim::future(), std::monostate{}});
 
     if (util::CommandLine::option(util::CommandLine::PRINT_INTERVENTIONS))
     {
         cout << "Continuous deployments:" << endl << "begin\tend\tage\tsub pop\tcompl\tcoverag\tcomponents" << endl;
         for (auto it = continuous.begin(); it != continuous.end(); ++it)
         {
-            it->print_details(std::cout);
+            print_details(std::cout, *it);
             cout << endl;
         }
         cout << "Timed deployments:" << endl << "time\tmin age\tmax age\tsub pop\tcompl\tcoverag\tcomponents" << endl;
         for (auto &deploy : timed)
         {
-            deploy->print_details(std::cout);
+            print_details(std::cout, deploy);
             cout << endl;
         }
         cout << "Human components:" << endl;
@@ -538,15 +1033,15 @@ void loadFromCheckpoint(InterventionManager& mgr, vector<Host::Human> &populatio
     // else. nextTimed should be zero so we can go through all past interventions.
     // Only redeploy those which happened before this time step.
     assert(nextTimed == 0);
-    while (timed[nextTimed]->date < date)
+    while (timed[nextTimed].date < date)
     {
-        TimedDeployment *deployment = &*timed[nextTimed];
-        if (dynamic_cast<TimedChangeHSDeployment *>(deployment) != 0 || dynamic_cast<TimedChangeEIRDeployment *>(deployment) != 0)
+        const auto& action = timed[nextTimed].action;
+        if (std::holds_alternative<TimedDeployment::ChangeHS>(action) || std::holds_alternative<TimedDeployment::ChangeEIR>(action))
         {
             // Note: neither changeHS nor changeEIR interventions care what the
             // current time step is when they are deployed, so we don't need to
             // tell them the deployment date.
-            deployment->deploy(population, transmission);
+            apply(timed[nextTimed], population, transmission);
         }
         nextTimed += 1;
     }
@@ -568,16 +1063,16 @@ void deploy(InterventionManager& mgr, vector<Host::Human> &population, Transmiss
 
     // deploy timed interventions
     SimTime now = sim::intervDate();
-    while (timed[nextTimed]->date <= now)
+    while (timed[nextTimed].date <= now)
     {
         if (util::CommandLine::option(util::CommandLine::VERBOSE))
         {
             cout << "deploy::" << now << "::Timed";
-            timed[nextTimed]->print_details(cout);
+            print_details(cout, timed[nextTimed]);
             cout << endl;
         }
 
-        timed[nextTimed]->deploy(population, transmission);
+        apply(timed[nextTimed], population, transmission);
         nextTimed += 1;
     }
 
@@ -591,10 +1086,10 @@ void deploy(InterventionManager& mgr, vector<Host::Human> &population, Transmiss
             if (util::CommandLine::option(util::CommandLine::VERBOSE))
             {
                 cout << "deploy::" << now << "::Continuous";
-                continuous[nextCtsDist].print_details(cout);
+                print_details(cout, continuous[nextCtsDist]);
                 cout << endl;
             }
-            if (!continuous[nextCtsDist].filterAndDeploy(human, transmission.speciesParams)) break; // deployment (and all remaining) happens in the future
+            if (!filterAndDeploy(continuous[nextCtsDist], human, transmission.speciesParams)) break; // deployment (and all remaining) happens in the future
             nextCtsDist = ++human.nextCtsDist;
         }
     }

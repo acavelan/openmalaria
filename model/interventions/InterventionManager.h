@@ -28,6 +28,7 @@
 #include "Host/ImportedInfections.h"
 #include "Transmission/TransmissionModel.h"
 #include "schema/interventions.h"
+#include "interventions/Deployments.h"
 
 namespace OM {
     class Population;
@@ -36,9 +37,6 @@ namespace OM {
     }
 
 namespace interventions {
-
-class ContinuousHumanDeployment;
-class TimedDeployment;
 
 /** Registry lookups. Components are read once from XML and live for the
  * whole simulation (Phase 4 replaces this with owned registry storage). */
@@ -57,14 +55,10 @@ ComponentId getComponentId( const std::string textId );
 /** All runtime deployment state; plain data, manipulated through the free
  * functions below. */
 struct InterventionManager {
-    // Deployment types are only forward-declared above; destructor is
-    // defined where they are complete (InterventionManager.cpp).
-    ~InterventionManager();
-
     // Continuous interventions, sorted by deployment age (weakly increasing)
     vector<ContinuousHumanDeployment> continuous;
     // List of all timed interventions. Should be sorted (time weakly increasing).
-    vector<unique_ptr<TimedDeployment>> timed;
+    vector<TimedDeployment> timed;
     uint32_t nextTimed = 0;  // not checkpointed (see loadFromCheckpoint)
 
     // imported infections are not really interventions, and handled by a separate class

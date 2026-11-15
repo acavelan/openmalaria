@@ -22,7 +22,7 @@
 
 #include "Model.h"
 #include "Transmission/transmission.h"
-#include "interventions/Deployments.h" // complete deployment types (InterventionManager dtor)
+#include "Clinical/ClinicalModel.h" // ClinicalModel is complete (Population dtor via Human members)
 
 namespace OM
 {
