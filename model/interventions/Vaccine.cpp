@@ -135,9 +135,9 @@ VaccineComponent::VaccineComponent( ComponentId component, const scnXml::Vaccine
     params[component.id] = this;
 }
 
-void VaccineComponent::deploy(Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits, SimTime /*now*/) const
+void VaccineComponent::deploy(Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits, SimTime now) const
 {
-    bool administered = human.vaccine.possiblyVaccinate( human, id(), vaccLimits );
+    bool administered = human.vaccine.possiblyVaccinate( human, id(), vaccLimits, now );
     if( administered && VaccineComponent::reportComponent == id() ){
         mon::recordDeploy(mon::measure("nMassVaccinations"), mon::measure("nEPIVaccinations"), human, method);
     }
@@ -207,11 +207,11 @@ void PerEffectPerHumanVaccine::checkpointHet(istream& stream) {
     VaccineComponent::getParams(component).decayFunc->checkpointSample(hetSample, stream);
 }
 
-double PerHumanVaccine::getFactor( Vaccine::Types type, uint32_t genotype) const {
+double PerHumanVaccine::getFactor( Vaccine::Types type, SimTime now, uint32_t genotype) const {
     double factor = 1.0;
     for( EffectList::const_iterator effect = effects.begin(); effect != effects.end(); ++effect ){
         if( VaccineComponent::getParams(effect->component).type == type ){
-            SimTime age = sim::ts1() - effect->timeLastDeployment;  // implies age 1 TS on first use
+            SimTime age = now - effect->timeLastDeployment;  // implies age 1 TS on first use
             double decayFactor = effect->hetSample->eval( age );
             factor *= 1.0 - effect->perGenotypeInitialEfficacy[genotype] * decayFactor;
         }
@@ -220,7 +220,7 @@ double PerHumanVaccine::getFactor( Vaccine::Types type, uint32_t genotype) const
 }
 
 bool PerHumanVaccine::possiblyVaccinate( Host::Human& human,
-        ComponentId componentId, interventions::VaccineLimits vaccLimits )
+        ComponentId componentId, interventions::VaccineLimits vaccLimits, SimTime now )
 {
     PerEffectPerHumanVaccine* effect = 0;
     for( EffectList::iterator it = effects.begin(); it != effects.end(); ++it ){
@@ -250,7 +250,7 @@ bool PerHumanVaccine::possiblyVaccinate( Host::Human& human,
     util::streamValidate(effect->perGenotypeInitialEfficacy);
     
     effect->numDosesAdministered = numDosesAdministered + 1;
-    effect->timeLastDeployment = sim::nowOrTs1();
+    effect->timeLastDeployment = now;
     
     return true;
 }

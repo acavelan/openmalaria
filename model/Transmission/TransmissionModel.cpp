@@ -103,11 +103,11 @@ double TransmissionModel::updateKappa(const vector<Host::Human> &population)
         // Only to be consistent with old simulation runs when set to false
         // Setting this option to true will only affect reporting
         if (opt_vaccine_genotype == false)
-            riskTrans = avail * pTransmit * human.vaccine.getFactor(interventions::Vaccine::TBV);
+            riskTrans = avail * pTransmit * human.vaccine.getFactor(interventions::Vaccine::TBV, sim::nowOrTs1());
         else
         {
             for (size_t g = 0; g < WithinHost::Genotypes::N(); ++g)
-                riskTrans += (probTransGenotype_i[g] + probTransGenotype_l[g]) * human.vaccine.getFactor(interventions::Vaccine::TBV, g);
+                riskTrans += (probTransGenotype_i[g] + probTransGenotype_l[g]) * human.vaccine.getFactor(interventions::Vaccine::TBV, sim::nowOrTs1(), g);
             riskTrans *= avail;
         }
 

@@ -157,7 +157,7 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
         // If opt_vaccine_genotype is true the infection is discarded with probability 1-vaccineFactor
         if( opt_vaccine_genotype )
         {
-            double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
+            double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, sim::nowOrTs1(), genotype );
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
                 infections.push_back(createInfection (rng, genotype, InfectionOrigin::Introduced));
             else
@@ -177,7 +177,7 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
         // If opt_vaccine_genotype is true the infection is discarded with probability 1-vaccineFactor
         if( opt_vaccine_genotype )
         {
-            double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
+            double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, sim::nowOrTs1(), genotype );
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
                 infections.push_back(createInfection (rng, genotype, InfectionOrigin::Indigenous));
             else
@@ -214,7 +214,7 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
             if( !expires ){     /* no expiry due to simple treatment model; do update */
                 const double drugFactor = pkpdModel.getDrugFactor(rng, *inf, body_mass);
                 const double immFactor = immunitySurvivalFactor(ageInYears, (*inf)->cumulativeExposureJ());
-                const double bsvFactor = human.vaccine.getFactor(interventions::Vaccine::BSV, opt_vaccine_genotype? (*inf)->genotype() : 0);
+                const double bsvFactor = human.vaccine.getFactor(interventions::Vaccine::BSV, sim::nowOrTs1(), opt_vaccine_genotype? (*inf)->genotype() : 0);
                 const double survivalFactor = bsvFactor * _innateImmSurvFact * immFactor * drugFactor;
                 // update, may result in termination of infection:
                 expires = (*inf)->update(rng, survivalFactor, now, body_mass);

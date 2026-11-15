@@ -111,13 +111,13 @@ public:
     PerHumanVaccine() {}
     
     /** Get one minus the efficacy of the vaccine (1 for no effect, 0 for full effect). */
-    double getFactor( Vaccine::Types type, uint32_t genotype = 0) const;
+    double getFactor( Vaccine::Types type, SimTime now, uint32_t genotype = 0) const;
     
     /** Vaccinate unless the passed VaccineLimits specify not to.
      * 
      * @returns true when the vaccine is administered */
     bool possiblyVaccinate( Host::Human& human, ComponentId componentId,
-                           interventions::VaccineLimits vaccLimits );
+                           interventions::VaccineLimits vaccLimits, SimTime now );
 
     
     /// Checkpointing
