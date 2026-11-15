@@ -25,6 +25,7 @@
 
 #include "util/DecayFunction.h"
 #include "Transmission/PerHost.h"
+#include "interventions/InterventionFactors.h"
 namespace scnXml {
     class IRSDescription;
     class IRSDeterrency;
@@ -67,21 +68,21 @@ public:
         
         /// Get deterrency. See ComponentParams::effect for a more detailed description.
         inline double relativeAttractiveness( double insecticideContent )const{
-            return _relativeAttractiveness.relativeAttractiveness( insecticideContent );
+            return _relativeAttractiveness.relativeAttractiveness( 0.0, insecticideContent );
         }
         /// Get survival effect on mosquitoes before feeding.
         /// See ComponentParams::effect for a more detailed description.
         inline double preprandialSurvivalFactor( double insecticideContent )const{
-            return _preprandialKillingEffect.survivalFactor( insecticideContent );
+            return _preprandialKillingEffect.survivalFactor( 0.0, insecticideContent );
         }
         /// Get survival effect on mosquitoes after they've eaten.
         /// See ComponentParams::effect for a more detailed description.
         inline double postprandialSurvivalFactor( double insecticideContent )const{
-            return _postprandialKillingEffect.survivalFactor( insecticideContent );
+            return _postprandialKillingEffect.survivalFactor( 0.0, insecticideContent );
         }
         /// Get fecundity effect on mosquitoes surviving feeding
         inline double fecundityEffect( double insecticideContent )const{
-            return _fecundityEffect.survivalFactor( insecticideContent );
+            return _fecundityEffect.survivalFactor( 0.0, insecticideContent );
         }
         
         /// Return x*proportionProtected + proportionUnprotected
@@ -90,56 +91,12 @@ public:
         }
         
     public:
-        class RelativeAttractiveness {
-        public:
-            RelativeAttractiveness();
-            
-            /** Set parameters.
-            * 
-            * It is checked that input parameters lie in a range such that
-            * the relative availability is always in the range (0,1] — that is,
-            * the deterrent can never be perfect, but can have zero effect. */
-            void init(const scnXml::IRSDeterrency& elt);
-            
-            /** Calculate effect. Positive is interpreted as having a positive effect
-            * (thus decreasing availability or survival) and negative as having a
-            * negative effect. Effect is not bounded, though it tends to
-            * zero as holeIndex becomes large and insecticideContent tends to zero,
-            * and parameters should be defined such that it is always in the
-            * range [0,1]. */
-            double relativeAttractiveness( double insecticideContent )const;
-            
-        public:
-            double lPF;      // log of insecticide factor
-            double insecticideScaling;
-        };
-        class SurvivalFactor {
-        public:
-            SurvivalFactor();
-            
-            /** Set parameters.
-            * 
-            * It is checked that parameters lie in a suitible range, giving a
-            * survival factor between 0 and 1. */
-            void init(const scnXml::IRSKillingEffect& elt, bool postPrandial, double maxInsecticide);
-            /// Initialise, such that factor returned is always 1 (i.e. no effect).
-            void init1();
-            
-            /** Calculate additional survival factor imposed by IRS on pre-/post-
-            * prandial killing. Should be bounded to [0,1] and tend to 1 as the
-            * IRS ages. */
-            double survivalFactor( double insecticideContent )const;
-        public:
-            double BF,PF;   // base and insecticide factors
-            double insecticideScaling;
-            double invBaseSurvival; // stored for performance only
-        };
         double proportionProtected;
         double proportionUnprotected;
-        RelativeAttractiveness _relativeAttractiveness;
-        SurvivalFactor _preprandialKillingEffect;
-        SurvivalFactor _postprandialKillingEffect;
-        SurvivalFactor _fecundityEffect;
+        factors::RelativeAttractiveness _relativeAttractiveness;
+        factors::SurvivalFactor _preprandialKillingEffect;
+        factors::SurvivalFactor _postprandialKillingEffect;
+        factors::SurvivalFactor _fecundityEffect;
     };
     
     double sampleInitialInsecticide(LocalRng& rng) const;

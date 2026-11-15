@@ -26,12 +26,9 @@
 #include "util/DecayFunction.h"
 #include "Transmission/PerHost.h"
 #include "util/sampler.h"
+#include "interventions/InterventionFactors.h"
 namespace scnXml {
     class ITNDescription;
-    class ITNKillingEffect;
-    class ITNEffectLogit;
-    class ITNDeterrency;
-    class TwoStageDeterrency;
     class AnophelesParams1;
 }
 
@@ -42,113 +39,6 @@ namespace interventions {
     using util::LognormalSampler;
     using util::LocalRng;
     using Transmission::PerHostInterventionData;
-
-
-// —————  utility classes (internal use only)  —————
-
-namespace factors {
-    class SurvivalFactor {
-    public:
-        /// Set parameters.
-        /// 
-        /// It is checked that parameters lie in a suitible range, giving a
-        /// survival factor between 0 and 1.
-        /// 
-        /// @param elt  Element from XML
-        /// @param maxInsecticide
-        /// @param eltName  Element name (used in error messages)
-        /// @param isDeterrent True when used to describe a deterrency effect, false when used to
-        ///     describe a killing effect.
-        void init(const scnXml::ITNKillingEffect& elt, double maxInsecticide,
-                    const char* eltName, bool attractivenessConstraints);
-        
-        /// Variant to set paramters for the logit model.
-        /// 
-        /// @param elt  Element from XML
-        /// @param maxHoleIndex Parameter from parent element in XML
-        /// @param isDeterrent True when used to describe a deterrency effect, false when used to
-        ///     describe a killing effect.
-        void initLogit(const scnXml::ITNEffectLogit& elt,
-                                                   double maxHoleIndex,
-                                                   bool isDeterrent);
-        
-        /// Initialise the model to always return no effect (factor 1).
-        void init1();
-        
-        /** Part of survival factor, used by new ITN deterrency model. */
-        double rel_pAtt( double holeIndex, double insecticideContent )const;
-        /** Calculate additional survival factor imposed by nets on pre-/post-
-        * prandial killing. Should be bounded to [0,1] and tend to 1 as the
-        * net ages. */
-        double survivalFactor( double holeIndex, double insecticideContent )const;
-        
-    public:
-        union {
-            struct {
-                double BF, HF, PF, IF;  // base, hole, insecticide and interaction factors
-                double holeScaling, insecticideScaling;
-                double invBaseSurvival; // stored for performance only; ≥1
-            } a;
-            struct {
-                double BF, HF, PF, IF;
-                double hMax;
-                double invBaseEffect;   // 1 over base effect
-            } b;
-        };
-        bool useLogitEqns;
-    };
-
-    class RelativeAttractiveness {
-        enum DeterrencyModel {
-            NO_MODEL, SINGLE_STAGE, TWO_STAGE, TWO_STAGE_LOGIT
-        };
-    public:
-        RelativeAttractiveness() : model(0) {}
-        
-        /** Set parameters for single-stage deterrency model.
-         * 
-         * It is checked that input parameters lie in a range such that
-         * the relative availability is always in the range (0,1] — that is,
-         * the deterrent can never be perfect, but can have zero effect. */
-        void initSingleStage(const scnXml::ITNDeterrency& elt, double maxInsecticide);
-        
-        /** Set parameters for two-stage deterrency model.
-         * 
-         * It is checked that input parameters lie in a range such that
-         * the relative availability is always in the range (0,1] — that is,
-         * the deterrent can never be perfect, but can have zero effect. */
-        void initTwoStage(const scnXml::TwoStageDeterrency& elt,
-                          double maxInsecticide,
-                          double holeIndexMax, bool holeIndexMaxPresent = false);
-        
-        /** Calculate effect. Range of output is any value ≥ 0.
-         * 
-         * 0 implies a fully effective deterrent, 0.5 a 50% effective
-         * deterrent, 1 has no effect, >1 attracts extra mosquitoes. */
-        double relativeAttractiveness (double holeIndex, double insecticideContent) const;
-        
-    public:
-        union {
-            struct {
-                double lHF, lPF, lIF;      // logs of hole, insecticide and interaction factors
-                double holeScaling, insecticideScaling;
-            } a;
-            struct {
-                double lPFEntering;      // log of insecticide factor
-                double insecticideScalingEntering;
-                double _pad;
-                SurvivalFactor pAttacking;
-            } b;
-            struct {
-                double entBaseFactor;
-                double entInsecticideFactor;
-                double pEnt0Inv;
-                SurvivalFactor pAttacking;
-            } c;
-        };
-        int model;
-    };
-}
 
 
 // —————  main, public classes  —————

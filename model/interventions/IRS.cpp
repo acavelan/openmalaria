@@ -81,16 +81,75 @@ unique_ptr<PerHostInterventionData> IRSComponent::makeHumanPart( istream& stream
     return make_unique<HumanIRS>( stream, *this );
 }
 
+// The IRS response curves are the shared ITN/IRS factor models with the
+// hole terms zero and holeIndex fixed at 0 (see InterventionFactors.h).
+// Evaluated at holeIndex=0 the shared formulas reduce bit-exactly to:
+//   survival factor   (1−(BF+PF·p))/(1−BF),   p=1−exp(−content·scaling)
+//   attractiveness    PF^p
+static void initSurvival( factors::SurvivalFactor& sf,
+                          const scnXml::IRSKillingEffect& elt,
+                          bool postPrandial, double maxInsecticide )
+{
+    sf.useLogitEqns = false;
+    sf.clamp = false;
+    sf.a.BF = elt.getBaseFactor();
+    sf.a.HF = 0.0;
+    sf.a.PF = elt.getInsecticideFactor();
+    sf.a.IF = 0.0;
+    sf.a.holeScaling = 0.0;
+    sf.a.insecticideScaling = elt.getInsecticideScalingFactor();
+    sf.a.invBaseSurvival = 1.0 / (1.0 - sf.a.BF);
+    if( !( sf.a.BF >= 0.0 && sf.a.BF < 1.0) ){
+        ostringstream msg;
+        msg << "IRS.description.anophelesParams." << (postPrandial?"post":"pre")
+            << "killingFactor: expected baseFactor to be in range [0,1]";
+        throw util::xml_scenario_error( msg.str() );
+    }
+    if( !(sf.a.insecticideScaling>=0.0) ){
+        ostringstream msg;
+        msg << "IRS.description.anophelesParams." << (postPrandial?"post":"pre")
+            << "killingFactor: expected scaling factor to be non-negative";
+        throw util::xml_scenario_error( msg.str() );
+    }
+    // As for nets: p is in [0,1], so the survival factor stays in [0,1] if
+    // PF>=0 and BF+PF·pmax<=1 with pmax the largest possible p.
+    double pmax = 1.0-exp(-maxInsecticide*sf.a.insecticideScaling);
+    if( !( sf.a.PF >= 0.0 && sf.a.BF+sf.a.PF*pmax <= 1.0 ) ){
+        ostringstream msg;
+        msg << "IRS.description.anophelesParams." << (postPrandial?"post":"pre")
+            << "killingFactor: expected insecticideFactor≥0, baseFactor+"
+            <<pmax<<"×insecticideFactor≤1";
+        throw util::xml_scenario_error( msg.str() );
+    }
+}
+
+static void initDeterrence( factors::RelativeAttractiveness& ra,
+                            const scnXml::IRSDeterrency& elt )
+{
+    ra.model = factors::RelativeAttractiveness::SINGLE_STAGE;
+    double PF = elt.getInsecticideFactor();
+    ra.a.insecticideScaling = elt.getInsecticideScalingFactor();
+    if( !( PF > 0.0) ){
+        ostringstream msg;
+        msg << "IRS.description.anophelesParams.relativeAvailability: expected insecticideFactor to be positive.";
+        throw util::xml_scenario_error( msg.str() );
+    }
+    ra.a.lHF = 0.0;
+    ra.a.lIF = 0.0;
+    ra.a.holeScaling = 0.0;
+    ra.a.lPF = log( PF );
+}
+
 void IRSComponent::IRSAnopheles::init(
     const scnXml::IRSDescription::AnophelesParamsType& elt,
     double proportionUse,
     double maxInsecticide)
 {
-    _relativeAttractiveness.init( elt.getDeterrency() );
-    _preprandialKillingEffect.init( elt.getPreprandialKillingEffect(), false, maxInsecticide );
-    _postprandialKillingEffect.init( elt.getPostprandialKillingEffect(), true, maxInsecticide );
+    initDeterrence( _relativeAttractiveness, elt.getDeterrency() );
+    initSurvival( _preprandialKillingEffect, elt.getPreprandialKillingEffect(), false, maxInsecticide );
+    initSurvival( _postprandialKillingEffect, elt.getPostprandialKillingEffect(), true, maxInsecticide );
     if (elt.getFecundityReduction().present()) {
-        _fecundityEffect.init( elt.getFecundityReduction().get(), false/*TODO: err msg*/, maxInsecticide );
+        initSurvival( _fecundityEffect, elt.getFecundityReduction().get(), false/*TODO: err msg*/, maxInsecticide );
     } else {
         _fecundityEffect.init1();
     }
@@ -103,122 +162,6 @@ void IRSComponent::IRSAnopheles::init(
     assert( propActive >= 0.0 && propActive <= 1.0 );
     proportionProtected = proportionUse * propActive;
     proportionUnprotected = 1.0 - proportionProtected;
-}
-
-IRSComponent::IRSAnopheles::RelativeAttractiveness::RelativeAttractiveness() :
-    lPF( numeric_limits< double >::signaling_NaN() ),
-    insecticideScaling( numeric_limits< double >::signaling_NaN() )
-{}
-void IRSComponent::IRSAnopheles::RelativeAttractiveness::init(const scnXml::IRSDeterrency& elt){
-    double PF = elt.getInsecticideFactor();
-    insecticideScaling = elt.getInsecticideScalingFactor();
-    if( !( PF > 0.0) ){
-        ostringstream msg;
-        msg << "IRS.description.anophelesParams.relativeAvailability: expected insecticideFactor to be positive.";
-        throw util::xml_scenario_error( msg.str() );
-    }
-    
-    /* We need to ensure the relative availability is non-negative. However,
-     * since it's an exponentiated value, it always will be.
-     * 
-     * If we don't want IRS to be able to increase transmission, the following
-     * limits could also be applied. In general, however, there is no reason
-     * IRS couldn't make individuals more attractive to mosquitoes.
-     * 
-     * To ensure relative availability is at most one: relative availability is
-     *  exp( log(PF)*p ) = PF^p
-     * where PF is the insecticide factor, with p∈[0,1] defined as:
-     *  p=1−exp(-insecticideContent*insecticideScalingFactor).
-     * We therefore just need PF ≤ 1. */
-//     if( !( PF <= 1.0 ) ) {
-        // Potentially warn about this... but not necessary since making humans
-        // more attractive isn't really an issue.
-//     }
-    assert( (std::isnan)(lPF) ); // double init
-    lPF = log( PF );
-}
-IRSComponent::IRSAnopheles::SurvivalFactor::SurvivalFactor() :
-    BF( numeric_limits< double >::signaling_NaN() ),
-    PF( numeric_limits< double >::signaling_NaN() ),
-    insecticideScaling( numeric_limits< double >::signaling_NaN() ),
-    invBaseSurvival( numeric_limits< double >::signaling_NaN() )
-{}
-void IRSComponent::IRSAnopheles::SurvivalFactor::init(const scnXml::IRSKillingEffect& elt,
-                                                   bool postPrandial, double maxInsecticide){
-    BF = elt.getBaseFactor();
-    PF = elt.getInsecticideFactor();
-    insecticideScaling = elt.getInsecticideScalingFactor();
-    invBaseSurvival = 1.0 / (1.0 - BF);
-    if( !( BF >= 0.0 && BF < 1.0) ){
-        ostringstream msg;
-        msg << "IRS.description.anophelesParams." << (postPrandial?"post":"pre")
-            << "killingFactor: expected baseFactor to be in range [0,1]";
-        throw util::xml_scenario_error( msg.str() );
-    }
-    if( !(insecticideScaling>=0.0) ){
-        ostringstream msg;
-        msg << "IRS.description.anophelesParams." << (postPrandial?"post":"pre")
-            << "killingFactor: expected scaling factor to be non-negative";
-        throw util::xml_scenario_error( msg.str() );
-    }
-    
-    /* We want the calculated survival factor (1−K)/(1−BF) to be in the range
-    [0,1] where K is the killing factor: K=BF+PF×p, with p defined as:
-    p=1−exp(-insecticideContent×insecticideScalingFactor).
-    
-    By its nature, insecticideContent ≥ 0. We restrict
-        insecticideScalingFactor ≥ 0
-    which implies that p lies in the range [0,1]. We also know the base
-    survival factor, 1−BF, is in the range [0,1].
-    
-    To make sure the survival factor is not negative we need (1−K)/(1−BF) ≥ 0.
-    Since 1−BF > 0 we need 1−K ≥ 0, which, substituting K, gives us
-        BF + PF×p ≤ 1	(1)
-    We also want to make sure the survival factor is not greater than one (since
-    IRS shouldn't increase mosquito survival), (1−K)/(1−BF) ≤ 1 or equivalently
-    1-K ≤ 1-BF or K ≥ BF, which, substituting K, yields
-        PF×p ≥ 0		(2)
-    Since p ≥ 0, ensuring PF is non-negative is enough for (2).
-    
-    The maximum value for p depends on the maximum insecticide content; denote
-    pmax = max(p). In this extreme case (1) becomes:
-        BF + PF×pmax ≤ 1	(3)
-    
-    As with the ITN model, we impose a maximum value on the initial insecticide
-    content, Pmax, such that the probability of sampling a value from our
-    parameterise normal distribution greater than Pmax is 0.001. */
-    double pmax = 1.0-exp(-maxInsecticide*insecticideScaling);
-    if( !( PF >= 0.0 && BF+PF*pmax <= 1.0 ) ){
-        ostringstream msg;
-        msg << "IRS.description.anophelesParams." << (postPrandial?"post":"pre")
-            << "killingFactor: expected insecticideFactor≥0, baseFactor+"
-            <<pmax<<"×insecticideFactor≤1";
-        throw util::xml_scenario_error( msg.str() );
-    }
-}
-void IRSComponent::IRSAnopheles::SurvivalFactor::init1(){
-    BF = 0.0;
-    PF = 0.0;
-    insecticideScaling = 0.0;
-    invBaseSurvival = 1.0;
-}
-double IRSComponent::IRSAnopheles::RelativeAttractiveness::relativeAttractiveness(
-        double insecticideContent
-) const {
-    double insecticideComponent = 1.0 - exp(-insecticideContent*insecticideScaling);
-    double relAvail = exp( lPF*insecticideComponent );
-    assert( relAvail>=0.0 );
-    return relAvail;
-}
-double IRSComponent::IRSAnopheles::SurvivalFactor::survivalFactor(
-        double insecticideContent
-) const {
-    double insecticideComponent = 1.0 - exp(-insecticideContent*insecticideScaling);
-    double killingEffect = BF + PF*insecticideComponent;
-    double survivalFactor = (1.0 - killingEffect) * invBaseSurvival;
-    assert( survivalFactor >= 0.0 );
-    assert( survivalFactor <= 1.0 );
-    return survivalFactor;
 }
 
 double IRSComponent::sampleInitialInsecticide(LocalRng& rng) const{

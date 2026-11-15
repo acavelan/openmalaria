@@ -293,6 +293,7 @@ double factors::SurvivalFactor::survivalFactor( double holeIndex, double insecti
         
         double survivalFactor = (1.0 - killingEffect) * a.invBaseSurvival;
         assert( killingEffect <= 1.0 );
+        if (!clamp) return survivalFactor;  // IRS uses the unclamped value
         // survivalFactor might be out of bounds due to precision error, see #49
         if (survivalFactor < 0.0)
             return 0.0;

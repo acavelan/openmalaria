@@ -495,9 +495,11 @@ Status of the remaining plan (what is *not* done yet):
   `xsd/cxx/tree/containers.hxx` be included in any order (the generated
   headers always defined it themselves before their prelude).
 - **Interventions rewrite (Phase 4)**: 4a (deployment class hierarchy →
-  variant data + free functions) and 4b (one shared entomo filter) done.
-  Left: shared `factors::` for ITN/IRS (two near-identical
-  survival/attractiveness copies), one checkpointed
+  variant data + free functions), 4b (one shared entomo filter) and 4c
+  (one shared `factors::` survival/attractiveness model for ITN and IRS —
+  IRS sets the hole factors to 0 and evaluates at holeIndex=0, which is
+  bit-exact, plus a `clamp` flag for ITN's out-of-bounds handling) done.
+  Left: one checkpointed
   `VectorInterventionState` replacing the five string-keyed `reduce*` maps
   (the silent checkpoint gap — contract-blocked until an output change is
   accepted), component classes still live in headers.
@@ -516,6 +518,19 @@ model+unittest — the tree is now ~600 lines smaller than before this
 sweep with no behaviour change. The vector-side (string-keyed decay maps,
 traps, NHH) checkpoint gaps remain as noted in §6 — gated by the
 byte-identical contract.
+
+---
+
+Phase 4c (shared entomo factors) — one survival/attractiveness model for
+ITN and IRS (−209 lines, 52/52):
+
+- `factors::SurvivalFactor`/`RelativeAttractiveness` moved verbatim from
+  `ITN.h`/`ITN.cpp` into `interventions/InterventionFactors.h`; the IRS
+  nested copies were the same equations with hole terms absent, so IRS
+  initialises the shared structs with `HF=IF=lHF=lIF=holeScaling=0` and
+  evaluates at `holeIndex=0` — the extra terms are exact IEEE no-ops, so
+  results are bit-identical — plus one `clamp` flag distinguishing ITN's
+  out-of-bounds clamping from IRS's assert-only path.
 
 ---
 
