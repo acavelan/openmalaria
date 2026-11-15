@@ -158,6 +158,14 @@ struct Model {                    // model/Model.h — data + owned sub-models o
 
 Principles:
 
+- **Free functions are the default; a virtual class must earn its keep.**
+  Decided-at-startup → plain data struct + free function dispatch (a switch
+  is honest where 8 TimedDeployment subclasses are not). Changes-at-runtime
+  → virtual class (AnophelesModel vs SimpleMPDAnophelesModel, EmergenceRate
+  estimators, WithinHost falciparum/vivax, Infection models, clinical
+  decision trees). Small types with invariants (RNG, checkpoint streams)
+  keep member functions: the invariant is the API.
+
 - **Dependencies point one way**: `Transmission` never names `Host::Human`
   (it takes a `PerHostData&` + small `Cohorts&` view); `Host` never names
   `Transmission` types beyond a forward-declared interface passed to free
@@ -292,8 +300,20 @@ Phase 1 — break the PerHost knot — DONE (52/52 byte-identical throughout):
   `TransmissionModel.cpp`; `TransmissionModel.h` no longer includes
   `Population.h` / WithinHost headers.
 
-Net effect: `PerHost.h` includes nothing from Transmission; no mutable
-process-wide state left in the transmission/PerHost path.
+Phase 2 — de-static — in progress:
+
+- 2.1 `fedd40fd` `util::master_RNG` → `MasterRng` local of `main()`,
+  threaded by reference into transmission/population/checkpoint paths.
+- 2.2a `5131e025` `PerHost::hasActiveInterv` answers from the deployed
+  part itself (new virtual `componentType`), no registry lookup.
+- 2.2b `b83f2d29` `InterventionManager` class-of-statics → plain
+  `struct InterventionManager` (deployment state) owned by `main` +
+  free `interventions::init/deploy/checkpoint/loadFromCheckpoint`.
+  Component registry still file-static (Phase 4 replaces it).
+
+Net effect so far: no mutable process-wide state left in the
+transmission/PerHost path; intervention deployment state and the master
+RNG are caller-owned.
 
 ---
 
