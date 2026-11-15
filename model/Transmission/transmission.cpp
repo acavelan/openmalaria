@@ -62,7 +62,7 @@ NonVectorModel *createNonVectorModel(const scnXml::Entomology &entoData)
     vector<double> initialisationEIR;
     initialisationEIR.assign(sim::stepsPerYear(), 0.0);
 
-    return new NonVectorModel(initialisationEIR, interventionMode, entoData, nonVectorData, eipDuration);
+    return new NonVectorModel(initialisationEIR, interventionMode, nonVectorData, eipDuration);
 }
 
 bool anophelesCompare(const scnXml::AnophelesParams &a1, const scnXml::AnophelesParams &a2)

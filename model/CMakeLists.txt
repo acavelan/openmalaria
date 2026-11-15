@@ -63,6 +63,7 @@ set (Model_CPP
   PkPd/LSTMTreatments.cpp
   
   Transmission/TransmissionModel.cpp
+  Transmission/NonVectorModel.cpp
   Transmission/transmission.cpp
   Transmission/VectorModel.cpp
   Transmission/PerHost.cpp
