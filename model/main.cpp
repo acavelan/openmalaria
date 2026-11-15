@@ -78,7 +78,6 @@ void run(Model &model, SimTime humanWarmupLength, SimTime &endTime, SimTime &est
 
     Population &population = model.humans;
     TransmissionModel &transmission = *model.transmission;
-    InterventionManager &intervention_mgr = model.interventions;
 
     if (util::CommandLine::option(util::CommandLine::VERBOSE)) cout << "Starting " << phase << "..." << endl;
 
