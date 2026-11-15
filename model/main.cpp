@@ -34,8 +34,7 @@
 #include "mon/init.h"
 #include "mon/Monitoring.h"
 
-#include "interventions/InterventionManager.h"
-#include "interventions/Deployments.h" // defines the deployment types (needed to instantiate the state struct)
+#include "Model.h"
 #include "Clinical/ClinicalModel.h"
 
 #include "Host/NeonatalMortality.h"
@@ -73,9 +72,13 @@ void print_errno()
 }
 
 // Internal simulation loop
-void run(Population &population, TransmissionModel &transmission, InterventionManager &intervention_mgr, SimTime humanWarmupLength, SimTime &endTime, SimTime &estEndTime, bool surveyOnlyNewEp, string phase)
+void run(Model &model, SimTime humanWarmupLength, SimTime &endTime, SimTime &estEndTime, bool surveyOnlyNewEp, string phase)
 {
     static int lastPercent = -1;
+
+    Population &population = model.humans;
+    TransmissionModel &transmission = *model.transmission;
+    InterventionManager &intervention_mgr = model.interventions;
 
     if (util::CommandLine::option(util::CommandLine::VERBOSE)) cout << "Starting " << phase << "..." << endl;
 
@@ -152,8 +155,6 @@ int main(int argc, char* argv[])
 
         // 1) elements with no dependencies on other elements initialised here:
         WithinHost::Genotypes::init( *scenario );
-        util::MasterRng master_rng(0, 0);  // master RNG, used only to seed local RNGs
-        master_rng.seed( scenario->getModel().getComputationParameters().getIseed(), 0 ); // Init RNG with Iseed
         util::ModelNameProvider modelNameProvider(scenario->getModel());
 
         // 2) elements depending on only elements initialised in (1):
@@ -182,16 +183,14 @@ int main(int argc, char* argv[])
         // monitoring age groups (from Surveys.init()):
         size_t popSize = scenario->getDemography().getPopSize();
 
-        std::unique_ptr<TransmissionModel> transmission = std::unique_ptr<TransmissionModel>(Transmission::createTransmissionModel(scenario->getEntomology(), popSize, master_rng));
-        transmission->setAgeAvailability(scenario->getModel().getHuman().getAvailabilityToMosquitoes());
-        std::unique_ptr<Population> population = std::unique_ptr<Population>(new Population(popSize, transmission->speciesParams, transmission->ageAvailability, master_rng));
+        Model model(popSize, scenario->getModel().getComputationParameters().getIseed(),
+                    scenario->getEntomology(), scenario->getModel().getHuman().getAvailabilityToMosquitoes());
 
         registerContinousPopulationCallbacks();
 
         // Depends on transmission model (for species indexes):
         // MDA1D may depend on health system (too complex to verify)
-        interventions::InterventionManager intervention_mgr;
-        interventions::init(intervention_mgr, scenario->getInterventions(), *population, *transmission );
+        interventions::init(model.interventions, scenario->getInterventions(), model.humans, *model.transmission );
         Clinical::ClinicalModel::setHS( scenario->getHealthSystem() ); // Depends on interventions, PK/PD (from humanPop)
         mon::initCohorts( scenario->getMonitoring() ); // Depends on interventions
 
@@ -203,7 +202,7 @@ int main(int argc, char* argv[])
         // Make sure warmup period is at least as long as a human lifespan, as the
         // length required by vector warmup, and is a whole number of years.
         SimTime humanWarmupLength = sim::maxHumanAge();
-        if(transmission->interventionMode != Transmission::forcedEIR)
+        if(model.transmission->interventionMode != Transmission::forcedEIR)
             humanWarmupLength = max(humanWarmupLength, sim::fromYearsI(55)); // Data is summed over 5 years; add an extra 50 for stabilization.
 
         humanWarmupLength = sim::fromYearsI( static_cast<int>(ceil(sim::inYears(humanWarmupLength))) );
@@ -230,37 +229,37 @@ int main(int argc, char* argv[])
         if (startedFromCheckpoint)
         {
             mon::Continuous::init(scenario->getMonitoring(), true);
-            readCheckpoint(checkpointFileName, endTime, estEndTime, *population, *transmission, intervention_mgr, master_rng);
+            readCheckpoint(checkpointFileName, endTime, estEndTime, model);
 
             /** Calculate ento availability percentiles **/
-            transmission->speciesParams.calcAvailabilityPercentiles();
+            model.transmission->speciesParams.calcAvailabilityPercentiles();
         }
         else
         {
             mon::Continuous::init(scenario->getMonitoring(), false);
-            population->createInitialHumans();
-            transmission->init2(population->humans);
+            model.humans.createInitialHumans();
+            model.transmission->init2(model.humans.humans);
             
             /** Calculate ento availability percentiles **/
-            transmission->speciesParams.calcAvailabilityPercentiles();
+            model.transmission->speciesParams.calcAvailabilityPercentiles();
 
             /** Warm-up phase: 
              * Run the simulation using the equilibrium inoculation rates over one
              * complete lifespan (sim::maxHumanAge()) to reach immunological
              * equilibrium in all age classes. Don't report any events. */
             endTime = humanWarmupLength;
-            run(*population, *transmission, intervention_mgr, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "Warmup");
+            run(model, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "Warmup");
 
             /** Transmission init phase:
              * Fit the emergence rate to the input EIR */
-            SimTime iterate = transmission->initIterate();
+            SimTime iterate = model.transmission->initIterate();
             while(iterate > sim::zero())
             {
                 endTime = endTime + iterate;
                 // adjust estimation of final time step: end of current period + length of main phase
                 estEndTime = endTime + (sim::endDate() - sim::startDate()) + sim::oneTS();
-                run(*population, *transmission, intervention_mgr, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "EIR Calibration");
-                iterate = transmission->initIterate();
+                run(model, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "EIR Calibration");
+                iterate = model.transmission->initIterate();
             }
 
             /** Main phase:
@@ -276,24 +275,24 @@ int main(int argc, char* argv[])
             Host::InfectionIncidenceModel::preMainSimInit();
             Clinical::InfantMortality::preMainSimInit();
             WithinHost::Genotypes::preMainSimInit();
-            population->resetRecentBirths();
-            transmission->summarize(); // Only to reset TransmissionModel::inoculationsPerAgeGroup
+            model.humans.resetRecentBirths();
+            model.transmission->summarize(); // Only to reset TransmissionModel::inoculationsPerAgeGroup
             mon::initMainSim();
 
             if(util::CommandLine::option (util::CommandLine::CHECKPOINT))
             {
-                writeCheckpoint(startedFromCheckpoint, checkpointFileName, endTime, estEndTime, *population, *transmission, intervention_mgr, master_rng);
+                writeCheckpoint(startedFromCheckpoint, checkpointFileName, endTime, estEndTime, model);
                 if( util::CommandLine::option (util::CommandLine::CHECKPOINT_STOP) )
                     throw util::cmd_exception ("Checkpoint test: checkpoint written", util::Error::None);
             }
         }
 
         // Main phase loop
-        run(*population, *transmission, intervention_mgr, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "Intervention period");
+        run(model, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "Intervention period");
        
         cerr << '\r' << flush;  // clean last line of progress-output
         
-        for(Host::Human &human : population->humans)
+        for(Host::Human &human : model.humans.humans)
             human.clinicalModel->flushReports();
 
         mon::writeSurveyData();
