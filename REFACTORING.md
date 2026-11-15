@@ -314,9 +314,29 @@ Phase 2 — de-static — in progress:
   interventions }` (model/Model.{h,cpp}) constructed in dependency order;
   `main()` owns one value, `run()`/checkpoint read/write take `Model&`.
 
+Phase 4 (deployments) — first slice done:
+
+- 4a `7278ce45` the `TimedDeployment` class hierarchy (Dummy/ChangeHS/
+  ChangeEIR/UninfectVectors/Human/CumulativeHuman/VectorPop/Trap/ReduceNhh/
+  AddNhh) and the `ContinuousHumanDeployment` class are decided at
+  XML-read time → `struct TimedDeployment { date; variant<…actions> }` +
+  free `apply/checkDeployDate/initReduceNhh/readAddNhh/filterAndDeploy/
+  print_details`. `Deployments.h` 712 → 153 lines.
+- 4b `9db62d02` one shared `inAvailabilityRange` for timed/cumulative/
+  continuous (raw-vs-scaled is an explicit parameter, behaviour kept).
+
+Phase 6 — remaining statics, one cluster at a time:
+
+- 6a `af8abdb5` `NeonatalMortality` statics → `Model::neonatal` member;
+  `ClinicalModel::update` / `Host::update` take it by reference.
+
 Net effect so far: no mutable process-wide state left in the
-transmission/PerHost path; intervention deployment state and the master
-RNG are caller-owned.
+transmission/PerHost path; intervention deployment state, the master RNG
+and the neonatal model are caller-owned (`Model` members). The
+intervention component registry is still a file-static in
+`InterventionManager.cpp` (read-only after init), and the vector-side
+(string-keyed decay maps, traps, NHH) checkpoint gaps remain as noted in
+§6 — both are Phase-4/6 follow-ups, gated by the byte-identical contract.
 
 ---
 
