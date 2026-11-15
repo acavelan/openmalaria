@@ -199,6 +199,12 @@ Principles:
 - **Every init-time "static class" becomes a parameter struct** filled by a
   `readX(const scnXml::&, Options&)` function and stored in `Model` (or in the
   subsystem that owns it). Read paths take `const Params&`.
+- **No `friend`, no `private`/`protected` data.** Every class is plain
+  data with public members; access control is not doing useful work in a
+  single-owner simulation model. RNG and checkpoint types keep member
+  *functions* (the API), but their state is public. Enforced tree-wide
+  (no `friend`/`private:` left in `model/**`).
+
 - Checkpoint plumbing: keep `operator&` streams (the byte format is the
   contract), but each class gets ONE `template<class S> void ser(S&)` used in
   both directions — this deletes the hand-mirrored read/write field lists
@@ -438,6 +444,43 @@ enum would turn a silent no-op into a scenario error), `StreamValidator`
 (option-gated checkpoint tooling used by every `operator&`), the
 net/IRS-insecticide TODO comments inside the empty-state callbacks they
 refer to.
+
+Phase 8 (access control) — friends and private data gone (52/52 throughout):
+
+- Three commits: interventions headers first, `util/` headers next
+  (RNG/Xoshiro state, samplers, decay wrappers, `traced_exception`), then
+  every remaining header plus the local command/composite classes in
+  `CMDecisionTree.cpp`, `DecayFunction.cpp`, `WHVivax.cpp`. All
+  `private:`/`protected:` labels became `public:`, all 34 `friend`
+  declarations deleted (test-suite friends were pure access grants),
+  `SimData` became a plain struct. Pure access change — layout, names,
+  draw order untouched.
+
+Status of the remaining plan (what is *not* done yet):
+
+- **XML boundary (Phase 5)**: 5a done — the core headers
+  (`Parameters`, `ModelOptions`, `TransmissionModel`, `ImportedInfections`,
+  `ESCaseManagement`, `ModelNameProvider`) parse XML in their `.cpp` and no
+  longer include the schema. Still schema-typed: 8 intervention headers
+  (`Deployments`, `Interfaces`, `InterventionManager`, `ITN`, `IRS`, `GVI`,
+  `Vaccine`, `HumanInterventionComponents`), `CMDecisionTree.h`,
+  `LSTMMedicate.h`, `sampler.h` (inline `createSampler*` XML parsing);
+  `DocumentLoader`/`XMLChecker` *are* the boundary and may keep it.
+  → next: move the intervention component ctors' XML parsing behind
+  `read*(...)` free functions in `.cpp` files, then `sampler.h`.
+- **Interventions rewrite (Phase 4)**: 4a (deployment class hierarchy →
+  variant data + free functions) and 4b (one shared entomo filter) done.
+  Left: shared `factors::` for ITN/IRS (two near-identical
+  survival/attractiveness copies), one checkpointed
+  `VectorInterventionState` replacing the five string-keyed `reduce*` maps
+  (the silent checkpoint gap — contract-blocked until an output change is
+  accepted), component classes still live in headers.
+- **Phase 3 (clock global)**: untouched — `sim::now()/intervDate()` statics
+  remain; ~170 read sites, mechanical per-directory conversion to a
+  `SimClock` parameter.
+- **Phase 6**: `NeonatalMortality` done; the clinical/HS statics cluster
+  (~30 statics, ~40 signatures), mon and WithinHost clusters remain.
+- 59 `ModelOptions::option()` reads remain (Phase 5 wants init-time caches).
 
 Net effect so far: no mutable process-wide state left in the
 transmission/PerHost path; intervention deployment state, the component
