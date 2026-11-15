@@ -31,6 +31,7 @@ namespace scnXml{
     class Scenario;
     class HealthSystem;
 }
+namespace OM { namespace Host { struct NeonatalMortality; } }
 namespace OM { namespace Clinical {
     using Host::Human;
 
@@ -78,7 +79,7 @@ public:
      * 
      * @param ageYears Age of human.
      * @param newBorn True if human age is one time step old */
-    void update (Human& human, double ageYears, bool newBorn);
+    void update (Human& human, double ageYears, bool newBorn, Host::NeonatalMortality& neonatal);
     
     /** For infants, updates the infantIntervalsAtRisk and potentially
      * infantDeaths arrays. */

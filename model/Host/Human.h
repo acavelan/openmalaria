@@ -152,7 +152,9 @@ private:
 
 void summarize(Human &human, bool surveyOnlyNewEp);
 
-void update(Human &human, Transmission::TransmissionModel& transmission);
+struct NeonatalMortality;
+    void update(Human &human, Transmission::TransmissionModel& transmission,
+                 NeonatalMortality& neonatal);
 
 inline SimTime Human::age( SimTime time ) const { 
     return time - dateOfBirth; 

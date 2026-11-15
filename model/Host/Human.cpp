@@ -224,7 +224,7 @@ void summarize(Human &human, bool surveyOnlyNewEp) {
     }
 }
 
-void update(Human &human, Transmission::TransmissionModel& transmission)
+void update(Human &human, Transmission::TransmissionModel& transmission, NeonatalMortality& neonatal)
 {
     // For integer age checks we use age0 to e.g. get 73 steps comparing less than 1 year old
     SimTime age0 = human.age(sim::ts0());
@@ -272,7 +272,7 @@ void update(Human &human, Transmission::TransmissionModel& transmission)
     human.infIncidence->reportNumNewInfections(human, nNewInfs_i, nNewInfs_l);
 
     // age1 used to get case fatality and sequelae probabilities, determine pathogenesis
-    human.clinicalModel->update( human, age1, age0 == sim::zero() );
+    human.clinicalModel->update( human, age1, age0 == sim::zero(), neonatal );
     human.clinicalModel->updateInfantDeaths( age0 );
 }
 

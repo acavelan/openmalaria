@@ -46,19 +46,8 @@ const double pBirthPrim = 0.3;
 const double y = pBirthPrim * gEst;
 const double z = -1.0 / critPrev2025;
 
-/// Probability for a newborn to die (indirect death) because the mother is infected.
-/// Depends on the prevalence of parasitaemia in mother at some previous t.
-double riskFromMaternalInfection = 0.0;
-/// Array of stored prevalences of mothers over last 5 months
-std::vector<double> prevByGestationalAge;
-
 /// Lower and upper bounds for potential mothers (as in model description)
-SimTime ageLb = sim::fromYearsI(20), ageUb = sim::fromYearsI(25);
-
-// The model is parameterised based on patency levels; the diagnostic
-// used for this may be important.
-const WithinHost::Diagnostic* neonatalDiagnostic = 0;
-
+const SimTime ageLb = sim::fromYearsI(20), ageUb = sim::fromYearsI(25);
 
 void NeonatalMortality::init( const scnXml::Clinical& clinical ){
     SimTime fiveMonths = sim::fromDays( 5 * 30 );
@@ -78,16 +67,7 @@ void NeonatalMortality::init( const scnXml::Clinical& clinical ){
     }
 }
 
-void NeonatalMortality::staticCheckpoint (istream& stream) {
-    riskFromMaternalInfection & stream;
-    prevByGestationalAge & stream;
-}
-void NeonatalMortality::staticCheckpoint (ostream& stream) {
-    riskFromMaternalInfection & stream;
-    prevByGestationalAge & stream;
-}
-
-bool NeonatalMortality::eventNeonatalMortality(LocalRng& rng) {
+bool NeonatalMortality::eventNeonatalMortality(LocalRng& rng) const {
   return rng.uniform_01() <= riskFromMaternalInfection;
 }
 

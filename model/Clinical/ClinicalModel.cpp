@@ -137,7 +137,7 @@ bool ClinicalModel::isDead( SimTime age ){
     return doomed > NOT_DOOMED;	// killed by some means
 }
 
-void ClinicalModel::update (Human& human, double ageYears, bool newBorn) {
+void ClinicalModel::update (Human& human, double ageYears, bool newBorn, Host::NeonatalMortality& neonatal) {
     if (doomed < NOT_DOOMED)	// Countdown to indirect mortality
         doomed -= sim::oneTS();
     
@@ -149,7 +149,7 @@ void ClinicalModel::update (Human& human, double ageYears, bool newBorn) {
     }
     if(newBorn /* i.e. first update since birth */) {
         // Chance of neonatal mortality:
-        if (Host::NeonatalMortality::eventNeonatalMortality(human.rng)) {
+        if (neonatal.eventNeonatalMortality(human.rng)) {
             mon::recordEvent(mon::measure("nIndDeaths"), human);
             doomed = DOOMED_NEONATAL;
             return;

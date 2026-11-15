@@ -26,6 +26,7 @@
 #include "Global.h"
 #include "util/random.h"
 #include "Population.h"
+#include "Host/NeonatalMortality.h"
 #include "Transmission/TransmissionModel.h"
 #include "interventions/InterventionManager.h"
 
@@ -40,6 +41,8 @@ struct Model {
     std::unique_ptr<Transmission::TransmissionModel> transmission;
     /** Human hosts. */
     Population humans;
+    /** Neonatal mortality state. */
+    Host::NeonatalMortality neonatal;
     /** Intervention deployment state. */
     interventions::InterventionManager interventions;
 

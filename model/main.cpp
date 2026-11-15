@@ -110,12 +110,12 @@ void run(Model &model, SimTime humanWarmupLength, SimTime &endTime, SimTime &est
         
         // NOTE: no neonatal mortalities will occur in the first 20 years of warmup
         // (until humans old enough to be pregnate get updated and can be infected).
-        Host::NeonatalMortality::update (population.humans);
+        model.neonatal.update (population.humans);
         
         for (Host::Human& human : population.humans)
         {
             if (human.getDOB() + sim::maxHumanAge() >= humanWarmupLength) // this is last time of possible update
-                Host::update(human, transmission);
+                Host::update(human, transmission, model.neonatal);
         }
        
         population.update();
@@ -174,7 +174,6 @@ int main(int argc, char* argv[])
         Host::InfectionIncidenceModel::init( parameters );
         WithinHost::WHInterface::init( parameters, *scenario );
         Clinical::ClinicalModel::init( parameters, *scenario );
-        Host::NeonatalMortality::init( scenario->getModel().getClinical() );
         AgeStructure::init( scenario->getDemography() );
 
         // 3) elements depending on other elements; dependencies on (1) are not mentioned:
@@ -185,6 +184,7 @@ int main(int argc, char* argv[])
 
         Model model(popSize, scenario->getModel().getComputationParameters().getIseed(),
                     scenario->getEntomology(), scenario->getModel().getHuman().getAvailabilityToMosquitoes());
+        model.neonatal.init( scenario->getModel().getClinical() );
 
         registerContinousPopulationCallbacks();
 

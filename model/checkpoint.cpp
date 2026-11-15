@@ -65,7 +65,7 @@ void checkpoint (istream& stream, SimTime &endTime, SimTime &estEndTime, Model &
     {
         util::checkpoint::header (stream);
         util::CommandLine::staticCheckpoint (stream);
-        Host::NeonatalMortality::staticCheckpoint (stream);
+        model.neonatal & stream;
         Host::InfectionIncidenceModel::staticCheckpoint (stream);
         Clinical::InfantMortality::staticCheckpoint(stream);
         WithinHost::Genotypes::staticCheckpoint(stream);
@@ -118,7 +118,7 @@ void checkpoint (ostream& stream, SimTime &endTime, SimTime &estEndTime, Model &
         throw util::checkpoint_error ("Unable to write to file");
 
     util::CommandLine::staticCheckpoint (stream);
-    Host::NeonatalMortality::staticCheckpoint (stream);
+    model.neonatal & stream;
     Host::InfectionIncidenceModel::staticCheckpoint (stream);
     Clinical::InfantMortality::staticCheckpoint(stream);
     WithinHost::Genotypes::staticCheckpoint(stream);
