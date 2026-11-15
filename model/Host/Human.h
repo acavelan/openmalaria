@@ -31,6 +31,7 @@
 
 namespace OM { namespace interventions { struct InterventionRegistry; } }
 namespace OM {
+    struct Model;
 namespace Clinical {
     class ClinicalModel;
 }
@@ -154,8 +155,8 @@ private:
 void summarize(Human &human, bool surveyOnlyNewEp);
 
 struct NeonatalMortality;
-    void update(Human &human, Transmission::TransmissionModel& transmission,
-                 NeonatalMortality& neonatal);
+    /** Per-time-step update of one human (infection, clinical, monitoring). */
+    void update(Human &human, OM::Model& model);
 
 inline SimTime Human::age( SimTime time ) const { 
     return time - dateOfBirth; 

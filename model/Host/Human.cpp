@@ -21,6 +21,7 @@
  */
 
 #include "Host/Human.h"
+#include "Model.h"
 #include "Host/InfectionIncidenceModel.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -224,8 +225,10 @@ void summarize(Human &human, bool surveyOnlyNewEp) {
     }
 }
 
-void update(Human &human, Transmission::TransmissionModel& transmission, NeonatalMortality& neonatal)
+void update(Human &human, Model& model)
 {
+    Transmission::TransmissionModel& transmission = *model.transmission;
+    NeonatalMortality& neonatal = model.neonatal;
     // For integer age checks we use age0 to e.g. get 73 steps comparing less than 1 year old
     SimTime age0 = human.age(sim::ts0());
     if (human.clinicalModel->isDead(age0)) {
