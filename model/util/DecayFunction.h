@@ -30,6 +30,8 @@
 #include "util/sampler.h"
 #include "util/UnitParse.h"
 
+namespace scnXml { class DecayFunction; }
+
 namespace OM {
 namespace util {
 

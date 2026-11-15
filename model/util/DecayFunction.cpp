@@ -26,6 +26,7 @@
 
 #include "Global.h"
 #include "util/sampler.h"
+#include "schema/util.h"
 #include "util/UnitParse.h"
 #include "util/DecayFunction.h"
 

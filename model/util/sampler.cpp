@@ -23,6 +23,7 @@
 #include "util/sampler.h"
 #include "util/errors.h"
 #include "util/random.h"
+#include "schema/util.h"
 #include <cmath>
 
 namespace OM { namespace util {
@@ -308,4 +309,81 @@ double BetaSampler::sample(LocalRng& rng) const{
 }
 
 
+} }
+
+namespace OM { namespace util {
+
+// -----  XML-driven sampler construction  -----
+
+namespace {
+
+/** CV/variance checks shared by the lognormal and gamma paths. */
+std::optional<double> checkSpread(const scnXml::SampledValueCV& elt, const std::string& d)
+{
+    const bool hasCV  = elt.getCV().present();
+    const bool hasVar = elt.getVariance().present();
+    if (hasCV == hasVar)   // both present or both absent
+        throw util::xml_scenario_error("\"distr=" + d + "\": exactly one of attributes \"CV\" or \"variance\" must be specified");
+    return elt.getTruncate().present()
+        ? std::optional<double>{elt.getTruncate().get()}
+        : std::nullopt;
+}
+
+std::unique_ptr<LognormalSampler> createLognormalSampler(double mean, const scnXml::SampledValueCV& elt)
+{
+    const std::string& d = elt.getDistr();
+    if (d == "const")   // lognormal with CV = 0
+    {
+        if (elt.getCV().present() && elt.getCV().get() != 0.0)
+            throw util::xml_scenario_error( "\"distr=" + d + "\": attribute \"CV\" must be zero or omitted when distr=\"const\" or is omitted" );
+        if (elt.getVariance().present() && elt.getVariance().get() != 0.0)
+            throw util::xml_scenario_error( "\"distr=" + d + "\": attribute \"variance\" must be zero or omitted when distr=\"const\" or is omitted" );
+        return LognormalSampler::fromMeanCV(mean, 0.0);
+    }
+    if (d != "lognormal")
+        throw util::xml_scenario_error("\"distr=" + d + "\": expected \"lognormal\" or \"const\"");
+    const auto truncate = checkSpread(elt, d);
+    if (elt.getCV().present())
+        return LognormalSampler::fromMeanCV(mean, elt.getCV().get(), truncate);
+    return LognormalSampler::fromMeanVariance(mean, elt.getVariance().get(), truncate);
+}
+
+std::unique_ptr<GammaSampler> createGammaSampler(double mean, const scnXml::SampledValueCV& elt)
+{
+    const std::string& d = elt.getDistr();
+    if (d != "gamma")
+        throw util::xml_scenario_error("\"distr=" + d + "\": expected \"gamma\"");
+    const auto truncate = checkSpread(elt, d);
+    if (elt.getCV().present())
+        return GammaSampler::fromMeanCV(mean, elt.getCV().get(), truncate);
+    return GammaSampler::fromMeanVariance(mean, elt.getVariance().get(), truncate);
+}
+
+} // anonymous namespace
+
+std::unique_ptr<util::Sampler> createSampler(double mean, const scnXml::SampledValueCV& elt)
+{
+    const std::string& d = elt.getDistr();
+    if (d == "const" || d == "lognormal")
+        return createLognormalSampler(mean, elt);
+    else if (d == "gamma")
+        return createGammaSampler(mean, elt);
+    else
+        throw util::xml_scenario_error("\"distr=" + d + "\": expected \"const\", \"lognormal\" or \"gamma\"");
+}
+
+std::unique_ptr<LognormalSampler> createSampler(const scnXml::SampledValueLN& elt)
+{
+    return createLognormalSampler(elt.getMean(), static_cast<const scnXml::SampledValueCV&>(elt));
+}
+
+void BetaSampler::setParams(const scnXml::BetaMeanSample& elt)
+{
+    setParamsMV(elt.getMean(), elt.getVariance());
+}
+
+void WeibullSampler::setParams(const scnXml::WeibullSample& elt)
+{
+    setScaleShape(elt.getScale(), elt.getShape());
+}
 } }
