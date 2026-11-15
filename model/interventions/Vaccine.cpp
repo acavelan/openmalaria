@@ -135,7 +135,7 @@ VaccineComponent::VaccineComponent( ComponentId component, const scnXml::Vaccine
     params[component.id] = this;
 }
 
-void VaccineComponent::deploy(Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const
+void VaccineComponent::deploy(Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits, SimTime /*now*/) const
 {
     bool administered = human.vaccine.possiblyVaccinate( human, id(), vaccLimits );
     if( administered && VaccineComponent::reportComponent == id() ){

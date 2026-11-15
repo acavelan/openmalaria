@@ -103,13 +103,14 @@ public:
     /** Deploy the component to a pre-selected human.
      * 
      * This may be called between updates (usual intervention deployment time)
-     * or from case management. It should use time sim::nowOrTs1().
+     * or from case management.
      * 
      * @param human Individual receiving the intervention
      * @param method Channel of deployment (mass, continuous)
+     * @param now Current time (sim::nowOrTs1() from the caller's perspective)
      */
     virtual void deploy( Host::Human& human, mon::Deploy::Method method,
-        VaccineLimits vaccLimits ) const =0;
+        VaccineLimits vaccLimits, SimTime now ) const =0;
     
     /** Get the component identifier. */
     inline ComponentId id()const{ return m_id; }
@@ -176,7 +177,7 @@ public:
     
     /** Deploy all components to a pre-selected human. */
     void deploy( Host::Human& human, mon::Deploy::Method method,
-        VaccineLimits vaccLimits ) const;
+        VaccineLimits vaccLimits, SimTime now ) const;
     
     void print_details( std::ostream& out )const;
     
@@ -194,14 +195,14 @@ public:
     TriggeredDeployments( const scnXml::TriggeredDeployments& elt, const InterventionRegistry& reg );
     
     void deploy( Host::Human& human, mon::Deploy::Method method,
-            VaccineLimits vaccLimits )const;
+            VaccineLimits vaccLimits, SimTime now )const;
     
 public:
     struct SubList : protected HumanIntervention{
         SubList( const scnXml::Deploy& elt, const InterventionRegistry& reg );
         
         void deploy( Host::Human& human, mon::Deploy::Method method,
-            VaccineLimits vaccLimits )const;
+            VaccineLimits vaccLimits, SimTime now )const;
         
         // Deployment restrictions:
         SimTime minAge, maxAge;

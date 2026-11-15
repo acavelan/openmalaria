@@ -533,7 +533,7 @@ ITNComponent::ITNComponent( ComponentId id, const scnXml::ITNDescription& elt,
     checker.checkNoneMissed();
 }
 
-void ITNComponent::deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
+void ITNComponent::deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits, SimTime /*now*/ )const{
     human.perHostTransmission.deployComponent( human.rng, *this );
     mon::recordDeploy(mon::measure("nMassITNs"), mon::measure("nEPI_ITNs"), human, method);
 }

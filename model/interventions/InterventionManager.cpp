@@ -136,7 +136,7 @@ HumanIntervention::HumanIntervention( const xsd::cxx::tree::sequence<scnXml::DTD
 }
 
 void HumanIntervention::deploy( Human& human, mon::Deploy::Method method,
-    VaccineLimits vaccLimits ) const
+    VaccineLimits vaccLimits, SimTime now ) const
 {
     for( size_t cond : conditions ){
         // Abort deployment if any condition is false.
@@ -148,7 +148,7 @@ void HumanIntervention::deploy( Human& human, mon::Deploy::Method method,
         // we must report first, since it can change cohort and sub-population
         // which may affect what deployment does (at least in the case of reporting deployments)
         human.addToCohort(component.id(), component.duration());
-        component.deploy( human, method, vaccLimits );
+        component.deploy( human, method, vaccLimits, now );
     }
 }
 
@@ -168,10 +168,10 @@ TriggeredDeployments::TriggeredDeployments(const scnXml::TriggeredDeployments& e
     }
 }
 void TriggeredDeployments::deploy(Human& human,
-        mon::Deploy::Method method, VaccineLimits vaccLimits) const
+        mon::Deploy::Method method, VaccineLimits vaccLimits, SimTime now) const
 {
     for( auto it = lists.begin(); it != lists.end(); ++it ){
-        it->deploy( human, method, vaccLimits );
+        it->deploy( human, method, vaccLimits, now );
     }
 }
 
@@ -196,16 +196,16 @@ TriggeredDeployments::SubList::SubList( const scnXml::TriggeredDeployments::Depl
     if( coverage <= 0.0 || minAge >= maxAge ) components.clear();
 }
 void TriggeredDeployments::SubList::deploy( Host::Human& human,
-        mon::Deploy::Method method, VaccineLimits vaccLimits )const
+        mon::Deploy::Method method, VaccineLimits vaccLimits, SimTime now )const
 {
     // This may be used within a time step; in that case we use human age at
     // the beginning of the step since this gives the expected result with age
     // limits of 0 to 1 time step.
     //TODO: why does the above contradict what we do? Is this due to a date being shifted later?
-    SimTime age = human.age(sim::nowOrTs1());
+    SimTime age = human.age(now);
     if( age >= minAge && age < maxAge ){
         if( coverage >= 1.0 || human.rng.bernoulli( coverage ) ){
-            HumanIntervention::deploy( human, method, vaccLimits );
+            HumanIntervention::deploy( human, method, vaccLimits, now );
         }
     }
 }
@@ -221,7 +221,7 @@ public:
     virtual ~RecruitmentOnlyComponent() {}
     
     /// Reports to monitoring, nothing else
-    virtual void deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits ) const{
+    virtual void deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits, SimTime /*now*/ ) const{
         mon::recordDeploy(mon::measure("nMassRecruitOnly"), mon::measure("nCtsRecruitOnly"), human, method);
     }
     
@@ -243,12 +243,12 @@ public:
         negative( elt.getNegative(), reg )
     {}
     
-    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits ) const{
+    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits, SimTime now ) const{
         mon::recordDeploy(mon::measure("nMassScreenings"), mon::measure("nCtsScreenings"), human, method);
         if( human.withinHostModel->diagnosticResult(human.rng, diagnostic) ){
-            positive.deploy( human, method, vaccLimits );
+            positive.deploy( human, method, vaccLimits, now );
         }else{
-            negative.deploy( human, method, vaccLimits );
+            negative.deploy( human, method, vaccLimits, now );
         }
     }
     
@@ -289,7 +289,7 @@ public:
         }
     }
     
-    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits ) const{
+    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits, SimTime /*now*/ ) const{
         mon::recordDeploy(mon::measure("nMDAs"), mon::measure("nCtsMDA"), human, method);
         human.withinHostModel->treatSimple( human, timeLiver, timeBlood );
     }
@@ -315,9 +315,9 @@ public:
     {
     }
     
-    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits ) const{
+    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits, SimTime now ) const{
         mon::recordDeploy(mon::measure("nMDAs"), mon::measure("nCtsMDA"), human, method);
-        double age = sim::inYears(human.age(sim::nowOrTs1()));
+        double age = sim::inYears(human.age(now));
         human.withinHostModel->treatPkPd( schedule, dosage, age, delay_d );
     }
     
@@ -340,9 +340,9 @@ public:
         tree(Clinical::CMDecisionTree::create(elt, false, reg))
     {}
     
-    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits )const{
+    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits, SimTime now )const{
         Clinical::CMDTOut out = tree.exec( Clinical::CMHostData(human,
-                sim::inYears(human.age(sim::nowOrTs1())),
+                sim::inYears(human.age(now)),
                 human.clinicalModel->getLatestState()) );
         if( out.treated ){
             mon::recordDeploy(mon::measure("nMDAs"), mon::measure("nCtsMDA"), human, method);
@@ -367,7 +367,7 @@ public:
     ClearImmunityComponent( ComponentId id ) :
         HumanInterventionComponent(id) {}
     
-    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits )const{
+    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits, SimTime /*now*/ )const{
         human.withinHostModel->clearImmunity();
         //NOTE: not reported
     }
@@ -527,13 +527,14 @@ bool inAvailabilityRange(const Host::Human& human, bool raw, SimTime minAvail, S
 }
 }
 
-void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::TransmissionModel& transmission,
-    const InterventionRegistry& reg)
+void apply(TimedDeployment& dep, const SimClock& clock, vector<Host::Human>& population,
+    Transmission::TransmissionModel& transmission, const InterventionRegistry& reg)
 {
     struct Action {
         vector<Host::Human>& population;
         Transmission::TransmissionModel& transmission;
         const InterventionRegistry& reg;
+        const SimClock& clock;
 
         void operator() (std::monostate) const {}  // list-end marker
         void operator() (TimedDeployment::ChangeHS& a) const {
@@ -549,7 +550,7 @@ void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::
         }
         void operator() (const TimedDeployment::Human& a) const {
             for(Host::Human& human : population) {
-                const SimTime age = human.age(sim::now());
+                const SimTime age = human.age(clock.now);
                 if( age >= a.minAge && age < a.maxAge ){
                     double probability = a.base.coverage;
 
@@ -612,7 +613,7 @@ void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::
                     if( inAvailabilityRange(human, false, a.minAvailability, a.maxAvailability, transmission.speciesParams) ) {
                         if( a.base.subPop == ComponentId::wholePop() || (human.isInSubPop( a.base.subPop ) != a.base.complement) ){
                             if( human.rng.bernoulli( probability ) ){
-                                a.base.intervention->deploy( human, mon::Deploy::TIMED, a.base.vaccLimits );
+                                a.base.intervention->deploy( human, mon::Deploy::TIMED, a.base.vaccLimits, clock.now );
                             }
                         }
                     }
@@ -625,7 +626,7 @@ void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::
             vector<Host::Human*> unprotected;
             size_t total = 0;       // number of humans within age bound and optionally subPop
             for(Host::Human &human : population) {
-                SimTime age = human.age(sim::now());
+                SimTime age = human.age(clock.now);
                 if( age >= h.minAge && age < h.maxAge ){
                     if( inAvailabilityRange(human, false, h.minAvailability, h.maxAvailability, transmission.speciesParams) ) {
                         if( h.base.subPop == ComponentId::wholePop() || (human.isInSubPop( h.base.subPop ) != h.base.complement) ){
@@ -647,7 +648,7 @@ void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::
                 cerr << "cum deployment: prop protected " << propProtected << "; additionalCoverage " << additionalCoverage << "; total " << total << endl;
                 for(Host::Human* human : unprotected) {
                     if( human->rng.uniform_01() < additionalCoverage ){
-                        h.base.intervention->deploy( *human, mon::Deploy::TIMED, h.base.vaccLimits );
+                        h.base.intervention->deploy( *human, mon::Deploy::TIMED, h.base.vaccLimits, clock.now );
                     }
                 }
             }
@@ -676,11 +677,11 @@ void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::
                     if (anophModel->nhhInstances.count(a.intervName) == 0)
                         throw util::xml_scenario_error("non human hosts type " + a.intervName + " not deployed during non human hosts intervention deployment");
 
-                    anophModel->reduceNhhAvailability[a.intervName][a.instance].deploy(vectorModel->m_rng, sim::now());
-                    anophModel->reduceP_B_I[a.intervName][a.instance].deploy(vectorModel->m_rng, sim::now());
-                    anophModel->reduceP_C_I[a.intervName][a.instance].deploy(vectorModel->m_rng, sim::now());
-                    anophModel->reduceP_D_I[a.intervName][a.instance].deploy(vectorModel->m_rng, sim::now());
-                    anophModel->reduceFecundity[a.intervName][a.instance].deploy(vectorModel->m_rng, sim::now());
+                    anophModel->reduceNhhAvailability[a.intervName][a.instance].deploy(vectorModel->m_rng, clock.now);
+                    anophModel->reduceP_B_I[a.intervName][a.instance].deploy(vectorModel->m_rng, clock.now);
+                    anophModel->reduceP_C_I[a.intervName][a.instance].deploy(vectorModel->m_rng, clock.now);
+                    anophModel->reduceP_D_I[a.intervName][a.instance].deploy(vectorModel->m_rng, clock.now);
+                    anophModel->reduceFecundity[a.intervName][a.instance].deploy(vectorModel->m_rng, clock.now);
                 }
             }
         }
@@ -707,7 +708,7 @@ void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::
                     nhh.P_C_I = p.mosqProbFindingRestSite;
                     nhh.P_D_I = p.mosqProbResting;
                     nhh.rel_fecundity = p.hostFecundityFactor;
-                    nhh.expiry = sim::now() + a.lifespan;
+                    nhh.expiry = clock.now + a.lifespan;
 
                     // add the nhh to the active nhh instances
                     anophModel->nhhInstances[a.intervName] = nhh;
@@ -715,7 +716,7 @@ void apply(TimedDeployment& dep, vector<Host::Human>& population, Transmission::
             }
         }
     };
-    std::visit(Action{population, transmission, reg}, dep.action);
+    std::visit(Action{population, transmission, reg, clock}, dep.action);
 }
 
 static void initReduceNhh(size_t instance, const std::string &intervName,
@@ -807,9 +808,9 @@ static TimedDeployment::AddNhh readAddNhh(const std::string &intervName, SimTime
 }
 
 bool filterAndDeploy(const ContinuousHumanDeployment& dep, Host::Human& human,
-                     const Transmission::VectorSpeciesParams& species_params)
+                     const Transmission::VectorSpeciesParams& species_params, const SimClock& clock)
 {
-    SimTime age = human.age(sim::now());
+    SimTime age = human.age(clock.now);
     if( dep.deployAge > age ){
         // stop processing continuous deployments for this
         // human for now because remaining ones happen in the future
@@ -817,14 +818,14 @@ bool filterAndDeploy(const ContinuousHumanDeployment& dep, Host::Human& human,
     }else if( dep.deployAge == age ){
         if( inAvailabilityRange(human, true, dep.minAvailability, dep.maxAvailability, species_params) )
         {
-            auto now = sim::intervDate();
+            auto now = clock.intervDate;
             if( dep.begin <= now && now < dep.end &&
                 ( dep.base.subPop == ComponentId::wholePop() ||
                     (human.isInSubPop( dep.base.subPop ) != dep.base.complement)
                 ) &&
                 human.rng.uniform_01() < dep.base.coverage )     // RNG call should be last test
             {
-                dep.base.intervention->deploy( human, mon::Deploy::CTS, dep.base.vaccLimits );
+                dep.base.intervention->deploy( human, mon::Deploy::CTS, dep.base.vaccLimits, clock.now );
             }
         }
     }//else: for some reason, a deployment age was missed; ignore it
@@ -1343,7 +1344,7 @@ ComponentId getComponentId(const InterventionRegistry& reg, const string textId)
     return it->second;
 }
 
-void loadFromCheckpoint(Model& model)
+void loadFromCheckpoint(Model& model, const SimClock& clock)
 {
     InterventionManager& mgr = model.interventions;
     vector<Host::Human>& population = model.humans.humans;
@@ -1351,7 +1352,7 @@ void loadFromCheckpoint(Model& model)
     auto& timed = mgr.timed;
     uint32_t& nextTimed = mgr.nextTimed;
 
-    SimTime date = sim::intervDate();
+    SimTime date = clock.intervDate;
     // We need to re-deploy changeHS and changeEIR interventions, but nothing
     // else. nextTimed should be zero so we can go through all past interventions.
     // Only redeploy those which happened before this time step.
@@ -1364,13 +1365,13 @@ void loadFromCheckpoint(Model& model)
             // Note: neither changeHS nor changeEIR interventions care what the
             // current time step is when they are deployed, so we don't need to
             // tell them the deployment date.
-            apply(timed[nextTimed], population, transmission, mgr.registry);
+            apply(timed[nextTimed], clock, population, transmission, mgr.registry);
         }
         nextTimed += 1;
     }
 }
 
-void deploy(Model& model)
+void deploy(Model& model, const SimClock& clock)
 {
     InterventionManager& mgr = model.interventions;
     vector<Host::Human>& population = model.humans.humans;
@@ -1380,13 +1381,13 @@ void deploy(Model& model)
     uint32_t& nextTimed = mgr.nextTimed;
     auto& importedInfections = mgr.importedInfections;
 
-    if (sim::intervTime() < sim::zero()) return;
+    if (clock.intervTime < sim::zero()) return;
 
     // deploy imported infections (not strictly speaking an intervention)
     importedInfections.import(population);
 
     // deploy timed interventions
-    SimTime now = sim::intervDate();
+    SimTime now = clock.intervDate;
     while (timed[nextTimed].date <= now)
     {
         if (util::CommandLine::option(util::CommandLine::VERBOSE))
@@ -1396,7 +1397,7 @@ void deploy(Model& model)
             cout << endl;
         }
 
-        apply(timed[nextTimed], population, transmission, mgr.registry);
+        apply(timed[nextTimed], clock, population, transmission, mgr.registry);
         nextTimed += 1;
     }
 
@@ -1413,7 +1414,7 @@ void deploy(Model& model)
                 print_details(cout, continuous[nextCtsDist]);
                 cout << endl;
             }
-            if (!filterAndDeploy(continuous[nextCtsDist], human, transmission.speciesParams)) break; // deployment (and all remaining) happens in the future
+            if (!filterAndDeploy(continuous[nextCtsDist], human, transmission.speciesParams, clock)) break; // deployment (and all remaining) happens in the future
             nextCtsDist = ++human.nextCtsDist;
         }
     }

@@ -58,7 +58,7 @@ GVIComponent::GVIComponent( ComponentId id, const scnXml::GVIDescription& elt,
     checker.checkNoneMissed();
 }
 
-void GVIComponent::deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
+void GVIComponent::deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits, SimTime /*now*/ )const{
     human.perHostTransmission.deployComponent(human.rng, *this);
     mon::recordDeploy(mon::measure("nMassGVI"), mon::measure("nCtsGVI"), human, method);
 }

@@ -48,7 +48,7 @@ public:
     ITNComponent( ComponentId id, const scnXml::ITNDescription& elt,
                const map< string, size_t >& species_name_map );
     
-    virtual void deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits )const;
+    virtual void deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits, SimTime /*now*/ )const;
     
     virtual Component::Type componentType() const;
     

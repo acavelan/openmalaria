@@ -97,7 +97,7 @@ void checkpoint (InterventionManager& mgr, S& stream) {
  *
  * Serves to replace health-system and EIR where changeHS/changeEIR
  * interventions have been used. */
-void loadFromCheckpoint (OM::Model& model);
+void loadFromCheckpoint (OM::Model& model, const SimClock& clock);
 
 /** @brief Deploy interventions
 
@@ -105,7 +105,7 @@ void loadFromCheckpoint (OM::Model& model);
  *
  * Continuous interventions are deployed as humans reach the target ages.
  * Unlike with vaccines, missing one schedule doesn't preclude the next. */
-void deploy (OM::Model& model);
+void deploy (OM::Model& model, const SimClock& clock);
 
 } }
 #endif

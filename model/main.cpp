@@ -88,7 +88,7 @@ void run(Model &model, SimTime humanWarmupLength, SimTime &endTime, SimTime &est
 
         // Monitoring. sim::now() gives time of end of last step,
         // and is when reporting happens in our time-series.
-        mon::Continuous::update( population, { sim::now(), sim::intervTime() } );
+        mon::Continuous::update( population, { sim::now(), sim::intervTime(), sim::intervDate() } );
         if( sim::intervDate() == mon::nextSurveyDate() ){
             for(Host::Human &human : population.humans)
                 Host::summarize(human, surveyOnlyNewEp);
@@ -97,7 +97,7 @@ void run(Model &model, SimTime humanWarmupLength, SimTime &endTime, SimTime &est
         }
         
         // Deploy interventions, at time sim::now().
-        interventions::deploy( model );
+        interventions::deploy( model, { sim::now(), sim::intervTime(), sim::intervDate() } );
         
         // Time step updates. Time steps are mid-day to mid-day.
         // sim::ts0() gives the date at the start of the step, sim::ts1() the date at the end.

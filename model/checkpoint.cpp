@@ -81,7 +81,7 @@ void checkpoint (istream& stream, SimTime &endTime, SimTime &estEndTime, Model &
         transmission & stream;
         population.checkpoint(stream, intervention_mgr.registry);
         interventions::checkpoint(intervention_mgr, stream);
-        interventions::loadFromCheckpoint(model);
+        interventions::loadFromCheckpoint(model, { sim::now(), sim::intervTime(), sim::intervDate() });
         
         // read last, because other loads may use random numbers or expect time
         // to be negative

@@ -425,7 +425,8 @@ public:
     virtual CMDTOut exec( CMHostData hostData ) const{
         deploy( hostData.human,
                   mon::Deploy::TREAT,
-                  interventions::VaccineLimits(/*default initialise: no limits*/) );
+                  interventions::VaccineLimits(/*default initialise: no limits*/),
+                  sim::nowOrTs1() );
         
         //NOTE: it's not intuitively obvious what value should be returned here
         // in the case of intervention deployment. This at least means that

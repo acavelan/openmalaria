@@ -433,7 +433,8 @@ void WHVivax::treatment( Host::Human& human, TreatmentId treatId ){
     // triggered intervention deployments:
     treat.deploy( human,
                   mon::Deploy::TREAT,
-                  interventions::VaccineLimits(/*default initialise: no limits*/) );
+                  interventions::VaccineLimits(/*default initialise: no limits*/),
+                  sim::nowOrTs1() );
 }
 void WHVivax::optionalPqTreatment( Host::Human& human ){
     // PQ clears liver stages. We don't worry about the effect of PQ on
