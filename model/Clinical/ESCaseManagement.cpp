@@ -36,9 +36,10 @@ namespace OM { namespace Clinical {
 
 // -----  health-system data and tree execution  -----
 
-void loadHSEventScheduler( ClinicalParams& params, const scnXml::HSEventScheduler& esData, const interventions::InterventionRegistry& reg){
-    params.escmUncomplicated = &CMDecisionTree::create( esData.getUncomplicated(), true, reg, params.healthSystemMemory );
-    params.escmComplicated = &CMDecisionTree::create( esData.getComplicated(), false, reg, params.healthSystemMemory );
+void loadHSEventScheduler( ClinicalParams& params, const scnXml::HSEventScheduler& esData, const interventions::InterventionRegistry& reg,
+        PkPd::TreatmentLibrary& trt){
+    params.escmUncomplicated = &CMDecisionTree::create( esData.getUncomplicated(), true, reg, params.healthSystemMemory, trt );
+    params.escmComplicated = &CMDecisionTree::create( esData.getComplicated(), false, reg, params.healthSystemMemory, trt );
     esSetParameters( params, esData );
 }
 

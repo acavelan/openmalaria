@@ -36,13 +36,6 @@ namespace OM { namespace PkPd {
 
 // ———  static  ———
 
-void LSTMModel::init( const scnXml::Scenario& scenario ){
-    if (scenario.getPharmacology().present()) {
-        LSTMDrugType::init(scenario.getPharmacology().get().getDrugs());
-        LSTMTreatments::init(scenario.getPharmacology().get().getTreatments());
-    }
-}
-
 // ———  non-static set up / tear down functions  ———
 
 void LSTMModel::checkpoint (istream& stream) {
@@ -56,7 +49,7 @@ void LSTMModel::checkpoint (istream& stream) {
     for(size_t i=0; i<numDrugs; ++i) {
         size_t index;
         index & stream;
-        m_drugs.push_back( LSTMDrugType::createInstance(rng, index) );
+        m_drugs.push_back( createInstance(rng, pkpd->drugs, index) );
         m_drugs.back() & stream;
     }
     medicateQueue & stream;
@@ -75,10 +68,10 @@ void LSTMModel::checkpoint (ostream& stream) {
 // ———  non-static simulation time functions  ———
 
 void LSTMModel::prescribe(size_t schedule, size_t dosage, double age, double body_mass, double delay_d){
-    DosageTable& table = dosages[dosage];
+    DosageTable& table = pkpd->treatments.dosages[dosage];
     double key = table.useMass ? body_mass : age;
     double doseMult = table.getMultiplier( key );
-    for( MedicateData& medicateData : schedules[schedule].medications ){
+    for( MedicateData& medicateData : pkpd->treatments.schedules[schedule].medications ){
         MedicateData data = medicateData.multiplied(doseMult);
         data.time += delay_d;
         medicateQueue.push_back( std::move(data) );
@@ -111,7 +104,7 @@ void LSTMModel::medicateDrug(LocalRng& rng, size_t typeIndex, double qty, double
         }
     }
     // No match, so insert one:
-    m_drugs.push_back( LSTMDrugType::createInstance(rng, typeIndex) );
+    m_drugs.push_back( createInstance(rng, pkpd->drugs, typeIndex) );
     (*m_drugs.back()).medicate (time, qty);
 }
 
@@ -151,7 +144,7 @@ void LSTMModel::decayDrugs (double body_mass) {
 }
 
 void LSTMModel::summarize(const Host::Human& human) const{
-    const vector<size_t> &drugsInUse( LSTMDrugType::getDrugsInUse() );
+    const vector<size_t> &drugsInUse( pkpd->drugs.inUse );
     for( size_t index : drugsInUse ){
         for( auto& drug : m_drugs ){
             double conc = drug->getConcentration(index);

@@ -361,10 +361,10 @@ public:
 //NOTE: this is similar to CMDTTreatPKPD, but supporting only a single "treatment"
 class TreatPKPDComponent : public HumanInterventionComponent {
 public:
-    TreatPKPDComponent( ComponentId id, const scnXml::DTTreatPKPD& elt ) :
+    TreatPKPDComponent( ComponentId id, const scnXml::DTTreatPKPD& elt, PkPd::TreatmentLibrary& trt ) :
         HumanInterventionComponent(id),
-            schedule(PkPd::LSTMTreatments::findSchedule(elt.getSchedule())),
-            dosage(PkPd::LSTMTreatments::findDosages(elt.getDosage())),
+            schedule(PkPd::findSchedule(trt, elt.getSchedule())),
+            dosage(PkPd::findDosages(trt, elt.getDosage())),
             delay_d(elt.getDelay_h() / 24.0 /* convert to days */)
     {
     }
@@ -390,9 +390,9 @@ public:
 class DecisionTreeComponent : public HumanInterventionComponent {
 public:
     DecisionTreeComponent( ComponentId id, const scnXml::DecisionTree& elt, const InterventionRegistry& reg,
-                           SimTime hsMemory ) :
+                           SimTime hsMemory, PkPd::TreatmentLibrary& trt ) :
         HumanInterventionComponent(id),
-        tree(Clinical::CMDecisionTree::create(elt, false, reg, hsMemory))
+        tree(Clinical::CMDecisionTree::create(elt, false, reg, hsMemory, trt))
     {}
     
     void deploy( Human& human, mon::Deploy::Method method, VaccineLimits, SimTime now )const{
@@ -584,7 +584,7 @@ bool inAvailabilityRange(const Host::Human& human, bool raw, SimTime minAvail, S
 
 void apply(TimedDeployment& dep, const SimClock& clock, vector<Host::Human>& population,
     Transmission::TransmissionModel& transmission, const InterventionRegistry& reg,
-    Clinical::ClinicalParams& clinical_params)
+    Clinical::ClinicalParams& clinical_params, PkPd::TreatmentLibrary& trt)
 {
     struct Action {
         vector<Host::Human>& population;
@@ -592,10 +592,11 @@ void apply(TimedDeployment& dep, const SimClock& clock, vector<Host::Human>& pop
         const InterventionRegistry& reg;
         const SimClock& clock;
         Clinical::ClinicalParams& clinical_params;
+        PkPd::TreatmentLibrary& trt;
 
         void operator() (std::monostate) const {}  // list-end marker
         void operator() (TimedDeployment::ChangeHS& a) const {
-            clinical_params.loadHealthSystem( *a.newHS, reg );
+            clinical_params.loadHealthSystem( *a.newHS, reg, trt );
             a.newHS.reset();
         }
         void operator() (TimedDeployment::ChangeEIR& a) const {
@@ -773,7 +774,7 @@ void apply(TimedDeployment& dep, const SimClock& clock, vector<Host::Human>& pop
             }
         }
     };
-    std::visit(Action{population, transmission, reg, clock, clinical_params}, dep.action);
+    std::visit(Action{population, transmission, reg, clock, clinical_params, trt}, dep.action);
 }
 
 static void initReduceNhh(size_t instance, const std::string &intervName,
@@ -942,7 +943,7 @@ vector<ComponentId> removeAtIds[SubPopRemove::NUM];
 // static functions:
 
 void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, const Population &population,
-          Transmission::TransmissionModel &transmission, SimTime hsMemory)
+          Transmission::TransmissionModel &transmission, SimTime hsMemory, PkPd::TreatmentLibrary& trt)
 {
     auto& continuous = mgr.continuous;
     auto& timed = mgr.timed;
@@ -1037,11 +1038,11 @@ void init(InterventionManager& mgr, const scnXml::Interventions &intervElt, cons
             }
             else if (component.getTreatPKPD().present())
             {
-                hiComponent = new TreatPKPDComponent(id, component.getTreatPKPD().get());
+                hiComponent = new TreatPKPDComponent(id, component.getTreatPKPD().get(), trt);
             }
             else if (component.getDecisionTree().present())
             {
-                hiComponent = new DecisionTreeComponent(id, component.getDecisionTree().get(), mgr.registry, hsMemory);
+                hiComponent = new DecisionTreeComponent(id, component.getDecisionTree().get(), mgr.registry, hsMemory, trt);
             }
             else if (component.getPEV().present())
             {
@@ -1423,7 +1424,8 @@ void loadFromCheckpoint(Model& model, const SimClock& clock)
             // Note: neither changeHS nor changeEIR interventions care what the
             // current time step is when they are deployed, so we don't need to
             // tell them the deployment date.
-            apply(timed[nextTimed], clock, population, transmission, mgr.registry, model.clinical_params);
+            apply(timed[nextTimed], clock, population, transmission, mgr.registry, model.clinical_params,
+                model.pkpd.treatments);
         }
         nextTimed += 1;
     }
@@ -1455,7 +1457,8 @@ void deploy(Model& model, const SimClock& clock)
             cout << endl;
         }
 
-        apply(timed[nextTimed], clock, population, transmission, mgr.registry, model.clinical_params);
+        apply(timed[nextTimed], clock, population, transmission, mgr.registry, model.clinical_params,
+                model.pkpd.treatments);
         nextTimed += 1;
     }
 

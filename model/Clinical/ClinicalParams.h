@@ -40,6 +40,7 @@ namespace scnXml {
     class HSDT5Day;
 }
 namespace OM { namespace interventions { struct InterventionRegistry; } }
+namespace OM { namespace PkPd { struct TreatmentLibrary; } }
 
 namespace OM {
 namespace Clinical {
@@ -66,7 +67,8 @@ struct ClinicalParams {
      * (stage 2; also done when a ChangeHS intervention is deployed).
      * Implemented per health-system kind, in the kind's .cpp file. */
     void loadHealthSystem( const scnXml::HealthSystem& healthSystem,
-                           const interventions::InterventionRegistry& reg );
+                           const interventions::InterventionRegistry& reg,
+                           PkPd::TreatmentLibrary& trt );
 
     /** Case fatality "rate" in the community as a function of the hospital
      * case-fatality ratio. */

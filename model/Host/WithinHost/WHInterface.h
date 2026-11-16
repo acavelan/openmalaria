@@ -41,6 +41,7 @@ namespace scnXml{
 class UnittestUtil;
 
 namespace OM { namespace interventions { struct InterventionRegistry; } }
+namespace OM { namespace PkPd { struct PkPdState; } }
 namespace OM {
 namespace Host {
     class Human;
@@ -79,14 +80,16 @@ public:
     /// @brief Static methods
     //@{
     /// Initialise static parameters
-    static void init(const OM::Parameters& parameters, const scnXml::Scenario& scenario);
+    static void init(const OM::Parameters& parameters, const scnXml::Scenario& scenario,
+                     PkPd::PkPdState& pkpd);
     
     /** Configure a new treatment option, and return the code used to select
      * that option later. */
     static TreatmentId addTreatment( const scnXml::TreatmentOption& desc, const interventions::InterventionRegistry& reg );
 
     /// Create an instance using the appropriate model
-    static unique_ptr<WHInterface> createWithinHostModel( LocalRng& rng, double comorbidityFactor );
+    static unique_ptr<WHInterface> createWithinHostModel( LocalRng& rng, double comorbidityFactor,
+                                                          PkPd::PkPdState& pkpd );
     //@}
 
     /// @brief Constructors, destructors and checkpointing functions

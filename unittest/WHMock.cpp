@@ -29,10 +29,11 @@ using namespace std;
 namespace OM {
 namespace UnitTest {
 
-WHMock::WHMock() :
+WHMock::WHMock( OM::PkPd::PkPdState& pkpd_state ) :
     totalDensity(numeric_limits<double>::quiet_NaN()),
     nTreatments(0),
-    lastTimeLiver(sim::never()), lastTimeBlood(sim::never())
+    lastTimeLiver(sim::never()), lastTimeBlood(sim::never()),
+    pkpd( pkpd_state )
 {}
 WHMock::~WHMock() {}
 

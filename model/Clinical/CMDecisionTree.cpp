@@ -196,9 +196,10 @@ const CMDecisionTree& save_decision( CMDecisionTree* decision ){
     return *decision_library.back();
 }
 
-CMDecisionTree::TreatInfo::TreatInfo( const string& s, const string& d, double h ) :
-    schedule(PkPd::LSTMTreatments::findSchedule(s)),
-    dosage(PkPd::LSTMTreatments::findDosages(d)),
+CMDecisionTree::TreatInfo::TreatInfo( const string& s, const string& d, double h,
+        PkPd::TreatmentLibrary& trt ) :
+    schedule(PkPd::findSchedule(trt, s)),
+    dosage(PkPd::findDosages(trt, d)),
     delay_h(h) {}
 
 namespace {
@@ -209,47 +210,48 @@ unique_ptr<CMDecisionTree> make( Kind kind ){
     return std::make_unique<CMDecisionTree>(kind);
 }
 
-const CMDecisionTree& createCaseType( const scnXml::DTCaseType& node, bool isUC, Reg reg, SimTime hsMemory);
-const CMDecisionTree& createInfectionOrigin( const scnXml::DTInfectionOrigin& node, bool isUC, Reg reg, SimTime hsMemory);
-const CMDecisionTree& createDiagnostic( const scnXml::DTDiagnostic& node, bool isUC, Reg reg, SimTime hsMemory);
-const CMDecisionTree& createUncomplicated( const scnXml::DTUncomplicated& node, bool isUC, Reg reg, SimTime hsMemory);
-const CMDecisionTree& createSevere( const scnXml::DTSevere& node, bool isUC, Reg reg, SimTime hsMemory);
-const CMDecisionTree& createRandom( const scnXml::DTRandom& node, bool isUC, Reg reg, SimTime hsMemory);
-const CMDecisionTree& createAge( const scnXml::DTAge& node, bool isUC, Reg reg, SimTime hsMemory);
-const CMDecisionTree& createCohort( const scnXml::DTCohort& node, bool isUC, Reg reg, SimTime hsMemory);
+const CMDecisionTree& createCaseType( const scnXml::DTCaseType& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt);
+const CMDecisionTree& createInfectionOrigin( const scnXml::DTInfectionOrigin& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt);
+const CMDecisionTree& createDiagnostic( const scnXml::DTDiagnostic& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt);
+const CMDecisionTree& createUncomplicated( const scnXml::DTUncomplicated& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt);
+const CMDecisionTree& createSevere( const scnXml::DTSevere& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt);
+const CMDecisionTree& createRandom( const scnXml::DTRandom& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt);
+const CMDecisionTree& createAge( const scnXml::DTAge& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt);
+const CMDecisionTree& createCohort( const scnXml::DTCohort& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt);
 const CMDecisionTree& createReport( const scnXml::DecisionTree::ReportSequence& seq, bool isUC, Reg reg);
-const CMDecisionTree& createTreatPKPD( const scnXml::DecisionTree::TreatPKPDSequence& seq, bool isUC, Reg reg);
+const CMDecisionTree& createTreatPKPD( const scnXml::DecisionTree::TreatPKPDSequence& seq, bool isUC, Reg reg,
+    PkPd::TreatmentLibrary& trt);
 const CMDecisionTree& createTreatSimple( const scnXml::DecisionTree::TreatSimpleSequence& seq, bool isUC, Reg reg);
 const CMDecisionTree& createDeploy( const scnXml::DecisionTree::DeploySequence& seq, bool isUC, Reg reg);
 
-const CMDecisionTree& createMultiple( const scnXml::DTMultiple& node, bool isUC, Reg reg, SimTime hsMemory){
+const CMDecisionTree& createMultiple( const scnXml::DTMultiple& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt){
     unique_ptr<CMDecisionTree> self = make(Kind::Multiple);
     for( const scnXml::DTCaseType& sn : node.getCaseType() ){
-        self->children.push_back( &createCaseType(sn, isUC, reg, hsMemory) );
+        self->children.push_back( &createCaseType(sn, isUC, reg, hsMemory, trt) );
     }
     for( const scnXml::DTInfectionOrigin& sn : node.getInfectionOrigin() ){
-        self->children.push_back( &createInfectionOrigin(sn, isUC, reg, hsMemory) );
+        self->children.push_back( &createInfectionOrigin(sn, isUC, reg, hsMemory, trt) );
     }
     for( const scnXml::DTDiagnostic& sn : node.getDiagnostic() ){
-        self->children.push_back( &createDiagnostic(sn, isUC, reg, hsMemory) );
+        self->children.push_back( &createDiagnostic(sn, isUC, reg, hsMemory, trt) );
     }
     for( const scnXml::DTUncomplicated& sn : node.getUncomplicated() ){
-        self->children.push_back( &createUncomplicated(sn, isUC, reg, hsMemory) );
+        self->children.push_back( &createUncomplicated(sn, isUC, reg, hsMemory, trt) );
     }
     for( const scnXml::DTSevere& sn : node.getSevere() ){
-        self->children.push_back( &createSevere(sn, isUC, reg, hsMemory) );
+        self->children.push_back( &createSevere(sn, isUC, reg, hsMemory, trt) );
     }
     for( const scnXml::DTRandom& sn : node.getRandom() ){
-        self->children.push_back( &createRandom(sn, isUC, reg, hsMemory) );
+        self->children.push_back( &createRandom(sn, isUC, reg, hsMemory, trt) );
     }
     for( const scnXml::DTAge& sn : node.getAge() ){
-        self->children.push_back( &createAge(sn, isUC, reg, hsMemory) );
+        self->children.push_back( &createAge(sn, isUC, reg, hsMemory, trt) );
     }
     for( const scnXml::DTCohort& sn : node.getCohort() ){
-        self->children.push_back( &createCohort(sn, isUC, reg, hsMemory) );
+        self->children.push_back( &createCohort(sn, isUC, reg, hsMemory, trt) );
     }
     if( node.getTreatPKPD().size() ){
-        self->children.push_back( &createTreatPKPD(node.getTreatPKPD(), isUC, reg) );
+        self->children.push_back( &createTreatPKPD(node.getTreatPKPD(), isUC, reg, trt) );
     }
     if( node.getTreatSimple().size() ){
         self->children.push_back( &createTreatSimple(node.getTreatSimple(), isUC, reg) );
@@ -263,56 +265,56 @@ const CMDecisionTree& createMultiple( const scnXml::DTMultiple& node, bool isUC,
     return save_decision( self.release() );
 }
 
-const CMDecisionTree& createCaseType( const scnXml::DTCaseType& node, bool isUC, Reg reg, SimTime hsMemory){
+const CMDecisionTree& createCaseType( const scnXml::DTCaseType& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt){
     if( !isUC ){
         throw util::xml_scenario_error( "decision tree: caseType can only be used for uncomplicated cases" );
     }
     unique_ptr<CMDecisionTree> self = make(Kind::CaseType);
-    self->firstLine = &CMDecisionTree::create( node.getFirstLine(), isUC, reg, hsMemory);
-    self->secondLine = &CMDecisionTree::create( node.getSecondLine(), isUC, reg, hsMemory);
+    self->firstLine = &CMDecisionTree::create( node.getFirstLine(), isUC, reg, hsMemory, trt);
+    self->secondLine = &CMDecisionTree::create( node.getSecondLine(), isUC, reg, hsMemory, trt);
     return save_decision( self.release() );
 }
 
-const CMDecisionTree& createInfectionOrigin( const scnXml::DTInfectionOrigin& node, bool isUC, Reg reg, SimTime hsMemory){
+const CMDecisionTree& createInfectionOrigin( const scnXml::DTInfectionOrigin& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt){
     unique_ptr<CMDecisionTree> self = make(Kind::InfectionOrigin);
-    self->imported = &CMDecisionTree::create( node.getImported(), isUC, reg, hsMemory);
-    self->introduced = &CMDecisionTree::create( node.getIntroduced(), isUC, reg, hsMemory);
-    self->indigenous = &CMDecisionTree::create( node.getIndigenous(), isUC, reg, hsMemory);
+    self->imported = &CMDecisionTree::create( node.getImported(), isUC, reg, hsMemory, trt);
+    self->introduced = &CMDecisionTree::create( node.getIntroduced(), isUC, reg, hsMemory, trt);
+    self->indigenous = &CMDecisionTree::create( node.getIndigenous(), isUC, reg, hsMemory, trt);
     return save_decision( self.release() );
 }
 
-const CMDecisionTree& createDiagnostic( const scnXml::DTDiagnostic& node, bool isUC, Reg reg, SimTime hsMemory){
+const CMDecisionTree& createDiagnostic( const scnXml::DTDiagnostic& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt){
     unique_ptr<CMDecisionTree> self = make(Kind::Diagnostic);
     self->diagnostic = &diagnostics::get( node.getDiagnostic() );
-    self->positive = &CMDecisionTree::create( node.getPositive(), isUC, reg, hsMemory);
-    self->negative = &CMDecisionTree::create( node.getNegative(), isUC, reg, hsMemory);
+    self->positive = &CMDecisionTree::create( node.getPositive(), isUC, reg, hsMemory, trt);
+    self->negative = &CMDecisionTree::create( node.getNegative(), isUC, reg, hsMemory, trt);
     return save_decision( self.release() );
 }
 
-const CMDecisionTree& createUncomplicated( const scnXml::DTUncomplicated& node, bool isUC, Reg reg, SimTime hsMemory){
+const CMDecisionTree& createUncomplicated( const scnXml::DTUncomplicated& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt){
     unique_ptr<CMDecisionTree> self = make(Kind::Uncomplicated);
-    self->positive = &CMDecisionTree::create( node.getPositive(), isUC, reg, hsMemory);
-    self->negative = &CMDecisionTree::create( node.getNegative(), isUC, reg, hsMemory);
+    self->positive = &CMDecisionTree::create( node.getPositive(), isUC, reg, hsMemory, trt);
+    self->negative = &CMDecisionTree::create( node.getNegative(), isUC, reg, hsMemory, trt);
     self->memory = UnitParse::readShortDuration(node.getMemory(), UnitParse::STEPS);
     if(self->memory > hsMemory)
         throw util::xml_scenario_error( "<uncomplicated> memory parameter must be less than or equal to the healthsystem memory (hsmemory parameter)" );
     return save_decision( self.release() );
 }
 
-const CMDecisionTree& createSevere( const scnXml::DTSevere& node, bool isUC, Reg reg, SimTime hsMemory){
+const CMDecisionTree& createSevere( const scnXml::DTSevere& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt){
     unique_ptr<CMDecisionTree> self = make(Kind::Severe);
-    self->positive = &CMDecisionTree::create( node.getPositive(), isUC, reg, hsMemory);
-    self->negative = &CMDecisionTree::create( node.getNegative(), isUC, reg, hsMemory);
+    self->positive = &CMDecisionTree::create( node.getPositive(), isUC, reg, hsMemory, trt);
+    self->negative = &CMDecisionTree::create( node.getNegative(), isUC, reg, hsMemory, trt);
     return save_decision( self.release() );
 }
 
-const CMDecisionTree& createRandom( const scnXml::DTRandom& node, bool isUC, Reg reg, SimTime hsMemory){
+const CMDecisionTree& createRandom( const scnXml::DTRandom& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt){
     unique_ptr<CMDecisionTree> result = make(Kind::Random);
     
     double cum_p = 0.0;
     for( const scnXml::Outcome& outcome : node.getOutcome() ){
         cum_p += outcome.getP();
-        result->branches.insert( make_pair(cum_p, &CMDecisionTree::create( outcome, isUC, reg, hsMemory)) );
+        result->branches.insert( make_pair(cum_p, &CMDecisionTree::create( outcome, isUC, reg, hsMemory, trt)) );
     }
     
     // Test cum_p is approx. 1.0 in case the input tree is wrong. We require no
@@ -326,7 +328,7 @@ const CMDecisionTree& createRandom( const scnXml::DTRandom& node, bool isUC, Reg
     return save_decision( result.release() );
 }
 
-const CMDecisionTree& createAge( const scnXml::DTAge& node, bool isUC, Reg reg, SimTime hsMemory){
+const CMDecisionTree& createAge( const scnXml::DTAge& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt){
     unique_ptr<CMDecisionTree> result = make(Kind::Age);
     
     double lastAge = numeric_limits<double>::quiet_NaN();
@@ -342,7 +344,7 @@ const CMDecisionTree& createAge( const scnXml::DTAge& node, bool isUC, Reg reg, 
             double lb = age.getLb();
             result->branches.insert( make_pair(lb, lastNode) );
         }
-        lastNode = &CMDecisionTree::create(age, isUC, reg, hsMemory);
+        lastNode = &CMDecisionTree::create(age, isUC, reg, hsMemory, trt);
         lastAge = age.getLb();
     }
     double noLb = numeric_limits<double>::infinity();
@@ -351,10 +353,10 @@ const CMDecisionTree& createAge( const scnXml::DTAge& node, bool isUC, Reg reg, 
     return save_decision( result.release() );
 }
 
-const CMDecisionTree& createCohort( const scnXml::DTCohort& node, bool isUC, Reg reg, SimTime hsMemory){
+const CMDecisionTree& createCohort( const scnXml::DTCohort& node, bool isUC, Reg reg, SimTime hsMemory, PkPd::TreatmentLibrary& trt){
     unique_ptr<CMDecisionTree> self = make(Kind::Cohort);
-    self->positive = &CMDecisionTree::create( node.getPositive(), isUC, reg, hsMemory);
-    self->negative = &CMDecisionTree::create( node.getNegative(), isUC, reg, hsMemory);
+    self->positive = &CMDecisionTree::create( node.getPositive(), isUC, reg, hsMemory, trt);
+    self->negative = &CMDecisionTree::create( node.getNegative(), isUC, reg, hsMemory, trt);
     self->component = interventions::getComponentId(reg, node.getComponent());
     return save_decision( self.release() );
 }
@@ -369,14 +371,15 @@ const CMDecisionTree& createReport( const scnXml::DecisionTree::ReportSequence& 
     return save_decision( self.release() );
 }
 
-const CMDecisionTree& createTreatPKPD( const scnXml::DecisionTree::TreatPKPDSequence& seq, bool /*isUC*/, Reg /*reg*/){
+const CMDecisionTree& createTreatPKPD( const scnXml::DecisionTree::TreatPKPDSequence& seq, bool /*isUC*/, Reg /*reg*/,
+        PkPd::TreatmentLibrary& trt){
     unique_ptr<CMDecisionTree> self = make(Kind::TreatPKPD);
     self->treatments.reserve( seq.size() );
     for( const scnXml::DTTreatPKPD& treatElt : seq ){
         self->treatments.push_back( CMDecisionTree::TreatInfo(
             treatElt.getSchedule(),
             treatElt.getDosage(),
-            treatElt.getDelay_h()
+            treatElt.getDelay_h(), trt
         ) );
     }
     assert( self->treatments.size() > 0 );        // a TreatPKPD node should not be empty
@@ -413,23 +416,24 @@ const CMDecisionTree& createDeploy( const scnXml::DecisionTree::DeploySequence& 
 
 } // anonymous namespace
 
-const CMDecisionTree& CMDecisionTree::create( const scnXml::DecisionTree& node, bool isUC, const interventions::InterventionRegistry& reg, SimTime hsMemory){
-    if( node.getMultiple().present() ) return createMultiple( node.getMultiple().get(), isUC, reg, hsMemory);
+const CMDecisionTree& CMDecisionTree::create( const scnXml::DecisionTree& node, bool isUC, const interventions::InterventionRegistry& reg, SimTime hsMemory,
+        PkPd::TreatmentLibrary& trt){
+    if( node.getMultiple().present() ) return createMultiple( node.getMultiple().get(), isUC, reg, hsMemory, trt);
     // branching nodes
-    if( node.getCaseType().present() ) return createCaseType( node.getCaseType().get(), isUC, reg, hsMemory);
-    if( node.getInfectionOrigin().present() ) return createInfectionOrigin( node.getInfectionOrigin().get(), isUC, reg, hsMemory);
-    if( node.getDiagnostic().present() ) return createDiagnostic( node.getDiagnostic().get(), isUC, reg, hsMemory);
-    if( node.getUncomplicated().present() ) return createUncomplicated( node.getUncomplicated().get(), isUC, reg, hsMemory);
-    if( node.getSevere().present() ) return createSevere( node.getSevere().get(), true, reg, hsMemory);
-    if( node.getRandom().present() ) return createRandom( node.getRandom().get(), isUC, reg, hsMemory);
-    if( node.getAge().present() ) return createAge( node.getAge().get(), isUC, reg, hsMemory);
-    if( node.getCohort().present() ) return createCohort( node.getCohort().get(), isUC, reg, hsMemory);
+    if( node.getCaseType().present() ) return createCaseType( node.getCaseType().get(), isUC, reg, hsMemory, trt);
+    if( node.getInfectionOrigin().present() ) return createInfectionOrigin( node.getInfectionOrigin().get(), isUC, reg, hsMemory, trt);
+    if( node.getDiagnostic().present() ) return createDiagnostic( node.getDiagnostic().get(), isUC, reg, hsMemory, trt);
+    if( node.getUncomplicated().present() ) return createUncomplicated( node.getUncomplicated().get(), isUC, reg, hsMemory, trt);
+    if( node.getSevere().present() ) return createSevere( node.getSevere().get(), true, reg, hsMemory, trt);
+    if( node.getRandom().present() ) return createRandom( node.getRandom().get(), isUC, reg, hsMemory, trt);
+    if( node.getAge().present() ) return createAge( node.getAge().get(), isUC, reg, hsMemory, trt);
+    if( node.getCohort().present() ) return createCohort( node.getCohort().get(), isUC, reg, hsMemory, trt);
 
     // action nodes
     if( node.getNoTreatment().present() ) return save_decision( make(Kind::NoTreatment).release() );
     if( node.getReport().size() ) return createReport( node.getReport(), isUC, reg );
     if( node.getTreatFailure().present() ) return save_decision( make(Kind::TreatFailure).release() );
-    if( node.getTreatPKPD().size() ) return createTreatPKPD( node.getTreatPKPD(), isUC, reg );
+    if( node.getTreatPKPD().size() ) return createTreatPKPD( node.getTreatPKPD(), isUC, reg, trt );
     if( node.getTreatSimple().size() ) return createTreatSimple( node.getTreatSimple(), isUC, reg );
     if( node.getDeploy().size() ) return createDeploy( node.getDeploy(), isUC, reg );
     throw xml_scenario_error( "unterminated decision tree" );

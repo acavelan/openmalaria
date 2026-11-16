@@ -29,6 +29,7 @@
 #include "Host/WithinHost/Infection/MolineauxInfection.h"
 #include "Host/WithinHost/Infection/PennyInfection.h"
 #include "Host/WithinHost/Treatments.h"
+#include "PkPd/LSTMTreatments.h"
 #include "util/ModelOptions.h"
 #include "util/errors.h"
 #include "schema/scenario.h"
@@ -50,7 +51,8 @@ bool opt_vivax_simple = false,
 
 // -----  static functions  -----
 
-void WHInterface::init( const OM::Parameters& parameters, const scnXml::Scenario& scenario ) {
+void WHInterface::init( const OM::Parameters& parameters, const scnXml::Scenario& scenario,
+                        PkPd::PkPdState& pkpd ) {
     reportInfectionsByGenotype = mon::isUsed(mon::measure("nInfectByGenotype")) ||
         mon::isUsed(mon::measure("nPatentByGenotype")) ||
         mon::isUsed(mon::measure("logDensByGenotype"));
@@ -80,6 +82,7 @@ void WHInterface::init( const OM::Parameters& parameters, const scnXml::Scenario
                 || opt_molineaux_whm || opt_penny_whm;
         
         if( opt_common_whm ){
+            pkpd.init( scenario );
             CommonWithinHost::init( scenario );
         }else{
             DescriptiveWithinHostModel::initDescriptive();
@@ -91,11 +94,12 @@ TreatmentId WHInterface::addTreatment(const scnXml::TreatmentOption& desc, const
     return Treatments::addTreatment( desc, reg );
 }
 
-unique_ptr<WHInterface> WHInterface::createWithinHostModel(LocalRng& rng, double comorbidityFactor) {
+unique_ptr<WHInterface> WHInterface::createWithinHostModel(LocalRng& rng, double comorbidityFactor,
+        PkPd::PkPdState& pkpd) {
     if( opt_vivax_simple ) {
         return make_unique<WHVivax>( rng, comorbidityFactor );
     } else if( opt_common_whm ) {
-        return make_unique<CommonWithinHost>( rng, comorbidityFactor );
+        return make_unique<CommonWithinHost>( rng, comorbidityFactor, pkpd );
     } else {
         return make_unique<DescriptiveWithinHostModel>( rng, comorbidityFactor );
     }

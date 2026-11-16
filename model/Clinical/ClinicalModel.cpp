@@ -65,7 +65,8 @@ ClinicalParams::ClinicalParams( const Parameters& parameters, const scnXml::Scen
     }
 }
 
-void ClinicalParams::loadHealthSystem( const scnXml::HealthSystem& healthSystem, const interventions::InterventionRegistry& reg ){
+void ClinicalParams::loadHealthSystem( const scnXml::HealthSystem& healthSystem, const interventions::InterventionRegistry& reg,
+        PkPd::TreatmentLibrary& trt ){
     caseFatalityRate.set( healthSystem.getCFR(), "CFR" );
     pSequelaeInpatient.set( healthSystem.getPSequelaeInpatient(), "pSequelaeInpatient" );
     if( eventScheduler ){
@@ -73,7 +74,7 @@ void ClinicalParams::loadHealthSystem( const scnXml::HealthSystem& healthSystem,
             throw util::xml_scenario_error ("Expected EventScheduler "
                 "section in healthSystem data (initial or intervention)");
         }
-        loadHSEventScheduler( *this, healthSystem.getEventScheduler().get(), reg );
+        loadHSEventScheduler( *this, healthSystem.getEventScheduler().get(), reg, trt );
     }else if( immOutcomes ){
         if ( !healthSystem.getImmediateOutcomes().present() ){
             throw util::xml_scenario_error ("Expected ImmediateOutcomes "
@@ -85,7 +86,7 @@ void ClinicalParams::loadHealthSystem( const scnXml::HealthSystem& healthSystem,
             throw util::xml_scenario_error ("Expected DecisionTree5Day "
                 "section in healthSystem data (initial or intervention)");
         }
-        loadHSDT5Day( *this, healthSystem.getDecisionTree5Day().get(), reg );
+        loadHSDT5Day( *this, healthSystem.getDecisionTree5Day().get(), reg, trt );
     }
 }
 

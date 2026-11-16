@@ -69,8 +69,8 @@ public:
     void setUp () {
         m_rng.seed(0, 721347520444481703);
         UnittestUtil::initTime(1);
-        UnittestUtil::PkPdSuiteSetup();
-        proxy = new LSTMModel ();
+        pkpd = UnittestUtil::PkPdSuiteSetup();
+        proxy = new LSTMModel( pkpd );
         inf = createDummyInfection(m_rng, 0, InfectionOrigin::Indigenous);
         schedule.clear();
     }
@@ -78,7 +78,6 @@ public:
     void tearDown () {
         delete inf;
         delete proxy;
-        LSTMDrugType::clear();
     }
     
     void assembleTripleDosageSchedule ( double dosage ){
@@ -169,10 +168,10 @@ public:
             }
             cout <<  endl << "====\033[0m" << endl;
         )
-        size_t drugIndex = LSTMDrugType::findDrug( drugName );
-        size_t drug2Ind = hasSecondDrug ? LSTMDrugType::findDrug( drug2Name ) : 0;
-        double conc_abs_tol = LSTMDrugType::get(drugIndex).getNegligibleConcentration();
-        double conc_abs_tol2 = hasSecondDrug ? LSTMDrugType::get(drug2Ind).getNegligibleConcentration() : 0;
+        size_t drugIndex = findDrug( pkpd.drugs, drugName );
+        size_t drug2Ind = hasSecondDrug ? findDrug( pkpd.drugs, drug2Name ) : 0;
+        double conc_abs_tol = pkpd.drugs.types.at(drugIndex).getNegligibleConcentration();
+        double conc_abs_tol2 = hasSecondDrug ? pkpd.drugs.types.at(drug2Ind).getNegligibleConcentration() : 0;
         const size_t maxDays = 6;
         PCS_VERBOSE(double res_Fac[maxDays];)
         double res_Conc[maxDays];
@@ -338,6 +337,7 @@ public:
     
 private:
     LocalRng m_rng;
+    PkPdState pkpd;
     LSTMModel *proxy;
     CommonInfection *inf;
     double bodymass;

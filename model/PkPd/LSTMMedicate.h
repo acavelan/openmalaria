@@ -45,8 +45,10 @@ using std::map;
 class UnittestUtil;
 namespace OM { namespace PkPd {
 
+struct DrugLibrary;
+
 struct Schedule {
-    void load( const xsd::cxx::tree::sequence<scnXml::PKPDMedication>& seq );
+    void load( const xsd::cxx::tree::sequence<scnXml::PKPDMedication>& seq, DrugLibrary& drugs );
     
     vector<MedicateData> medications;
 };
@@ -72,9 +74,6 @@ struct DosageTable {
     bool multMassKg;    // multiply by mass instead of using table
     map<double,double> table;
 };
-
-extern vector<Schedule> schedules;
-extern vector<DosageTable> dosages;
 
 } }
 #endif

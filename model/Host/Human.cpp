@@ -110,7 +110,7 @@ HumanHet hetSample(util::LocalRng& rng)
 Human::Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& species_params,
         const Transmission::AgeGroupInterpolator& age_availability, util::MasterRng& master_rng,
         const Clinical::ClinicalParams& clinical_params,
-        const InfectionIncidenceParams& incidence_params) :
+        const InfectionIncidenceParams& incidence_params, PkPd::PkPdState& pkpd) :
     rng(master_rng),
     dateOfBirth(dateOfBirth),
     species_params(&species_params)
@@ -119,7 +119,7 @@ Human::Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& speci
     assert( dateOfBirth == sim::nowOrTs1() || (sim::now() == sim::zero() && dateOfBirth < sim::now()) );
 
     HumanHet het = hetSample(rng);
-    withinHostModel = WithinHost::WHInterface::createWithinHostModel( rng, het.comorbidityFactor );
+    withinHostModel = WithinHost::WHInterface::createWithinHostModel( rng, het.comorbidityFactor, pkpd );
     double iiFactor = getAvailabilityFactor(rng, 1.0, incidence_params);
     perHostTransmission.initialise (rng, het.availabilityFactor * iiFactor, *this->species_params, age_availability);
     clinicalModel = Clinical::ClinicalModel::createClinicalModel(het.treatmentSeekingFactor, clinical_params);

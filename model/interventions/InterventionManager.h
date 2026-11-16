@@ -38,6 +38,9 @@ namespace OM {
     namespace Host {
         class Human;
     }
+    namespace PkPd {
+        struct TreatmentLibrary;
+    }
 
 namespace interventions {
 
@@ -84,7 +87,7 @@ struct InterventionManager {
  * @param hsMemory health-system memory (validates decision-tree components) */
 void init (InterventionManager& mgr, const scnXml::Interventions& intervElt,
            const Population &population, Transmission::TransmissionModel& transmission,
-           SimTime hsMemory);
+           SimTime hsMemory, PkPd::TreatmentLibrary& trt);
 
 /// Checkpointing
 template<class S>

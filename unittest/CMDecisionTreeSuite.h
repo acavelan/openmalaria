@@ -51,24 +51,23 @@ public:
 
         UnittestUtil::EmpiricalWHM_setup();
 
+        pkpd = UnittestUtil::PkPdSuiteSetup ();
+
         human.reset( UnittestUtil::createHuman(sim::nowOrTs0()).release() );
 
         ETS_ASSERT( human.get() != 0 );
         whm = dynamic_cast<WHMock*>(UnittestUtil::setHumanWH( *human,
-                unique_ptr<WithinHost::WHInterface>(new WHMock()) ));
+                unique_ptr<WithinHost::WHInterface>(new WHMock( pkpd )) ));
         ETS_ASSERT( whm != 0 );
 
         hd.reset( new CMHostData( *human, 21 /* any real age will do for most tests */,
                                       Episode::NONE ) );
 
         // could seed random-number-generator, but shouldn't affect outcomes
-        UnittestUtil::PkPdSuiteSetup ();
     }
     void tearDown () {
         human.reset();
         whm = nullptr;
-        PkPd::LSTMDrugType::clear();
-        PkPd::LSTMTreatments::clear();
     }
     
     /* Runs the decision tree N times
@@ -76,7 +75,8 @@ public:
      */
     double propTreatmentsNReps (int N, const scnXml::DecisionTree& dt) {
         static const interventions::InterventionRegistry empty_reg; // no deploy/cohort nodes in test trees
-        const CMDecisionTree& cmdt = CMDecisionTree::create( dt, true, empty_reg, sim::never() );
+        const CMDecisionTree& cmdt = CMDecisionTree::create( dt, true, empty_reg, sim::never(),
+            pkpd.treatments );
         
 	whm->nTreatments = 0;
         int secondCounter = 0;
@@ -259,6 +259,7 @@ public:
     }
     
 private:
+    PkPd::PkPdState pkpd;
     unique_ptr<Host::Human> human;
     WHMock* whm;
     unique_ptr<CMHostData> hd;

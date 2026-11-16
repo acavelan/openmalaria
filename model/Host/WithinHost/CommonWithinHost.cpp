@@ -61,12 +61,11 @@ void CommonWithinHost::init( const scnXml::Scenario& scenario ){
     
     reportInfectedOrPatentInfected = mon::isUsed(mon::measure("totalInfs")) ||
         mon::isUsed(mon::measure("totalPatentInf"));
-    
-    PkPd::LSTMModel::init( scenario );
 }
 
-CommonWithinHost::CommonWithinHost( LocalRng& rng, double comorbidityFactor ) :
-        WHFalciparum( rng, comorbidityFactor )
+CommonWithinHost::CommonWithinHost( LocalRng& rng, double comorbidityFactor, PkPd::PkPdState& pkpd ) :
+        WHFalciparum( rng, comorbidityFactor ),
+        pkpdModel( pkpd )
 {
     assert( sim::oneTS() == sim::fromDays(1) || sim::oneTS() == sim::fromDays(5) );
     

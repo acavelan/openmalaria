@@ -39,6 +39,9 @@ namespace Clinical {
 namespace WithinHost {
     class WHInterface;
 }
+namespace PkPd {
+    struct PkPdState;
+}
 namespace Transmission {
     class TransmissionModel;
 }
@@ -56,7 +59,7 @@ public:
     Human(SimTime dateOfBirth, const Transmission::VectorSpeciesParams& species_params,
         const Transmission::AgeGroupInterpolator& age_availability, util::MasterRng& master_rng,
         const Clinical::ClinicalParams& clinical_params,
-        const InfectionIncidenceParams& incidence_params);
+        const InfectionIncidenceParams& incidence_params, PkPd::PkPdState& pkpd);
 
     /// Allow move construction
     Human(Human&&) = default;

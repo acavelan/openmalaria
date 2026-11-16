@@ -30,6 +30,7 @@
 #include "Transmission/TransmissionModel.h"
 #include "Clinical/ClinicalParams.h"
 #include "Clinical/InfantMortality.h"
+#include "PkPd/LSTMTreatments.h"
 #include "interventions/InterventionManager.h"
 
 namespace scnXml { class Entomology; class AgeGroupValues; }
@@ -50,6 +51,9 @@ struct Model {
     Host::InfectionIncidenceParams incidence_params;
     /** Number of new infections since the last continuous report. */
     int ctsNewInfections = 0;
+    /** Drug types and treatment tables (loaded from scenario XML; referenced
+     * by the per-human within-host PK/PD models). */
+    PkPd::PkPdState pkpd;
     /** Human hosts. */
     Population humans;
     /** Neonatal mortality state. */
@@ -62,6 +66,7 @@ struct Model {
     Model(size_t popSize, uint64_t iseed, const scnXml::Entomology& entomology,
           const Clinical::ClinicalParams& clinical_params,
           const Host::InfectionIncidenceParams& incidence_params,
+          PkPd::PkPdState&& pkpd,
           const scnXml::AgeGroupValues& availabilityToMosquitoes);
     ~Model(); // defined where the deployment types are complete
 };

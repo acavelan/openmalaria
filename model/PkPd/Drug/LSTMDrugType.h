@@ -103,35 +103,10 @@ public:
  * None of this data is checkpointed, because it is loaded by init() from XML
  * data. (Although if it cannot be reproduced by reloading it should be
  * checkpointed.) */
+struct DrugLibrary;
+
 class LSTMDrugType {
 public:
-    ///@brief Static functions
-    //@{
-    /** Initialise the drug model. Called at start of simulation. */
-    static void init (const scnXml::Drugs& data);
-    /** Clear previous data. Only needed for testing. */
-    static void clear();
-    
-    /** Get the number of drug types. */
-    
-    /** Find a DrugType by its abbreviation, and returns its index.
-     *
-     * Throws if the drug isn't found, so you can rely on it returning a valid
-     * index if it doesn't throw. */
-    static size_t findDrug(string abbreviation);
-    
-    /** Get a reference to drug type data for some index. This can't be used
-     * to change the data. */
-    static LSTMDrugType& get(size_t index);
-    
-    /** Get a list of all drug types which are (possibly) being used. */
-    static const vector<size_t>& getDrugsInUse();
-    
-    /** Create a per-human drug module for a given drug index. */
-    static unique_ptr<LSTMDrug> createInstance( LocalRng& rng, size_t index );
-    //@}
-    
-    
     ///@brief Non static (per instance) functions
     //@{
     /** Create a new DrugType.
@@ -139,7 +114,7 @@ public:
      * @param index     Index of drug in internal list
      * @param drugData Scenario data for this drug (PK params, PD params per phenotype)
      */
-    LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData);
+    LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData, DrugLibrary& lib);
     ~LSTMDrugType ();
     
     LSTMDrugType(LSTMDrugType&&) = default;
@@ -228,6 +203,25 @@ public:
     
     // Allow LSTMDrug to access private members
 };
+
+/** Drug types read from XML (owned by PkPdState; not checkpointed, rebuilt
+ * from scenario data). */
+struct DrugLibrary {
+    vector<LSTMDrugType> types;
+    map<string, size_t> names;  ///< abbreviation -> index
+    vector<size_t> inUse;       ///< indices flagged by findDrug()
+};
+
+/** Read drug type descriptions. Throws if a drug is described twice. */
+void init( DrugLibrary& lib, const scnXml::Drugs& data );
+
+/** Find a DrugType by abbreviation, returning its index (throws if absent),
+ * so you can rely on it returning a valid index if it doesn't throw.
+ * Marks the drug (and its metabolite) as used; only called while loading. */
+size_t findDrug( DrugLibrary& lib, const string& abbreviation );
+
+/** Create a per-human drug module for a given drug index. */
+unique_ptr<LSTMDrug> createInstance( LocalRng& rng, DrugLibrary& lib, size_t index );
 
 } }
 #endif

@@ -38,15 +38,6 @@ namespace PkPd {
 using namespace OM::util;
 using WithinHost::Genotypes;
 
-// -----  Static variables and functions  -----
-
-// The list of drugTypes drugs. Not checkpointed.
-vector<LSTMDrugType> drugTypes;
-map<string,size_t> drugTypeNames;
-// List of all indices of drugs being used
-vector<size_t> drugsInUse;
-
-
 LSTMDrugPD::LSTMDrugPD( const scnXml::Phenotype& phenotype ){
     n = phenotype.getSlope ();
     IC50 = util::createSampler( phenotype.getIC50() );
@@ -80,60 +71,46 @@ double LSTMDrugPD::IC50_pow_slope(LocalRng& rng, size_t index, WithinHost::Commo
 }
 
 
-void LSTMDrugType::init (const scnXml::Pharmacology::DrugsType& drugData) {
-    drugTypes.reserve(drugData.getDrug().size());
+void init (DrugLibrary& lib, const scnXml::Pharmacology::DrugsType& drugData) {
+    lib.types.reserve(drugData.getDrug().size());
     for( const scnXml::PKPDDrug& drug : drugData.getDrug() ){
         const string& abbrev = drug.getAbbrev();
         // Check drug doesn't already exist
-        if (drugTypeNames.find (abbrev) != drugTypeNames.end())
+        if (lib.names.find (abbrev) != lib.names.end())
             throw TRACED_EXCEPTION_DEFAULT (string ("Drug added twice: ").append(abbrev));
         
-        size_t i = drugTypes.size();
-        drugTypes.emplace_back( i, drug );
-        drugTypeNames[abbrev] = i;
+        size_t i = lib.types.size();
+        lib.types.emplace_back( i, drug, lib );
+        lib.names[abbrev] = i;
     }
 }
-void LSTMDrugType::clear()
-{
-    drugTypes.clear();
-    drugTypeNames.clear();
-}
-
-// Add index to drugsInUse if not already present. Not fast but doesn't need to be.
-void drugIsUsed(size_t index){
-    for( size_t i : drugsInUse ){
+// Add index to lib.inUse if not already present. Not fast but doesn't need to be.
+void drugIsUsed(DrugLibrary& lib, size_t index){
+    for( size_t i : lib.inUse ){
         if( i == index ) return;        // already in list
     }
-    drugsInUse.push_back(index);
+    lib.inUse.push_back(index);
 }
-size_t LSTMDrugType::findDrug(string _abbreviation) {
-    auto iter = drugTypeNames.find (_abbreviation);
-    if (iter == drugTypeNames.end())
+size_t findDrug(DrugLibrary& lib, const string& _abbreviation) {
+    auto iter = lib.names.find (_abbreviation);
+    if (iter == lib.names.end())
         throw util::xml_scenario_error (string ("attempt to use drug without description: ").append(_abbreviation));
     size_t index = iter->second;
     
     // We assume that drugs are used when and only when findDrug returns their
     // index or they are a metabolite of a drug returned here.
-    drugIsUsed(index);
-    if( drugTypes[index].conversion_rate /*conversion model used*/ ){
-        drugIsUsed(drugTypes[index].metabolite);
+    drugIsUsed(lib, index);
+    if( lib.types[index].conversion_rate /*conversion model used*/ ){
+        drugIsUsed(lib, lib.types[index].metabolite);
     }
     
     return index;
 }
 
-LSTMDrugType& LSTMDrugType::get(size_t index) { //static
-    return drugTypes.at(index);
-}
-
-const vector< size_t >& LSTMDrugType::getDrugsInUse(){
-    return drugsInUse;
-}
-
-unique_ptr<LSTMDrug> LSTMDrugType::createInstance(LocalRng& rng, size_t index) {
-    LSTMDrugType& typeData = drugTypes[index];
+unique_ptr<LSTMDrug> createInstance(LocalRng& rng, DrugLibrary& lib, size_t index) {
+    LSTMDrugType& typeData = lib.types[index];
     if( typeData.conversion_rate ){
-        LSTMDrugType& metaboliteData = drugTypes[typeData.metabolite];
+        LSTMDrugType& metaboliteData = lib.types[typeData.metabolite];
         auto d = make_unique<LSTMDrug>(LSTMDrug::CONVERSION, typeData, typeData.sample_Vd(rng));
         d->metaboliteType = &metaboliteData;
         d->nka = -typeData.sample_ka(rng);
@@ -164,7 +141,7 @@ unique_ptr<LSTMDrug> LSTMDrugType::createInstance(LocalRng& rng, size_t index) {
 
 // -----  Non-static LSTMDrugType functions  -----
 
-LSTMDrugType::LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData) :
+LSTMDrugType::LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData, DrugLibrary& lib) :
         index (index), metabolite(0),
         negligible_concentration(numeric_limits<double>::quiet_NaN()),
         neg_m_exp(numeric_limits<double>::quiet_NaN()),
@@ -211,7 +188,7 @@ LSTMDrugType::LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData) :
         }
         const scnXml::Conversion& conv = pk.getConversion().get();
         try{
-            metabolite = findDrug(conv.getMetabolite());
+            metabolite = findDrug(lib, conv.getMetabolite());
         }catch( util::xml_scenario_error& e ){
             throw util::xml_scenario_error( "PK: metabolite drug not found; metabolite must be defined *before* parent drug!" );
         }

@@ -32,6 +32,7 @@ namespace scnXml {
 }
 
 namespace OM { namespace interventions { struct InterventionRegistry; } }
+namespace OM { namespace PkPd { struct TreatmentLibrary; } }
 namespace OM { namespace Clinical {
 using WithinHost::WHInterface;
 
@@ -41,7 +42,7 @@ struct ClinicalParams;
  * from XML) into params. (Re)loads all data affected by this healthSystem
  * element. */
 void loadHSEventScheduler( ClinicalParams& params, const scnXml::HSEventScheduler& esData,
-    const interventions::InterventionRegistry& reg );
+    const interventions::InterventionRegistry& reg, PkPd::TreatmentLibrary& trt );
 
 /** Run the case-management tree for a new event (medicates treatment). */
 CMDTOut esExecute( const CMHostData& hostData, const ClinicalParams& params );

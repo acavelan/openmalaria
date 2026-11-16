@@ -50,15 +50,14 @@ public:
     void setUp () {
         m_rng.seed(0, 721347520444481703);
         UnittestUtil::initTime(1);
-	UnittestUtil::PkPdSuiteSetup();
-	proxy = new LSTMModel ();
+	pkpd = UnittestUtil::PkPdSuiteSetup();
+	proxy = new LSTMModel( pkpd );
         inf = createDummyInfection(m_rng, 0, InfectionOrigin::Indigenous);
-        MQ_index = LSTMDrugType::findDrug( "MQ" );
+        MQ_index = findDrug( pkpd.drugs, "MQ" );
     }
     void tearDown () {
         delete inf;
 	delete proxy;
-        LSTMDrugType::clear();
     }
     
     void testNone () {
@@ -97,6 +96,7 @@ public:
     
 private:
     LocalRng m_rng;
+    PkPdState pkpd;
     LSTMModel *proxy;
     CommonInfection *inf;
     double massAt21;

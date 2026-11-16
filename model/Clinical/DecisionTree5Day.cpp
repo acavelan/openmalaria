@@ -35,7 +35,8 @@ using namespace ::OM::util;
 
 // ———  health-system data  ———
 
-void loadHSDT5Day( ClinicalParams& params, const scnXml::HSDT5Day& hsDescription, const interventions::InterventionRegistry& reg ){
+void loadHSDT5Day( ClinicalParams& params, const scnXml::HSDT5Day& hsDescription, const interventions::InterventionRegistry& reg,
+        PkPd::TreatmentLibrary& trt){
     double accessUCOfficial1 = hsDescription.getPSeekOfficialCareUncomplicated1().getValue();
     double accessUCOfficial2 = hsDescription.getPSeekOfficialCareUncomplicated2().getValue();
     // Note: this asymmetry is historical, and probably matters little:
@@ -56,8 +57,8 @@ void loadHSDT5Day( ClinicalParams& params, const scnXml::HSDT5Day& hsDescription
             "be in range [0,1]");
     }
     
-    params.treeUCOfficial = &CMDecisionTree::create( hsDescription.getTreeUCOfficial(), true, reg, params.healthSystemMemory );
-    params.treeUCSelfTreat = &CMDecisionTree::create( hsDescription.getTreeUCSelfTreat(), true, reg, params.healthSystemMemory );
+    params.treeUCOfficial = &CMDecisionTree::create( hsDescription.getTreeUCOfficial(), true, reg, params.healthSystemMemory, trt );
+    params.treeUCSelfTreat = &CMDecisionTree::create( hsDescription.getTreeUCSelfTreat(), true, reg, params.healthSystemMemory, trt );
     
     params.cureRateSevere = hsDescription.getCureRateSevere().getValue();
     params.treatmentSevere = WHInterface::addTreatment( hsDescription.getTreatmentSevere(), reg );

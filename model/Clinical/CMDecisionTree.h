@@ -32,6 +32,7 @@
 #include <optional>
 
 namespace scnXml { class DecisionTree; }
+namespace OM { namespace PkPd { struct TreatmentLibrary; } }
 
 namespace OM {
 namespace WithinHost {
@@ -101,7 +102,8 @@ public:
      *  tree, pgState does not need to be set when executing the tree.
      * @param hsMemory health-system memory (validates <uncomplicated> nodes) */
     static const CMDecisionTree& create( const ::scnXml::DecisionTree& node, bool isUC,
-        const interventions::InterventionRegistry& reg, SimTime hsMemory );
+        const interventions::InterventionRegistry& reg, SimTime hsMemory,
+        PkPd::TreatmentLibrary& trt );
     
     /** Execute the decision tree.
      * 
@@ -112,7 +114,8 @@ public:
 public:
     /** One treatment to be delivered via the PK/PD model. */
     struct TreatInfo {
-        TreatInfo( const std::string& s, const std::string& d, double h );
+        TreatInfo( const std::string& s, const std::string& d, double h,
+            PkPd::TreatmentLibrary& trt );
         size_t schedule;        // index of the schedule
         size_t dosage;          // name of the dosage table
         double delay_h;         // delay in hours

@@ -43,7 +43,7 @@ class CommonWithinHost : public WHFalciparum
 public:
     static void init(const scnXml::Scenario& scenario);
     
-    CommonWithinHost( LocalRng& rng, double comorbidityFactor );
+    CommonWithinHost( LocalRng& rng, double comorbidityFactor, PkPd::PkPdState& pkpd );
     virtual ~CommonWithinHost();
     
     

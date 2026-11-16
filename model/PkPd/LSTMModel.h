@@ -37,6 +37,8 @@ namespace WithinHost {
 }
 namespace PkPd {
 
+struct DrugLibrary;
+
 struct MedicateData {
     MedicateData () :
         drug(0),
@@ -53,7 +55,7 @@ struct MedicateData {
     }
     
 public:
-    void load( const scnXml::PKPDMedication& med );
+    void load( const scnXml::PKPDMedication& med, DrugLibrary& drugs );
     
     inline MedicateData multiplied( double doseMult ){
         MedicateData r( *this );
@@ -78,10 +80,11 @@ public:
  *  * getDrugFactor() for each infection
  *  * decayDrugs()
  */
+struct PkPdState; // PkPd libraries owned by Model
+
 class LSTMModel {
 public:
-    /// Static initialisation
-    static void init ( const scnXml::Scenario& scenario );
+    explicit LSTMModel( PkPdState& pkpd ) : pkpd(&pkpd) {}
     
     /// Checkpointing
     template<class S>
@@ -156,6 +159,9 @@ public:
     
     /// All pending medications
     list<MedicateData> medicateQueue;
+    
+    /// Drug types and treatment tables (owned by Model)
+    PkPdState* pkpd;
 };
 
 } }

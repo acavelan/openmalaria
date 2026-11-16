@@ -175,7 +175,8 @@ int main(int argc, char* argv[])
         // Init models used by humans
         Host::InfectionIncidenceParams incidence_params;
         incidence_params.init( parameters );
-        WithinHost::WHInterface::init( parameters, *scenario );
+        PkPd::PkPdState pkpd;
+        WithinHost::WHInterface::init( parameters, *scenario, pkpd );
         Clinical::ClinicalParams clinical_params( parameters, *scenario );
         AgeStructure::init( scenario->getDemography() );
 
@@ -187,6 +188,7 @@ int main(int argc, char* argv[])
 
         Model model(popSize, scenario->getModel().getComputationParameters().getIseed(),
                     scenario->getEntomology(), clinical_params, incidence_params,
+                    std::move(pkpd),
                     scenario->getModel().getHuman().getAvailabilityToMosquitoes());
         model.neonatal.init( scenario->getModel().getClinical() );
         mon::Continuous::registerCallback( "new infections", "\tnew infections",
@@ -198,8 +200,9 @@ int main(int argc, char* argv[])
         // Depends on transmission model (for species indexes):
         // MDA1D may depend on health system (too complex to verify)
         interventions::init(model.interventions, scenario->getInterventions(), model.humans, *model.transmission,
-                            clinical_params.healthSystemMemory );
-        model.clinical_params.loadHealthSystem( scenario->getHealthSystem(), model.interventions.registry ); // Depends on interventions, PK/PD (from humanPop)
+                            clinical_params.healthSystemMemory, model.pkpd.treatments );
+        model.clinical_params.loadHealthSystem( scenario->getHealthSystem(), model.interventions.registry,
+                                                model.pkpd.treatments ); // Depends on interventions, PK/PD (from humanPop)
         mon::initCohorts( scenario->getMonitoring(), model.interventions.registry ); // Depends on interventions
 
         bool surveyOnlyNewEp = scenario->getMonitoring().getSurveyOptions().getOnlyNewEpisode();

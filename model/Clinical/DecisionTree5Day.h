@@ -30,6 +30,7 @@ namespace scnXml {
 }
 
 namespace OM { namespace interventions { struct InterventionRegistry; } }
+namespace OM { namespace PkPd { struct TreatmentLibrary; } }
 namespace OM {
 namespace Clinical {
 
@@ -51,7 +52,7 @@ namespace Clinical {
  * from XML) into params. (Re)loads all data affected by this healthSystem
  * element. */
 void loadHSDT5Day( ClinicalParams& params, const scnXml::HSDT5Day& hsDescription,
-    const interventions::InterventionRegistry& reg );
+    const interventions::InterventionRegistry& reg, PkPd::TreatmentLibrary& trt );
 
 class DecisionTree5Day : public CM5DayCommon
 {

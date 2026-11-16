@@ -40,7 +40,7 @@ public:
     Population(size_t size, const Transmission::VectorSpeciesParams& species_params,
              const Transmission::AgeGroupInterpolator& age_availability, util::MasterRng& master_rng,
              const Clinical::ClinicalParams& clinical_params,
-             const Host::InfectionIncidenceParams& incidence_params);
+             const Host::InfectionIncidenceParams& incidence_params, PkPd::PkPdState& pkpd);
 
     /** Create the initial population of Humans */
     void createInitialHumans();
@@ -79,6 +79,7 @@ public:
     util::MasterRng& master_rng;
     const Clinical::ClinicalParams& clinical_params;
     const Host::InfectionIncidenceParams& incidence_params;
+    PkPd::PkPdState& pkpd;
 };
 
 void registerContinousPopulationCallbacks();

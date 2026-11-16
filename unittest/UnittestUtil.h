@@ -312,7 +312,7 @@ public:
         diagnostics::init( parameters, dummyXML::scenario );
     }
     
-    static void PkPdSuiteSetup () {
+    static PkPd::PkPdState PkPdSuiteSetup () {
         ModelOptions::reset();
         WithinHost::Genotypes::initSingle();
 
@@ -382,7 +382,8 @@ public:
                      0.9027777777777778 /*k13*/, 0.07948639559767655 /*k31*/),
                 PD(3.45 /* vmax */, 0.020831339 /* IC50 */, 6.0 /* slope */ )));
         
-        PkPd::LSTMDrugType::init (drugs);
+        PkPd::PkPdState state;
+        PkPd::init( state.drugs, drugs );
         
         // Treatments
         scnXml::PKPDSchedule sched1("sched1");
@@ -405,7 +406,8 @@ public:
         treatments.getSchedule().push_back(sched1);
         treatments.getSchedule().push_back(sched2);
         treatments.getDosages().push_back(dosage1);
-        PkPd::LSTMTreatments::init(treatments);
+        PkPd::init( state.treatments, state.drugs, treatments );
+        return state;
     }
     
     // For when infection parameters shouldn't be used; enforce by setting to NaNs.
@@ -481,7 +483,8 @@ public:
         static util::MasterRng NO_MASTER(0, 0);
         static const Clinical::ClinicalParams NO_PARAMS;
         static const Host::InfectionIncidenceParams NO_II_PARAMS;
-        return unique_ptr<Host::Human>( new Host::Human(dateOfBirth, NO_SPECIES, NO_CURVE, NO_MASTER, NO_PARAMS, NO_II_PARAMS) );
+        static PkPd::PkPdState NO_PKPD;
+        return unique_ptr<Host::Human>( new Host::Human(dateOfBirth, NO_SPECIES, NO_CURVE, NO_MASTER, NO_PARAMS, NO_II_PARAMS, NO_PKPD) );
     }
     // Set the WithinHost model used by the human, and return a pointer to it. Do not delete this!
     static WithinHost::WHInterface* setHumanWH(Host::Human& human, unique_ptr<WithinHost::WHInterface> wh){

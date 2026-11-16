@@ -53,9 +53,10 @@ const vector<double> ctsDemogAgeGroups = { 1.0, 5.0, 10.0, 15.0, 25.0 };
 Population::Population(size_t size, const Transmission::VectorSpeciesParams& species_params,
                        const Transmission::AgeGroupInterpolator& age_availability,
                        util::MasterRng& master_rng, const Clinical::ClinicalParams& clinical_params,
-                       const Host::InfectionIncidenceParams& incidence_params) :
+                       const Host::InfectionIncidenceParams& incidence_params, PkPd::PkPdState& pkpd) :
     size (size), species_params(species_params), age_availability(age_availability),
-    master_rng(master_rng), clinical_params(clinical_params), incidence_params(incidence_params)
+    master_rng(master_rng), clinical_params(clinical_params), incidence_params(incidence_params),
+    pkpd(pkpd)
 {}
 
 void Population::createInitialHumans()
@@ -73,7 +74,7 @@ void Population::createInitialHumans()
         while (cumulativePop < targetPop) {
             SimTime dob = sim::zero() - sim::fromTS(iage);
             util::streamValidate( dob );
-            humans.push_back( Host::Human (dob, species_params, age_availability, master_rng, clinical_params, incidence_params) );
+            humans.push_back( Host::Human (dob, species_params, age_availability, master_rng, clinical_params, incidence_params, pkpd) );
             ++cumulativePop;
         }
     }
@@ -110,7 +111,7 @@ void Population::update(SimTime ts1)
     recentBirths += (size - cumPop);
     while (cumPop < (int)size) {
         // humans born at end of this time step = beginning of next, hence ts1
-        humans.push_back( Host::Human (ts1, species_params, age_availability, master_rng, clinical_params, incidence_params) );
+        humans.push_back( Host::Human (ts1, species_params, age_availability, master_rng, clinical_params, incidence_params, pkpd) );
         ++cumPop;
     }
 }
@@ -121,7 +122,7 @@ void Population::checkpoint(istream& stream, const interventions::InterventionRe
     recentBirths & stream;
 
     for(size_t i = 0; i < size && !stream.eof(); ++i) {
-        humans.push_back( Host::Human (sim::zero(), species_params, age_availability, master_rng, clinical_params, incidence_params) );
+        humans.push_back( Host::Human (sim::zero(), species_params, age_availability, master_rng, clinical_params, incidence_params, pkpd) );
         humans.back().checkpoint(stream, reg);
     }
     if (humans.size() != size)
