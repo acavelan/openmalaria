@@ -138,7 +138,7 @@ public:
     /** Medicate drugs to an individual, which act on infections the following
      * time steps, until rendered ineffective by decayDrugs().
      *
-     * \param typeIndex The index of drug type data (what LSTMDrugType::findDrug() returns).
+     * \param typeIndex The index of drug type data (what findDrug() returns).
      * \param qty The quantity in mg
      * \param time Time in days since start of this time step to medicate at
      * 

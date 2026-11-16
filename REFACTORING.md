@@ -519,9 +519,10 @@ Status of the remaining plan (what is *not* done yet):
   deferred cts-callback/init-time reads listed under `b96bb10a` below, and
   `main.cpp`/`sim` themselves (the owner — dies with the last slice).
 - **Phase 6**: `NeonatalMortality` (6a), component registry (6b), clinical/HS
-  statics (6c, `Clinical::ClinicalParams`), `InfantMortality` (6d) and
-  `InfectionIncidenceModel` (6e, also de-virtualised) done; the
-  mon/WithinHost/PkPd-registry static clusters remain.
+  statics (6c, `Clinical::ClinicalParams`), `InfantMortality` (6d),
+  `InfectionIncidenceModel` (6e, also de-virtualised) and the PkPd
+  registries (6f, `PkPd::PkPdState`) done; the mon/WithinHost and
+  Pathogenesis static clusters remain.
 - 59 `ModelOptions::option()` reads remain (Phase 5 wants init-time caches).
 
 Net effect so far: no mutable process-wide state left in the
@@ -529,8 +530,8 @@ transmission/PerHost path; intervention deployment state, the component
 registry, the master RNG, the neonatal and infant-mortality models and all
 clinical/health-system parameters are caller-owned (`Model` members). The XML
 boundary is complete — schema headers reach only the loader and the `.cpp`
-files that parse. Cumulative branch diff vs `main`: +6369/−6706 across 140
-files — the model tree is 31,209 lines.
+files that parse. Cumulative branch diff vs `main`: +6577/−6876 across 144
+files — the model tree is 31,226 lines.
 
 ---
 
@@ -749,6 +750,29 @@ Phase 6e — InfectionIncidenceModel de-static + de-virtual (52/52):
   is written by `reportNumNewInfections` and read/reset by a lambda
   registered with `mon::Continuous` from `main` (callback map is
   name-keyed, so registration order is not observable).
+
+Phase 6f — PkPd registries de-static (52/52):
+
+- `ee0d6e4e` — `PkPd::LSTMDrugType`'s and `PkPd::LSTMTreatments`' file-static
+  lists/names became plain `DrugLibrary{types,names,inUse}` and
+  `TreatmentLibrary{schedules,scheduleNames,dosages,dosagesNames}` with free
+  `init`/`findDrug`/`findSchedule`/`findDosages`/`createInstance`; bundled as
+  move-only `PkPdState{drugs,treatments}` (`LSTMDrugType` is move-only; the
+  vectors heap-allocate, so type-object addresses stay stable for
+  `LSTMDrug`'s pointers across the move into `Model`). `PkPdState::init`
+  keeps the `pharmacology present()` check and is called from
+  `WHInterface::init` under the same `opt_common_whm` condition that used to
+  gate `LSTMModel::init`, preserving conditional init; `LSTMModel` now takes
+  a `PkPdState&` (pointer member, stream layout unchanged). The library ref
+  threads through `createWithinHostModel`→`CommonWithinHost`, and through
+  `ClinicalParams::loadHealthSystem` → `loadHSEventScheduler`/`loadHSDT5Day`
+  → `CMDecisionTree::create` (builders + `TreatInfo` take a trailing
+  `TreatmentLibrary&`), and `interventions::init` → the
+  `TreatPKPDComponent`/`DecisionTreeComponent` ctors plus `apply()` for the
+  ChangeHS reload. `clear()` statics dropped; the unit-test suites hold
+  their own `PkPdState` (`PkPdSuiteSetup` returns one, `WHMock` takes one,
+  `createHuman` passes a null-state sentinel since it builds descriptive
+  within-host models).
 
 ---
 
