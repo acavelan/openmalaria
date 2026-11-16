@@ -20,101 +20,35 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_DecayFunction
-#define Hmod_DecayFunction
+#pragma once
 
-#include <limits>
-#include <memory>
-
-#include "Global.h"
 #include "util/sampler.h"
-#include "util/UnitParse.h"
+#include <optional>
 
-namespace OM {
-namespace util {
-
-/** An interface for a few types of decay function (some of which may also be
- * suitible survival functions).
- *
- * Heterogeneity is implemented by passing a DecayFunction object to the eval
- * function; this should be sampled by the same DecayFunction.
- *****************************************************************************/
-class DecayFunction
-{
-public:
-    DecayFunction(bool increasing = false, double initialEfficacy = 1.0, double CV = 0.0) : 
-        increasing(increasing), initialEfficacy(initialEfficacy), het(std::move(LognormalSampler::fromMeanCV(1.0, CV))) {}
-
-    DecayFunction(const DecayFunction& other) : 
-        increasing(other.increasing),
-        initialEfficacy(other.initialEfficacy),
-        het(other.het ? other.het->clone() : nullptr),
-        hetFactor(other.hetFactor) {}
-
-    virtual ~DecayFunction() {}
-
-    /** Return a new decay function, constructed from an XML element.
-     * 
-     * @param elt XML element specifying which function to use and parameters
-     * @param eltName Name of XML element (for reasonable error reporting)
-     */
-    static unique_ptr<DecayFunction> makeObject(
-        const scnXml::DecayFunction& elt, const char* eltName
-    );
-
-    /** Sample a DecayFunction value (should be stored per individual).
-     * 
-     * Note that a DecayFunction is needed to call eval() even if heterogeneity
-     * is not wanted. If sigma = 0 then the random number stream will not be
-     * touched. */
-    unique_ptr<DecayFunction> hetSample(LocalRng& rng) const {
-        return hetSample(het->sample(rng));
-    }
-    
-    /** Generate a DecayFunction value from an existing sample. */
-    std::unique_ptr<DecayFunction> hetSample(NormalSample sample) const {
-        return hetSample(het->sample(sample));
-    }
-    
-    /** Generate a DecayFunction value from an existing sample. */
-    unique_ptr<DecayFunction> hetSample(double factor) const {
-        unique_ptr<DecayFunction> sample = makeHetSample(factor);
-        sample->hetFactor = factor;
-        return sample;
-    }
-
-    /** Say you have a population of objects which each have two states:
-     * decayed and not decayed. If you want to use a DecayFunction to model
-     * the proportion of objects which have decayed, you need to work out per
-     * object the age of decay. This function does that.
-     * 
-     * This is only valid where mu and sigma parameters are zero.
-     * 
-     * @returns Age at which an object should decay. */
-    virtual SimTime sampleAgeOfDecay (LocalRng& rng) const =0;
-    
-    inline double eval(double ageDays) const {
-        if(increasing)
-            return 1.0 - compute( ageDays ) * initialEfficacy;
-        else
-            return compute( ageDays ) * initialEfficacy;
-    }
-
-    virtual double compute(double ageDays) const = 0;
-
-    /** Checkpoint a sampled copy, recreating it from this configured function. */
-    void checkpointSample(const unique_ptr<DecayFunction>& sample, ostream& stream) const;
-    void checkpointSample(unique_ptr<DecayFunction>& sample, istream& stream) const;
-
-private:
-    bool increasing;
-    double initialEfficacy;
-    std::unique_ptr<util::Sampler> het;
-
-protected:
-    virtual unique_ptr<DecayFunction> makeHetSample(double factor) const = 0;
-    double hetFactor = 0.0;
+namespace OM::util {
+enum class DecayKind {
+    Constant, Step, Linear, Exponential, Weibull, Hill, SmoothCompact,
+    Plus, Minus, Divides, Multiplies, Emax
 };
 
-} }
-#endif
+struct DecayFunction {
+    explicit DecayFunction(double cv = 0.0)
+        : heterogeneity(LognormalSampler::fromMeanCV(1.0, cv)) {}
+
+    DecayKind kind = DecayKind::Constant;
+    bool increasing = false;
+    double initialEfficacy = 1.0;
+    double rate = 0.0; // inverse duration, including the distribution's scale factor
+    double shape = 1.0;
+    double emax = 1.0, ic50Power = 1.0, slope = 1.0, initialConcentration = 0.0;
+    LognormalSampler heterogeneity;
+    vector<DecayFunction> children;
+};
+
+// A person stores only the sampled factor, not a copy of the configured curve.
+using DecaySample = std::optional<double>;
+double eval(const DecayFunction&, double ageDays, double factor);
+SimTime sampleAgeOfDecay(const DecayFunction&, LocalRng&, SimTime interval);
+void checkpointDecaySample(const DecaySample&, ostream&);
+void checkpointDecaySample(DecaySample&, istream&);
+}

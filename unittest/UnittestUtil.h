@@ -47,12 +47,6 @@ using namespace WithinHost;
 
 using ::OM::util::ModelOptions;
 
-namespace OM {
-    namespace WithinHost {
-        extern bool opt_common_whm;
-    }
-}
-
 namespace xml_helpers{
     /// Construct a helper for setting PK parameters (1-compartment model)
     ///@param Vd Volume of distribution (l/kg)
@@ -419,16 +413,15 @@ public:
         ModelOptions::reset();
     }
     
-    static void EmpiricalWHM_setup () {
+    static void EmpiricalWHM_setup (WithinHost::WithinHostParameters& config) {
         ModelOptions::reset();
         ModelOptions::set(util::EMPIRICAL_WITHIN_HOST_MODEL);
-        OM::WithinHost::opt_common_whm = true;
+        config.kind = WithinHost::WithinHostParameters::Kind::Empirical;
     }
     
     static void MolineauxWHM_setup( const std::string& mode, bool repl_gamma ){
         ModelOptions::reset();
         ModelOptions::set(util::MOLINEAUX_WITHIN_HOST_MODEL);
-        OM::WithinHost::opt_common_whm = true;
         if( mode == "original" ){
         }else if( mode == "1st_max_gamma" ){
             ModelOptions::set(util::FIRST_LOCAL_MAXIMUM_GAMMA);

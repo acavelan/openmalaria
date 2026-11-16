@@ -27,7 +27,6 @@
 #include <fstream>
 
 #include "Global.h"
-#include "schema/interventions.h"
 #include "util/errors.h"
 
 #include "Host/HumanTransmission.h"
@@ -50,7 +49,7 @@ using namespace std::placeholders;
 namespace OM
 {
 class Summary;
-class Population;
+struct Population;
 namespace Host
 {
 struct Human;
@@ -58,30 +57,11 @@ struct Human;
 namespace Transmission
 {
 
-inline double averageEIR(const scnXml::NonVector &nonVectorData)
-{
-    // Calculates the arithmetic mean of the whole daily EIR vector read from the .XML file
-    double valaverageEIR = 0.0;
-    size_t i = 0;
-    for (const scnXml::NonVector::EIRDailySequence &daily = nonVectorData.getEIRDaily(); i < daily.size(); ++i)
-    {
-        valaverageEIR += (double)daily[i];
-    }
-    if (i == 0) throw util::xml_scenario_error("no EIRDaily values given"); // pedantic check
-    return valaverageEIR / i;
-}
-
-inline double averageEIR(const scnXml::DailyValues &vectorData)
-{
-    // Calculates the arithmetic mean of the whole daily EIR vector read from the .XML file
-    double valaverageEIR = 0.0;
-    size_t i = 0;
-    for (const scnXml::DailyValues::ValueSequence &daily = vectorData.getValue(); i < daily.size(); ++i)
-    {
-        valaverageEIR += (double)daily[i];
-    }
-    if (i == 0) throw util::xml_scenario_error("no daily values given"); // pedantic check
-    return valaverageEIR / i;
+inline double averageEIR(const vector<double>& daily) {
+    double total = 0.0;
+    for (double value : daily) total += value;
+    if (daily.empty()) throw util::xml_scenario_error("no EIRDaily values given");
+    return total / daily.size();
 }
 
 /** Variable describing current simulation mode. */
@@ -146,13 +126,17 @@ protected:
         // Set VACCINE_GENOTYPE option
         opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
 
-        mon::Continuous::registerCallback("input EIR", "\tinput EIR", std::bind(&TransmissionModel::ctsCbInputEIR, this, _1));
-        mon::Continuous::registerCallback("simulated EIR", "\tsimulated EIR", std::bind(&TransmissionModel::ctsCbSimulatedEIR, this, _1));
-        mon::Continuous::registerCallback("human infectiousness", "\thuman infectiousness", std::bind(&TransmissionModel::ctsCbKappa, this, _1));
-        mon::Continuous::registerCallback("num transmitting humans", "\tnum transmitting humans", std::bind(&TransmissionModel::ctsCbNumTransmittingHumans, this, _1));
+
     }
 
 public:
+    virtual void registerContinuousCallbacks(mon::Continuous::State& reporting) {
+        mon::Continuous::registerCallback(reporting, "input EIR", "\tinput EIR", std::bind(&TransmissionModel::ctsCbInputEIR, this, _1));
+        mon::Continuous::registerCallback(reporting, "simulated EIR", "\tsimulated EIR", std::bind(&TransmissionModel::ctsCbSimulatedEIR, this, _1));
+        mon::Continuous::registerCallback(reporting, "human infectiousness", "\thuman infectiousness", std::bind(&TransmissionModel::ctsCbKappa, this, _1));
+        mon::Continuous::registerCallback(reporting, "num transmitting humans", "\tnum transmitting humans", std::bind(&TransmissionModel::ctsCbNumTransmittingHumans, this, _1));
+    }
+
     //! Deallocate memory for TransmissionModel parameters and clean up
     virtual ~TransmissionModel() {}
 
@@ -207,7 +191,7 @@ public:
      * when the vector model is used this updates mosquito populations. */
     virtual void vectorUpdate(const vector<Host::Human> &population){};
 
-    virtual void changeEIRIntervention(const scnXml::NonVector &) = 0;
+    virtual void changeEIRIntervention(const vector<double>& daily, int eipDuration) = 0;
 
     /** Does per-time-step updates and returns the EIR (inoculation rate per host
      * per time step). Should be called exactly once per time-step (at least,
@@ -285,11 +269,11 @@ public:
             // Only to be consistent with old simulation runs when set to false
             // Setting this option to true will only affect reporting
             if (opt_vaccine_genotype == false)
-                riskTrans = avail * pTransmit * human.interventions.vaccine.getFactor(interventions::Vaccine::TBV);
+                riskTrans = avail * pTransmit * interventions::vaccineFactor(human.interventions.vaccines, interventions::Vaccine::TBV, sim::nowOrTs1());
             else
             {
                 for (size_t g = 0; g < WithinHost::Genotypes::N(); ++g)
-                    riskTrans += (probTransGenotype_i[g] + probTransGenotype_l[g]) * human.interventions.vaccine.getFactor(interventions::Vaccine::TBV, g);
+                    riskTrans += (probTransGenotype_i[g] + probTransGenotype_l[g]) * interventions::vaccineFactor(human.interventions.vaccines, interventions::Vaccine::TBV, sim::nowOrTs1(), g);
                 riskTrans *= avail;
             }
 
@@ -360,43 +344,9 @@ protected:
      *    _i for imported infections and _l for local infections */
     virtual void calculateEIR(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l) const = 0;
 
-    virtual void checkpoint(istream &stream)
-    {
-        simulationMode &stream;
-        interventionMode &stream;
-        initialisationEIR &stream;
-        laggedKappa &stream;
-        annualEIR &stream;
-        _annualAverageKappa &stream;
-        _sumAnnualKappa &stream;
-        tsAdultEIR &stream;
-        surveyInputEIR &stream;
-        surveySimulatedEIR &stream;
-        surveySimulatedEIR_i &stream;
-        surveySimulatedEIR_l &stream;
-        lastSurveyTime &stream;
-        adultAge &stream;
-        numTransmittingHumans &stream;
-    }
-
-    virtual void checkpoint(ostream &stream)
-    {
-        simulationMode &stream;
-        interventionMode &stream;
-        initialisationEIR &stream;
-        laggedKappa &stream;
-        annualEIR &stream;
-        _annualAverageKappa &stream;
-        _sumAnnualKappa &stream;
-        tsAdultEIR &stream;
-        surveyInputEIR &stream;
-        surveySimulatedEIR &stream;
-        surveySimulatedEIR_i &stream;
-        surveySimulatedEIR_l &stream;
-        lastSurveyTime &stream;
-        adultAge &stream;
-        numTransmittingHumans &stream;
-    }
+    virtual void checkpoint(istream& stream);
+    virtual void checkpoint(ostream& stream);
+    template<class S> void checkpointFields(S& stream);
 
 private:
     // The times here should be for the last updated index of arrays:

@@ -194,7 +194,7 @@ void writeMeasure(ostream& stream, Writer writeRow, size_t survey, const interna
 enum class ValueType { All, Integer, Double };
 
 template<class Writer>
-void writeRows(ostream& stream, Writer writeRow, ValueType type = ValueType::All)
+void writeRows(ostream& stream, const Clinical::InfantMortality& infantMortality, Writer writeRow, ValueType type = ValueType::All)
 {
     for (size_t survey = 0; survey < runtime.nSurveys; ++survey) {
         for (const internal::MeasureStore& store : runtime.stores) {
@@ -205,7 +205,7 @@ void writeRows(ostream& stream, Writer writeRow, ValueType type = ValueType::All
         }
     }
     if (runtime.reportIMR >= 0 && type != ValueType::Integer) {
-        writeRow(stream, 1, 1, runtime.reportIMR, Clinical::InfantMortality::allCause(), true);
+        writeRow(stream, 1, 1, runtime.reportIMR, infantMortality.allCause(), true);
     }
 }
 
@@ -220,7 +220,7 @@ uint64_t countRows(bool isDouble)
     return count;
 }
 
-void writeBinary(ostream& stream)
+void writeBinary(ostream& stream, const Clinical::InfantMortality& infantMortality)
 {
     static_assert(std::endian::native == std::endian::little, "output.bin uses little-endian values");
     static_assert(sizeof(double) == 8 && std::numeric_limits<double>::is_iec559, "output.bin needs IEEE-754 doubles");
@@ -237,7 +237,7 @@ void writeBinary(ostream& stream)
 
     auto writeIdColumn = [&](auto select) {
         for (ValueType type : {ValueType::Integer, ValueType::Double}) {
-            writeRows(stream, [&](ostream& output, int survey, int column, int measure, double, bool) {
+            writeRows(stream, infantMortality, [&](ostream& output, int survey, int column, int measure, double, bool) {
                 writeBinaryValue<int32_t>(output, select(survey, column, measure));
             }, type);
         }
@@ -245,18 +245,18 @@ void writeBinary(ostream& stream)
     writeIdColumn([](int survey, int, int) { return survey; });
     writeIdColumn([](int, int column, int) { return column; });
     writeIdColumn([](int, int, int measure) { return measure; });
-    writeRows(stream, [](ostream& output, int, int, int, double value, bool) {
+    writeRows(stream, infantMortality, [](ostream& output, int, int, int, double value, bool) {
         assert(std::trunc(value) == value);
         writeBinaryValue<int32_t>(output, static_cast<int32_t>(value));
     }, ValueType::Integer);
-    writeRows(stream, [](ostream& output, int, int, int, double value, bool) {
+    writeRows(stream, infantMortality, [](ostream& output, int, int, int, double value, bool) {
         writeBinaryValue<double>(output, value);
     }, ValueType::Double);
 }
 
-void writeText(ostream& stream)
+void writeText(ostream& stream, const Clinical::InfantMortality& infantMortality)
 {
-    writeRows(stream, writeTextRow);
+    writeRows(stream, infantMortality, writeTextRow);
 }
 
 template<class Stream, class Writer>
@@ -380,11 +380,11 @@ void concludeSurvey()
     updateSurveyNumbers();
 }
 
-void writeSurveyData()
+void writeSurveyData(const Clinical::InfantMortality& infantMortality)
 {
     string filename = util::CommandLine::getOutputName();
     const bool binary = util::CommandLine::getOutputFormat() == util::CommandLine::OutputFormat::BIN;
-    const auto writer = binary ? writeBinary : writeText;
+    const auto writer = [&](ostream& stream) { (binary ? writeBinary : writeText)(stream, infantMortality); };
     const ios::openmode mode = ios::out | ios::binary;
 
     if (util::CommandLine::option(util::CommandLine::COMPRESS_OUTPUT)) {

@@ -27,6 +27,16 @@
 
 namespace OM { namespace util {
 
+const char* distributionName(DistributionKind kind) {
+    switch (kind) {
+    case DistributionKind::Constant: return "const";
+    case DistributionKind::Lognormal: return "lognormal";
+    case DistributionKind::Gamma: return "gamma";
+    }
+    throw xml_scenario_error("invalid distribution kind");
+}
+
+
 double NormalSample::asNormal( double mu, double sigma )const{
     return sigma*x + mu;
 }
@@ -51,25 +61,6 @@ void NormalSampler::setParams( double m, double s ){
     sigma = s;
 }
 
-void NormalSampler::setParams(const scnXml::SampledValueN& elt){
-    mu = elt.getMean();
-    if( elt.getDistr() == "const" ){
-        if( elt.getSD().present() && elt.getSD().get() != 0.0) {
-            throw util::xml_scenario_error( "attribute SD must be zero or omitted when distr=\"const\" or is omitted" );
-        }
-        sigma = 0.0;
-        return;
-    }
-    
-    if( elt.getDistr() != "normal" ){
-        throw util::xml_scenario_error( "expected distr to be one of \"const\", \"lognormal\" (note: not all distributions are supported here)" );
-    }
-    if( !elt.getSD().present() ){
-        throw util::xml_scenario_error( "attribute \"SD\" required for sampled normal value when distr is not const" );
-    }
-    sigma = elt.getSD().get();
-}
-
 double NormalSampler::sample(LocalRng& rng) const{
     if( sigma == 0.0 ){
         return mu;
@@ -77,20 +68,20 @@ double NormalSampler::sample(LocalRng& rng) const{
     return rng.gauss( mu, sigma );
 }
 
-unique_ptr<util::LognormalSampler> LognormalSampler::fromMeanCV( double mean, double CV, std::optional<double> truncate )
+LognormalSampler LognormalSampler::fromMeanCV( double mean, double CV, std::optional<double> truncate )
 {
-    unique_ptr<LognormalSampler> sampler = std::make_unique<LognormalSampler>();
-    sampler->truncate = truncate;
+    LognormalSampler sampler;
+    sampler.truncate = truncate;
 
     // The distribution is "const"
     if( CV == 0.0 )
     {
-        sampler->sigma = 0.0;
+        sampler.sigma = 0.0;
         // as a special case, we can support mean == CV == 0
         if( mean == 0.0 )
-            sampler->mu = -numeric_limits<double>::infinity();
+            sampler.mu = -numeric_limits<double>::infinity();
         else if( mean > 0 )
-            sampler->mu = log(mean);
+            sampler.mu = log(mean);
         else
             throw util::xml_scenario_error( "const: required mean > 0" );
         return sampler;
@@ -109,23 +100,23 @@ unique_ptr<util::LognormalSampler> LognormalSampler::fromMeanCV( double mean, do
     // Var = (CV * mean)²
     const double a = 1 + (CV * CV);
 
-    sampler->CV = CV;
-    sampler->mu = log( mean / sqrt(a) );
-    sampler->sigma = sqrt(log(a));
+    sampler.CV = CV;
+    sampler.mu = log( mean / sqrt(a) );
+    sampler.sigma = sqrt(log(a));
 
     return sampler;
 }
 
-unique_ptr<util::LognormalSampler> LognormalSampler::fromMeanVariance( double mean, double variance, std::optional<double> truncate ){
-    unique_ptr<LognormalSampler> sampler = std::make_unique<LognormalSampler>();
-    sampler->truncate = truncate;
+LognormalSampler LognormalSampler::fromMeanVariance( double mean, double variance, std::optional<double> truncate ){
+    LognormalSampler sampler;
+    sampler.truncate = truncate;
 
     // The distribution is "const"
     if( variance == 0.0)
     {
-        sampler->sigma = 0.0;
+        sampler.sigma = 0.0;
         if(mean > 0)
-            sampler->mu = log(mean);
+            sampler.mu = log(mean);
         else
             throw util::xml_scenario_error( "const: required mean > 0" );
         return sampler;
@@ -144,8 +135,8 @@ unique_ptr<util::LognormalSampler> LognormalSampler::fromMeanVariance( double me
     // Var = (CV * mean)²
     const double CV = variance / mean;
     const double a = 1 + (CV * CV);
-    sampler->mu = log( mean / sqrt(a) );
-    sampler->sigma = sqrt(log(a));
+    sampler.mu = log( mean / sqrt(a) );
+    sampler.sigma = sqrt(log(a));
 
     return sampler;
 }
@@ -186,17 +177,17 @@ double LognormalSampler::cdf(double x) const {
     return gsl_cdf_lognormal_P(x, mu, sigma);
 }
 
-unique_ptr<util::GammaSampler> GammaSampler::fromMeanCV( double mean, double CV, std::optional<double> truncate )
+GammaSampler GammaSampler::fromMeanCV( double mean, double CV, std::optional<double> truncate )
 {
     if( mean <= 0 )
         throw util::xml_scenario_error( "gamma: required mean > 0" );
     if( CV < 0 )
         throw util::xml_scenario_error( "gamma: required CV >= 0" );
 
-    unique_ptr<GammaSampler> sampler = std::make_unique<GammaSampler>();
-    sampler->truncate = truncate;
-    sampler->mu = mean;
-    sampler->CV = CV;
+    GammaSampler sampler;
+    sampler.truncate = truncate;
+    sampler.mu = mean;
+    sampler.CV = CV;
 
     if( CV == 0.0 )
         return sampler;
@@ -204,25 +195,25 @@ unique_ptr<util::GammaSampler> GammaSampler::fromMeanCV( double mean, double CV,
     // 1 / sqrt(k) = CV
     // sqrt(k) = 1/CV
     // k = 1 / CV^2
-    sampler->k = 1.0/(CV*CV);
+    sampler.k = 1.0/(CV*CV);
     // k * theta = mean
     // theta = mean / k
-    sampler->theta = sampler->mu / sampler->k;
+    sampler.theta = sampler.mu / sampler.k;
 
     return sampler;
 }
 
-unique_ptr<util::GammaSampler> GammaSampler::fromMeanVariance( double mean, double variance, std::optional<double> truncate )
+GammaSampler GammaSampler::fromMeanVariance( double mean, double variance, std::optional<double> truncate )
 {
     if( mean <= 0 )
         throw util::xml_scenario_error( "gamma: required mean > 0" );
     if( variance < 0 )
         throw util::xml_scenario_error( "gamma: required variance >= 0" );
 
-    unique_ptr<GammaSampler> sampler = std::make_unique<GammaSampler>();
-    sampler->truncate = truncate;
-    sampler->mu = mean;
-    sampler->variance = variance;
+    GammaSampler sampler;
+    sampler.truncate = truncate;
+    sampler.mu = mean;
+    sampler.variance = variance;
 
     if( variance == 0.0 )
         return sampler;
@@ -230,10 +221,10 @@ unique_ptr<util::GammaSampler> GammaSampler::fromMeanVariance( double mean, doub
     // sigma / mu = 1 / sqrt(k)
     // sqrt(k) = mu / sigma
     // k = mu^2 / variance
-    sampler->k = (sampler->mu*sampler->mu)/sampler->variance;
+    sampler.k = (sampler.mu*sampler.mu)/sampler.variance;
     // k * theta = mean
     // theta = mean / k
-    sampler->theta = sampler->mu / sampler->k;
+    sampler.theta = sampler.mu / sampler.k;
 
     return sampler;
 }

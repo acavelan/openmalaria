@@ -20,13 +20,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-// Note: this file is included by exactly one source (InterventionManager.cpp)
+// Note: this file is included by exactly one source (Interventions.cpp)
 // and contains definitions as well as declarations.
 
 // The includes here are more for documentation than required.
 #include "Global.h"
 #include "util/errors.h"
 #include "Clinical/ClinicalModel.h"
+#include "Clinical/ClinicalXml.h"
 #include "Population.h"
 #include "Transmission/TransmissionModel.h"
 #include "Transmission/VectorModel.h"
@@ -35,7 +36,6 @@
 #include "util/errors.h"
 #include <schema/interventions.h>
 
-#include "util/SpeciesIndexChecker.h"
 #include "Host/Human.h"
 
 namespace OM { namespace interventions {
@@ -60,7 +60,7 @@ public:
     }
     virtual ~TimedDeployment() {}
     
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) =0;
+    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission, const Interventions& definitions) =0;
     
     virtual void print_details( std::ostream& out )const =0;
     
@@ -68,59 +68,43 @@ public:
     SimTime date = sim::never();
 };
 
-class DummyTimedDeployment : public TimedDeployment {
-public:
-    DummyTimedDeployment() :
-        TimedDeployment( sim::startDate() /* hack */ )
-    {
-        // TimedDeployment's ctor checks that the deployment time-step is
-        // within the intervention period. We want this time to be after the
-        // last time-step, so set the time here after TimedDeployment's ctor
-        // check has been done (hacky).
-        date = sim::future();
-    }
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {}
-    virtual void print_details( std::ostream& out )const{
-        out << "Dummy";
-    }
-};
-
 class TimedChangeHSDeployment : public TimedDeployment {
 public:
-    TimedChangeHSDeployment( SimTime date, const scnXml::ChangeHS::TimedDeploymentType& hs ) :
+    TimedChangeHSDeployment(SimTime date, unique_ptr<scnXml::HealthSystem> hs, Clinical::ClinicalParameters& library) :
         TimedDeployment( date ),
-        newHS( hs._clone() )
+        newHS(std::move(hs)), library(library)
     {}
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {
-        Clinical::ClinicalModel::setHS( *newHS );
-        delete newHS;
-        newHS = 0;
+    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission, const Interventions& definitions) {
+        xml::setHealthSystem( *newHS, definitions, library );
+        newHS.reset();
     }
     virtual void print_details( std::ostream& out )const{
         out << "ChangeHS";
     }
     
 private:
-    scnXml::HealthSystem *newHS;
+    unique_ptr<scnXml::HealthSystem> newHS;
+    Clinical::ClinicalParameters& library;
 };
 
 class TimedChangeEIRDeployment : public TimedDeployment {
 public:
-    TimedChangeEIRDeployment( SimTime date, const scnXml::ChangeEIR::TimedDeploymentType& nv ) :
+    TimedChangeEIRDeployment(SimTime date, vector<double> daily, int eipDuration) :
         TimedDeployment( date ),
-        newEIR( nv._clone() )
+        newEIR(std::move(daily)),
+        eipDuration(eipDuration)
     {}
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {
-        transmission.changeEIRIntervention( *newEIR );
-        delete newEIR;
-        newEIR = 0;
+    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission, const Interventions& definitions) {
+        transmission.changeEIRIntervention(newEIR, eipDuration);
+        vector<double>().swap(newEIR);
     }
     virtual void print_details( std::ostream& out )const{
         out << "ChangeEIR";
     }
     
 private:
-    scnXml::NonVector *newEIR;
+    vector<double> newEIR;
+    int eipDuration;
 };
 
 class TimedUninfectVectorsDeployment : public TimedDeployment {
@@ -128,7 +112,7 @@ public:
     TimedUninfectVectorsDeployment( SimTime date ) :
         TimedDeployment( date )
     {}
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {
+    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission, const Interventions& definitions) {
         transmission.uninfectVectors();
     }
     virtual void print_details( std::ostream& out )const{
@@ -242,7 +226,7 @@ public:
             throw util::xml_scenario_error("timed intervention must have 0 <= minAvailability <= maxAvailability <= 100");
     }
     
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {
+    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission, const Interventions& definitions) {
         for(Human& human : population) {
             const SimTime age = human.age(sim::now());
             if( age >= minAge && age < maxAge ){
@@ -355,7 +339,7 @@ public:
     {
     }
     
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {
+    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission, const Interventions& definitions) {
         // Cumulative case: bring target group's coverage up to target coverage
         vector<Host::Human*> unprotected;
         size_t total = 0;       // number of humans within age bound and optionally subPop
@@ -397,213 +381,67 @@ protected:
 
 class TimedVectorDeployment : public TimedDeployment {
 public:
-    TimedVectorDeployment( SimTime date, size_t instance ) :
-        TimedDeployment( date ),
-        inst(instance)
-    {}
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
-        if(vectorModel)
-            vectorModel->deployVectorPopInterv(inst);
-    }
-    virtual void print_details( std::ostream& out )const{
-        out << "Vector";
-    }
-    
-private:
-    size_t inst;
-};
+    enum class Action { Population, Trap, AddAnimalHosts, ModifyAnimalHosts };
+    TimedVectorDeployment(SimTime date, Action action, size_t instance = 0) :
+        TimedDeployment(date), action(action), instance(instance) {}
 
-class TimedTrapDeployment : public TimedDeployment {
-public:
-    TimedTrapDeployment( SimTime date, size_t instance, double ratio, SimTime lifespan ) :
-        TimedDeployment(date), inst(instance), ratio(ratio), lifespan(lifespan)
-    {}
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
-        if(vectorModel)
-        {
-            double number = population.size() * ratio;
-            vectorModel->deployVectorTrap(inst, number, lifespan);
-        }
-    }
-    virtual void print_details( std::ostream& out )const{
-        out << "VectorTrap:" << endl;
-        out << "\tratio: " << ratio << "\tlifespan: " << lifespan; 
-    }
-    
-private:
-    size_t inst;
-    double ratio;
-    SimTime lifespan = sim::never();
-};
-
-class TimedNonHumanHostsDeployment : public TimedDeployment {
-public:
-    TimedNonHumanHostsDeployment( SimTime date, size_t instance, string intervName, const scnXml::Description2::AnophelesSequence list, const scnXml::DecayFunction &decay, Transmission::TransmissionModel& transmission) :
-        TimedDeployment( date ),
-        instance(instance),
-        intervName(intervName)
-    {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
-        if(vectorModel)
-        {
-            util::SpeciesIndexChecker checker(intervName, vectorModel->speciesIndex);
-            for (const scnXml::NonHumanHostsSpeciesIntervention &anoph : list)
-            {
-                const string &mosqName = anoph.getMosquito();
-                size_t i = checker.getIndex(mosqName);
-
-                Transmission::Anopheles::AnophelesModel *anophModel = vectorModel->species[i].get();
-
-                if (anophModel->reduceNhhAvailability[intervName].size() <= instance) anophModel->reduceNhhAvailability[intervName].resize(instance + 1);
-                if (anophModel->reduceP_B_I[intervName].size() <= instance) anophModel->reduceP_B_I[intervName].resize(instance + 1);
-                if (anophModel->reduceP_C_I[intervName].size() <= instance) anophModel->reduceP_C_I[intervName].resize(instance + 1);
-                if (anophModel->reduceP_D_I[intervName].size() <= instance) anophModel->reduceP_D_I[intervName].resize(instance + 1);
-                if (anophModel->reduceFecundity[intervName].size() <= instance) anophModel->reduceFecundity[intervName].resize(instance + 1);
-
-                if (anoph.getAvailabilityReduction().present())
-                {
-                    const scnXml::AvailabilityReduction &decayFunc = anoph.getAvailabilityReduction().get();
-                    if (decayFunc.getInitial() > 1.0) throw util::xml_scenario_error("availabilityReduction intervention: initial effect must be <= 1");
-                    anophModel->reduceNhhAvailability[intervName][instance].set(decayFunc.getInitial(), decay, "availabilityReduction");
-                }
-                if (anoph.getPreprandialKillingEffect().present())
-                {
-                    const scnXml::PreprandialKillingEffect &decayFunc = anoph.getPreprandialKillingEffect().get();
-                    if (decayFunc.getInitial() < 0 || decayFunc.getInitial() > 1)
-                        throw util::xml_scenario_error("PreprandialKillingEffect intervention: initial effect must be between 0 and 1");
-                    anophModel->reduceP_B_I[intervName][instance].set(decayFunc.getInitial(), decay, "reduceP_B_I");
-                }
-                if (anoph.getPostprandialKillingEffect().present())
-                {
-                    const scnXml::PostprandialKillingEffect &decayFunc = anoph.getPostprandialKillingEffect().get();
-                    if (decayFunc.getInitial() < 0 || decayFunc.getInitial() > 1)
-                        throw util::xml_scenario_error("PostprandialKillingEffect intervention: initial effect must be between 0 and 1");
-                    anophModel->reduceP_C_I[intervName][instance].set(decayFunc.getInitial(), decay, "reduceP_C_I");
-                }
-                if (anoph.getRestingKillingEffect().present())
-                {
-                    const scnXml::RestingKillingEffect &decayFunc = anoph.getRestingKillingEffect().get();
-                    if (decayFunc.getInitial() < 0 || decayFunc.getInitial() > 1)
-                        throw util::xml_scenario_error("RestingKillingEffect intervention: initial effect must be be between 0 and 1");
-                    anophModel->reduceP_D_I[intervName][instance].set(decayFunc.getInitial(), decay, "reduceP_D_I");
-                }
-                if (anoph.getFecundityReduction().present())
-                {
-                    const scnXml::FecundityReduction &decayFunc = anoph.getFecundityReduction().get();
-                    if (decayFunc.getInitial() < 0 || decayFunc.getInitial() > 1)
-                        throw util::xml_scenario_error("FecundityReduction intervention: initial effect must be be between 0 and 1");
-                    anophModel->reduceFecundity[intervName][instance].set(decayFunc.getInitial(), decay, "reduceFecundity");
-                }
-            }
-            checker.checkNoneMissed();
-        }
-    }
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission)
-    {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
-        if(vectorModel)
-        {
-            for (size_t i = 0; i < vectorModel->speciesIndex.size(); ++i)
-            {
-                Transmission::Anopheles::AnophelesModel *anophModel = vectorModel->species[i].get();
-
-                if (anophModel->nhhInstances.count(intervName) == 0)
-                    throw util::xml_scenario_error("non human hosts type " + intervName + " not deployed during non human hosts intervention deployment");
-
-                anophModel->reduceNhhAvailability[intervName][instance].deploy(vectorModel->m_rng, sim::now());
-                anophModel->reduceP_B_I[intervName][instance].deploy(vectorModel->m_rng, sim::now());
-                anophModel->reduceP_C_I[intervName][instance].deploy(vectorModel->m_rng, sim::now());
-                anophModel->reduceP_D_I[intervName][instance].deploy(vectorModel->m_rng, sim::now());
-                anophModel->reduceFecundity[intervName][instance].deploy(vectorModel->m_rng, sim::now());
-            }
-        }
-    }
-    virtual void print_details( std::ostream& out )const{
-        out << "NonHumanHosts(" << intervName << ")";
-    }
-    
-private:
+    Action action;
     size_t instance;
-    string intervName;
-};
-
-const string vec_mode_err = "vector interventions can only be used in dynamic transmission mode (mode=\"dynamic\")";
-
-class TimedAddNonHumanHostsDeployment : public TimedDeployment {
-public:
-    TimedAddNonHumanHostsDeployment( SimTime date, const string &intervName, SimTime lifespan, const scnXml::Description3::AnophelesSequence list, Transmission::TransmissionModel& transmission) :
-        TimedDeployment( date ), intervName(intervName), lifespan(lifespan)
-    {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
-        if(vectorModel)
-        {
-            util::SpeciesIndexChecker checker(intervName, vectorModel->speciesIndex);
-            for (const scnXml::NonHumanHostsVectorSpecies &anoph : list)
-            {
-                const string &mosqName = anoph.getMosquito();
-                checker.getIndex(mosqName);
-
-                NhhParamsInterv nhh;
-                nhh.mosqRelativeAvailabilityHuman = anoph.getMosqRelativeAvailabilityHuman().getValue();
-                nhh.mosqProbBiting = anoph.getMosqProbBiting().getValue();
-                nhh.mosqProbFindingRestSite = anoph.getMosqProbFindRestSite().getValue();
-                nhh.mosqProbResting = anoph.getMosqProbResting().getValue();
-                nhh.hostFecundityFactor = anoph.getHostFecundityFactor().getValue();
-                nhhParams[mosqName] = nhh;
-            }
-            checker.checkNoneMissed();
-        }
-    }
-
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission)
-    {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
-        if(vectorModel)
-        {
-            double popSize = population.size();
-            if (vectorModel->interventionMode != Transmission::SimulationMode::dynamicEIR) { throw util::xml_scenario_error(vec_mode_err); }
-            for (size_t i = 0; i < vectorModel->speciesIndex.size(); ++i)
-            {
-                Transmission::Anopheles::AnophelesModel *anophModel = vectorModel->species[i].get();
-        
-                if (anophModel->nhhInstances.count(intervName) != 0)
-                    throw util::xml_scenario_error("non human hosts type " + intervName + " already deployed during non human hosts deployment");
-
-                const NhhParamsInterv &p = nhhParams[anophModel->mosq.name];
-                const double adultAvail = transmission.hostParameters.species[i].entoAvailability->mean();
-                const double avail_i = transmission.hostParameters.species[i].entoAvailabilityFactor * popSize * adultAvail * p.mosqRelativeAvailabilityHuman;
-                Transmission::Anopheles::Nhh nhh;
-
-                nhh.avail_i = avail_i;
-                nhh.P_B_I = p.mosqProbBiting;
-                nhh.P_C_I = p.mosqProbFindingRestSite;
-                nhh.P_D_I = p.mosqProbResting;
-                nhh.rel_fecundity = p.hostFecundityFactor;
-                nhh.expiry = sim::now() + lifespan;
-
-                // add the nhh to the active nhh instances
-                anophModel->nhhInstances[intervName] = nhh;
-            }
-        }
-    }
-    virtual void print_details( std::ostream& out )const{
-        out << "AddNonHumanHosts(" << intervName << "):" << endl;
-        out << "\tlifespan: " << lifespan;
-    }
-    
-private:
-    struct NhhParamsInterv {
-        double mosqRelativeAvailabilityHuman;
-        double mosqProbBiting;
-        double mosqProbFindingRestSite;
-        double mosqProbResting;
-        double hostFecundityFactor;
-    };
-    string intervName;
+    string name;
+    double ratio = 0.0;
     SimTime lifespan = sim::never();
-    std::map<string, NhhParamsInterv> nhhParams; 
+    vector<Transmission::Anopheles::NhhDeploymentParameters> nhhParams;
+
+    void deploy(vector<Host::Human>& population, Transmission::TransmissionModel& transmission,
+            const Interventions&) override {
+        auto* model = dynamic_cast<Transmission::VectorModel*>(&transmission);
+        if (!model) return;
+        switch (action) {
+        case Action::Population:
+            model->deployVectorPopInterv(instance);
+            break;
+        case Action::Trap:
+            model->deployVectorTrap(instance, population.size() * ratio, lifespan);
+            break;
+        case Action::ModifyAnimalHosts:
+            for (size_t i = 0; i < model->speciesIndex.size(); ++i) {
+                auto& species = *model->species[i];
+                if (species.nhhInstances.count(name) == 0)
+                    throw util::xml_scenario_error("non human hosts type " + name + " not deployed during non human hosts intervention deployment");
+                Transmission::Anopheles::deploy(species.nhhInterventions[name][instance], model->m_rng, sim::now());
+            }
+            break;
+        case Action::AddAnimalHosts: {
+            double popSize = population.size();
+            if (model->interventionMode != Transmission::SimulationMode::dynamicEIR)
+                throw util::xml_scenario_error("vector interventions can only be used in dynamic transmission mode (mode=\"dynamic\")");
+            for (size_t i = 0; i < model->speciesIndex.size(); ++i) {
+                auto& species = *model->species[i];
+                if (species.nhhInstances.count(name) != 0)
+                    throw util::xml_scenario_error("non human hosts type " + name + " already deployed during non human hosts deployment");
+                const auto& p = nhhParams[i];
+                const double adultAvail = transmission.hostParameters.species[i].entoAvailability->mean();
+                const double availability = transmission.hostParameters.species[i].entoAvailabilityFactor * popSize * adultAvail * p.relativeAvailabilityHuman;
+                species.nhhInstances[name] = {availability, p.biting, p.findingRestSite,
+                    p.resting, p.fecundity, sim::now() + lifespan};
+            }
+            break;
+        }
+        }
+    }
+
+    void print_details(std::ostream& out) const override {
+        switch (action) {
+        case Action::Population: out << "Vector"; break;
+        case Action::Trap:
+            out << "VectorTrap:" << endl << "\tratio: " << ratio << "\tlifespan: " << lifespan;
+            break;
+        case Action::ModifyAnimalHosts: out << "NonHumanHosts(" << name << ")"; break;
+        case Action::AddAnimalHosts:
+            out << "AddNonHumanHosts(" << name << "):" << endl << "\tlifespan: " << lifespan;
+            break;
+        }
+    }
 };
 
 // ———  ContinuousHumanDeployment  ———

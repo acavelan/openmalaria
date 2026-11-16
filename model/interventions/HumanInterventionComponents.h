@@ -25,9 +25,9 @@
 
 // The includes here are more for documentation than required.
 #include "interventions/Interfaces.h"
-#include "interventions/InterventionManager.h"
+#include "interventions/Interventions.h"
 #include "util/ModelOptions.h"
-#include "Clinical/ESCaseManagement.h"
+#include "Clinical/CMDecisionTree.h"
 #include "Clinical/ImmediateOutcomes.h"
 #include "Host/Human.h"
 #include "Transmission/TransmissionModel.h"
@@ -49,12 +49,12 @@ bool componentCmp(const HumanInterventionComponent *a, const HumanInterventionCo
     return a->componentType() < b->componentType();
 }
 HumanIntervention::HumanIntervention(
-    const xsd::cxx::tree::sequence<scnXml::Component>& componentList )
+    const xsd::cxx::tree::sequence<scnXml::Component>& componentList, const Interventions& definitions )
 {
     components.reserve( componentList.size() );
     for( auto it = componentList.begin(), end = componentList.end(); it != end; ++it ) {
-        ComponentId id = InterventionManager::getComponentId( it->getId() );
-        const HumanInterventionComponent* component = &InterventionManager::getComponent( id );
+        ComponentId id = definitions.getComponentId( it->getId() );
+        const HumanInterventionComponent* component = &definitions.getComponent( id );
         components.push_back( component );
     }
     
@@ -72,12 +72,12 @@ HumanIntervention::HumanIntervention(
 }
 HumanIntervention::HumanIntervention(
     const xsd::cxx::tree::sequence<scnXml::Component>& componentList,
-    const xsd::cxx::tree::sequence<scnXml::Condition>& conditionList )
+    const xsd::cxx::tree::sequence<scnXml::Condition>& conditionList, const Interventions& definitions )
 {
     components.reserve( componentList.size() );
     for( auto it = componentList.begin(), end = componentList.end(); it != end; ++it ) {
-        ComponentId id = InterventionManager::getComponentId( it->getId() );
-        const HumanInterventionComponent* component = &InterventionManager::getComponent( id );
+        ComponentId id = definitions.getComponentId( it->getId() );
+        const HumanInterventionComponent* component = &definitions.getComponent( id );
         components.push_back( component );
     }
     
@@ -99,11 +99,11 @@ HumanIntervention::HumanIntervention(
         conditions.push_back(mon::setupCondition( it->getMeasure(), min, max, it->getInitialState() ));
     }
 }
-HumanIntervention::HumanIntervention( const xsd::cxx::tree::sequence<scnXml::DTDeploy>& componentList ){
+HumanIntervention::HumanIntervention( const xsd::cxx::tree::sequence<scnXml::DTDeploy>& componentList, const Interventions& definitions ){
     components.reserve( componentList.size() );
     for( auto it = componentList.begin(), end = componentList.end(); it != end; ++it ) {
-        ComponentId id = InterventionManager::getComponentId( it->getComponent() );
-        const HumanInterventionComponent* component = &InterventionManager::getComponent( id );
+        ComponentId id = definitions.getComponentId( it->getComponent() );
+        const HumanInterventionComponent* component = &definitions.getComponent( id );
         components.push_back( component );
     }
     
@@ -146,10 +146,10 @@ void HumanIntervention::print_details( std::ostream& out )const{
 
 // ———  Utilities  ———
 
-TriggeredDeployments::TriggeredDeployments(const scnXml::TriggeredDeployments& elt){
+TriggeredDeployments::TriggeredDeployments(const scnXml::TriggeredDeployments& elt, const Interventions& definitions){
     lists.reserve( elt.getDeploy().size() );
     for( auto it = elt.getDeploy().begin(), end = elt.getDeploy().end(); it != end; ++it ) {
-        lists.push_back( SubList( *it ) );
+        lists.push_back( SubList( *it, definitions ) );
     }
 }
 void TriggeredDeployments::deploy(Human& human,
@@ -160,8 +160,8 @@ void TriggeredDeployments::deploy(Human& human,
     }
 }
 
-TriggeredDeployments::SubList::SubList( const scnXml::TriggeredDeployments::DeployType& elt ) :
-        HumanIntervention( elt.getComponent() ),
+TriggeredDeployments::SubList::SubList( const scnXml::TriggeredDeployments::DeployType& elt, const Interventions& definitions ) :
+        HumanIntervention( elt.getComponent(), definitions ),
         minAge( sim::fromYearsN( elt.getMinAge() ) ),
         maxAge( sim::future() ),
         coverage( elt.getP() )
@@ -221,11 +221,11 @@ public:
 
 class ScreenComponent : public HumanInterventionComponent {
 public:
-    ScreenComponent( ComponentId id, const scnXml::Screen& elt ) :
+    ScreenComponent( ComponentId id, const scnXml::Screen& elt, const Interventions& definitions ) :
         HumanInterventionComponent(id),
         diagnostic(diagnostics::get(elt.getDiagnostic())),
-        positive( elt.getPositive() ),
-        negative( elt.getNegative() )
+        positive( elt.getPositive(), definitions ),
+        negative( elt.getNegative(), definitions )
     {}
     
     void deploy( Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits ) const{
@@ -320,9 +320,9 @@ private:
 
 class DecisionTreeComponent : public HumanInterventionComponent {
 public:
-    DecisionTreeComponent( ComponentId id, const scnXml::DecisionTree& elt ) :
+    DecisionTreeComponent( ComponentId id, const scnXml::DecisionTree& elt, const Interventions& definitions, Clinical::ClinicalParameters& library ) :
         HumanInterventionComponent(id),
-        tree(Clinical::CMDecisionTree::create(elt, false))
+        tree(Clinical::CMDecisionTree::create(elt, false, definitions, library))
     {}
     
     void deploy( Human& human, mon::Deploy::Method method, VaccineLimits )const{

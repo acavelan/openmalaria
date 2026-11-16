@@ -26,14 +26,19 @@
 #include "Host/Human.h"
 #include "Host/WithinHost/Pathogenesis/State.h"
 #include "Clinical/Episode.h"
-#include <schema/healthSystem.h>
+#include <memory>
+#include <vector>
+
+namespace scnXml { class DecisionTree; }
 
 namespace OM {
+namespace interventions { struct Interventions; }
 namespace WithinHost {
     class WHInterface;
 }
 namespace Clinical {
 using WithinHost::WHInterface;
+struct ClinicalParameters;
 
 /** All data which needs to be passed to the decision tree evaluators. */
 struct  CMHostData {
@@ -56,6 +61,8 @@ struct CMDTOut {
 };
 
 
+CMDTOut executeCaseManagement(const CMHostData&, const ClinicalParameters&);
+
 /**
  * Decision tree node abstraction.
  * 
@@ -68,14 +75,14 @@ public:
     
     /** Create a user-configured decision from an XML node.
      * 
-     * Memory management is handled internally (statically).
+     * Nodes belong to the supplied model library.
      * 
      * @param node XML element describing the tree
      * @param isUC If isUC is false and a "case type" decision is created, an
      *  xml_scenario_error exception is thrown. CMHostData::pgState is only
      *  used by the "case type" decision, so if isUC is false when creating the
      *  tree, pgState does not need to be set when executing the tree. */
-    static const CMDecisionTree& create( const ::scnXml::DecisionTree& node, bool isUC );
+    static const CMDecisionTree& create( const ::scnXml::DecisionTree& node, bool isUC, const interventions::Interventions& definitions, ClinicalParameters& library );
     
     /** Test for equivalence in two decision trees. Nodes are equivalent if
      * they have the same type, same deployments and treatments, and their

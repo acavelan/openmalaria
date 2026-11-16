@@ -28,11 +28,6 @@
 #include "Host/Human.h"
 #include "mon/Monitoring.h"
 
-namespace scnXml
-{
-class NonVector;
-}
-
 namespace OM
 {
 namespace Transmission
@@ -42,7 +37,7 @@ namespace Transmission
 class NonVectorModel : public TransmissionModel
 {
 public:
-    NonVectorModel(vector<double> initEIR, int interventionMode, const scnXml::Entomology &entoData, const scnXml::NonVector &nonVectorData, int eipDuration, const HostTransmissionParameters& hostParameters)
+    NonVectorModel(vector<double> initEIR, int interventionMode, const vector<double>& daily, int eipDuration, const HostTransmissionParameters& hostParameters)
         : TransmissionModel(std::move(initEIR), interventionMode, 1 /*this model doesn't support multiple genotypes*/, hostParameters, false)
         , nSpore(sim::fromDays(eipDuration))
     {
@@ -50,9 +45,8 @@ public:
 
         vector<int> nDays(sim::stepsPerYear(), 0);
         // The minimum EIR allowed in the array. The product of the average EIR and a constant.
-        double minEIR = min_EIR_mult * averageEIR(nonVectorData);
+        double minEIR = min_EIR_mult * averageEIR(daily);
 
-        const scnXml::NonVector::EIRDailySequence &daily = nonVectorData.getEIRDaily();
         if (daily.size() < static_cast<size_t>(sim::oneYear()))
             throw util::xml_scenario_error("insufficient EIRDaily data for a year");
 
@@ -115,16 +109,15 @@ public:
         return sim::zero(); // nothing to do
     }
 
-    virtual void changeEIRIntervention(const scnXml::NonVector &nonVectorData)
+    virtual void changeEIRIntervention(const vector<double>& daily, int eipDuration)
     {
         // Note: requires sim::intervTime() >= sim::zero(), but this can only be
         // called in intervention period anyway.
         simulationMode = transientEIRknown;
 
-        if (nSpore != sim::fromDays(nonVectorData.getEipDuration()))
+        if (nSpore != sim::fromDays(eipDuration))
             throw util::xml_scenario_error("change-of-EIR intervention cannot change EIP duration");
 
-        const scnXml::NonVector::EIRDailySequence &daily = nonVectorData.getEIRDaily();
         vector<int> nDays(sim::inSteps(sim::fromDays(daily.size() - 1)) + 1, 0);
         interventionEIR.assign(nDays.size(), 0.0);
         size_t required_days = static_cast<size_t>((sim::endDate() - sim::startDate()) + 1);
@@ -134,7 +127,7 @@ public:
             throw util::xml_scenario_error("Insufficient intervention phase EIR values provided");
         }
         // The minimum EIR allowed in the array. The product of the average EIR and a constant.
-        double minEIR = min_EIR_mult * averageEIR(nonVectorData);
+        double minEIR = min_EIR_mult * averageEIR(daily);
         for (SimTime mpcday = sim::zero(), endDay = sim::fromDays(daily.size()); mpcday < endDay; mpcday = mpcday + sim::oneDay())
         {
             double EIRdaily = std::max(static_cast<double>(daily[mpcday]), minEIR);
@@ -214,21 +207,9 @@ public:
     }
 
 private:
-    virtual void checkpoint(istream &stream)
-    {
-        TransmissionModel::checkpoint(stream);
-        nSpore &stream;
-        interventionEIR &stream;
-        initialKappa &stream;
-    }
-
-    virtual void checkpoint(ostream &stream)
-    {
-        TransmissionModel::checkpoint(stream);
-        nSpore &stream;
-        interventionEIR &stream;
-        initialKappa &stream;
-    }
+    virtual void checkpoint(istream& stream);
+    virtual void checkpoint(ostream& stream);
+    template<class S> void checkpointFields(S& stream);
 
     //! multiplier used to calculate a positive EIR value where the measured value is zero
     /*

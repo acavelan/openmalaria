@@ -24,6 +24,7 @@
 #include "Model.h"
 #include "Transmission/TransmissionModel.h"
 #include "ModelInitialization.h"
+#include "ScenarioXml.h"
 
 #include "util/errors.h"
 #include "util/CommandLine.h"
@@ -37,7 +38,7 @@
 #include "mon/init.h"
 #include "mon/Monitoring.h"
 
-#include "interventions/InterventionManager.h"
+#include "interventions/Interventions.h"
 #include "Clinical/ClinicalModel.h"
 
 #include "Host/NeonatalMortality.h"
@@ -48,7 +49,7 @@
 #include <cerrno>
 
 namespace OM {
-    using interventions::InterventionManager;
+    using interventions::Interventions;
     using Transmission::TransmissionModel;
 }
 
@@ -152,7 +153,7 @@ int main(int argc, char* argv[])
 
         if (startedFromCheckpoint)
         {
-            mon::Continuous::init(scenario->getMonitoring(), true);
+            xml::initContinuous(model.reporting.continuous, scenario->getMonitoring(), util::CommandLine::getCtsoutName(), true);
             readCheckpoint(checkpointFileName, endTime, estEndTime, model);
 
             /** Calculate ento availability percentiles **/
@@ -160,7 +161,7 @@ int main(int argc, char* argv[])
         }
         else
         {
-            mon::Continuous::init(scenario->getMonitoring(), false);
+            xml::initContinuous(model.reporting.continuous, scenario->getMonitoring(), util::CommandLine::getCtsoutName(), false);
             createInitialHumans(*population, model.parameters, model.masterRng);
             transmission->init2(population->humans);
             
@@ -197,7 +198,7 @@ int main(int argc, char* argv[])
             estEndTime = endTime = endTime + (sim::endDate() - sim::startDate()) + sim::oneTS();
             sim::s_interv = sim::zero();
             model.reporting.newInfections = 0;
-            Clinical::InfantMortality::preMainSimInit();
+            model.reporting.infantMortality.reset();
             WithinHost::Genotypes::preMainSimInit();
             population->recentBirths = 0;
             transmission->summarize(); // Only to reset TransmissionModel::inoculationsPerAgeGroup
@@ -219,7 +220,7 @@ int main(int argc, char* argv[])
         for(Host::Human &human : population->humans)
             human.clinicalModel->flushReports();
 
-        mon::writeSurveyData();
+        mon::writeSurveyData(model.reporting.infantMortality);
         
     # ifdef OM_STREAM_VALIDATOR
         util::StreamValidator.saveStream();

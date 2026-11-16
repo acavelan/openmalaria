@@ -20,77 +20,30 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_AgeDistribution
-#define Hmod_AgeDistribution
-
+#pragma once
 #include "Global.h"
 
-namespace scnXml {
-    class AgeGroupValues;
-}
-namespace OM { namespace util {
-
-/** This struct is not for external use. Use AgeGroupInterpolator instead.
- * 
- * It is here to allow the trivial functions below to be inlined. */
-struct AgeGroupInterpolation{
-    virtual ~AgeGroupInterpolation() {}
-    
-    virtual double eval (double ageYears) const =0;
-    virtual void scale( double factor ) =0;
-    virtual double firstGlobalMaximum() =0;
-    
-protected:
-    /** Sample interpolator between 0 and max age, outputting to a csv file
-     * called name.csv. */
-    void outputSamples( const string name );
+namespace OM::util {
+enum class AgeInterpolation { Linear, Constant };
+struct AgeGroup {
+    double lowerBound;
+    double value;
+};
+struct AgeGroupValues {
+    AgeInterpolation interpolation = AgeInterpolation::Linear;
+    vector<AgeGroup> groups;
 };
 
-/** A class representing deterministic interpolation of data collected
- * according to age groups. Derived classes implement the actual interpolation.
- * 
- * Current version does not store an age index, thus an order log(n) lookup
- * must occur each time a value is looked up.
- ********************************************/
-struct AgeGroupInterpolator
-{
-    /** Create. set() must be called before further use to avoid exceptions. */
-    AgeGroupInterpolator();
-    ~AgeGroupInterpolator(){ reset(); }
-    
-    /** Set age-group interpolation data from an XML fragment.
-     * 
-     * @param ageGroups XML element of per-age-group values
-     * @param eltName Name of XML element (for reasonable error reporting)
-     */
-    void set( const scnXml::AgeGroupValues& ageGroups, const char* eltName );
-    
-    /** Set back to initial state. */
-    void reset();
-    
-    /// Return true if set() was ever called.
-    bool isSet();
-    
-    /** Return a value interpolated for age ageYears. */
-    inline double eval( double ageYears )const{
-        return obj->eval( ageYears );
-    }
-    
-    /** Scale function by factor. */
-    inline void scale( double factor ){
-        obj->scale( factor );
-    }
-
-    /** Find the youngest age which is the global maximum (i.e. the age at
-     * which individuals are considered adults where all adults have the same
-     * same value). */
-    inline double firstGlobalMaximum() const{
-        return obj->firstGlobalMaximum();
-    }
-    
+class AgeGroupInterpolator {
+public:
+    void set(const AgeGroupValues&, double maxAgeYears, const char* name, bool outputSamples = false);
+    void reset() { points.clear(); }
+    bool isSet() const { return !points.empty(); }
+    double eval(double ageYears) const;
+    void scale(double factor);
+    double firstGlobalMaximum() const;
 private:
-    AgeGroupInterpolation *obj;
+    AgeInterpolation interpolation = AgeInterpolation::Linear;
+    map<double, double> points;
 };
-
-} }
-#endif
+}

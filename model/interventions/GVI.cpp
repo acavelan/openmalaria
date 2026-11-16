@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "ScenarioXml.h"
 #include "Global.h"
 #include "interventions/GVI.h"
 #include "Host/Human.h"
@@ -35,7 +36,7 @@ GVIComponent::GVIComponent( ComponentId id, const scnXml::GVIDescription& elt,
         const map<string,size_t>& species_name_map ) :
         VectorInterventionComponent(id)
 {
-    decay = DecayFunction::makeObject( elt.getDecay(), "interventions.human.vector.decay" );
+    decay = xml::readDecay( elt.getDecay(), "interventions.human.vector.decay" );
     // assume usage modifier is 100% if none is specified
     double propUse;
     if (elt.getUsage().present()) {
@@ -103,10 +104,10 @@ HumanGVI::HumanGVI ( LocalRng& rng, const GVIComponent& params ) :
 {
     // Varience factor of decay is sampled once per human: human is assumed
     // to account for most variance.
-    decayHet = params.decay->hetSample(rng);
+    decayHet = params.decay.heterogeneity.sample(rng);
 }
 
-void HumanGVI::redeploy(LocalRng& rng, const VectorInterventionComponent&) {
+void HumanGVI::redeploy(LocalRng& rng) {
     deployTime = sim::nowOrTs1();
 }
 
@@ -139,12 +140,12 @@ double HumanGVI::relFecundity(size_t speciesIndex, SimTime effectTime) const{
 
 void HumanGVI::checkpoint( ostream& stream ){
     deployTime & stream;
-    parameters.decay->checkpointSample(decayHet, stream);
+    util::checkpointDecaySample(decayHet, stream);
 }
 HumanGVI::HumanGVI( istream& stream, ComponentId id, const GVIComponent& params ) : VectorInterventionState( id ), parameters(params)
 {
     deployTime & stream;
-    parameters.decay->checkpointSample(decayHet, stream);
+    util::checkpointDecaySample(decayHet, stream);
 }
 
 } }

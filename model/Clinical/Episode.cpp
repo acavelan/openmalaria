@@ -43,9 +43,9 @@ void Episode::update (const Host::Human& human, Episode::State newState)
 {
     bool toReport = false;
 
-    if (healthSystemMemoryFix && (time + ClinicalModel::hsMemory() <= sim::ts0()))
+    if (healthSystemMemoryFix && (time + human.clinicalModel->hsMemory() <= sim::ts0()))
         toReport = true;
-    else if (!healthSystemMemoryFix && (time + ClinicalModel::hsMemory() < sim::ts0()))
+    else if (!healthSystemMemoryFix && (time + human.clinicalModel->hsMemory() < sim::ts0()))
         toReport = true;
 
     if(toReport) {

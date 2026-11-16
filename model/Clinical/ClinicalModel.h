@@ -25,13 +25,13 @@
 
 #include "Host/Human.h"
 #include "Episode.h"
+#include "Clinical/ClinicalParameters.h"
 #include <memory>
 
-namespace scnXml{
-    class Scenario;
-    class HealthSystem;
-}
-namespace OM { namespace Clinical {
+namespace OM {
+namespace interventions { struct Interventions; } namespace Clinical {
+    struct InfantMortality;
+    struct ClinicalParameters;
     using Host::Human;
 
 /** The clinical model models the effects of sickness dependant on malarial
@@ -50,18 +50,10 @@ class ClinicalModel
 public:
     /// @brief Static functions
     //@{
-    /// First stage of initialisation
-    static void init ( const Parameters& parameters, const scnXml::Scenario& model );
-  
-    /** Second stage of initialisation, done after interventions are configured
-     * 
-     * Also done when a certain intervention is deployed. */
-    static void setHS (const scnXml::HealthSystem& healthSystem);
-    
     /** Return a new ClinicalModel.
      *
      * @param tSF	treatment seeking factor, passed to CaseManagementModel */
-    static unique_ptr<ClinicalModel> createClinicalModel (double tSF);
+    static unique_ptr<ClinicalModel> createClinicalModel (double tSF, const ClinicalParameters& config);
     //@}
     
     /// Destructor
@@ -78,18 +70,17 @@ public:
      * 
      * @param ageYears Age of human.
      * @param newBorn True if human age is one time step old */
-    void update (Human& human, double ageYears, bool newBorn);
+    void update (Human& human, double ageYears, bool newBorn, double neonatalRisk, const interventions::CohortRemovalRules& removalRules);
     
-    /** For infants, updates the infantIntervalsAtRisk and potentially
-     * infantDeaths arrays. */
-    void updateInfantDeaths( SimTime age );
+    /** Update the supplied reporting counters for infants. */
+    void updateInfantDeaths(SimTime age, InfantMortality& reporting);
     
     /** Special option to allow reports not to be delivered for existing cases
      * (within health-system-memory and not new cases). */
     virtual bool isExistingCase() =0;
     
-    inline static SimTime hsMemory() {
-        return healthSystemMemory;
+    inline SimTime hsMemory() const {
+        return config.healthSystemMemory;
     }
     
     /// Force all pending summaries to be reported. Should only be called when
@@ -117,7 +108,7 @@ public:
     
 protected:
     /// Constructor.
-    ClinicalModel ();
+    ClinicalModel (const ClinicalParameters& config);
     
     /** Update for clinical model - new pathogenesis status, treatment, etc.
      *
@@ -125,7 +116,7 @@ protected:
      * @param hostTransmission per-host transmission data of human.
      * @param ageYears Age of human.
      * @param ageGroup Survey age group of human. */
-    virtual void doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg) =0;
+    virtual void doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg, const interventions::CohortRemovalRules& removalRules) =0;
     
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
@@ -156,44 +147,21 @@ protected:
     int doomed;
     
     
-    /// True if bug-fix is enabled
-    static bool indirectMortBugfix;
-    
-    /// The maximum age of a sickness bout, for another bout to be considered
-    /// part of the same episode.
-    /// 
-    /// Used by both the clinical models in roughly the same way, but will have
-    /// different values in each to match Global::interval.
-    static SimTime healthSystemMemory;
-    
-    ///@brief Case fatality and sequelae "rate" data
-    //@{
-    /// Calculate the case fatality "rate" in the community as a function of
-    /// that in hospitals.
-    static double getCommunityCFR(double caseFatalityRatio);
-    
-    /// Age-specific hospital case fatality "rates"
-    static util::AgeGroupInterpolator caseFatalityRate;
-    /// Age-specific in-hospital rates of sequelae given a severe malaria bout
-    /// Note: out-patients have currently have the same probabilities of sequelae
-    static util::AgeGroupInterpolator pSequelaeInpatient;
-    //@}
+    double getCommunityCFR(double caseFatalityRatio) const;
+    const ClinicalParameters& config;
+
 };
 
 
 /// Infant mortality reporting
-class InfantMortality {
-public:
-    /** Initialise parameters. */
-    static void init( const Parameters& parameters );
-    static void preMainSimInit();
+struct InfantMortality {
+    vector<int> deaths;
+    vector<int> intervalsAtRisk;
+    double nonMalariaMortality = 0.0;
 
-    /// Static checkpointing
-    static void staticCheckpoint(istream& stream);
-    static void staticCheckpoint(ostream& stream);
+    void reset();
+    void reportRisk(size_t index, bool isDoomed);
 
-    static void reportRisk(size_t index, bool isDoomed);
-    
     /// Calculate infant mortality as deaths/1000 livebirths for the whole main-
     /// simulation period (not as deaths/1000 years-at-risk per survey).
     /// 
@@ -202,7 +170,7 @@ public:
     /// a stable age-distribution but unfortunately does not accurately describe
     /// death rates. The kaplan-meier estimate is the product of the proportion of
     /// infants survivng at each interval.
-    static double allCause();
+    double allCause() const;
 };
 
 

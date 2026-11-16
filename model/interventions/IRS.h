@@ -142,7 +142,7 @@ private:
     
     NormalSampler initialInsecticide;
     double maxInsecticide;              // maximum initial insecticide
-    unique_ptr<DecayFunction> insecticideDecay;
+    DecayFunction insecticideDecay;
     vector<IRSAnopheles> species; // vector specific params
     
     friend class HumanIRS;
@@ -157,12 +157,12 @@ public:
     HumanIRS( LocalRng& rng, const IRSComponent& params );
     HumanIRS( istream& stream, ComponentId id, const IRSComponent& parameters );
     
-    virtual void redeploy(LocalRng& rng, const VectorInterventionComponent& params);
+    virtual void redeploy(LocalRng& rng);
     
     /// Get remaining insecticide content based on initial amount and decay.
     inline double getInsecticideContent(SimTime effectTime)const{
         SimTime age = effectTime - deployTime;  // implies age 1 TS on first use
-        double effectSurvival = insecticideDecayHet->eval( age );
+        double effectSurvival = util::eval(parameters.insecticideDecay, age, *insecticideDecayHet);
         return initialInsecticide * effectSurvival;
     }
     
@@ -189,7 +189,7 @@ private:
     double initialInsecticide;	// units: mg/m²
     
     // this parameter is sampled on first deployment, but never resampled for the same human:
-    unique_ptr<DecayFunction> insecticideDecayHet;
+    util::DecaySample insecticideDecayHet;
 };
 
 } }

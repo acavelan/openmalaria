@@ -31,7 +31,7 @@ void deployVectorIntervention(HumanInterventions& state, LocalRng& rng, const Ve
     for( auto iter = state.vectorInterventions.begin(); iter != state.vectorInterventions.end(); ++iter ){
         if( (*iter)->id() == params.id() ){
             // already have a deployment for that description; just update it
-            (*iter)->redeploy( rng, params );
+            (*iter)->redeploy(rng);
             return;
         }
     }

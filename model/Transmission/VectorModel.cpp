@@ -27,7 +27,6 @@
 #include "mon/Continuous.h"
 #include "util/vectors.h"
 #include "util/ModelOptions.h"
-#include "util/SpeciesIndexChecker.h"
 #include "util/StreamValidator.h"
 #include "Transmission/Anopheles/SimpleMPDAnophelesModel.h"
 
@@ -204,6 +203,10 @@ VectorModel::VectorModel(vector<double> initEIR, int interventionMode, vector<st
     // Calculate total annual EIR
     annualEIR = vectors::sum(initialisationEIR);
 
+}
+
+void VectorModel::registerContinuousCallbacks(mon::Continuous::State& reporting) {
+    TransmissionModel::registerContinuousCallbacks(reporting);
     // -----  Continuous reporting  -----
     ostringstream ctsNv0, ctsPA, ctsPAmu, ctsPA1, ctsPAh, ctsPdf, ctsPdif, ctsNv, ctsOv, ctsSv, ctsAlpha, ctsPB, ctsPCD, ctsIRSEffects,
         ctsRA, ctsRR;
@@ -236,24 +239,24 @@ VectorModel::VectorModel(vector<double> initEIR, int interventionMode, vector<st
         ctsRR << "\tres req(" << name << ")";
     }
 
-    mon::Continuous::registerCallback("N_v0", ctsNv0.str(), std::bind( &VectorModel::ctsCbN_v0, this, _1));
-    mon::Continuous::registerCallback("P_A", ctsPA.str(), std::bind( &VectorModel::ctsCbP_A, this, _1));
-    mon::Continuous::registerCallback("P_Amu", ctsPAmu.str(), std::bind( &VectorModel::ctsCbP_Amu, this, _1));
-    mon::Continuous::registerCallback("P_A1", ctsPA1.str(), std::bind( &VectorModel::ctsCbP_A1, this, _1));
-    mon::Continuous::registerCallback("P_Ah", ctsPAh.str(), std::bind( &VectorModel::ctsCbP_Ah, this, _1));
-    mon::Continuous::registerCallback("P_df", ctsPdf.str(), std::bind( &VectorModel::ctsCbP_df, this, _1));
-    mon::Continuous::registerCallback("P_dif", ctsPdif.str(), std::bind( &VectorModel::ctsCbP_dif, this, _1));
-    mon::Continuous::registerCallback("N_v", ctsNv.str(), std::bind( &VectorModel::ctsCbN_v, this, _1));
-    mon::Continuous::registerCallback("O_v", ctsOv.str(), std::bind( &VectorModel::ctsCbO_v, this, _1));
-    mon::Continuous::registerCallback("S_v", ctsSv.str(), std::bind( &VectorModel::ctsCbS_v, this, _1));
+    mon::Continuous::registerCallback(reporting, "N_v0", ctsNv0.str(), std::bind( &VectorModel::ctsCbN_v0, this, _1));
+    mon::Continuous::registerCallback(reporting, "P_A", ctsPA.str(), std::bind( &VectorModel::ctsCbP_A, this, _1));
+    mon::Continuous::registerCallback(reporting, "P_Amu", ctsPAmu.str(), std::bind( &VectorModel::ctsCbP_Amu, this, _1));
+    mon::Continuous::registerCallback(reporting, "P_A1", ctsPA1.str(), std::bind( &VectorModel::ctsCbP_A1, this, _1));
+    mon::Continuous::registerCallback(reporting, "P_Ah", ctsPAh.str(), std::bind( &VectorModel::ctsCbP_Ah, this, _1));
+    mon::Continuous::registerCallback(reporting, "P_df", ctsPdf.str(), std::bind( &VectorModel::ctsCbP_df, this, _1));
+    mon::Continuous::registerCallback(reporting, "P_dif", ctsPdif.str(), std::bind( &VectorModel::ctsCbP_dif, this, _1));
+    mon::Continuous::registerCallback(reporting, "N_v", ctsNv.str(), std::bind( &VectorModel::ctsCbN_v, this, _1));
+    mon::Continuous::registerCallback(reporting, "O_v", ctsOv.str(), std::bind( &VectorModel::ctsCbO_v, this, _1));
+    mon::Continuous::registerCallback(reporting, "S_v", ctsSv.str(), std::bind( &VectorModel::ctsCbS_v, this, _1));
 
     // availability to mosquitoes relative to other humans, excluding age factor
-    mon::Continuous::registerCallback("alpha", ctsAlpha.str(), std::bind( &VectorModel::ctsCbAlpha, this, _1, _2));
-    mon::Continuous::registerCallback("P_B", ctsPB.str(), std::bind( &VectorModel::ctsCbP_B, this, _1, _2));
-    mon::Continuous::registerCallback("P_C*P_D", ctsPCD.str(), std::bind( &VectorModel::ctsCbP_CD, this, _1, _2));
+    mon::Continuous::registerCallback(reporting, "alpha", ctsAlpha.str(), std::bind( &VectorModel::ctsCbAlpha, this, _1, _2));
+    mon::Continuous::registerCallback(reporting, "P_B", ctsPB.str(), std::bind( &VectorModel::ctsCbP_B, this, _1, _2));
+    mon::Continuous::registerCallback(reporting, "P_C*P_D", ctsPCD.str(), std::bind( &VectorModel::ctsCbP_CD, this, _1, _2));
 
-    mon::Continuous::registerCallback("resource availability", ctsRA.str(), std::bind( &VectorModel::ctsCbResAvailability, this, _1));
-    mon::Continuous::registerCallback("resource requirements", ctsRR.str(), std::bind( &VectorModel::ctsCbResRequirements, this, _1));
+    mon::Continuous::registerCallback(reporting, "resource availability", ctsRA.str(), std::bind( &VectorModel::ctsCbResAvailability, this, _1));
+    mon::Continuous::registerCallback(reporting, "resource requirements", ctsRR.str(), std::bind( &VectorModel::ctsCbResRequirements, this, _1));
 }
 
 VectorModel::~VectorModel() {}
@@ -295,33 +298,6 @@ void VectorModel::init2(const vector<Host::Human> &population)
     simulationMode = forcedEIR; // now we should be ready to start
 }
 
-void VectorModel::initVectorInterv(const scnXml::Description::AnophelesSequence &list, size_t instance, const string &name)
-{
-    SpeciesIndexChecker checker(name, speciesIndex);
-    for (const scnXml::VectorSpeciesIntervention &anoph : list)
-    {
-        const string &mosq = anoph.getMosquito();
-        species[checker.getIndex(mosq)]->initVectorInterv(anoph, instance);
-    }
-    checker.checkNoneMissed();
-}
-void VectorModel::initVectorTrap(const scnXml::VectorTrap::DescriptionSequence list, size_t instance,
-                                 const scnXml::VectorTrap::NameOptional name_opt)
-{
-    stringstream name_ss;
-    if (name_opt.present())
-        name_ss << name_opt.get();
-    else
-        name_ss << "vector trap intervention " << (instance + 1);
-    string name = name_ss.str();
-    SpeciesIndexChecker checker(name, speciesIndex);
-    for (const scnXml::Description1 &anoph : list)
-    {
-        const string &mosq = anoph.getMosquito();
-        species[checker.getIndex(mosq)]->initVectorTrap(anoph, instance);
-    }
-    checker.checkNoneMissed();
-}
 void VectorModel::scaleEIR(double factor)
 {
     for (size_t i = 0; i < speciesIndex.size(); ++i)
@@ -478,7 +454,7 @@ void VectorModel::vectorUpdate(const vector<Host::Human> &population)
             sigma_df[s] += df;
             for (size_t g = 0; g < nGenotypes; ++g)
             {
-                const double tbvFac = human.interventions.vaccine.getFactor(interventions::Vaccine::TBV, opt_vaccine_genotype? g : 0);
+                const double tbvFac = interventions::vaccineFactor(human.interventions.vaccines, interventions::Vaccine::TBV, sim::nowOrTs1(), opt_vaccine_genotype? g : 0);
                 sigma_dif_i[s][g] += df * probTransmission_i[g] * tbvFac;
                 sigma_dif_l[s][g] += df * probTransmission_l[g] * tbvFac;
             }
@@ -512,7 +488,7 @@ void VectorModel::deployVectorTrap(size_t instance, double number, SimTime lifes
     }
 }
 
-void VectorModel::changeEIRIntervention(const scnXml::NonVector &nonVectorData)
+void VectorModel::changeEIRIntervention(const vector<double>& daily, int)
 {
     if((simulationMode != forcedEIR) && (simulationMode != transientEIRknown))
         throw util::xml_scenario_error("changeEIR intervention can only be used in forced EIR mode");
@@ -522,7 +498,7 @@ void VectorModel::changeEIRIntervention(const scnXml::NonVector &nonVectorData)
     if(speciesIndex.size() != 1)
         throw util::xml_scenario_error("changeEIR intervention can only be used with a single anopheles species");
 
-    species[0]->changeEIRIntervention(nonVectorData);
+    species[0]->changeEIRIntervention(daily);
 }
 
 void VectorModel::uninfectVectors()
@@ -541,23 +517,7 @@ void VectorModel::summarize()
     }
 }
 
-void VectorModel::checkpoint(istream &stream)
-{
-    TransmissionModel::checkpoint(stream);
-    m_rng.checkpoint(stream);
-    initIterations &stream;
-    // species & stream;
-    for (auto &s : species)
-        s->checkpoint(stream);
-}
-void VectorModel::checkpoint(ostream &stream)
-{
-    TransmissionModel::checkpoint(stream);
-    m_rng.checkpoint(stream);
-    initIterations &stream;
-    for (auto &s : species)
-        s->checkpoint(stream);
-}
+
 
 } // namespace Transmission
 } // namespace OM

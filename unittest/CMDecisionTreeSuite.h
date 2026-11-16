@@ -25,8 +25,13 @@
 #ifndef Hmod_CMDecisionTreeSuite
 #define Hmod_CMDecisionTreeSuite
 
+#include "interventions/Interventions.h"
 #include <cxxtest/TestSuite.h>
 #include "Clinical/CMDecisionTree.h"
+#include "Clinical/ClinicalXml.h"
+#include "Clinical/DecisionTree5Day.h"
+#include "Clinical/ImmediateOutcomes.h"
+#include "Clinical/EventScheduler.h"
 #include "util/random.h"
 #include "UnittestUtil.h"
 #include "WHMock.h"
@@ -36,9 +41,24 @@ using namespace OM::Clinical;
 using namespace OM::WithinHost;
 using UnitTest::WHMock;
 
+// Internal interning entry point: verify ownership without exposing it in the model API.
+namespace OM::Clinical { const CMDecisionTree& save_decision(ClinicalParameters&, CMDecisionTree*); }
+
+class CountedDecision : public CMDecisionTree {
+public:
+    inline static int live = 0;
+    CountedDecision() { ++live; }
+    ~CountedDecision() override { --live; }
+    bool operator==(const CMDecisionTree& other) const override {
+        return dynamic_cast<const CountedDecision*>(&other) != nullptr;
+    }
+    CMDTOut exec(CMHostData) const override { return CMDTOut(false); }
+};
+
 class CMDecisionTreeSuite : public CxxTest::TestSuite
 {
     OM::ModelParameters parameters;
+    OM::interventions::Interventions definitions;
     util::MasterRng masterRng{0, 0};
 public:
     CMDecisionTreeSuite () {}
@@ -50,7 +70,7 @@ public:
         UnittestUtil::initTime(5);
         UnittestUtil::setDiagnostics();
 
-        UnittestUtil::EmpiricalWHM_setup();
+        UnittestUtil::EmpiricalWHM_setup(parameters.withinHost);
 
         human.reset( UnittestUtil::createHuman(sim::nowOrTs0(), parameters, masterRng).release() );
 
@@ -76,7 +96,7 @@ public:
      * returns the proportion of these runs where the output was any treatment
      */
     double propTreatmentsNReps (int N, const scnXml::DecisionTree& dt) {
-        const CMDecisionTree& cmdt = CMDecisionTree::create( dt, true );
+        const CMDecisionTree& cmdt = CMDecisionTree::create( dt, true, definitions, parameters.clinical );
         
 	whm->nTreatments = 0;
         int secondCounter = 0;
@@ -87,6 +107,185 @@ public:
 	return double(whm->nTreatments) / double(N);
     }
     
+    void testTreatmentValuesAndValidation() {
+        scnXml::TreatmentOption input;
+        input.getClearInfections().push_back(scnXml::ClearInfections("-1t", "liver"));
+        input.getClearInfections().push_back(scnXml::ClearInfections("2t", "blood"));
+        auto treatment = OM::xml::readTreatment(input, definitions);
+        TS_ASSERT_EQUALS(treatment.timeLiver, -sim::oneTS());
+        TS_ASSERT_EQUALS(treatment.timeBlood, 2 * sim::oneTS());
+        ClinicalParameters other;
+        other.treatmentSevere = treatment;
+        treatment.timeBlood = 3 * sim::oneTS();
+        TS_ASSERT_EQUALS(other.treatmentSevere.timeBlood, 2 * sim::oneTS());
+        whm->nTreatments = 0;
+        whm->treatment(*human, other.treatmentSevere);
+        TS_ASSERT_EQUALS(whm->nTreatments, 1);
+        TS_ASSERT_EQUALS(whm->lastTimeLiver, -sim::oneTS());
+        TS_ASSERT_EQUALS(whm->lastTimeBlood, 2 * sim::oneTS());
+
+        input.getClearInfections().push_back(scnXml::ClearInfections("1t", "both"));
+        TS_ASSERT_THROWS(OM::xml::readTreatment(input, definitions), const OM::util::xml_scenario_error&);
+        for (const auto& bad : {scnXml::ClearInfections("0t", "blood"),
+                               scnXml::ClearInfections("-2t", "liver"),
+                               scnXml::ClearInfections("1t", "unknown")}) {
+            input.getClearInfections().clear();
+            input.getClearInfections().push_back(bad);
+            TS_ASSERT_THROWS(OM::xml::readTreatment(input, definitions), const OM::util::xml_scenario_error&);
+        }
+    }
+
+    void testClinicalConfigurationAndActiveTreesAreIndependent() {
+        ClinicalParameters first, second;
+        first.healthSystemMemory = 10;
+        second.healthSystemMemory = 25;
+        second.kind = ClinicalParameters::Kind::ImmediateOutcomes;
+        auto a = ClinicalModel::createClinicalModel(1.0, first);
+        auto b = ClinicalModel::createClinicalModel(1.0, second);
+        TS_ASSERT(dynamic_cast<DecisionTree5Day*>(a.get()));
+        TS_ASSERT(dynamic_cast<ImmediateOutcomes*>(b.get()));
+        TS_ASSERT_EQUALS(a->hsMemory(), 10);
+        TS_ASSERT_EQUALS(b->hsMemory(), 25);
+        first.healthSystemMemory = 15;
+        TS_ASSERT_EQUALS(a->hsMemory(), 15);
+        TS_ASSERT_EQUALS(b->hsMemory(), 25);
+
+        scnXml::DecisionTree treated, untreated;
+        treated.setTreatFailure(scnXml::DTTreatFailure());
+        untreated.setNoTreatment(scnXml::DTNoTreatment());
+        first.escm_uncomplicated = &CMDecisionTree::create(treated, true, definitions, first);
+        first.escm_complicated = &CMDecisionTree::create(untreated, false, definitions, first);
+        second.escm_uncomplicated = &CMDecisionTree::create(untreated, true, definitions, second);
+        second.escm_complicated = &CMDecisionTree::create(treated, false, definitions, second);
+        hd->pgState = Episode::SICK;
+        TS_ASSERT(executeCaseManagement(*hd, first).treated);
+        TS_ASSERT(!executeCaseManagement(*hd, second).treated);
+        hd->pgState = static_cast<Episode::State>(Episode::SICK | Episode::COMPLICATED);
+        TS_ASSERT(!executeCaseManagement(*hd, first).treated);
+        TS_ASSERT(executeCaseManagement(*hd, second).treated);
+
+        ClinicalParameters daily;
+        daily.kind = ClinicalParameters::Kind::EventScheduler;
+        auto c = ClinicalModel::createClinicalModel(1.0, daily);
+        TS_ASSERT(dynamic_cast<ClinicalEventScheduler*>(c.get()));
+    }
+
+    void testDecisionLibrariesHaveIndependentLifetimes() {
+        TS_ASSERT_EQUALS(CountedDecision::live, 0);
+        {
+            OM::ModelParameters second;
+            const auto& survivor = save_decision(second.clinical, new CountedDecision());
+            scnXml::DecisionTree input;
+            input.setNoTreatment(scnXml::DTNoTreatment());
+            const auto& secondTree = CMDecisionTree::create(input, true, definitions, second.clinical);
+            {
+                OM::ModelParameters first;
+                const auto& independent = save_decision(first.clinical, new CountedDecision());
+                TS_ASSERT_DIFFERS(&independent, &survivor);
+                TS_ASSERT_EQUALS(CountedDecision::live, 2);
+                const auto& firstTree = CMDecisionTree::create(input, true, definitions, first.clinical);
+                TS_ASSERT_DIFFERS(&firstTree, &secondTree);
+                TS_ASSERT_EQUALS(&firstTree,
+                    &CMDecisionTree::create(input, true, definitions, first.clinical));
+            }
+            TS_ASSERT_EQUALS(CountedDecision::live, 1);
+            TS_ASSERT(!survivor.exec(*hd).treated);
+            TS_ASSERT(!secondTree.exec(*hd).treated);
+        }
+        TS_ASSERT_EQUALS(CountedDecision::live, 0);
+    }
+
+    void testDuplicateNodesAreDestroyed() {
+        ClinicalParameters library;
+        const auto& first = save_decision(library, new CountedDecision());
+        for (int i = 0; i < 10; ++i)
+            TS_ASSERT_EQUALS(&save_decision(library, new CountedDecision()), &first);
+        TS_ASSERT_EQUALS(CountedDecision::live, 1);
+    }
+
+    void testLegacySimpleTreatmentInterningIgnoresBloodValues() {
+        scnXml::DecisionTree first, second, different;
+        first.getTreatSimple().push_back(scnXml::DTTreatSimple("35d", "5d"));
+        second.getTreatSimple().push_back(scnXml::DTTreatSimple("35d", "10d"));
+        different.getTreatSimple().push_back(scnXml::DTTreatSimple("40d", "5d"));
+        const auto& saved = CMDecisionTree::create(first, true, definitions, parameters.clinical);
+        const auto& reused = CMDecisionTree::create(second, true, definitions, parameters.clinical);
+        TS_ASSERT_EQUALS(&saved, &reused);
+        TS_ASSERT_DIFFERS(&saved, &CMDecisionTree::create(different, true, definitions, parameters.clinical));
+        reused.exec(*hd);
+        TS_ASSERT_EQUALS(whm->lastTimeBlood, 5);
+    }
+
+    void testLegacyCohortInterningIgnoresComponent() {
+        using OM::interventions::ComponentId;
+        definitions.identifierMap.insert_or_assign("comparison-first", ComponentId(101));
+        definitions.identifierMap.insert_or_assign("comparison-second", ComponentId(102));
+        scnXml::DecisionTree positive, negative, first, second;
+        scnXml::DTReport report;
+        report.setOutputNumber(10051);
+        positive.getReport().push_back(report);
+        report.setOutputNumber(10052);
+        negative.getReport().push_back(report);
+        first.setCohort(scnXml::DTCohort(positive, negative, "comparison-first"));
+        second.setCohort(scnXml::DTCohort(positive, negative, "comparison-second"));
+        TS_ASSERT_EQUALS(&CMDecisionTree::create(first, true, definitions, parameters.clinical),
+                         &CMDecisionTree::create(second, true, definitions, parameters.clinical));
+    }
+
+    void testBranchKindsRemainDistinctAndPreserveOutcomes() {
+        scnXml::DecisionTree treated, untreated, firstLine, severe, diagnostic, origin;
+        treated.setTreatFailure(scnXml::DTTreatFailure());
+        untreated.setNoTreatment(scnXml::DTNoTreatment());
+        firstLine.setCaseType(scnXml::DTCaseType(treated, untreated));
+        severe.setSevere(scnXml::DTSevere(treated, untreated));
+        diagnostic.setDiagnostic(scnXml::DTDiagnostic(treated, untreated, "microscopy"));
+        origin.setInfectionOrigin(scnXml::DTInfectionOrigin(untreated, untreated, treated));
+        const auto& first = CMDecisionTree::create(firstLine, true, definitions, parameters.clinical);
+        const auto& severity = CMDecisionTree::create(severe, true, definitions, parameters.clinical);
+        TS_ASSERT_DIFFERS(&first, &severity);
+        hd->pgState = Episode::SICK;
+        TS_ASSERT(first.exec(*hd).treated);
+        TS_ASSERT(!severity.exec(*hd).treated);
+        hd->pgState = static_cast<Episode::State>(Episode::SICK | Episode::SECOND_CASE);
+        TS_ASSERT(!first.exec(*hd).treated);
+        hd->pgState = static_cast<Episode::State>(Episode::SICK | Episode::COMPLICATED);
+        TS_ASSERT(severity.exec(*hd).treated);
+        whm->totalDensity = 0.0;
+        TS_ASSERT(CMDecisionTree::create(diagnostic, true, definitions, parameters.clinical).exec(*hd).screened);
+        TS_ASSERT(CMDecisionTree::create(origin, true, definitions, parameters.clinical).exec(*hd).treated);
+        TS_ASSERT_THROWS(CMDecisionTree::create(firstLine, false, definitions, parameters.clinical), const OM::util::xml_scenario_error&);
+    }
+
+    void testLegacyUncomplicatedInterningIgnoresMemory() {
+        struct Restore {
+            SimTime& value;
+            SimTime old;
+            ~Restore() { value = old; }
+        } restore{parameters.clinical.healthSystemMemory, parameters.clinical.healthSystemMemory};
+        parameters.clinical.healthSystemMemory = 30;
+        scnXml::DecisionTree positive, negative, first, second;
+        positive.setTreatFailure(scnXml::DTTreatFailure());
+        negative.setNoTreatment(scnXml::DTNoTreatment());
+        scnXml::DTUncomplicated branch(positive, negative);
+        branch.setMemory("10d"); first.setUncomplicated(branch);
+        branch.setMemory("20d"); second.setUncomplicated(branch);
+        TS_ASSERT_EQUALS(&CMDecisionTree::create(first, true, definitions, parameters.clinical),
+                         &CMDecisionTree::create(second, true, definitions, parameters.clinical));
+        branch.setMemory("35d"); second.setUncomplicated(branch);
+        TS_ASSERT_THROWS(CMDecisionTree::create(second, true, definitions, parameters.clinical), const OM::util::xml_scenario_error&);
+    }
+
+    void testReportOrderDistinguishesNodes() {
+        scnXml::DecisionTree first, second;
+        scnXml::DTReport a, b;
+        a.setOutputNumber(10061); b.setOutputNumber(10062);
+        first.getReport().push_back(a); first.getReport().push_back(b);
+        second.getReport().push_back(b); second.getReport().push_back(a);
+        const auto& saved = CMDecisionTree::create(first, true, definitions, parameters.clinical);
+        TS_ASSERT_EQUALS(&saved, &CMDecisionTree::create(first, true, definitions, parameters.clinical));
+        TS_ASSERT_DIFFERS(&saved, &CMDecisionTree::create(second, true, definitions, parameters.clinical));
+    }
+
     void testRandomP () {
 	// random decision
         // option (a) is to treat, option (b) is to do nothing

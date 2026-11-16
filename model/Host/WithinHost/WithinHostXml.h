@@ -21,13 +21,11 @@
  */
 
 #pragma once
-#include <memory>
-#include "util/random.h"
-
-namespace scnXml { class Entomology; }
-namespace OM::Transmission {
-class TransmissionModel;
-struct HostTransmissionParameters;
-TransmissionModel* createTransmissionModel(const scnXml::Entomology& entomology,
-    int populationSize, HostTransmissionParameters& hostParameters, util::MasterRng& masterRng);
+namespace scnXml { class Scenario; }
+namespace OM {
+class Parameters;
+namespace WithinHost { struct WithinHostParameters; }
+namespace xml {
+void initWithinHost(const Parameters&, const scnXml::Scenario&, WithinHost::WithinHostParameters&);
+}
 }

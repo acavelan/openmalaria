@@ -27,6 +27,13 @@
 
 namespace OM::Transmission {
 
+struct HostSpeciesConfiguration {
+    util::DistributionParameters availability;
+    util::BetaParameters biting;
+    util::BetaParameters findingRestSite;
+    util::BetaParameters survivingRest;
+};
+
 struct HostSpeciesParameters {
     /** @brief Probabilities of finding a host and surviving a feeding cycle
      * 
@@ -65,5 +72,8 @@ struct HostTransmissionParameters {
         throw util::xml_scenario_error("Availability percentiles in intervention specifications can only be in [0 and 100]");
     }
 };
+
+HostSpeciesParameters makeHostSpeciesParameters(const HostSpeciesConfiguration&);
+void calculateAvailabilityPercentiles(HostTransmissionParameters&);
 
 }

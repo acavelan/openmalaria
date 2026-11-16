@@ -30,6 +30,18 @@ namespace OM::Host {
 
 enum class IncidenceKind { Default, Heterogeneity, NegativeBinomial, Lognormal };
 
+struct IncidenceConfiguration {
+    IncidenceKind kind = IncidenceKind::Default;
+    double baselineAvailabilityShape = 0.0;
+    double gammaP = 0.0;
+    double negativeLogOneMinusSinf = 0.0;
+    double Simm = 0.0;
+    double EStar = 0.0;
+    double XStarP = 0.0;
+    bool noPreErythrocytic = false;
+    bool vaccineGenotype = false;
+};
+
 struct IncidenceParameters {
     IncidenceKind kind = IncidenceKind::Default;
     double baseline_avail_shape_param = 0.0, baseline_avail_offset = 0.0;
@@ -49,6 +61,8 @@ struct IncidenceState {
         cumulativeEIR & stream;
     }
 };
+
+IncidenceParameters makeIncidenceParameters(const IncidenceConfiguration&);
 
 double sampleAvailability(const IncidenceParameters&, util::LocalRng&);
 double expectedInfections(IncidenceState&, const IncidenceParameters&,

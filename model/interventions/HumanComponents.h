@@ -29,13 +29,14 @@
 #include "util/DecayFunction.h"
 #include "util/checkpoint_containers.h"
 #include <map>
+#include <array>
 
 namespace OM {
 namespace Host {
     struct Human;
 }
 namespace interventions {
-    class VaccineComponent;
+    struct VaccineComponent;
     using util::LocalRng;
 
 class VectorInterventionComponent;
@@ -45,7 +46,7 @@ public:
     virtual ~VectorInterventionState() {}
     
     /** Deploy an intervention. */
-    virtual void redeploy( LocalRng& rng, const VectorInterventionComponent& params ) =0;
+    virtual void redeploy(LocalRng& rng) =0;
     
     /** Per time step update. Used by ITNs to update hole decay. */
     // Returns true when this update removes the component's cohort membership.
@@ -133,7 +134,7 @@ namespace SubPopRemove{
 
 /** For each RemoveAtCode (excluding NUM), this is a list of all sub-population
  * identifiers for which the option is enabled. */
-extern vector<ComponentId> removeAtIds[SubPopRemove::NUM];
+using CohortRemovalRules = std::array<vector<ComponentId>, SubPopRemove::NUM>;
 
 // ———  vaccines  ———
 
@@ -141,82 +142,31 @@ namespace Vaccine{
     enum Types { PEV, BSV, TBV, NumVaccineTypes };
 }
 
-/** Per vaccine effect (type), per human details. */
-class PerEffectPerHumanVaccine {
-public:
-    //Note: this constructor is only for checkpointing
-    PerEffectPerHumanVaccine();
-    
-    /// Checkpointing
-    template<class S>
-    void operator& (S& stream) {
-        component & stream;
+struct VaccineEffect {
+    // Bound to a definition owned by Model::interventions, which outlives humans.
+    const VaccineComponent* parameters = nullptr;
+    uint32_t numDosesAdministered = 0;
+    SimTime timeLastDeployment = sim::never();
+    vector<double> perGenotypeInitialEfficacy;
+    util::DecaySample hetSample;
+
+    template<class S> void checkpointState(S& stream) {
         numDosesAdministered & stream;
         timeLastDeployment & stream;
         perGenotypeInitialEfficacy & stream;
-        checkpointHet(stream);
+        util::checkpointDecaySample(hetSample, stream);
     }
-    
-private:
-    PerEffectPerHumanVaccine( LocalRng& rng, ComponentId id, const VaccineComponent& params );
-    
-    ComponentId component;      // id of component (for finding parameters)
-    // Type of vaccine
-    /** Number of vaccine doses this individual has received.
-     *
-     * If an individual misses one EPI (continuous) vaccine dose, it's
-     * intentional that they also miss following EPI doses (unless a timed mass
-     * vaccination reintroduces them to the EPI schedule). */
-    uint32_t numDosesAdministered;
-    /// Time of last vaccination with this vaccine type
-    SimTime timeLastDeployment = sim::never();
-    /// Efficacy at last deployment (undecayed)
-    vector<double> perGenotypeInitialEfficacy;
-    unique_ptr<util::DecayFunction> hetSample;
-
-    void checkpointHet(ostream& stream);
-    void checkpointHet(istream& stream);
-    
-    friend class PerHumanVaccine;
 };
 
-/** Per-human vaccine code. */
-class PerHumanVaccine {
-public:
-    PerHumanVaccine() {}
-    
-    /** Get one minus the efficacy of the vaccine (1 for no effect, 0 for full effect). */
-    double getFactor( Vaccine::Types type, uint32_t genotype = 0) const;
-    
-    /** Vaccinate unless the passed VaccineLimits specify not to.
-     * 
-     * @returns true when the vaccine is administered */
-    bool possiblyVaccinate( Host::Human& human, ComponentId componentId,
-                           interventions::VaccineLimits vaccLimits );
-
-#if 0
-    /// Hack for R_0 experiment: make current human the infection source
-    inline void specialR_0(){
-        // At this point special TBV should have been given to everyone but the PEV to no-one
-        effects[R_0_PEV].initialEfficacy = 1.0;
-        effects[R_0_TBV].initialEfficacy = 0.0;
-    }
-#endif
-    
-    /// Checkpointing
-    template<class S>
-    void operator& (S& stream) {
-        effects & stream;
-    }
-
-private:
-    /// Details for each deployed vaccine for this human
-    typedef std::vector<PerEffectPerHumanVaccine> EffectList;
-    EffectList effects;
-};
+double vaccineFactor(const vector<VaccineEffect>&, Vaccine::Types, SimTime effectTime, uint32_t genotype = 0);
+bool vaccinate(vector<VaccineEffect>&, LocalRng&, const VaccineComponent&,
+    VaccineLimits, SimTime date, size_t numGenotypes);
+void checkpointVaccines(vector<VaccineEffect>&, ostream&);
+void checkpointVaccines(vector<VaccineEffect>&, istream&,
+    const vector<unique_ptr<HumanInterventionComponent>>& definitions);
 
 struct HumanInterventions {
-    PerHumanVaccine vaccine;
+    vector<VaccineEffect> vaccines;
     std::map<ComponentId, SimTime> cohortExpiry;
     uint32_t cohortSet = 0;
     uint32_t nextContinuousDeployment = 0;

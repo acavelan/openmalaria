@@ -20,29 +20,20 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_ESCaseManagement
-#define Hmod_ESCaseManagement
+#pragma once
 
-#include "Global.h"
-#include "Clinical/CMDecisionTree.h"    // needed for ESDecisionMap
-#include "Host/WithinHost/WHInterface.h"
-#include "schema/pharmacology.h"
+namespace OM::Transmission::Anopheles {
 
-namespace OM { namespace Clinical {
-using WithinHost::WHInterface;
-
-
-/** Tracks clinical status (sickness), does case management for new events,
- * medicates treatment, determines patient recovery, death and sequelae.
- *****************************************************************************/
-class ESCaseManagement {
-public:
-    /** Load health system data from initial data or an intervention's data (both from XML).
-    * (Re)loads all data affected by this healthSystem element. */
-    static void setHealthSystem (const scnXml::HSEventScheduler& esData);
-    
-    static CMDTOut execute( const CMHostData& hostData );
+struct SugarFeedingInputs
+{
+    double ah; // The availability rate of hosts h. Time-1
+    double an; // The availability rate of hosts n. Time-1
+    double mu_v_interv; // Mosquito mortality rate while host-seeking. Time-1
+    double theta_d; // Proportion of the night that the mosquito spends host-seeking. Time.
+    double PAt_wanted; // PAt is the daily probability of a mosquito feeding on an ATSB
 };
 
-} }
-#endif
+// Solve for the availability rate giving the requested sugar-feeding probability.
+double sugarFeedingAvailability(SugarFeedingInputs inputs);
+
+}

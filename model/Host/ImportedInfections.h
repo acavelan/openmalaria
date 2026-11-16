@@ -32,7 +32,7 @@
 #include "Host/WithinHost/Infection/Infection.h"
 
 namespace OM {
-    class Population;
+    struct Population;
 
 namespace Host {
 

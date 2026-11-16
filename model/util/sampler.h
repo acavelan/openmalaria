@@ -28,7 +28,8 @@
 
 #include "Global.h"
 #include "util/random.h"
-#include "schema/util.h"
+#include "util/errors.h"
+#include <type_traits>
 
 namespace OM { namespace util {
     
@@ -79,8 +80,6 @@ namespace OM { namespace util {
          */
         void setParams( double m, double s );
 
-        /** As above, using an XML element. */
-        void setParams( const scnXml::SampledValueN& elt );
         
         /** Sample a value. */
         double sample(LocalRng& rng) const;
@@ -108,7 +107,6 @@ namespace OM { namespace util {
     {
     public:
         virtual ~Sampler() = default;
-        virtual std::unique_ptr<Sampler> clone() const = 0;
         virtual double sample(LocalRng& rng) const = 0;
         virtual double sample(NormalSample sample) const{ throw std::runtime_error("sample(NormalSample) not implemented for this distribution");}
         virtual double mean() const = 0;
@@ -118,13 +116,6 @@ namespace OM { namespace util {
     /** Sampler for log-normal values */
     class LognormalSampler : public Sampler {
     public:
-        LognormalSampler() = default;
-        LognormalSampler& operator=(const LognormalSampler&) = default;
-
-        std::unique_ptr<Sampler> clone() const override {
-            return std::make_unique<LognormalSampler>(*this);
-        }
-
         /**
          * Configure the log-normal distribution from a target mean and coefficient of variation.
          *
@@ -141,7 +132,7 @@ namespace OM { namespace util {
          * @param CV    Desired coefficient of variation (must be ≥ 0).
          * @throws util::xml_scenario_error  If mean < 0 or CV < 0, or if mean > 0 but CV == 0 is invalid.
          */
-        static unique_ptr<util::LognormalSampler> fromMeanCV( double mean, double CV, std::optional<double> truncate = std::nullopt);
+        static LognormalSampler fromMeanCV( double mean, double CV, std::optional<double> truncate = std::nullopt);
 
         /**
          * Configure the log-normal distribution from a target mean and variance.
@@ -158,7 +149,7 @@ namespace OM { namespace util {
          * @param variance  Desired variance of X (must be ≥ 0).
          * @throws util::xml_scenario_error  If mean ≤ 0 or variance < 0.
          */
-        static unique_ptr<util::LognormalSampler> fromMeanVariance( double mean, double variance, std::optional<double> truncate = std::nullopt);
+        static LognormalSampler fromMeanVariance( double mean, double variance, std::optional<double> truncate = std::nullopt);
 
         /** Scale the mean (i.e. multiply by a scalar).
          * 
@@ -202,13 +193,6 @@ namespace OM { namespace util {
     /** Sampler for gamma values */
     class GammaSampler : public Sampler {
     public:
-        GammaSampler() = default;
-        GammaSampler& operator=(const GammaSampler&) = default;
-
-        std::unique_ptr<Sampler> clone() const override {
-            return std::make_unique<GammaSampler>(*this);
-        }
-
         /**
          * Configure the gamma distribution from a target mean and coefficient of variation.
          *
@@ -224,7 +208,7 @@ namespace OM { namespace util {
          * @param CV    Desired coefficient of variation (must be ≥ 0).
          * @throws util::xml_scenario_error  If mean ≤ 0 or CV < 0.
          */
-        static unique_ptr<util::GammaSampler> fromMeanCV( double mean, double CV, std::optional<double> truncate = std::nullopt);
+        static GammaSampler fromMeanCV( double mean, double CV, std::optional<double> truncate = std::nullopt);
 
         /**
          * Configure the gamma distribution from a target mean and variance.
@@ -241,7 +225,7 @@ namespace OM { namespace util {
          * @param variance  Desired variance of the distribution (must be ≥ 0).
          * @throws util::xml_scenario_error  If mean ≤ 0 or variance < 0.
          */
-        static unique_ptr<util::GammaSampler> fromMeanVariance( double mean, double variance, std::optional<double> truncate = std::nullopt);
+        static GammaSampler fromMeanVariance( double mean, double variance, std::optional<double> truncate = std::nullopt);
         
         /** Get the mean. */
         double mean() const override;
@@ -274,9 +258,23 @@ namespace OM { namespace util {
         std::optional<double> truncate = std::nullopt;
     };
 
-    /** Create a new <SamplerT> from a xml snippet. */
+    enum class DistributionKind { Constant, Lognormal, Gamma };
+    struct DistributionParameters {
+        DistributionKind kind = DistributionKind::Constant;
+        std::optional<double> cv;
+        std::optional<double> variance;
+        std::optional<double> truncate;
+    };
+    const char* distributionName(DistributionKind);
+
+    struct BetaParameters {
+        double mean;
+        double variance;
+    };
+
+    /** Create a concrete sampler value from distribution parameters. */
     template <typename SamplerT>
-    inline unique_ptr<SamplerT> createSampler(double mean, const scnXml::SampledValueCV& elt)
+    inline SamplerT createSampler(double mean, const DistributionParameters& parameters)
     {
         // 1.  Compile‑time identify which concrete sampler we are handling ─────
         constexpr bool isLognormal = std::is_same_v<SamplerT, LognormalSampler>;
@@ -286,7 +284,7 @@ namespace OM { namespace util {
             isGamma     ? "gamma"
                         : nullptr;
 
-        const std::string& d = elt.getDistr();
+        const std::string d = distributionName(parameters.kind);
 
         // 2. Special handling for the “const” alias (lognormal with CV = 0)
         if( d == "const" )
@@ -294,15 +292,15 @@ namespace OM { namespace util {
             if constexpr (!isLognormal) // only allowed for lognormal
                 throw util::xml_scenario_error("\"distr=\"const\": expected \"lognormal\"");
 
-            if( elt.getCV().present() && elt.getCV().get() != 0.0 )
+            if( parameters.cv.has_value() && *parameters.cv != 0.0 )
                 throw util::xml_scenario_error( "\"distr="+d+"\": attribute \"CV\" must be zero or omitted when distr=\"const\" or is omitted" );
-            if( elt.getVariance().present() && elt.getVariance().get() != 0.0 )
+            if( parameters.variance.has_value() && *parameters.variance != 0.0 )
                 throw util::xml_scenario_error( "\"distr="+d+"\": attribute \"variance\" must be zero or omitted when distr=\"const\" or is omitted" );
             
             return SamplerT::fromMeanCV(mean, 0.0);
         }
 
-        // 3. Check that XML 'distr' matches the compile‑time sampler type
+        // 3. Check that 'kind' matches the compile‑time sampler type
         if (expectedDistr == nullptr)
             throw util::xml_scenario_error("createSampler<SamplerT>: expected SamplerT to be a valid Sampler");
 
@@ -310,41 +308,35 @@ namespace OM { namespace util {
             throw util::xml_scenario_error("\"distr=" + d + "\": expected \"" + expectedDistr + "\" or \"const\"");
 
         // 4. Exactly one of CV / variance must be supplied
-        const bool hasCV  = elt.getCV().present();
-        const bool hasVar = elt.getVariance().present();
+        const bool hasCV  = parameters.cv.has_value();
+        const bool hasVar = parameters.variance.has_value();
 
         if (hasCV == hasVar)   // both present or both absent
             throw util::xml_scenario_error("\"distr=" + d + "\": exactly one of attributes \"CV\" or \"variance\" must be specified");
 
         // 5. Check for the optional truncation parameter
-        std::optional<double> truncate = elt.getTruncate().present()
-            ? std::optional<double>{elt.getTruncate().get()}
+        std::optional<double> truncate = parameters.truncate.has_value()
+            ? std::optional<double>{*parameters.truncate}
             : std::nullopt;
 
         // 6. Build the sampler
         if(hasCV)
-            return SamplerT::fromMeanCV(mean, elt.getCV().get(), truncate);
+            return SamplerT::fromMeanCV(mean, *parameters.cv, truncate);
         else
-            return SamplerT::fromMeanVariance(mean, elt.getVariance().get(), truncate);
+            return SamplerT::fromMeanVariance(mean, *parameters.variance, truncate);
     }
 
-    /** Create a Sampler from a SampledValueCV xml snippet. */
-    inline std::unique_ptr<util::Sampler> createSampler(double mean, const scnXml::SampledValueCV& elt)
+    /** Create a Sampler from distribution parameters. */
+    inline std::unique_ptr<util::Sampler> createSampler(double mean, const DistributionParameters& parameters)
     {
-        const std::string& d = elt.getDistr();
+        const std::string d = distributionName(parameters.kind);
 
         if (d == "const" || d == "lognormal")
-            return createSampler<util::LognormalSampler>(mean, elt);
+            return std::make_unique<util::LognormalSampler>(createSampler<util::LognormalSampler>(mean, parameters));
         else if (d == "gamma")
-            return createSampler<util::GammaSampler>(mean,  elt);
+            return std::make_unique<util::GammaSampler>(createSampler<util::GammaSampler>(mean, parameters));
         else
             throw util::xml_scenario_error("\"distr=" + d + "\": expected \"const\", \"lognormal\" or \"gamma\"");
-    }
-
-    /** Create a LognormalSampler from a SampledValueLN xml snippet. */
-    inline std::unique_ptr<LognormalSampler> createSampler(const scnXml::SampledValueLN& elt)
-    {
-        return createSampler<LognormalSampler>(elt.getMean(), static_cast<const scnXml::SampledValueCV&>(elt));
     }
 
     /** Sampler for the Beta distribution.
@@ -372,10 +364,6 @@ namespace OM { namespace util {
          * mean is returned directly without sampling. */
         void setParamsMV( double mean, double variance );
         
-        /** Set parameters from an XML element. */
-        void setParams( const scnXml::BetaMeanSample& elt ){
-            setParamsMV( elt.getMean(), elt.getVariance() );
-        }
         
         /** Sample a value. */
         double sample(LocalRng& rng) const;
@@ -400,10 +388,6 @@ namespace OM { namespace util {
             shape = k;
         }
         
-        /** Set parameters from an XML element. */
-        inline void setParams( const scnXml::WeibullSample& elt ){
-            setScaleShape( elt.getScale(), elt.getShape() );
-        }
         
         /** Sample a value. */
         inline double sample(LocalRng& rng) const{

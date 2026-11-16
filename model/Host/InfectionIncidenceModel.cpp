@@ -27,6 +27,53 @@
 namespace OM::Host {
 using util::LocalRng;
 
+IncidenceParameters makeIncidenceParameters(const IncidenceConfiguration& config) {
+    IncidenceParameters result;
+    result.baseline_avail_shape_param = config.baselineAvailabilityShape;
+    result.baseline_avail_offset = 0.5 * pow(result.baseline_avail_shape_param, 2);
+
+    result.gamma_p=config.gammaP;
+    result.Sinf=1-exp(-config.negativeLogOneMinusSinf);
+    result.Simm=config.Simm;
+    result.EstarInv = 1.0/config.EStar;
+    result.Xstar_pInv = 1.0/config.XStarP;
+
+    // Constraint on Gamma availability variance; log(1 + 0.649) is approximately 0.5.
+    const double r_square_Gamma = 0.649;
+
+    result.noPreErythrocytic = config.noPreErythrocytic;
+    const bool negativeBinomial = config.kind == IncidenceKind::NegativeBinomial;
+    result.vaccineGenotype = config.vaccineGenotype;
+
+    if (negativeBinomial) {
+        result.kind = IncidenceKind::NegativeBinomial;
+        result.inf_rate_shape_param = (result.baseline_avail_shape_param+1.0) / (r_square_Gamma*result.baseline_avail_shape_param - 1.0);
+        result.inf_rate_shape_param=std::max(result.inf_rate_shape_param, 0.0);
+    } else if (config.kind == IncidenceKind::Lognormal) {
+        result.kind = IncidenceKind::Lognormal;
+
+        //! constant defining the constraint for the log Normal variance
+        /// Used for the case where availability is assumed log Normally distributed
+        double r_square_LogNormal = log(1.0+r_square_Gamma);
+
+        result.inf_rate_shape_param = sqrt(r_square_LogNormal - 1.86 * pow(result.baseline_avail_shape_param, 2));
+        result.inf_rate_shape_param=std::max(result.inf_rate_shape_param, 0.0);
+        result.inf_rate_offset = 0.5 * pow(result.inf_rate_shape_param, 2);
+        if( (std::isnan)(result.inf_rate_shape_param) ){
+            throw util::xml_scenario_error( "bad parameter 16 (BASELINE_AVAILABILITY_SHAPE)" );
+        }
+    }else{
+        if( config.kind == IncidenceKind::Heterogeneity )
+        {
+            result.kind = IncidenceKind::Heterogeneity;
+            cerr << "Warning: will use heterogeneity workaround." << endl;
+        }
+    }
+
+    return result;
+}
+
+
 double sampleAvailability(const IncidenceParameters& p, LocalRng& rng) {
     switch (p.kind) {
     case IncidenceKind::NegativeBinomial:

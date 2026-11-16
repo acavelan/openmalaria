@@ -25,6 +25,7 @@
 
 #include "Global.h"
 #include "Host/WithinHost/WHInterface.h"
+#include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
 
 #include <list>
 #include <memory>
@@ -148,7 +149,7 @@ public:
 
     /// @brief Constructors, destructors and checkpointing functions
     //@{
-    WHVivax( LocalRng& rng, double comorbidityFactor );
+    WHVivax( LocalRng& rng, double comorbidityFactor, const Pathogenesis::PathogenesisParameters& pathogenesisConfig );
     virtual ~WHVivax();
     //@}
     
@@ -175,7 +176,6 @@ public:
 	
     
 protected:
-    virtual void treatment( Host::Human& human, TreatmentId treatId );
     virtual bool treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlood );
     virtual void optionalPqTreatment( Host::Human& human );
     
@@ -220,6 +220,7 @@ private:
     // Used for reporting; updated by update()
     double pSevere;
 
+    const Pathogenesis::PathogenesisParameters& pathogenesisConfig;
     friend class ::UnittestUtil;
 };
 

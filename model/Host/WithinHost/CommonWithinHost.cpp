@@ -22,67 +22,62 @@
 
 #include "Host/Human.h"
 #include "Host/WithinHost/CommonWithinHost.h"
+#include "Host/WithinHost/Infection/DummyInfection.h"
+#include "Host/WithinHost/Infection/EmpiricalInfection.h"
+#include "Host/WithinHost/Infection/MolineauxInfection.h"
+#include "Host/WithinHost/Infection/PennyInfection.h"
+
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
 #include "util/errors.h"
-#include "util/ModelOptions.h"
 #include "util/AgeGroupInterpolation.h"
 #include "util/random.h"
 #include "util/StreamValidator.h"
-#include "schema/scenario.h"
 
 using namespace std;
 
 namespace OM {
 namespace WithinHost {
 
-CommonInfection* (* CommonWithinHost::createInfection) (LocalRng& rng, uint32_t protID, int origin);
-CommonInfection* (* CommonWithinHost::checkpointedInfection) (istream& stream);
-
-double hetMassMultStdDev = std::numeric_limits<double>::signaling_NaN();
-double minHetMassMult = std::numeric_limits<double>::signaling_NaN();
-util::AgeGroupInterpolator massByAge;
-
-bool reportInfectedOrPatentInfected = false;
-
-// -----  Initialization  -----
-
-void CommonWithinHost::init( const scnXml::Scenario& scenario ){
-    const scnXml::Human human = scenario.getModel().getHuman();
-    if( !human.getWeight().present() ){
-        // Technically this is needed by the PK/PD and Molineaux models
-        throw util::xml_scenario_error( "model->human->weight element required by certain models" );
+namespace {
+CommonInfection* createInfection(WithinHostParameters::Kind kind, LocalRng& rng, uint32_t genotype, int origin) {
+    switch (kind) {
+    case WithinHostParameters::Kind::Dummy: return new DummyInfection(rng, genotype, origin);
+    case WithinHostParameters::Kind::Empirical: return new EmpiricalInfection(rng, genotype, origin, 1);
+    case WithinHostParameters::Kind::Molineaux: return new MolineauxInfection(rng, genotype, origin);
+    case WithinHostParameters::Kind::Penny: return new PennyInfection(rng, genotype, origin);
+    default: throw SWITCH_DEFAULT_EXCEPTION;
     }
-    massByAge.set( human.getWeight().get(), "weight" );
-    hetMassMultStdDev = human.getWeight().get().getMultStdDev();
-    // hetWeightMult must be large enough that birth weight is at least 0.5 kg:
-    minHetMassMult = 0.5 / massByAge.eval( 0.0 );
-    
-    reportInfectedOrPatentInfected = mon::isUsed(mon::measure("totalInfs")) ||
-        mon::isUsed(mon::measure("totalPatentInf"));
-    
-    PkPd::LSTMModel::init( scenario );
+}
+CommonInfection* checkpointedInfection(WithinHostParameters::Kind kind, istream& stream) {
+    switch (kind) {
+    case WithinHostParameters::Kind::Dummy: return new DummyInfection(stream);
+    case WithinHostParameters::Kind::Empirical: return new EmpiricalInfection(stream);
+    case WithinHostParameters::Kind::Molineaux: return new MolineauxInfection(stream);
+    case WithinHostParameters::Kind::Penny: return new PennyInfection(stream);
+    default: throw SWITCH_DEFAULT_EXCEPTION;
+    }
+}
 }
 
-CommonWithinHost::CommonWithinHost( LocalRng& rng, double comorbidityFactor ) :
-        WHFalciparum( rng, comorbidityFactor )
+CommonWithinHost::CommonWithinHost( LocalRng& rng, double comorbidityFactor, const WithinHostParameters& config ) :
+        WHFalciparum( rng, comorbidityFactor, config )
 {
     assert( sim::oneTS() == sim::fromDays(1) || sim::oneTS() == sim::fromDays(5) );
     
-    opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
 
     // Sample a weight heterogeneity factor
 #ifndef NDEBUG
     int counter = 0;
 #endif
     do {
-        hetMassMultiplier = rng.gauss( 1.0, hetMassMultStdDev );
+        hetMassMultiplier = rng.gauss( 1.0, config.hetMassMultStdDev );
 #ifndef NDEBUG
         assert( counter < 100 );        // too many resamples: resamples should rarely be needed...
         ++counter;
 #endif
-    } while( hetMassMultiplier < minHetMassMult );
+    } while( hetMassMultiplier < config.minHetMassMult );
 }
 
 CommonWithinHost::~CommonWithinHost() {
@@ -94,11 +89,11 @@ CommonWithinHost::~CommonWithinHost() {
 
 // -----  Simple infection adders/removers  -----
 
-void CommonWithinHost::clearInfections( Treatments::Stages stage ){
+void CommonWithinHost::clearInfections( Treatment::Stages stage ){
     for(auto inf = infections.begin(); inf != infections.end();) {
-        if( stage == Treatments::BOTH ||
-            (stage == Treatments::LIVER && !(*inf)->bloodStage()) ||
-            (stage == Treatments::BLOOD && (*inf)->bloodStage())
+        if( stage == Treatment::BOTH ||
+            (stage == Treatment::LIVER && !(*inf)->bloodStage()) ||
+            (stage == Treatment::BLOOD && (*inf)->bloodStage())
         ){
             delete *inf;
             inf = infections.erase( inf );
@@ -112,7 +107,7 @@ void CommonWithinHost::clearInfections( Treatments::Stages stage ){
 // -----  interventions -----
 
 void CommonWithinHost::treatPkPd(size_t schedule, size_t dosage, double age, double delay_d){
-    double mass = massByAge.eval( age ) * hetMassMultiplier;
+    double mass = config.massByAge.eval( age ) * hetMassMultiplier;
     pkpdModel.prescribe( schedule, dosage, age, mass, delay_d );
 }
 void CommonWithinHost::clearImmunity() {
@@ -130,7 +125,7 @@ void CommonWithinHost::importInfection(LocalRng& rng){
         // should use initial frequencies to select genotypes.
         vector<double> weights( 0 );        // zero length: signal to use initial frequencies
         uint32_t genotype = Genotypes::sampleGenotype(rng, weights);
-        infections.push_back(createInfection(rng, genotype, WithinHost::InfectionOrigin::Imported));
+        infections.push_back(createInfection(config.kind, rng, genotype, WithinHost::InfectionOrigin::Imported));
     }
     assert( numInfs == static_cast<int>(infections.size()) );
 }
@@ -155,16 +150,16 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
         uint32_t genotype = Genotypes::sampleGenotype(rng, genotype_weights_i);
 
         // If opt_vaccine_genotype is true the infection is discarded with probability 1-vaccineFactor
-        if( opt_vaccine_genotype )
+        if( config.opt_vaccine_genotype )
         {
-            double vaccineFactor = human.interventions.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
+            double vaccineFactor = interventions::vaccineFactor(human.interventions.vaccines, interventions::Vaccine::PEV, sim::ts1(), genotype );
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
-                infections.push_back(createInfection (rng, genotype, InfectionOrigin::Introduced));
+                infections.push_back(createInfection (config.kind, rng, genotype, InfectionOrigin::Introduced));
             else
                 nNewInfsDiscarded++;
         }
-        else if (opt_vaccine_genotype == false)
-            infections.push_back(createInfection (rng, genotype, InfectionOrigin::Introduced));
+        else if (config.opt_vaccine_genotype == false)
+            infections.push_back(createInfection (config.kind, rng, genotype, InfectionOrigin::Introduced));
     }
     // Update nNewInfs, this is the number that will be reported in Human
     nNewInfs_i -= nNewInfsDiscarded;
@@ -175,16 +170,16 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
         uint32_t genotype = Genotypes::sampleGenotype(rng, genotype_weights_l);
 
         // If opt_vaccine_genotype is true the infection is discarded with probability 1-vaccineFactor
-        if( opt_vaccine_genotype )
+        if( config.opt_vaccine_genotype )
         {
-            double vaccineFactor = human.interventions.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
+            double vaccineFactor = interventions::vaccineFactor(human.interventions.vaccines, interventions::Vaccine::PEV, sim::ts1(), genotype );
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
-                infections.push_back(createInfection (rng, genotype, InfectionOrigin::Indigenous));
+                infections.push_back(createInfection (config.kind, rng, genotype, InfectionOrigin::Indigenous));
             else
                 nNewInfsDiscarded++;
         }
-        else if (opt_vaccine_genotype == false)
-            infections.push_back(createInfection (rng, genotype, InfectionOrigin::Indigenous));
+        else if (config.opt_vaccine_genotype == false)
+            infections.push_back(createInfection (config.kind, rng, genotype, InfectionOrigin::Indigenous));
     }
     // Update nNewInfs, this is the number that will be reported in Human
     nNewInfs_l -= nNewInfsDiscarded;
@@ -201,7 +196,7 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
     bool treatmentLiver = treatExpiryLiver > sim::ts0();
     bool treatmentBlood = treatExpiryBlood > sim::ts0();
     
-    double body_mass = massByAge.eval( ageInYears ) * hetMassMultiplier;
+    double body_mass = config.massByAge.eval( ageInYears ) * hetMassMultiplier;
     
     for( SimTime now = sim::ts0(), end = sim::ts0() + sim::oneTS(); now < end; now = now + sim::oneDay() ){
         // every day, medicate drugs, update each infection, then decay drugs
@@ -216,7 +211,7 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
             if( !expires ){     /* no expiry due to simple treatment model; do update */
                 const double drugFactor = pkpdModel.getDrugFactor(rng, *inf, body_mass);
                 const double immFactor = immunitySurvivalFactor(ageInYears, (*inf)->cumulativeExposureJ());
-                const double bsvFactor = human.interventions.vaccine.getFactor(interventions::Vaccine::BSV, opt_vaccine_genotype? (*inf)->genotype() : 0);
+                const double bsvFactor = interventions::vaccineFactor(human.interventions.vaccines, interventions::Vaccine::BSV, sim::ts1(), config.opt_vaccine_genotype? (*inf)->genotype() : 0);
                 const double survivalFactor = bsvFactor * _innateImmSurvFact * immFactor * drugFactor;
                 // update, may result in termination of infection:
                 expires = (*inf)->update(rng, survivalFactor, now, body_mass);
@@ -254,7 +249,7 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
     assert( (std::isfinite)(totalDensity) );        // inf probably wouldn't be a problem but NaN would be
     
     // Cache total density for infectiousness calculations
-    int y_lag_i = sim::moduloSteps(sim::ts1(), y_lag_len);
+    int y_lag_i = sim::moduloSteps(sim::ts1(), config.y_lag_len);
     for( size_t g = 0; g < Genotypes::N(); ++g )
     {
         m_y_lag_i[y_lag_i * Genotypes::N() + g] = 0.0;
@@ -295,7 +290,7 @@ struct InfGenotypeSorter {
 } infGenotypeSorter;
 
 bool CommonWithinHost::summarize( Host::Human& human )const{
-    pathogenesisModel->summarize( human );
+    pathogenesisModel.summarize( human );
     pkpdModel.summarize( human );
     
     InfectionOrigin infectionType = get_infection_origin(infections);
@@ -310,7 +305,7 @@ bool CommonWithinHost::summarize( Host::Human& human )const{
         else
             mon::recordStat(mon::measure("nInfect_Imported"), human);
 
-        if( reportInfectedOrPatentInfected ){
+        if( config.reportInfectedOrPatentInfected ){
             for(auto inf = infections.begin(); inf != infections.end(); ++inf)
             {
                 uint32_t genotype = (*inf)->genotype();
@@ -334,7 +329,7 @@ bool CommonWithinHost::summarize( Host::Human& human )const{
             }
         }
         
-        if( reportInfectionsByGenotype ){
+        if( config.reportInfectionsByGenotype ){
             // Instead of storing nInfs and total density by genotype we sort
             // infections by genotype and report each in sequence.
             // We don't sort in place since that would affect random number sampling
@@ -387,7 +382,7 @@ void CommonWithinHost::checkpoint (istream& stream) {
     hetMassMultiplier & stream;
     pkpdModel & stream;
     for(int i = 0; i < numInfs; ++i) {
-        infections.push_back (checkpointedInfection (stream));
+        infections.push_back (checkpointedInfection (config.kind, stream));
     }
     assert( numInfs == static_cast<int>(infections.size()) );
 }

@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "ScenarioXml.h"
 #include "PkPd/Drug/LSTMDrugType.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/CommonInfection.h"
@@ -51,7 +52,7 @@ vector<size_t> drugsInUse;
 
 LSTMDrugPD::LSTMDrugPD( const scnXml::Phenotype& phenotype ){
     n = phenotype.getSlope ();
-    IC50 = util::createSampler( phenotype.getIC50() );
+    IC50 = xml::readSampler( phenotype.getIC50() );
     V = phenotype.getMax_killing_rate ();  
 }
 
@@ -75,7 +76,7 @@ double LSTMDrugPD::IC50_pow_slope(LocalRng& rng, size_t index, WithinHost::Commo
     if (inf->Kn.count(index) != 0) {
         Kn = inf->Kn.at(index);
     } else {
-        Kn = pow(IC50->sample(rng), n);
+        Kn = pow(IC50.sample(rng), n);
         inf->Kn[index] = Kn;
     }
     return Kn;
@@ -175,16 +176,16 @@ LSTMDrugType::LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData) :
         if( !(pk.getK().present() && pk.getM_exponent().present()) ){
             throw util::xml_scenario_error( "PK data must include either half_life or (k and m_exponent)" );
         }
-        elimination_rate = util::createSampler( pk.getK().get() );
+        elimination_rate = xml::readSampler( pk.getK().get() );
         neg_m_exp = -pk.getM_exponent().get();
     }
-    vol_dist = util::createSampler( pk.getVol_dist() );
+    vol_dist = xml::readSampler( pk.getVol_dist() );
     if( pk.getCompartment2().present() ){
-        k12 = util::createSampler( pk.getCompartment2().get().getK12() );
-        k21 = util::createSampler( pk.getCompartment2().get().getK21() );
+        k12 = xml::readSampler( pk.getCompartment2().get().getK12() );
+        k21 = xml::readSampler( pk.getCompartment2().get().getK21() );
         if( pk.getCompartment3().present() ){
-            k13 = util::createSampler( pk.getCompartment3().get().getK13() );
-            k31 = util::createSampler( pk.getCompartment3().get().getK31() );
+            k13 = xml::readSampler( pk.getCompartment3().get().getK13() );
+            k31 = xml::readSampler( pk.getCompartment3().get().getK31() );
         }else{
             // 2-compartment model: use 3-compartment code with these parameters set to zero
             // LognormalSampler supports 0,0 as a special case
@@ -205,7 +206,7 @@ LSTMDrugType::LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData) :
         }catch( util::xml_scenario_error& e ){
             throw util::xml_scenario_error( "PK: metabolite drug not found; metabolite must be defined *before* parent drug!" );
         }
-        conversion_rate = util::createSampler( conv.getRate() );
+        conversion_rate = xml::readSampler( conv.getRate() );
         mwr = conv.getMolRatio();
         double correlation = conv.getIC50_log_correlation();
         if( correlation < 0.0 || correlation > 1.0 ){
@@ -220,7 +221,7 @@ LSTMDrugType::LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData) :
                 "absorption rate parameter (k_a) when compartment2 or "
                 " conversion parameters are present" );
         }
-        absorption_rate = util::createSampler(pk.getK_a().get());
+        absorption_rate = xml::readSampler(pk.getK_a().get());
     }else{
         if( k12 ){
             throw util::xml_scenario_error( "PK models require an absorption "

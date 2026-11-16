@@ -60,10 +60,10 @@ void createInitialHumans(Population& population, const ModelParameters& paramete
     until vector init, which saves computation and memory (no infections). */
     
     int cumulativePop = 0;
-    for(size_t iage_prev = AgeStructure::getMaxTStepsPerLife(), iage = iage_prev - 1;
+    for(size_t iage_prev = parameters.cumulativeAgeProportions.size(), iage = iage_prev - 1;
          iage_prev > 0; iage_prev = iage, iage -= 1 )
     {
-        int targetPop = AgeStructure::targetCumPop( iage, population.targetSize );
+        int targetPop = targetCumPop(parameters.cumulativeAgeProportions, iage, population.targetSize );
         while (cumulativePop < targetPop) {
             SimTime dob = sim::zero() - sim::fromTS(iage);
             util::streamValidate( dob );
@@ -90,7 +90,7 @@ void update(Population& population, const ModelParameters& parameters, util::Mas
         // "outmigrate" some to maintain population shape
         //NOTE: better to use age(sim::ts0())? Possibly, but the difference will not be very significant.
         // Also see targetPop = ... comment above
-        bool outmigrate = cumPop >= AgeStructure::targetCumPop(sim::inSteps(it->age(sim::ts1())), population.targetSize);
+        bool outmigrate = cumPop >= targetCumPop(parameters.cumulativeAgeProportions,sim::inSteps(it->age(sim::ts1())), population.targetSize);
         
         if( isDead || outmigrate ){
             it = population.humans.erase (it);
@@ -130,23 +130,23 @@ void checkpoint(Population& population, ostream& stream)
         human.checkpoint(stream);
 }
 
-void registerContinousPopulationCallbacks(const Transmission::HostTransmissionParameters& parameters)
+void registerContinousPopulationCallbacks(const Transmission::HostTransmissionParameters& parameters, mon::Continuous::State& reporting)
 {
     ostringstream ctsDemogTitle;
     for( double ubound : ctsDemogAgeGroups )
         ctsDemogTitle << "\thost % ≤ " << ubound;
 
-    mon::Continuous::registerCallback( "hosts", "\thosts", &ctsHosts );
-    mon::Continuous::registerCallback( "host demography", ctsDemogTitle.str(), &ctsHostDemography);
-    mon::Continuous::registerCallback( "recent births", "\trecent births", &ctsRecentBirths);
-    mon::Continuous::registerCallback( "patent hosts", "\tpatent hosts", &ctsPatentHosts);
-    mon::Continuous::registerCallback( "immunity h", "\timmunity h", &ctsImmunityh);
-    mon::Continuous::registerCallback( "immunity Y", "\timmunity Y", &ctsImmunityY);
-    mon::Continuous::registerCallback( "median immunity Y", "\tmedian immunity Y", &ctsMedianImmunityY);
-    mon::Continuous::registerCallback( "human age availability", "\thuman age availability", [&parameters](Population& population, ostream& stream) { ctsMeanAgeAvailEffect(population, stream, parameters); });
-    mon::Continuous::registerCallback( "ITN coverage", "\tITN coverage", &ctsITNCoverage);
-    mon::Continuous::registerCallback( "IRS coverage", "\tIRS coverage", &ctsIRSCoverage);
-    mon::Continuous::registerCallback( "GVI coverage", "\tGVI coverage", &ctsGVICoverage);
+    mon::Continuous::registerCallback(reporting,  "hosts", "\thosts", &ctsHosts );
+    mon::Continuous::registerCallback(reporting,  "host demography", ctsDemogTitle.str(), &ctsHostDemography);
+    mon::Continuous::registerCallback(reporting,  "recent births", "\trecent births", &ctsRecentBirths);
+    mon::Continuous::registerCallback(reporting,  "patent hosts", "\tpatent hosts", &ctsPatentHosts);
+    mon::Continuous::registerCallback(reporting,  "immunity h", "\timmunity h", &ctsImmunityh);
+    mon::Continuous::registerCallback(reporting,  "immunity Y", "\timmunity Y", &ctsImmunityY);
+    mon::Continuous::registerCallback(reporting,  "median immunity Y", "\tmedian immunity Y", &ctsMedianImmunityY);
+    mon::Continuous::registerCallback(reporting,  "human age availability", "\thuman age availability", [&parameters](Population& population, ostream& stream) { ctsMeanAgeAvailEffect(population, stream, parameters); });
+    mon::Continuous::registerCallback(reporting,  "ITN coverage", "\tITN coverage", &ctsITNCoverage);
+    mon::Continuous::registerCallback(reporting,  "IRS coverage", "\tIRS coverage", &ctsIRSCoverage);
+    mon::Continuous::registerCallback(reporting,  "GVI coverage", "\tGVI coverage", &ctsGVICoverage);
 }
 
 void ctsHosts (Population &population, ostream& stream){

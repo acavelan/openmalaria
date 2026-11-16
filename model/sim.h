@@ -30,7 +30,7 @@
 
 #include "util/mod.h"
 #include "util/checkpoint.h"
-#include "util/ModelNameProvider.h"
+
 #include <memory>
 
 class UnittestUtil;
@@ -40,6 +40,7 @@ namespace scnXml {
 }
 
 namespace OM {
+namespace util { class ModelNameProvider; }
 
 inline int floorToInt( double x ){
 	return static_cast<int>(std::floor(x));

@@ -24,15 +24,20 @@
 
 #include "ModelParameters.h"
 #include "Population.h"
+#include "mon/Continuous.h"
+#include "Clinical/ClinicalModel.h"
+#include "interventions/Interventions.h"
 
 namespace OM {
 namespace Transmission { class TransmissionModel; }
 
 struct Reporting {
+    mon::Continuous::State continuous;
     int newInfections = 0;
+    Clinical::InfantMortality infantMortality;
 };
 
-// Owns the migrated subsystems. Time, interventions and other reporting state
+// Owns the migrated subsystems. Time and other reporting state
 // still use their existing APIs until their separate migrations are complete.
 struct Model {
     explicit Model(size_t populationSize);
@@ -44,6 +49,7 @@ struct Model {
 
     ModelParameters parameters;
     util::MasterRng masterRng{0, 0};
+    interventions::Interventions interventions;
     Population population;
     std::unique_ptr<Transmission::TransmissionModel> transmission;
     Reporting reporting;

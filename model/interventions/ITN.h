@@ -207,12 +207,12 @@ private:
     };
 
     NormalSampler initialInsecticide;
-    unique_ptr<LognormalSampler> holeRate;	// holes per step
-    unique_ptr<LognormalSampler> ripRate;	// rips per hole per step
+    LognormalSampler holeRate;	// holes per step
+    LognormalSampler ripRate;	// rips per hole per step
     double maxInsecticide;		// maximum initial insecticide
     double ripFactor;			// factor expressing how significant rips are in comparison to holes
-    unique_ptr<DecayFunction> insecticideDecay;
-    unique_ptr<DecayFunction> attritionOfNets;
+    DecayFunction insecticideDecay;
+    DecayFunction attritionOfNets;
     vector<ITNAnopheles> species; // vector specific params
     
     friend class HumanITN;
@@ -227,14 +227,14 @@ public:
     HumanITN( LocalRng& rng, const ITNComponent& params );
     HumanITN( istream& stream, ComponentId id, const ITNComponent& parameters );
     
-    virtual void redeploy(LocalRng& rng, const VectorInterventionComponent& params);
+    virtual void redeploy(LocalRng& rng);
     
     inline double getHoleIndex()const{
         return holeIndex;
     }
     inline double getInsecticideContent(SimTime effectTime)const{
             SimTime age = effectTime - deployTime;  // implies age 1 TS on first use
-        double effectSurvival = insecticideDecayHet->eval( age );
+        double effectSurvival = util::eval(parameters.insecticideDecay, age, *insecticideDecayHet);
         return initialInsecticide * effectSurvival;
     }
     
@@ -267,7 +267,7 @@ private:
     // these parameters are sampled from log-normal per net, but thereafter constant:
     double holeRate;	// rate at which new holes are created (holes/time-step)
     double ripRate;		// rate at which holes are enlarged (rips/hole/time-step)
-    unique_ptr<DecayFunction> insecticideDecayHet;
+    util::DecaySample insecticideDecayHet;
 
 };
 

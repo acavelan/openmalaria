@@ -41,9 +41,8 @@ namespace OM { namespace WithinHost {
 class CommonWithinHost : public WHFalciparum
 {
 public:
-    static void init(const scnXml::Scenario& scenario);
     
-    CommonWithinHost( LocalRng& rng, double comorbidityFactor );
+    CommonWithinHost( LocalRng& rng, double comorbidityFactor, const WithinHostParameters& config );
     virtual ~CommonWithinHost();
     
     
@@ -57,23 +56,12 @@ public:
     
     virtual void addProphylacticEffects(const vector<double>& pClearanceByTime);
     
-    /** \brief Factory functions to create infections.
-     *
-     * These allow creation of the correct type of infection in a generic manner.
-     * 
-     * The first variant is for creating a new infection, the second for loading
-     * one from a checkpoint. */
-    //@{
-    static CommonInfection* (* createInfection) (LocalRng& rng, uint32_t protID, int origin);
-    static CommonInfection* (* checkpointedInfection) (istream& stream);
-    //@}
-
     virtual InfectionOrigin getInfectionOrigin() const;
     
     virtual bool summarize( Host::Human& human )const;
     
 protected:
-    virtual void clearInfections( Treatments::Stages stage );
+    virtual void clearInfections( Treatment::Stages stage );
     
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
@@ -92,7 +80,6 @@ private:
     //TODO: better to template class over infection type than use dynamic type?
     std::list<CommonInfection*> infections;
 
-    bool opt_vaccine_genotype = false;
 };
 
 } }

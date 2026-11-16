@@ -28,14 +28,14 @@
 #include "Host/NeonatalMortality.h"
 #include "Clinical/ClinicalModel.h"
 #include "Transmission/TransmissionModel.h"
-#include "interventions/InterventionManager.h"
+#include "interventions/Interventions.h"
 #include "mon/Continuous.h"
 
 namespace OM {
 Model::Model(size_t populationSize) : population{populationSize} {}
 Model::~Model() = default;
 
-static void summarizeHuman(Host::Human &human, bool surveyOnlyNewEp) {
+static void summarizeHuman(Host::Human &human, bool surveyOnlyNewEp, const interventions::CohortRemovalRules& removalRules) {
     if( surveyOnlyNewEp && human.clinicalModel->isExistingCase() ){
         // This modifies the denominator to treat the health-system-memory
         // period immediately after a bout as 'not at risk'.
@@ -49,12 +49,12 @@ static void summarizeHuman(Host::Human &human, bool surveyOnlyNewEp) {
     
     if( patent && mon::isReported() ){
         // this should happen after all other reporting!
-        human.removeFirstEvent(interventions::SubPopRemove::ON_FIRST_INFECTION);
+        human.removeFirstEvent(removalRules[interventions::SubPopRemove::ON_FIRST_INFECTION], sim::nowOrTs0());
     }
 }
 
 static void updateHuman(Host::Human &human, Transmission::TransmissionModel& transmission,
-        const Host::IncidenceParameters& incidence, int& newInfections)
+        const Host::IncidenceParameters& incidence, Reporting& reporting, double neonatalRisk, const interventions::CohortRemovalRules& removalRules)
 {
     // For integer age checks we use age0 to e.g. get 73 steps comparing less than 1 year old
     SimTime age0 = human.age(sim::ts0());
@@ -93,7 +93,7 @@ static void updateHuman(Host::Human &human, Transmission::TransmissionModel& tra
 
     double expectedNNewInfs = Host::expectedInfections(human.infIncidence, incidence, human.rng, EIR,
         human.transmission.relativeAvailability,
-        incidence.vaccineGenotype ? 1.0 : human.interventions.vaccine.getFactor(interventions::Vaccine::PEV), sim::oneTS());
+        incidence.vaccineGenotype ? 1.0 : interventions::vaccineFactor(human.interventions.vaccines, interventions::Vaccine::PEV, sim::ts1()), sim::oneTS());
     double expectedNNewInfs_i = x * expectedNNewInfs;
     double expectedNNewInfs_l = (1.0-x) * expectedNNewInfs;
 
@@ -106,11 +106,11 @@ static void updateHuman(Host::Human &human, Transmission::TransmissionModel& tra
     mon::recordEvent(mon::measure("nNewInfections"), human, nNewInfs_i+nNewInfs_l);
     mon::recordEvent(mon::measure("nNewInfections_Introduced"), human, nNewInfs_i);
     mon::recordEvent(mon::measure("nNewInfections_Indigenous"), human, nNewInfs_l);
-    newInfections += nNewInfs_i+nNewInfs_l;
+    reporting.newInfections += nNewInfs_i+nNewInfs_l;
 
     // age1 used to get case fatality and sequelae probabilities, determine pathogenesis
-    human.clinicalModel->update( human, age1, age0 == sim::zero() );
-    human.clinicalModel->updateInfantDeaths( age0 );
+    human.clinicalModel->update( human, age1, age0 == sim::zero(), neonatalRisk, removalRules );
+    human.clinicalModel->updateInfantDeaths(age0, reporting.infantMortality);
 }
 
 void update(Model& model) {
@@ -118,16 +118,16 @@ void update(Model& model) {
     auto& transmission = *model.transmission;
     // Monitoring. sim::now() gives time of end of last step,
     // and is when reporting happens in our time-series.
-    mon::Continuous::update( population );
+    mon::Continuous::update(model.reporting.continuous, population);
     if( sim::intervDate() == mon::nextSurveyDate() ){
         for(Host::Human &human : population.humans)
-            summarizeHuman(human, model.surveyOnlyNewEp);
+            summarizeHuman(human, model.surveyOnlyNewEp, model.interventions.removalRules);
         transmission.summarize();
         mon::concludeSurvey();
     }
     
     // Deploy interventions, at time sim::now().
-    interventions::InterventionManager::deploy( population.humans, transmission );
+    model.interventions.deploy( population.humans, transmission );
     
     // Time step updates. Time steps are mid-day to mid-day.
     // sim::ts0() gives the date at the start of the step, sim::ts1() the date at the end.
@@ -139,12 +139,13 @@ void update(Model& model) {
     
     // NOTE: no neonatal mortalities will occur in the first 20 years of warmup
     // (until humans old enough to be pregnate get updated and can be infected).
-    Host::NeonatalMortality::update (population.humans);
+    Host::update(population.neonatalMortality, population.humans,
+        model.parameters.neonatalDiagnostic.value(), sim::ts0(), sim::oneTS());
     
     for (Host::Human& human : population.humans)
     {
         if (human.birthDate + sim::maxHumanAge() >= model.humanWarmupLength) // this is last time of possible update
-            updateHuman(human, transmission, model.parameters.incidence, model.reporting.newInfections);
+            updateHuman(human, transmission, model.parameters.incidence, model.reporting, population.neonatalMortality.riskFromMaternalInfection, model.interventions.removalRules);
     }
    
     update(population, model.parameters, model.masterRng);

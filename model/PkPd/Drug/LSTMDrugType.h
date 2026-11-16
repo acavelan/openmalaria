@@ -82,7 +82,7 @@ public:
     inline double slope() const{ return n; }
     double IC50_pow_slope(LocalRng& rng, size_t index, WithinHost::CommonInfection *inf) const;
     inline double IC50_pow_slope(NormalSample normal) const {
-        return pow(IC50->sample(normal), n);
+        return pow(IC50.sample(normal), n);
     }
     inline double max_killing_rate() const{ return V; }
     
@@ -90,7 +90,7 @@ private:
     /// Slope of the dose response curve (no unit)
     double n;   // slope
     /// Concentration with 50% of the maximal parasite killing
-    std::unique_ptr<LognormalSampler> IC50;  // IC50
+    LognormalSampler IC50;  // IC50
     /// Maximal drug killing rate per day (units: 1/days)
     double V;   // max_killing_rate;
 };
@@ -161,10 +161,10 @@ public:
     }
 
     inline double sample_Vd(LocalRng& rng) const{
-        return vol_dist->sample(rng);
+        return vol_dist.sample(rng);
     }
     inline double sample_elim_rate(LocalRng& rng) const{
-        return elimination_rate->sample(rng);
+        return elimination_rate.sample(rng);
     }
     inline double sample_conv_rate(LocalRng& rng) const{
         return conversion_rate->sample(rng);
@@ -212,20 +212,20 @@ private:
     double ic50_corr_factor;
     
     /// Volume of distribution (l/kg)
-    std::unique_ptr<LognormalSampler> vol_dist;
+    LognormalSampler vol_dist;
 
     /// Absorbtion rate
-    std::unique_ptr<LognormalSampler> absorption_rate;
+    std::optional<LognormalSampler> absorption_rate;
 
     /** Terminal elimination rate constant (k). Equals ln(2)/half_life.
      * Units: (1 / days) */
-    std::unique_ptr<LognormalSampler> elimination_rate;
+    LognormalSampler elimination_rate;
 
     /// Convertion rate
-    std::unique_ptr<LognormalSampler> conversion_rate;
+    std::optional<LognormalSampler> conversion_rate;
 
     /// Parameters for absorption rates in two- and three-compartment models.
-    std::unique_ptr<LognormalSampler> k12, k21, k13, k31;
+    std::optional<LognormalSampler> k12, k21, k13, k31;
     
     // Allow LSTMDrug to access private members
     friend class LSTMDrugPD;

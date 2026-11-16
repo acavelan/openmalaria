@@ -29,14 +29,9 @@
 #include "Transmission/Anopheles/EmergenceRateEstimator.h"
 #include "Host/Human.h"
 
-namespace scnXml
-{
-class Vector;
-}
-
 namespace OM
 {
-class Population;
+struct Population;
 namespace Transmission
 {
 
@@ -55,14 +50,11 @@ public:
                 int populationSize, const HostTransmissionParameters& hostParameters, util::MasterRng& masterRng);
 
     virtual ~VectorModel();
+    void registerContinuousCallbacks(mon::Continuous::State&) override;
 
     /** Extra initialisation when not loading from a checkpoint, requiring
      * information from the human population structure. */
     virtual void init2(const vector<Host::Human> &population);
-
-    virtual void initVectorInterv(const scnXml::Description::AnophelesSequence &list, size_t instance, const string &name);
-    virtual void initVectorTrap(const scnXml::VectorTrap::DescriptionSequence list, size_t instance,
-                                const scnXml::VectorTrap::NameOptional name);
 
     virtual void scaleEIR(double factor);
 
@@ -75,7 +67,7 @@ public:
     virtual void deployVectorPopInterv(size_t instance);
     virtual void deployVectorTrap(size_t instance, double popSize, SimTime lifespan);
 
-    virtual void changeEIRIntervention(const scnXml::NonVector &nonVectorData);
+    virtual void changeEIRIntervention(const vector<double>& daily, int eipDuration);
 
     virtual void uninfectVectors();
 
@@ -84,6 +76,7 @@ public:
 protected:
     virtual void checkpoint(istream &stream);
     virtual void checkpoint(ostream &stream);
+    template<class S> void checkpointFields(S& stream);
 
 private:
     void ctsCbN_v0(ostream &stream);

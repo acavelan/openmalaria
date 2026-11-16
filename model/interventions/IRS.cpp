@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "ScenarioXml.h"
 #include "Global.h"
 #include "interventions/IRS.h"
 #include "Host/Human.h"
@@ -35,10 +36,10 @@ IRSComponent::IRSComponent( ComponentId id, const scnXml::IRSDescription& elt,
         const map<string,size_t>& species_name_map ) :
         VectorInterventionComponent(id)
 {
-    initialInsecticide.setParams( elt.getInitialInsecticide() );
+    initialInsecticide = xml::readNormalSampler(elt.getInitialInsecticide());
     const double maxProp = 0.999;       //NOTE: this could be exposed in XML, but probably doesn't need to be
     maxInsecticide = R::qnorm5(maxProp, initialInsecticide.getMu(), initialInsecticide.getSigma(), true, false);
-    insecticideDecay = DecayFunction::makeObject( elt.getInsecticideDecay(),
+    insecticideDecay = xml::readDecay( elt.getInsecticideDecay(),
                                                   "interventions.human.IRS.description.insecticideDecay" );
     // assume usage modifier is 100% if none is specified
     double propUse;
@@ -238,14 +239,12 @@ HumanIRS::HumanIRS( LocalRng& rng, const IRSComponent& params ) :
 {
     // Varience factor of decay is sampled once per human: human is assumed
     // to account for most variance.
-    insecticideDecayHet = params.insecticideDecay->hetSample(rng);
+    insecticideDecayHet = params.insecticideDecay.heterogeneity.sample(rng);
 }
 
-void HumanIRS::redeploy( LocalRng& rng, const VectorInterventionComponent& params ) {
+void HumanIRS::redeploy(LocalRng& rng) {
     deployTime = sim::nowOrTs1();
-    const IRSComponent* irsParams = dynamic_cast<const IRSComponent*>(&params);
-    assert( irsParams != 0 );   // code error if this fails
-    initialInsecticide = irsParams->sampleInitialInsecticide(rng);
+    initialInsecticide = parameters.sampleInitialInsecticide(rng);
 }
 
 double HumanIRS::relativeAttractiveness(size_t speciesIndex, SimTime effectTime) const{
@@ -278,13 +277,13 @@ double HumanIRS::relFecundity(size_t speciesIndex, SimTime effectTime) const{
 void HumanIRS::checkpoint( ostream& stream ){
     deployTime & stream;
     initialInsecticide & stream;
-    parameters.insecticideDecay->checkpointSample(insecticideDecayHet, stream);
+    util::checkpointDecaySample(insecticideDecayHet, stream);
 }
 HumanIRS::HumanIRS( istream& stream, ComponentId id, const IRSComponent& params ) : VectorInterventionState( id ), parameters(params)
 {
     deployTime & stream;
     initialInsecticide & stream;
-    parameters.insecticideDecay->checkpointSample(insecticideDecayHet, stream);
+    util::checkpointDecaySample(insecticideDecayHet, stream);
 }
 
 } }

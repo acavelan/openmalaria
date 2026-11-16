@@ -21,14 +21,8 @@
  */
 
 #pragma once
-#include "ModelParameters.h"
-
-namespace scnXml { class Scenario; class Mosq; }
+namespace scnXml { class Scenario; }
 namespace OM {
 struct Model;
-class Parameters;
 void initialize(Model& model, scnXml::Scenario& scenario);
-Host::IncidenceParameters readIncidenceParameters(const Parameters& parameters);
-Transmission::HostSpeciesParameters readHostSpeciesParameters(const scnXml::Mosq& mosq);
-void calculateAvailabilityPercentiles(Transmission::HostTransmissionParameters& parameters);
 }

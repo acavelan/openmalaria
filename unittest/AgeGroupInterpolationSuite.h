@@ -24,25 +24,18 @@
 #define Hmod_AgeGroupInterpolationSuite
 
 #include <cxxtest/TestSuite.h>
-#include "UnittestUtil.h"
+
 #include "ExtraAsserts.h"
 #include "util/AgeGroupInterpolation.h"
 
-using util::AgeGroupInterpolator;
+using OM::util::AgeGroupInterpolator;
 
 class AgeGroupInterpolationSuite : public CxxTest::TestSuite
 {
 public:
     AgeGroupInterpolationSuite () {
-        // Set maximum age to 90 years:
-        UnittestUtil::initTime( 5 );
-        agvElt = unique_ptr<scnXml::AgeGroupValues>(new scnXml::AgeGroupValues());
-        scnXml::AgeGroupValues::GroupSequence& seq = agvElt->getGroup();
-        seq.resize( dataLen, scnXml::Group(0.0,0.0) );
-        for( size_t i = 0; i < dataLen; ++i ){
-            seq[ i ].setLowerbound( stdLbounds[ i ] );
-            seq[ i ].setValue( stdValues[ i ] );
-        }
+        for (size_t i = 0; i < dataLen; ++i)
+            groups.groups.push_back({stdLbounds[i], stdValues[i]});
     }
     ~AgeGroupInterpolationSuite () {
     }
@@ -58,23 +51,56 @@ public:
     }
     
     void testPiecewiseConst () {
-        agvElt->setInterpolation( "none" );
+        groups.interpolation = OM::util::AgeInterpolation::Constant;
         AgeGroupInterpolator o;
-        o.set( *agvElt, "testPiecewiseConst" );
+        o.set( groups, 90.0, "testPiecewiseConst" );
         for( size_t i = 0; i < testLen; ++i ){
             TS_ASSERT_APPROX( o.eval( testAges[ i ] ), piecewiseConstValues[ i ] );
         }
     }
     
     void testLinearInterp () {
-        agvElt->setInterpolation( "linear" );
+        groups.interpolation = OM::util::AgeInterpolation::Linear;
         AgeGroupInterpolator o;
-        o.set( *agvElt, "testLinearInterp" );
+        o.set( groups, 90.0, "testLinearInterp" );
         for( size_t i = 0; i < testLen; ++i ){
             TS_ASSERT_APPROX( o.eval( testAges[ i ] ), linearInterpValues[ i ] );
         }
     }
     
+    void testExplicitMaximumAgeAndIndependentCopies() {
+        OM::util::AgeGroupValues input{OM::util::AgeInterpolation::Linear, {{0, 2}, {20, 6}}};
+        AgeGroupInterpolator a, b;
+        a.set(input, 60, "a");
+        b.set(input, 100, "b");
+        TS_ASSERT_EQUALS(a.eval(40), 6.0);
+        TS_ASSERT_EQUALS(b.eval(40), 4.4);
+        auto copy = a;
+        copy.scale(2.0);
+        TS_ASSERT_EQUALS(a.eval(40), 6.0);
+        TS_ASSERT_EQUALS(copy.eval(40), 12.0);
+        TS_ASSERT_EQUALS(a.firstGlobalMaximum(), 40.0);
+    }
+
+    void testValidationAndDuplicateBounds() {
+        using namespace OM::util;
+        for (auto kind : {AgeInterpolation::Linear, AgeInterpolation::Constant}) {
+            AgeGroupInterpolator curve;
+            AgeGroupValues input{kind, {}};
+            TS_ASSERT_THROWS(curve.set(input, 90, "test"), const xml_scenario_error&);
+            input.groups = {{1, 2}};
+            TS_ASSERT_THROWS(curve.set(input, 90, "test"), const xml_scenario_error&);
+            input.groups = {{0, 2}, {20, 3}, {10, 4}};
+            TS_ASSERT_THROWS(curve.set(input, 90, "test"), const xml_scenario_error&);
+            TS_ASSERT(!curve.isSet());
+            input.groups = {{0, 2}, {0, 9}, {20, 4}};
+            curve.set(input, 90, "test");
+            TS_ASSERT_EQUALS(curve.eval(0), 2.0);
+            curve.reset();
+            TS_ASSERT_THROWS(curve.eval(0), const std::exception&);
+        }
+    }
+
 private:
     static const size_t dataLen = 5;
     static const size_t testLen = 8;
@@ -83,7 +109,7 @@ private:
     static const double testAges[testLen];
     static const double piecewiseConstValues[testLen];
     static const double linearInterpValues[testLen];
-    unique_ptr<scnXml::AgeGroupValues> agvElt;
+    OM::util::AgeGroupValues groups;
 };
 
 const double AgeGroupInterpolationSuite::stdLbounds[] = {

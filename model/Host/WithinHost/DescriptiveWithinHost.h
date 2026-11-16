@@ -39,10 +39,9 @@ namespace OM { namespace WithinHost {
 class DescriptiveWithinHostModel : public WHFalciparum {
 public:
     /// Must run after monitoring is set up.
-    static void initDescriptive();
     
     /// Create a new WHM
-    DescriptiveWithinHostModel( LocalRng& rng, double comorbidityFactor );
+    DescriptiveWithinHostModel( LocalRng& rng, double comorbidityFactor, const WithinHostParameters& config );
     virtual ~DescriptiveWithinHostModel();
     
     virtual void importInfection(LocalRng& rng);
@@ -59,7 +58,7 @@ public:
     virtual bool summarize( Host::Human& human ) const;
     
 protected:
-    virtual void clearInfections( Treatments::Stages stage );
+    virtual void clearInfections( Treatment::Stages stage );
     
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
@@ -73,7 +72,6 @@ protected:
      * the idea is that each WithinHostModel has its own list of infections. */
      std::list<DescriptiveInfection*> infections;
 
-     bool opt_vaccine_genotype = false;
 };
 
 } }

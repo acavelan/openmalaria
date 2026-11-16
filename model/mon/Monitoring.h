@@ -35,6 +35,7 @@
 #include <vector>
 
 namespace OM {
+namespace Clinical { struct InfantMortality; }
 namespace Host {
 struct Human;
 }
@@ -115,7 +116,7 @@ uint32_t updateCohortSet(uint32_t old, interventions::ComponentId subPop, bool i
 void updateAgeGroup(size_t& index, SimTime age);
 void initMainSim();
 void concludeSurvey();
-void writeSurveyData();
+void writeSurveyData(const Clinical::InfantMortality& infantMortality);
 
 template <typename Stream>
 void checkpoint(Stream& stream);

@@ -20,37 +20,24 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_NeonatalMortality
-#define Hmod_NeonatalMortality
-
+#pragma once
 #include "Global.h"
-#include "util/random.h"
-#include "Host/Human.h"
+#include "util/checkpoint_containers.h"
 
-namespace scnXml {
-    class Clinical;
-}
-namespace OM {
-    class Population;
-namespace Host {
+namespace OM::WithinHost { class Diagnostic; }
+namespace OM::Host {
+struct Human;
+struct NeonatalMortality {
+    double riskFromMaternalInfection = 0.0;
+    vector<double> prevByGestationalAge;
 
-using util::LocalRng;
-
-class NeonatalMortality {
-public:
-  /// Initialisation
-  static void init( const scnXml::Clinical& clinical );
-  
-  static void staticCheckpoint (istream& stream);
-  static void staticCheckpoint (ostream& stream);
-  
-  /** Called for each birth; returns true if infant dies due to mother's
-   * infection. */
-  static bool eventNeonatalMortality(LocalRng& rng);
-  
-  /** Calculate risk of a neonatal mortality based on humans 20-25 years old. */
-  static void update (vector<Human> &population);
+    template<class S> void operator&(S& stream) {
+        riskFromMaternalInfection & stream;
+        prevByGestationalAge & stream;
+    }
 };
 
-} }
-#endif
+NeonatalMortality makeNeonatalMortality(SimTime interval);
+void updateNeonatalRisk(NeonatalMortality&, double prevalence, size_t historyIndex);
+void update(NeonatalMortality&, vector<Human>&, const WithinHost::Diagnostic&, SimTime stepStart, SimTime interval);
+}

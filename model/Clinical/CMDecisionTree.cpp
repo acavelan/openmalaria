@@ -21,6 +21,7 @@
  */
 
 #include "Clinical/CMDecisionTree.h"
+#include "schema/healthSystem.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Diagnostic.h"
@@ -29,7 +30,7 @@
 #include "util/errors.h"
 #include "util/UnitParse.h"
 #include "interventions/Interfaces.h"
-#include "interventions/InterventionManager.h"
+#include "interventions/Interventions.h"
 
 #include <limits>
 #include <list>
@@ -52,18 +53,13 @@ using std::vector;
  */
 class CMDTMultiple : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTMultiple& node, bool isUC );
+    static const CMDecisionTree& create( const ::scnXml::DTMultiple& node, bool isUC, const interventions::Interventions& definitions, ClinicalParameters& library);
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTMultiple* p = dynamic_cast<const CMDTMultiple*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( children.size() != p->children.size() ) return false;
-        for( size_t i = 0; i < children.size(); ++i ){
-            if( children[i] != p->children[i] ) return false;
-        }
-        return true;    // no tests failed; must be the same
+    bool operator==(const CMDecisionTree& that) const override {
+        if (this == &that) return true;
+        const auto* p = dynamic_cast<const CMDTMultiple*>(&that);
+        return p && children == p->children;
     }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
@@ -86,203 +82,82 @@ private:
 
 // ———  branching nodes  ———
 
-/**
- * Should the patient recieve first or second line treatment?
- */
-class CMDTCaseType : public CMDecisionTree {
+// Branch construction keeps the original argument evaluation order for node interning.
+static const CMDecisionTree& createBranch(const scnXml::DTCaseType&, bool isUC, const interventions::Interventions&, ClinicalParameters&);
+static const CMDecisionTree& createBranch(const scnXml::DTInfectionOrigin&, bool isUC, const interventions::Interventions&, ClinicalParameters&);
+static const CMDecisionTree& createBranch(const scnXml::DTDiagnostic&, bool isUC, const interventions::Interventions&, ClinicalParameters&);
+static const CMDecisionTree& createBranch(const scnXml::DTUncomplicated&, bool isUC, const interventions::Interventions&, ClinicalParameters&);
+static const CMDecisionTree& createBranch(const scnXml::DTSevere&, bool isUC, const interventions::Interventions&, ClinicalParameters&);
+static const CMDecisionTree& createBranch(const scnXml::DTCohort&, bool isUC, const interventions::Interventions&, ClinicalParameters&);
+
+class CMDTBranch : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTCaseType& node, bool isUC );
-    
-protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTCaseType* p = dynamic_cast<const CMDTCaseType*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( firstLine != p->firstLine ) return false;
-        if( secondLine != p->secondLine ) return false;
-        return true;    // no tests failed; must be the same
+    enum class Kind { CaseType, InfectionOrigin, Diagnostic, Uncomplicated, Severe, Cohort };
+    CMDTBranch(Kind kind, const CMDecisionTree& first, const CMDecisionTree& second) :
+        kind(kind), first(first), second(second) {}
+    CMDTBranch(Kind kind, const CMDecisionTree& first, const CMDecisionTree& second,
+            const CMDecisionTree& third) : CMDTBranch(kind, first, second) { this->third = &third; }
+    CMDTBranch(const Diagnostic& diagnostic, const CMDecisionTree& first, const CMDecisionTree& second) :
+        CMDTBranch(Kind::Diagnostic, first, second) { this->diagnostic = &diagnostic; }
+    CMDTBranch(SimTime memory, const CMDecisionTree& first, const CMDecisionTree& second, SimTime hsMemory) :
+        CMDTBranch(Kind::Uncomplicated, first, second) {
+        this->memory = memory;
+        if (memory > hsMemory)
+            throw util::xml_scenario_error("<uncomplicated> memory parameter must be less than or equal to the healthsystem memory (hsmemory parameter)");
     }
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
-        // Uses of this in complicated cases should trigger an exception during initialisation.
-        assert( (hostData.pgState & Episode::SICK) && !(hostData.pgState & Episode::COMPLICATED) );
-        
-        if( hostData.pgState & Episode::SECOND_CASE ) return secondLine.exec( hostData );
-        else return firstLine.exec( hostData );
-    }
-    
-private:
-    CMDTCaseType( const CMDecisionTree& firstLine,
-                  const CMDecisionTree& secondLine ) :
-                  firstLine(firstLine), secondLine(secondLine)
-                  {}
-    
-    const CMDecisionTree& firstLine;
-    const CMDecisionTree& secondLine;
-};
+    CMDTBranch(interventions::ComponentId component, const CMDecisionTree& first, const CMDecisionTree& second) :
+        CMDTBranch(Kind::Cohort, first, second) { this->component = component; }
 
-/**
- * Should the patient recieve a different treatment based on its infection type?
- */
-class CMDTInfectionOrigin : public CMDecisionTree {
-public:
-    static const CMDecisionTree& create( const ::scnXml::DTInfectionOrigin& node, bool isUC );
-    
-protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTInfectionOrigin* p = dynamic_cast<const CMDTInfectionOrigin*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( imported != p->imported ) return false;
-        if( introduced != p->introduced ) return false;
-        if( indigenous != p->indigenous ) return false;
-        return true;    // no tests failed; must be the same
-    }
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
-        WithinHost::InfectionOrigin InfectionOrigin = hostData.withinHost().getInfectionOrigin();
-        if(InfectionOrigin == WithinHost::InfectionOrigin::Imported)
-            return imported.exec( hostData );
-        else if (InfectionOrigin == WithinHost::InfectionOrigin::Introduced)
-            return introduced.exec( hostData );
-        else
-            return indigenous.exec( hostData );
-    }
-    
-private:
-    CMDTInfectionOrigin( const CMDecisionTree& imported,
-                  const CMDecisionTree& introduced,
-                  const CMDecisionTree& indigenous ) :
-                  imported(imported), introduced(introduced), indigenous(indigenous)
-                  {}
-    
-    const CMDecisionTree& imported, &introduced, &indigenous;
-};
+    Kind kind;
+    const CMDecisionTree& first;
+    const CMDecisionTree& second;
+    const CMDecisionTree* third = nullptr;
+    const Diagnostic* diagnostic = nullptr;
+    SimTime memory = 0;
+    interventions::ComponentId component = interventions::ComponentId::wholePop();
 
-/**
- * Use a diagnostic, and call another decision tree based on the outcome.
- */
-class CMDTDiagnostic : public CMDecisionTree {
-public:
-    static const CMDecisionTree& create( const ::scnXml::DTDiagnostic& node, bool isUC );
-    
-protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTDiagnostic* p = dynamic_cast<const CMDTDiagnostic*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( diagnostic != p->diagnostic ) return false;
-        if( positive != p->positive ) return false;
-        if( negative != p->negative ) return false;
-        return true;    // no tests failed; must be the same
+    bool operator==(const CMDecisionTree& that) const override {
+        if (this == &that) return true;
+        const auto* p = dynamic_cast<const CMDTBranch*>(&that);
+        if (!p || kind != p->kind) return false;
+        if (kind == Kind::Diagnostic && *diagnostic != *p->diagnostic) return false;
+        // Legacy interning ignores uncomplicated memory and cohort IDs.
+        return first == p->first && second == p->second &&
+            (kind != Kind::InfectionOrigin || *third == *p->third);
     }
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
-        CMDTOut result;
-        
-        if( hostData.withinHost().diagnosticResult( hostData.human.rng, diagnostic ) )
-            result = positive.exec( hostData );
-        else
-            result = negative.exec( hostData );
-        result.screened = true;
 
-        return result;
-    }
-    
-private:
-    CMDTDiagnostic( const Diagnostic& diagnostic,
-        const CMDecisionTree& positive,
-        const CMDecisionTree& negative ) :
-        diagnostic(diagnostic),
-        positive(positive), negative(negative)
-    {}
-    
-    const Diagnostic& diagnostic;
-    const CMDecisionTree& positive;
-    const CMDecisionTree& negative;
-};
-
-class CMDTUncomplicated : public CMDecisionTree {
-public:
-    static const CMDecisionTree& create( const ::scnXml::DTUncomplicated& node, bool isUC );
-    
-protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTUncomplicated* p = dynamic_cast<const CMDTUncomplicated*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        // if( diagnostic != p->diagnostic ) return false;
-        if( positive != p->positive ) return false;
-        if( negative != p->negative ) return false;
-        return true;    // no tests failed; must be the same
-    }
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
-        const Clinical::Episode &latest = hostData.human.clinicalModel->getLatestReport();
-
-        if ( ((hostData.pgState & Episode::SICK) && !(hostData.pgState & Episode::COMPLICATED)) || (hostData.pgState & Episode::MALARIA) )
-        {
-            if (latest.time + memory >= sim::nowOrTs0())
-                return positive.exec( hostData );
-            else
-                return negative.exec( hostData );
+    CMDTOut exec(CMHostData hostData) const override {
+        switch (kind) {
+        case Kind::CaseType:
+            assert((hostData.pgState & Episode::SICK) && !(hostData.pgState & Episode::COMPLICATED));
+            return (hostData.pgState & Episode::SECOND_CASE ? second : first).exec(hostData);
+        case Kind::InfectionOrigin: {
+            const auto origin = hostData.withinHost().getInfectionOrigin();
+            if (origin == WithinHost::InfectionOrigin::Imported) return first.exec(hostData);
+            if (origin == WithinHost::InfectionOrigin::Introduced) return second.exec(hostData);
+            return third->exec(hostData);
         }
-        else
-            return negative.exec( hostData );
+        case Kind::Diagnostic: {
+            auto result = (hostData.withinHost().diagnosticResult(hostData.human.rng, *diagnostic)
+                ? first : second).exec(hostData);
+            result.screened = true;
+            return result;
+        }
+        case Kind::Uncomplicated: {
+            const auto& latest = hostData.human.clinicalModel->getLatestReport();
+            if (((hostData.pgState & Episode::SICK) && !(hostData.pgState & Episode::COMPLICATED)) ||
+                    (hostData.pgState & Episode::MALARIA)) {
+                if (latest.time + memory >= sim::nowOrTs0()) return first.exec(hostData);
+            }
+            return second.exec(hostData);
+        }
+        case Kind::Severe:
+            return (hostData.pgState & Episode::COMPLICATED ? first : second).exec(hostData);
+        case Kind::Cohort:
+            return (hostData.human.isInSubPop(component) ? first : second).exec(hostData);
+        }
+        throw SWITCH_DEFAULT_EXCEPTION;
     }
-    
-private:
-    CMDTUncomplicated(
-        const SimTime memory,
-        const CMDecisionTree& positive,
-        const CMDecisionTree& negative ) :
-        memory(memory), positive(positive), negative(negative)
-    {
-        if(memory > ClinicalModel::hsMemory())
-            throw util::xml_scenario_error( "<uncomplicated> memory parameter must be less than or equal to the healthsystem memory (hsmemory parameter)" );
-    }
-    
-    const SimTime memory;
-    const CMDecisionTree& positive;
-    const CMDecisionTree& negative;
-};
-
-class CMDTSevere : public CMDecisionTree {
-public:
-    static const CMDecisionTree& create( const ::scnXml::DTSevere& node, bool isUC );
-    
-protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTSevere* p = dynamic_cast<const CMDTSevere*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        // if( diagnostic != p->diagnostic ) return false;
-        if( positive != p->positive ) return false;
-        if( negative != p->negative ) return false;
-        return true;    // no tests failed; must be the same
-    }
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
-        CMDTOut result;
-
-        if (hostData.pgState & Episode::COMPLICATED)
-            result = positive.exec( hostData );
-        else
-            result = negative.exec( hostData );
-
-        // result.screened = true;
-        return result;
-    }
-    
-private:
-    CMDTSevere(
-        const CMDecisionTree& positive,
-        const CMDecisionTree& negative ) :
-        positive(positive), negative(negative)
-    {}
-    
-    const CMDecisionTree& positive;
-    const CMDecisionTree& negative;
 };
 
 /**
@@ -293,21 +168,13 @@ private:
  */
 class CMDTRandom : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTRandom& node, bool isUC );
+    static const CMDecisionTree& create( const ::scnXml::DTRandom& node, bool isUC, const interventions::Interventions& definitions, ClinicalParameters& library);
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTRandom* p = dynamic_cast<const CMDTRandom*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( branches.size() != p->branches.size() ) return false;
-        for( auto it1 = branches.begin(), it2 = p->branches.begin();
-            it1 != branches.end(); ++it1, ++it2 )
-        {
-            if( it1->first != it2->first ) return false;
-            if( it1->second != it2->second ) return false;
-        }
-        return true;    // no tests failed; must be the same
+    bool operator==(const CMDecisionTree& that) const override {
+        if (this == &that) return true;
+        const auto* p = dynamic_cast<const CMDTRandom*>(&that);
+        return p && branches == p->branches;
     }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
@@ -329,21 +196,13 @@ private:
  */
 class CMDTAge : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTAge& node, bool isUC );
+    static const CMDecisionTree& create( const ::scnXml::DTAge& node, bool isUC, const interventions::Interventions& definitions, ClinicalParameters& library);
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTAge* p = dynamic_cast<const CMDTAge*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( branches.size() != p->branches.size() ) return false;
-        for( auto it1 = branches.begin(), it2 = p->branches.begin();
-            it1 != branches.end(); ++it1, ++it2 )
-        {
-            if( it1->first != it2->first ) return false;
-            if( it1->second != it2->second ) return false;
-        }
-        return true;    // no tests failed; must be the same
+    bool operator==(const CMDecisionTree& that) const override {
+        if (this == &that) return true;
+        const auto* p = dynamic_cast<const CMDTAge*>(&that);
+        return p && branches == p->branches;
     }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
@@ -368,10 +227,10 @@ private:
 /** Do nothing. **/
 class CMDTNoTreatment : public CMDecisionTree {
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTNoTreatment* p = dynamic_cast<const CMDTNoTreatment*>( &that );
-        return p != 0;  // same type: is equivalent
+    bool operator==(const CMDecisionTree& that) const override {
+        if (this == &that) return true;
+        const auto* p = dynamic_cast<const CMDTNoTreatment*>(&that);
+        return p != nullptr;
     }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
@@ -389,17 +248,10 @@ public:
         assert( outIds.size() > 0 );        // CMDTTreatPKPD should not be used in this case
     }
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-     if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTReport* p = dynamic_cast<const CMDTReport*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( outIds.size() != p->outIds.size() ) return false;
-        for( auto it1 = outIds.begin(), it2 = p->outIds.begin();
-            it1 != outIds.end(); ++it1, ++it2 )
-        {
-            if( *it1 != *it2 ) return false;
-        }
-        return true;    // no tests failed; must be the same
+    bool operator==(const CMDecisionTree& that) const override {
+        if (this == &that) return true;
+        const auto* p = dynamic_cast<const CMDTReport*>(&that);
+        return p && outIds == p->outIds;
     }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
@@ -415,10 +267,10 @@ private:
 /** Report treament without affecting parasites. **/
 class CMDTTreatFailure : public CMDecisionTree {
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTTreatFailure* p = dynamic_cast<const CMDTTreatFailure*>( &that );
-        return p != 0;  // same type: is equivalent
+    bool operator==(const CMDecisionTree& that) const override {
+        if (this == &that) return true;
+        const auto* p = dynamic_cast<const CMDTTreatFailure*>(&that);
+        return p != nullptr;
     }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
@@ -444,17 +296,10 @@ public:
     }
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTTreatPKPD* p = dynamic_cast<const CMDTTreatPKPD*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( treatments.size() != p->treatments.size() ) return false;
-        for( auto it1 = treatments.begin(), it2 = p->treatments.begin();
-            it1 != treatments.end(); ++it1, ++it2 )
-        {
-            if( *it1 != *it2 ) return false;
-        }
-        return true;    // no tests failed; must be the same
+    bool operator==(const CMDecisionTree& that) const override {
+        if (this == &that) return true;
+        const auto* p = dynamic_cast<const CMDTTreatPKPD*>(&that);
+        return p && treatments == p->treatments;
     }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
@@ -470,11 +315,7 @@ private:
             schedule(PkPd::LSTMTreatments::findSchedule(s)),
             dosage(PkPd::LSTMTreatments::findDosages(d)),
             delay_h(h) {}
-        inline bool operator!=( const TreatInfo& that )const{
-            return schedule != that.schedule ||
-                dosage != that.dosage ||
-                delay_h != that.delay_h;
-        }
+        bool operator==(const TreatInfo&) const = default;
         size_t schedule;        // index of the schedule
         size_t dosage;          // name of the dosage table
         double delay_h;         // delay in hours
@@ -508,18 +349,11 @@ public:
     }
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-     if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTTreatSimple* p = dynamic_cast<const CMDTTreatSimple*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( timeLiver.size() != p->timeLiver.size() ) return false;
-        if( timeBlood.size() != p->timeBlood.size() ) return false;
-        for( auto it1 = timeLiver.begin(), it2 = p->timeLiver.begin();
-            it1 != timeLiver.end(); ++it1, ++it2 )
-        {
-            if( *it1 != *it2 ) return false;
-        }
-        return true;    // no tests failed; must be the same
+    bool operator==(const CMDecisionTree& that) const override {
+        if (this == &that) return true;
+        const auto* p = dynamic_cast<const CMDTTreatSimple*>(&that);
+        // Legacy interning compares blood-duration count, not values.
+        return p && timeBlood.size() == p->timeBlood.size() && timeLiver == p->timeLiver;
     }
 
     
@@ -543,22 +377,14 @@ private:
  * interventions to be deployed, though we don't use pointers it finds. */
 class CMDTDeploy : public CMDecisionTree, interventions::HumanIntervention {
 public:
-    CMDTDeploy( const scnXml::DecisionTree::DeploySequence& seq ) :
-        HumanIntervention(seq) {}
+    CMDTDeploy( const scnXml::DecisionTree::DeploySequence& seq, const interventions::Interventions& definitions ) :
+        HumanIntervention(seq, definitions) {}
     
 protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTDeploy* p = dynamic_cast<const CMDTDeploy*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        if( components.size() != p->components.size() ) return false;
-        for( auto it1 = components.begin(), it2 = p->components.begin();
-            it1 != components.end(); ++it1, ++it2 )
-        {
-            // here we can compare pointers since components are always de-duplicated
-            if( *it1 != *it2 ) return false;
-        }
-        return true;    // no tests failed; must be the same
+    bool operator==(const CMDecisionTree& that) const override {
+        if (this == &that) return true;
+        const auto* p = dynamic_cast<const CMDTDeploy*>(&that);
+        return p && components == p->components;
     }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
@@ -573,196 +399,153 @@ protected:
     }
 };
 
-class CMDTCohort : public CMDecisionTree {
-public:
-    static const CMDecisionTree& create( const ::scnXml::DTCohort& node, bool isUC );
-    
-protected:
-    virtual bool operator==( const CMDecisionTree& that ) const{
-        if( this == &that ) return true; // short cut: same object thus equivalent
-        const CMDTCohort* p = dynamic_cast<const CMDTCohort*>( &that );
-        if( p == 0 ) return false;      // different type of node
-        // if( diagnostic != p->diagnostic ) return false;
-        if( positive != p->positive ) return false;
-        if( negative != p->negative ) return false;
-        return true;    // no tests failed; must be the same
-    }
-    
-    virtual CMDTOut exec( CMHostData hostData ) const{
-        CMDTOut result;
-
-        // Rely on the health system memory to not count the same episode twice
-        if(hostData.human.isInSubPop(component))
-            result = positive.exec( hostData );
-        else
-            result = negative.exec( hostData );
-
-        // result.screened = true;
-        return result;
-    }
-    
-private:
-    CMDTCohort(
-        const std::string component,
-        const CMDecisionTree& positive,
-        const CMDecisionTree& negative ) :
-        component(interventions::InterventionManager::getComponentId(component)), positive(positive), negative(negative)
-    {
-    }
-    
-    interventions::ComponentId component;
-    const CMDecisionTree& positive;
-    const CMDecisionTree& negative;
-};
-
 // ———  static functions  ———
 
 // Memory management: lists all decisions and frees memory at program exit.
 // We store pointers into this list, so elements must not move.
-vector<unique_ptr<CMDecisionTree>> decision_library;
-
-// Saves a decision to decision_library, making it const.
+// Saves a decision to library.nodes, making it const.
 // Also optimises away duplicates
-const CMDecisionTree& save_decision( CMDecisionTree* decision ){
+const CMDecisionTree& save_decision(ClinicalParameters& library, CMDecisionTree* rawDecision) {
+    unique_ptr<CMDecisionTree> decision(rawDecision);
     // We search the library for a duplicate, and delete this one if there is
     // a duplicate. Note that this is not implemented efficiently, but a little
     // wasted time at start up is hardly a concern.
-    for( auto& d : decision_library ){
+    for( auto& d : library.nodes ){
         if( *d == *decision ){
             return *d;
         }
     }
     
     // No match: add to the library.
-    decision_library.push_back( unique_ptr<CMDecisionTree>(decision) );
-    return *decision_library.back();
+    library.nodes.push_back(std::move(decision));
+    return *library.nodes.back();
 }
 
-const CMDecisionTree& CMDecisionTree::create( const scnXml::DecisionTree& node, bool isUC){
-    if( node.getMultiple().present() ) return CMDTMultiple::create( node.getMultiple().get(), isUC);
+const CMDecisionTree& CMDecisionTree::create( const scnXml::DecisionTree& node, bool isUC, const interventions::Interventions& definitions, ClinicalParameters& library){
+    if( node.getMultiple().present() ) return CMDTMultiple::create( node.getMultiple().get(), isUC, definitions, library);
     // branching nodes
-    if( node.getCaseType().present() ) return CMDTCaseType::create( node.getCaseType().get(), isUC);
-    if( node.getInfectionOrigin().present() ) return CMDTInfectionOrigin::create( node.getInfectionOrigin().get(), isUC);
-    if( node.getDiagnostic().present() ) return CMDTDiagnostic::create( node.getDiagnostic().get(), isUC);
-    if( node.getUncomplicated().present() ) return CMDTUncomplicated::create( node.getUncomplicated().get(), isUC);
-    if( node.getSevere().present() ) return CMDTSevere::create( node.getSevere().get(), true);
-    if( node.getRandom().present() ) return CMDTRandom::create( node.getRandom().get(), isUC);
-    if( node.getAge().present() ) return CMDTAge::create( node.getAge().get(), isUC);
-    if( node.getCohort().present() ) return CMDTCohort::create( node.getCohort().get(), isUC);
+    if( node.getCaseType().present() ) return createBranch( node.getCaseType().get(), isUC, definitions, library);
+    if( node.getInfectionOrigin().present() ) return createBranch( node.getInfectionOrigin().get(), isUC, definitions, library);
+    if( node.getDiagnostic().present() ) return createBranch( node.getDiagnostic().get(), isUC, definitions, library);
+    if( node.getUncomplicated().present() ) return createBranch( node.getUncomplicated().get(), isUC, definitions, library);
+    if( node.getSevere().present() ) return createBranch( node.getSevere().get(), true, definitions, library);
+    if( node.getRandom().present() ) return CMDTRandom::create( node.getRandom().get(), isUC, definitions, library);
+    if( node.getAge().present() ) return CMDTAge::create( node.getAge().get(), isUC, definitions, library);
+    if( node.getCohort().present() ) return createBranch( node.getCohort().get(), isUC, definitions, library);
 
     // action nodes
-    if( node.getNoTreatment().present() ) return save_decision( new CMDTNoTreatment() );
-    if( node.getReport().size() ) return save_decision( new CMDTReport(node.getReport()) );
-    if( node.getTreatFailure().present() ) return save_decision( new CMDTTreatFailure() );
-    if( node.getTreatPKPD().size() ) return save_decision(
+    if( node.getNoTreatment().present() ) return save_decision(library, new CMDTNoTreatment() );
+    if( node.getReport().size() ) return save_decision(library, new CMDTReport(node.getReport()) );
+    if( node.getTreatFailure().present() ) return save_decision(library, new CMDTTreatFailure() );
+    if( node.getTreatPKPD().size() ) return save_decision(library,
         new CMDTTreatPKPD( node.getTreatPKPD() ) );
-    if( node.getTreatSimple().size() ) return save_decision(
+    if( node.getTreatSimple().size() ) return save_decision(library,
         new CMDTTreatSimple( node.getTreatSimple() ) );
-    if( node.getDeploy().size() ) return save_decision(
-        new CMDTDeploy( node.getDeploy() ) );
+    if( node.getDeploy().size() ) return save_decision(library,
+        new CMDTDeploy( node.getDeploy(), definitions ) );
     throw xml_scenario_error( "unterminated decision tree" );
 }
 
-const CMDecisionTree& CMDTMultiple::create( const scnXml::DTMultiple& node, bool isUC ){
-    CMDTMultiple* self = new CMDTMultiple();
+const CMDecisionTree& CMDTMultiple::create( const scnXml::DTMultiple& node, bool isUC, const interventions::Interventions& definitions, ClinicalParameters& library){
+    unique_ptr<CMDTMultiple> self(new CMDTMultiple());
     for( const scnXml::DTCaseType& sn : node.getCaseType() ){
-        self->children.push_back( &CMDTCaseType::create(sn, isUC) );
+        self->children.push_back( &createBranch(sn, isUC, definitions, library) );
     }
     for( const scnXml::DTInfectionOrigin& sn : node.getInfectionOrigin() ){
-        self->children.push_back( &CMDTInfectionOrigin::create(sn, isUC) );
+        self->children.push_back( &createBranch(sn, isUC, definitions, library) );
     }
     for( const scnXml::DTDiagnostic& sn : node.getDiagnostic() ){
-        self->children.push_back( &CMDTDiagnostic::create(sn, isUC) );
+        self->children.push_back( &createBranch(sn, isUC, definitions, library) );
     }
     for( const scnXml::DTUncomplicated& sn : node.getUncomplicated() ){
-        self->children.push_back( &CMDTUncomplicated::create(sn, isUC) );
+        self->children.push_back( &createBranch(sn, isUC, definitions, library) );
     }
     for( const scnXml::DTSevere& sn : node.getSevere() ){
-        self->children.push_back( &CMDTSevere::create(sn, isUC) );
+        self->children.push_back( &createBranch(sn, isUC, definitions, library) );
     }
     for( const scnXml::DTRandom& sn : node.getRandom() ){
-        self->children.push_back( &CMDTRandom::create(sn, isUC) );
+        self->children.push_back( &CMDTRandom::create(sn, isUC, definitions, library) );
     }
     for( const scnXml::DTAge& sn : node.getAge() ){
-        self->children.push_back( &CMDTAge::create(sn, isUC) );
+        self->children.push_back( &CMDTAge::create(sn, isUC, definitions, library) );
     }
     for( const scnXml::DTCohort& sn : node.getCohort() ){
-        self->children.push_back( &CMDTCohort::create(sn, isUC) );
+        self->children.push_back( &createBranch(sn, isUC, definitions, library) );
     }
     if( node.getTreatPKPD().size() ){
-        self->children.push_back( &save_decision(new CMDTTreatPKPD(node.getTreatPKPD())) );
+        self->children.push_back( &save_decision(library, new CMDTTreatPKPD(node.getTreatPKPD())) );
     }
     if( node.getTreatSimple().size() ){
-        self->children.push_back( &save_decision(new CMDTTreatSimple(node.getTreatSimple())) );
+        self->children.push_back( &save_decision(library, new CMDTTreatSimple(node.getTreatSimple())) );
     }
     if( node.getReport().size() ){
-        self->children.push_back( &save_decision(new CMDTReport(node.getReport())) );
+        self->children.push_back( &save_decision(library, new CMDTReport(node.getReport())) );
     }
     if( node.getDeploy().size() ){
-        self->children.push_back( &save_decision(new CMDTDeploy(node.getDeploy())) );
+        self->children.push_back( &save_decision(library, new CMDTDeploy(node.getDeploy(), definitions)) );
     }
-    return save_decision( self );
+    return save_decision(library, self.release());
 }
 
-const CMDecisionTree& CMDTCaseType::create( const scnXml::DTCaseType& node, bool isUC ){
+const CMDecisionTree& createBranch( const scnXml::DTCaseType& node, bool isUC, const interventions::Interventions& definitions, ClinicalParameters& library){
     if( !isUC ){
         throw util::xml_scenario_error( "decision tree: caseType can only be used for uncomplicated cases" );
     }
-    return save_decision( new CMDTCaseType(
-        CMDecisionTree::create( node.getFirstLine(), isUC ),
-        CMDecisionTree::create( node.getSecondLine(), isUC )
+    return save_decision(library, new CMDTBranch(CMDTBranch::Kind::CaseType,
+        CMDecisionTree::create( node.getFirstLine(), isUC, definitions, library),
+        CMDecisionTree::create( node.getSecondLine(), isUC, definitions, library)
     ) );
 }
 
-const CMDecisionTree& CMDTInfectionOrigin::create( const scnXml::DTInfectionOrigin& node, bool isUC ){
-    return save_decision( new CMDTInfectionOrigin(
-        CMDecisionTree::create( node.getImported(), isUC ),
-        CMDecisionTree::create( node.getIntroduced(), isUC ),
-        CMDecisionTree::create( node.getIndigenous(), isUC )
+const CMDecisionTree& createBranch( const scnXml::DTInfectionOrigin& node, bool isUC, const interventions::Interventions& definitions, ClinicalParameters& library){
+    return save_decision(library, new CMDTBranch(CMDTBranch::Kind::InfectionOrigin,
+        CMDecisionTree::create( node.getImported(), isUC, definitions, library),
+        CMDecisionTree::create( node.getIntroduced(), isUC, definitions, library),
+        CMDecisionTree::create( node.getIndigenous(), isUC, definitions, library)
     ) );
 }
 
-const CMDecisionTree& CMDTDiagnostic::create( const scnXml::DTDiagnostic& node, bool isUC ){
-    return save_decision( new CMDTDiagnostic(
+const CMDecisionTree& createBranch( const scnXml::DTDiagnostic& node, bool isUC, const interventions::Interventions& definitions, ClinicalParameters& library){
+    return save_decision(library, new CMDTBranch(
         diagnostics::get( node.getDiagnostic() ),
-        CMDecisionTree::create( node.getPositive(), isUC ),
-        CMDecisionTree::create( node.getNegative(), isUC )
+        CMDecisionTree::create( node.getPositive(), isUC, definitions, library),
+        CMDecisionTree::create( node.getNegative(), isUC, definitions, library)
     ) );
 }
 
-const CMDecisionTree& CMDTUncomplicated::create( const scnXml::DTUncomplicated& node, bool isUC ){
-    return save_decision( new CMDTUncomplicated(
+const CMDecisionTree& createBranch( const scnXml::DTUncomplicated& node, bool isUC, const interventions::Interventions& definitions, ClinicalParameters& library){
+    return save_decision(library, new CMDTBranch(
         UnitParse::readShortDuration(node.getMemory(), UnitParse::STEPS),
-        CMDecisionTree::create( node.getPositive(), isUC ),
-        CMDecisionTree::create( node.getNegative(), isUC )
+        CMDecisionTree::create( node.getPositive(), isUC, definitions, library),
+        CMDecisionTree::create( node.getNegative(), isUC, definitions, library), library.healthSystemMemory
     ) );
 }
 
-const CMDecisionTree& CMDTSevere::create( const scnXml::DTSevere& node, bool isUC ){
-    return save_decision( new CMDTSevere(
-        CMDecisionTree::create( node.getPositive(), isUC ),
-        CMDecisionTree::create( node.getNegative(), isUC )
+const CMDecisionTree& createBranch( const scnXml::DTSevere& node, bool isUC, const interventions::Interventions& definitions, ClinicalParameters& library){
+    return save_decision(library, new CMDTBranch(CMDTBranch::Kind::Severe,
+        CMDecisionTree::create( node.getPositive(), isUC, definitions, library),
+        CMDecisionTree::create( node.getNegative(), isUC, definitions, library)
     ) );
 }
 
-const CMDecisionTree& CMDTCohort::create( const scnXml::DTCohort& node, bool isUC ){
-    return save_decision( new CMDTCohort(
-        node.getComponent(),
-        CMDecisionTree::create( node.getPositive(), isUC ),
-        CMDecisionTree::create( node.getNegative(), isUC )
+const CMDecisionTree& createBranch( const scnXml::DTCohort& node, bool isUC, const interventions::Interventions& definitions, ClinicalParameters& library){
+    return save_decision(library, new CMDTBranch(
+        definitions.getComponentId(node.getComponent()),
+        CMDecisionTree::create( node.getPositive(), isUC, definitions, library),
+        CMDecisionTree::create( node.getNegative(), isUC, definitions, library)
     ) );
 }
 
 
 const CMDecisionTree& CMDTRandom::create(
-    const scnXml::DTRandom& node, bool isUC )
+    const scnXml::DTRandom& node, bool isUC, const interventions::Interventions& definitions, ClinicalParameters& library)
 {
-    CMDTRandom* result = new CMDTRandom();
+    unique_ptr<CMDTRandom> result(new CMDTRandom());
     
     double cum_p = 0.0;
     for( const scnXml::Outcome& outcome : node.getOutcome() ){
         cum_p += outcome.getP();
-        result->branches.insert( make_pair(cum_p, &CMDecisionTree::create( outcome, isUC )) );
+        result->branches.insert( make_pair(cum_p, &CMDecisionTree::create( outcome, isUC, definitions, library)) );
     }
     
     // Test cum_p is approx. 1.0 in case the input tree is wrong. We require no
@@ -773,11 +556,11 @@ const CMDecisionTree& CMDTRandom::create(
             "decision tree (random node): expected probability sum to be 1.0 but found " + to_string(cum_p));
     }
     
-    return save_decision( result );
+    return save_decision(library, result.release());
 }
 
-const CMDecisionTree& CMDTAge::create(const scnXml::DTAge& node, bool isUC){
-    CMDTAge* result = new CMDTAge();
+const CMDecisionTree& CMDTAge::create(const scnXml::DTAge& node, bool isUC, const interventions::Interventions& definitions, ClinicalParameters& library){
+    unique_ptr<CMDTAge> result(new CMDTAge());
     
     double lastAge = numeric_limits<double>::quiet_NaN();
     const CMDecisionTree* lastNode = nullptr;
@@ -792,13 +575,20 @@ const CMDecisionTree& CMDTAge::create(const scnXml::DTAge& node, bool isUC){
             double lb = age.getLb();
             result->branches.insert( make_pair(lb, lastNode) );
         }
-        lastNode = &CMDecisionTree::create(age, isUC);
+        lastNode = &CMDecisionTree::create(age, isUC, definitions, library);
         lastAge = age.getLb();
     }
     double noLb = numeric_limits<double>::infinity();
     result->branches.insert( make_pair(noLb, lastNode) );
     
-    return save_decision( result );
+    return save_decision(library, result.release());
+}
+
+CMDTOut executeCaseManagement(const CMHostData& hostData, const ClinicalParameters& config) {
+    assert(hostData.pgState & Episode::SICK);
+    const auto* tree = (hostData.pgState & Episode::COMPLICATED)
+        ? config.escm_complicated : config.escm_uncomplicated;
+    return tree->exec(hostData);
 }
 
 } }

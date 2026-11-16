@@ -23,10 +23,19 @@
 #pragma once
 
 #include "Host/InfectionIncidenceModel.h"
+#include "PopulationAgeStructure.h"
+#include "Host/WithinHost/Diagnostic.h"
+#include <optional>
+#include "Host/WithinHost/WithinHostParameters.h"
+#include "Clinical/ClinicalParameters.h"
 #include "Transmission/HostTransmissionParameters.h"
 
 namespace OM {
 struct ModelParameters {
+    Clinical::ClinicalParameters clinical;
+    WithinHost::WithinHostParameters withinHost;
+    vector<double> cumulativeAgeProportions;
+    std::optional<WithinHost::Diagnostic> neonatalDiagnostic;
     Host::IncidenceParameters incidence;
     Transmission::HostTransmissionParameters hostTransmission;
 };

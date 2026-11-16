@@ -169,22 +169,11 @@ public:
 
     virtual double getResRequirements() const { return numeric_limits<double>::quiet_NaN(); }
 
-    virtual void checkpoint(istream &stream) { (*this) & stream; }
-    virtual void checkpoint(ostream &stream) { (*this) & stream; }
+    virtual void checkpoint(istream& stream);
+    virtual void checkpoint(ostream& stream);
 
 private:
-    template <class S>
-    void operator&(S &stream)
-    {
-        AnophelesModel::checkpoint(stream);
-
-        quinquennialOvipositing &stream;
-        developmentDuration &stream;
-        probPreadultSurvival &stream;
-        fEggsLaidByOviposit &stream;
-        invLarvalResources &stream;
-        nOvipositingDelayed &stream;
-    }
+    template<class S> void checkpointFields(S& stream);
 
     // -----  model parameters (loaded from XML)  -----
 

@@ -25,6 +25,7 @@
 
 #include <cxxtest/TestSuite.h>
 #include "Host/WithinHost/DescriptiveWithinHost.h"
+#include "Host/WithinHost/CommonWithinHost.h"
 #include <limits>
 
 using namespace OM::WithinHost;
@@ -40,16 +41,43 @@ public:
 	double invCumulativeHstar = 1.0 / 71.676733;
 	double alpha_m = 1.0 - exp(- 2.411434);
 	double decayM = 2.717773;
-        WHFalciparum::setParams(invCumulativeYstar, invCumulativeHstar, alpha_m, decayM);
+        config.invCumulativeYstar = invCumulativeYstar;
+        config.invCumulativeHstar = invCumulativeHstar;
+        config.alpha_m = alpha_m;
+        config.decayM = decayM;
         
         // We need a concrete class deriving from WHFalciparum; this will do
         LocalRng rng(0, 721347520444481703);
-	wh = new DescriptiveWithinHostModel{ rng, numeric_limits<double>::quiet_NaN() };
+	wh = new DescriptiveWithinHostModel{ rng, numeric_limits<double>::quiet_NaN(), config };
     }
     void tearDown () {
 	delete wh;
     }
     
+    void testModelParametersRemainIndependentForExistingHosts() {
+        WithinHostParameters other = config;
+        other.alpha_m = 0.0;
+        LocalRng rng(18, 0);
+        auto second = WHInterface::createWithinHostModel(rng, 1.0, other);
+        auto* descriptive = dynamic_cast<DescriptiveWithinHostModel*>(second.get());
+        TS_ASSERT(descriptive);
+        wh->m_cumulative_h = wh->m_cumulative_Y = 0.0;
+        double exposure = 0.0;
+        const double original = wh->immunitySurvivalFactor(0.1, exposure);
+        TS_ASSERT_EQUALS(descriptive->immunitySurvivalFactor(0.1, exposure), 1.0);
+        config.alpha_m = 0.5;
+        TS_ASSERT_DIFFERS(wh->immunitySurvivalFactor(0.1, exposure), original);
+        TS_ASSERT_EQUALS(descriptive->immunitySurvivalFactor(0.1, exposure), 1.0);
+
+        WithinHostParameters common = other;
+        common.kind = WithinHostParameters::Kind::Dummy;
+        common.hetMassMultStdDev = 0.0;
+        common.minHetMassMult = 0.0;
+        auto third = WHInterface::createWithinHostModel(rng, 1.0, common);
+        TS_ASSERT(dynamic_cast<CommonWithinHost*>(third.get()));
+        TS_ASSERT(dynamic_cast<DescriptiveWithinHostModel*>(second.get()));
+    }
+
     void testImmunity () {
 	// Base case: virtually no immunity due to mother's immunity or past infections
         wh->m_cumulative_h = 0.0;
@@ -70,6 +98,7 @@ public:
     }
     
 private:
+    WithinHostParameters config;
     WHFalciparum* wh;
 };
 

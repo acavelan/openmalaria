@@ -28,12 +28,121 @@
 #include "Model.h"
 #include "mon/Continuous.h"
 #include "mon/Monitoring.h"
-#include "interventions/InterventionManager.h"
+#include "interventions/Interventions.h"
 #include "Host/NeonatalMortality.h"
 #include "Clinical/ClinicalModel.h"
 
 #include "checkpoint.h"
 #include "Transmission/TransmissionModel.h"
+
+#include "schema/scenario.h"
+#include "Transmission/VectorModel.h"
+#include "Transmission/NonVectorModel.h"
+#include "Transmission/Anopheles/SimpleMPDAnophelesModel.h"
+
+// This field order is the existing checkpoint format, not the in-memory layout.
+namespace OM::Transmission {
+template<class S>
+void TransmissionModel::checkpointFields(S& stream) {
+    simulationMode &stream;
+    interventionMode &stream;
+    initialisationEIR &stream;
+    laggedKappa &stream;
+    annualEIR &stream;
+    _annualAverageKappa &stream;
+    _sumAnnualKappa &stream;
+    tsAdultEIR &stream;
+    surveyInputEIR &stream;
+    surveySimulatedEIR &stream;
+    surveySimulatedEIR_i &stream;
+    surveySimulatedEIR_l &stream;
+    lastSurveyTime &stream;
+    adultAge &stream;
+    numTransmittingHumans &stream;
+}
+void TransmissionModel::checkpoint(istream& stream) { checkpointFields(stream); }
+void TransmissionModel::checkpoint(ostream& stream) { checkpointFields(stream); }
+
+template<class S>
+void NonVectorModel::checkpointFields(S& stream) {
+    TransmissionModel::checkpoint(stream);
+    nSpore &stream;
+    interventionEIR &stream;
+    initialKappa &stream;
+}
+void NonVectorModel::checkpoint(istream& stream) { checkpointFields(stream); }
+void NonVectorModel::checkpoint(ostream& stream) { checkpointFields(stream); }
+
+template<class S>
+void VectorModel::checkpointFields(S& stream) {
+    TransmissionModel::checkpoint(stream);
+    m_rng.checkpoint(stream);
+    initIterations &stream;
+    for (auto &s : species)
+        s->checkpoint(stream);
+}
+void VectorModel::checkpoint(istream& stream) { checkpointFields(stream); }
+void VectorModel::checkpoint(ostream& stream) { checkpointFields(stream); }
+
+template<class S>
+void Anopheles::AnophelesModel::checkpointFields(S& stream) {
+    mosq.seekingDeathRate & stream;
+    mosq.seekingDuration & stream;
+    mosq.probMosqSurvivalOvipositing & stream;
+    seekingDeathRateIntervs & stream;
+    probDeathOvipositingIntervs & stream;
+    partialEIR_i & stream;
+    partialEIR_l & stream;
+    EIRRotateAngle & stream;
+    FSCoeffic & stream;
+    forcedS_v & stream;
+    initNvFromSv & stream;
+    initOvFromSv & stream;
+    emergenceReduction & stream;
+    mosqEmergeRate & stream;
+    quinquennialS_v & stream;
+    initNv0FromSv & stream;
+    initSvFromEIR & stream;
+    mosq.restDuration & stream;
+    mosq.EIPDuration & stream;
+    N_v_length & stream;
+    P_A & stream;
+    P_df & stream;
+    P_dif_i & stream;
+    P_dif_l & stream;
+    P_dff & stream;
+    N_v & stream;
+    O_v_i & stream;
+    O_v_l & stream;
+    S_v_i & stream;
+    S_v_l & stream;
+    P_Amu & stream;
+    P_A1 & stream;
+    P_Ah & stream;
+    fArray & stream;
+    ftauArray & stream;
+    uninfected_v & stream;
+    timeStep_N_v0 & stream;
+
+}
+void Anopheles::AnophelesModel::checkpoint(istream& stream) { checkpointFields(stream); }
+void Anopheles::AnophelesModel::checkpoint(ostream& stream) { checkpointFields(stream); }
+
+template<class S>
+void Anopheles::SimpleMPDAnophelesModel::checkpointFields(S& stream) {
+    AnophelesModel::checkpoint(stream);
+
+    quinquennialOvipositing &stream;
+    developmentDuration &stream;
+    probPreadultSurvival &stream;
+    fEggsLaidByOviposit &stream;
+    invLarvalResources &stream;
+    nOvipositingDelayed &stream;
+
+}
+void Anopheles::SimpleMPDAnophelesModel::checkpoint(istream& stream) { checkpointFields(stream); }
+void Anopheles::SimpleMPDAnophelesModel::checkpoint(ostream& stream) { checkpointFields(stream); }
+}
 
 namespace OM
 {
@@ -61,11 +170,12 @@ void checkpoint (istream& stream, SimTime &endTime, SimTime &estEndTime, Model& 
     {
         util::checkpoint::header (stream);
         util::CommandLine::staticCheckpoint (stream);
-        Host::NeonatalMortality::staticCheckpoint (stream);
+        model.population.neonatalMortality & stream;
         model.reporting.newInfections & stream;
-        Clinical::InfantMortality::staticCheckpoint(stream);
+        model.reporting.infantMortality.deaths & stream;
+        model.reporting.infantMortality.intervalsAtRisk & stream;
         WithinHost::Genotypes::staticCheckpoint(stream);
-        mon::Continuous::checkpoint(stream);
+        mon::Continuous::checkpoint(model.reporting.continuous, stream);
         mon::checkpoint( stream );
 #       ifdef OM_STREAM_VALIDATOR
         util::StreamValidator & stream;
@@ -75,9 +185,9 @@ void checkpoint (istream& stream, SimTime &endTime, SimTime &estEndTime, Model& 
         endTime & stream;
         estEndTime & stream;
         *model.transmission & stream;
-        checkpoint(model.population, stream, model.parameters, model.masterRng, interventions::InterventionManager::components());
-        interventions::InterventionManager::checkpoint(stream);
-        interventions::InterventionManager::loadFromCheckpoint(model.population.humans, *model.transmission);
+        checkpoint(model.population, stream, model.parameters, model.masterRng, model.interventions.humanComponents);
+        model.interventions.checkpoint(stream);
+        model.interventions.loadFromCheckpoint(model.population.humans, *model.transmission);
         
         // read last, because other loads may use random numbers or expect time
         // to be negative
@@ -108,11 +218,12 @@ void checkpoint (ostream& stream, SimTime &endTime, SimTime &estEndTime, Model& 
         throw util::checkpoint_error ("Unable to write to file");
 
     util::CommandLine::staticCheckpoint (stream);
-    Host::NeonatalMortality::staticCheckpoint (stream);
+    model.population.neonatalMortality & stream;
     model.reporting.newInfections & stream;
-    Clinical::InfantMortality::staticCheckpoint(stream);
+    model.reporting.infantMortality.deaths & stream;
+    model.reporting.infantMortality.intervalsAtRisk & stream;
     WithinHost::Genotypes::staticCheckpoint(stream);
-    mon::Continuous::checkpoint(stream);
+    mon::Continuous::checkpoint(model.reporting.continuous, stream);
     mon::checkpoint( stream );
 # ifdef OM_STREAM_VALIDATOR
     util::StreamValidator & stream;
@@ -123,7 +234,7 @@ void checkpoint (ostream& stream, SimTime &endTime, SimTime &estEndTime, Model& 
     estEndTime & stream;
     *model.transmission & stream;
     checkpoint(model.population, stream);
-    interventions::InterventionManager::checkpoint( stream );
+    model.interventions.checkpoint( stream );
     
     sim::s_t0 & stream;
     sim::s_t1 & stream;

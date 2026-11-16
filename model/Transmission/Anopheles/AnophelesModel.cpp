@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "Transmission/Anopheles/SugarFeeding.h"
 #include "Global.h"
 #include "Transmission/TransmissionModel.h"
 #include "Transmission/Anopheles/AnophelesModel.h"
@@ -33,100 +34,6 @@
 
 #include <cmath>
 
-#include <stdio.h>
-#include <gsl/gsl_errno.h>
-#include <gsl/gsl_math.h>
-#include <gsl/gsl_roots.h>
-
-struct quadratic_params
-{
-    double ah; // The availability rate of hosts h. Time-1
-    double an; // The availability rate of hosts n. Time-1
-    double mu_v_interv; // Mosquito mortality rate while host-seeking. Time-1
-    double theta_d; // Proportion of the night that the mosquito spends host-seeking. Time.
-    double PAt_wanted; // PAt is the daily probability of a mosquito feeding on an ATSB
-};
-
-double quadratic_f (double x, void *params)
-{
-    struct quadratic_params *p = (struct quadratic_params *) params;
-
-    double ah = p->ah;
-    double an = p->an;
-    double mu_v_interv = p->mu_v_interv;
-    double theta_d = p->theta_d;
-    double PAt_wanted = p->PAt_wanted;
-    
-    double tmp = (x + ah + an + mu_v_interv);
-
-    return (1.0 - exp(-tmp * theta_d)) * x / tmp - PAt_wanted;
-}
-
-double quadratic_df (double x, void *params)
-{
-    struct quadratic_params *p = (struct quadratic_params *) params;
-
-    double ah = p->ah;
-    double an = p->an;
-    double mu_v_interv = p->mu_v_interv;
-    double theta_d = p->theta_d;
-
-    double tmp = (x + ah + an + mu_v_interv);
-
-    double a = (1.0 - exp(-tmp * theta_d)) * x / (tmp * tmp);
-    double b = (1.0 - exp(-tmp * theta_d)) / tmp;
-    double c = exp(-tmp * theta_d) * x * theta_d / tmp;
-
-    return -a + b + c;
-}
-
-void quadratic_fdf (double x, void *params, double *y, double *dy)
-{
-    struct quadratic_params *p = (struct quadratic_params *) params;
-
-    double ah = p->ah;
-    double an = p->an;
-    double mu_v_interv = p->mu_v_interv;
-    double theta_d = p->theta_d;
-    double PAt_wanted = p->PAt_wanted;
-
-    double tmp = (x + ah + an + mu_v_interv);
-
-    double a = (1.0 - exp(-tmp)) * x / (tmp * tmp);
-    double b = (1.0 - exp(-tmp)) / tmp;
-    double c = exp(-tmp * theta_d) * x * theta_d / tmp;
-
-    *y = (1.0 - exp(-tmp * theta_d)) * x / tmp - PAt_wanted;
-    *dy = -a + b + c;
-}
-
-#define USE_DERIVATIVE
-
-#ifdef USE_DERIVATIVE
-    using gsl_root_solver_type = gsl_root_fdfsolver_type;
-    using gsl_root_solver = gsl_root_fdfsolver;
-    auto gsl_root_solver_alloc = gsl_root_fdfsolver_alloc;
-    auto gsl_root_solver_free = gsl_root_fdfsolver_free;
-    auto gsl_root_solver_name = gsl_root_fdfsolver_name;
-    auto gsl_root_solver_iterate = gsl_root_fdfsolver_iterate;
-    auto gsl_root_solver_root = gsl_root_fdfsolver_root;
-    // auto gsl_root_solver_method = gsl_root_fdfsolver_newton;
-    auto gsl_root_solver_method = gsl_root_fdfsolver_secant;
-    // auto gsl_root_solver_method = gsl_root_fdfsolver_steffenson;
-#else
-    using gsl_root_solver_type = gsl_root_fsolver_type;
-    using gsl_root_solver = gsl_root_fsolver;
-    auto gsl_root_solver_alloc = gsl_root_fsolver_alloc;
-    auto gsl_root_solver_free = gsl_root_fsolver_free;
-    auto gsl_root_solver_name = gsl_root_fsolver_name;
-    auto gsl_root_solver_iterate = gsl_root_fsolver_iterate;
-    auto gsl_root_solver_root = gsl_root_fsolver_root;
-    // auto gsl_root_solver_method = gsl_root_fsolver_brent;
-    auto gsl_root_solver_method = gsl_root_fsolver_bisection;
-    // auto gsl_root_solver_method = gsl_root_fsolver_falsepos;
-#endif
-
-
 namespace OM
 {
 namespace Transmission
@@ -135,6 +42,23 @@ namespace Anopheles
 {
 using namespace OM::util;
 using WithinHost::Genotypes;
+
+void deploy(NhhIntervention& effect, LocalRng& rng, SimTime time) {
+    effect.availability.deploy(rng, time);
+    effect.biting.deploy(rng, time);
+    effect.restingSite.deploy(rng, time);
+    effect.resting.deploy(rng, time);
+    effect.fecundity.deploy(rng, time);
+}
+
+Nhh applyIntervention(Nhh host, const NhhIntervention& effect, SimTime time) {
+    host.avail_i *= 1.0 - effect.availability.current_value(time);
+    host.P_B_I *= 1.0 - effect.biting.current_value(time);
+    host.P_C_I *= 1.0 - effect.restingSite.current_value(time);
+    host.P_D_I *= 1.0 - effect.resting.current_value(time);
+    host.rel_fecundity *= 1.0 - effect.fecundity.current_value(time);
+    return host;
+}
 
 // -----  Initialisation of model, done before human warmup  ------
 
@@ -399,49 +323,6 @@ void AnophelesModel::init2(int nHumans, double meanPopAvail, double sum_avail, d
 bool AnophelesModel::initIterate() { return true; }
 //@}
 
-void AnophelesModel::initVectorInterv(const scnXml::VectorSpeciesIntervention &elt, size_t instance)
-{
-    if (emergenceReduction.size() <= instance) emergenceReduction.resize(instance + 1);
-
-    if (elt.getEmergenceReduction().present())
-    {
-        const scnXml::EmergenceReduction &elt2 = elt.getEmergenceReduction().get();
-        if (elt2.getInitial() > 1.0) throw util::xml_scenario_error("emergenceReduction intervention: initial effect must be ≤ 1");
-        emergenceReduction[instance].set(elt2.getInitial(), elt2.getDecay(), "emergenceReduction");
-    }
-    if (probAdditionalDeathSugarFeedingIntervs.size() <= instance) probAdditionalDeathSugarFeedingIntervs.resize(instance + 1);
-    if (seekingDeathRateIntervs.size() <= instance) seekingDeathRateIntervs.resize(instance + 1);
-    if (probDeathOvipositingIntervs.size() <= instance) probDeathOvipositingIntervs.resize(instance + 1);
-
-    if (elt.getProbAdditionalDeathSugarFeeding().present())
-    {
-        const scnXml::ProbAdditionalDeathSugarFeeding &elt2 = elt.getProbAdditionalDeathSugarFeeding().get();
-        if (elt2.getInitial() < -1.0) throw util::xml_scenario_error("probAdditionalDeathSugarFeeding intervention: initial effect must be ≥ -1");
-        probAdditionalDeathSugarFeedingIntervs[instance].set(elt2.getInitial(), elt2.getDecay(), "seekingDeathRateIncrease");
-    }
-    if (elt.getSeekingDeathRateIncrease().present())
-    {
-        const scnXml::SeekingDeathRateIncrease &elt2 = elt.getSeekingDeathRateIncrease().get();
-        if (elt2.getInitial() < -1.0) throw util::xml_scenario_error("seekingDeathRateIncrease intervention: initial effect must be ≥ -1");
-        seekingDeathRateIntervs[instance].set(elt2.getInitial(), elt2.getDecay(), "seekingDeathRateIncrease");
-    }
-    if (elt.getProbDeathOvipositing().present())
-    {
-        const scnXml::ProbDeathOvipositing &elt2 = elt.getProbDeathOvipositing().get();
-        if (elt2.getInitial() < 0.0 || elt2.getInitial() > 1.0)
-            throw util::xml_scenario_error("probDeathOvipositing intrevention: initial effect must be in range [0,1]");
-        probDeathOvipositingIntervs[instance].set(elt2.getInitial(), elt2.getDecay(), "probDeathOvipositing");
-    }
-}
-void AnophelesModel::initVectorTrap(const scnXml::Description1 &desc, size_t instance)
-{
-    assert(trapParams.size() == instance); // if triggered, this is a code error not XML
-    TrapParams params;
-    params.relAvail = desc.getRelativeAvailability().getValue();
-    params.availDecay = DecayFunction::makeObject(desc.getDecayOfAvailability(), "decayOfAvailability");
-    trapParams.push_back(std::move(params));
-}
-
 void AnophelesModel::deployVectorPopInterv(LocalRng &rng, size_t instance)
 {
     assert(instance < emergenceReduction.size());
@@ -459,7 +340,7 @@ void AnophelesModel::deployVectorTrap(LocalRng &rng, const HostSpeciesParameters
     data.instance = instance;
     const double adultAvail = anophParams.entoAvailability->mean() * anophParams.entoAvailabilityFactor;
     data.initialAvail = popSize * adultAvail * trapParams[instance].relAvail;
-    data.availHet = trapParams[instance].availDecay->hetSample(rng);
+    data.availHet = trapParams[instance].availDecay.heterogeneity.sample(rng);
     data.deployTime = sim::now();
     data.expiry = sim::now() + lifespan;
     baitedTraps.push_back(std::move(data));
@@ -525,59 +406,17 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
     double modified_nhh_sigma_df = 0.0;
     double modified_nhh_sigma_dff = 0.0;
 
-    map<string, Nhh> currentNhh = nhhInstances;
-
-    for (auto it = reduceNhhAvailability.begin(); it != reduceNhhAvailability.end(); ++it)
+    // Copy one host's scalar state; never change the deployed baseline values.
+    for (const auto& [name, baseline] : nhhInstances)
     {
-        for (const auto &decay : it->second)
-        {
-            if (currentNhh.count(it->first) != 0) // Check that the non-human hosts still exist
-                currentNhh[it->first].avail_i *= 1.0 - decay.current_value(sim::ts0());
-        }
-    }
-
-    for (auto it = reduceP_B_I.begin(); it != reduceP_B_I.end(); ++it)
-    {
-        for (const auto &decay : it->second)
-        {
-            if (currentNhh.count(it->first) != 0) // Check that the non-human hosts still exist
-                currentNhh[it->first].P_B_I *= 1.0 - decay.current_value(sim::ts0());
-        }
-    }
-
-    for (auto it = reduceP_C_I.begin(); it != reduceP_C_I.end(); ++it)
-    {
-        for (const auto &decay : it->second)
-        {
-            if (currentNhh.count(it->first) != 0) // Check that the non-human hosts still exist
-                currentNhh[it->first].P_C_I *= 1.0 - decay.current_value(sim::ts0());
-        }
-    }
-
-    for (auto it = reduceP_D_I.begin(); it != reduceP_D_I.end(); ++it)
-    {
-        for (const auto &decay : it->second)
-        {
-            if (currentNhh.count(it->first) != 0) // Check that the non-human hosts still exist
-                currentNhh[it->first].P_D_I *= 1.0 - decay.current_value(sim::ts0());
-        }
-    }
-
-    for (auto it = reduceFecundity.begin(); it != reduceFecundity.end(); ++it)
-    {
-        for (const auto &decay : it->second)
-        {
-            if (currentNhh.count(it->first) != 0) // Check that the non-human hosts still exist
-                currentNhh[it->first].rel_fecundity *= 1.0 - decay.current_value(sim::ts0());
-        }
-    }
-
-    for (auto it = currentNhh.begin(); it != currentNhh.end(); ++it)
-    {
-        modified_nhh_avail += it->second.avail_i;
-        const double df = it->second.avail_i * it->second.P_B_I * it->second.P_C_I * it->second.P_D_I; // term in P_df series
+        Nhh host = baseline;
+        if (auto it = nhhInterventions.find(name); it != nhhInterventions.end())
+            for (const auto& effect : it->second)
+                host = applyIntervention(host, effect, sim::ts0());
+        modified_nhh_avail += host.avail_i;
+        const double df = host.avail_i * host.P_B_I * host.P_C_I * host.P_D_I;
         modified_nhh_sigma_df += df;
-        modified_nhh_sigma_dff += df * it->second.rel_fecundity;
+        modified_nhh_sigma_dff += df * host.rel_fecundity;
     }
 
     leaveRate += modified_nhh_avail;
@@ -593,7 +432,7 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
             continue;
         }
         SimTime age = sim::ts0() - it->deployTime;
-        double decayCoeff = it->availHet->eval(age);
+        double decayCoeff = util::eval(trapParams[it->instance].availDecay, age, *it->availHet);
         leaveRate += it->initialAvail * decayCoeff;
         // sigma_df doesn't change: mosquitoes do not survive traps
         it++;
@@ -608,50 +447,9 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
     if(pDeathSeeking > 1.0)
          throw xml_scenario_error("VectorPop: the cumulative probability of death wile seeking is greater than 1 during the simulation");
 
-    if(pDeathSeeking > 0.0)
-    {
-        int status;
-        int iter = 0, max_iter = 20;
-
-        double x0, a_t = 0.5; // guess
-
-        struct quadratic_params params = { sum_avail, modified_nhh_avail, mu_v_interv, mosq.seekingDuration, pDeathSeeking};
-
-        const gsl_root_solver_type *T = gsl_root_solver_method;
-        gsl_root_solver *s = gsl_root_solver_alloc(T);
-
-        #ifdef USE_DERIVATIVE
-            gsl_function_fdf FDF;
-            FDF.f = &quadratic_f;
-            FDF.df = &quadratic_df;
-            FDF.fdf = &quadratic_fdf;
-            FDF.params = &params;
-
-            gsl_root_fdfsolver_set (s, &FDF, a_t);
-        #else
-            gsl_function F;
-            F.function = &quadratic_f;
-            F.params = &params;
-
-            gsl_root_fsolver_set (s, &F, 0.0, 1.0);
-        #endif
-
-        do
-        {
-            iter++;
-            status = gsl_root_solver_iterate (s);
-            x0 = a_t;
-            a_t = gsl_root_solver_root (s);
-
-            status = gsl_root_test_delta (a_t, x0, 0, 1e-4);
-        }
-        while (status == GSL_CONTINUE && iter < max_iter);
-
-        gsl_root_solver_free (s);
-
-        leaveRate += a_t;
-    }
-    // =============================================================
+    if (pDeathSeeking > 0.0)
+        leaveRate += sugarFeedingAvailability({sum_avail, modified_nhh_avail,
+            mu_v_interv, mosq.seekingDuration, pDeathSeeking});
 
     // Probability of a mosquito not finding a host this day:
     double tsP_A = exp(-leaveRate * mosq.seekingDuration);
@@ -826,16 +624,10 @@ void AnophelesModel::update(SimTime d0, double tsP_A, double tsP_Amu, double tsP
 }
 
 // -----  Summary and intervention functions  -----
-void AnophelesModel::changeEIRIntervention(const scnXml::NonVector &nonVectorData)
+void AnophelesModel::changeEIRIntervention(const vector<double>& daily)
 {
-    // assert(nonVectorData.getEIRDaily().present()); // XML loading code should enforce this
-    const scnXml::NonVector::EIRDailySequence &daily = nonVectorData.getEIRDaily();
-
-    // const scnXml::DailyValues &seasM = seasonality.getDailyValues().get();
-    // const scnXml::DailyValues::ValueSequence &daily = seasM.getValue();
-
     // The minimum EIR allowed in the array. The product of the average EIR and a constant.
-    double minEIR = 0.01 * averageEIR(nonVectorData);
+    double minEIR = 0.01 * averageEIR(daily);
 
     if (daily.size() < static_cast<size_t>(sim::oneYear()))
         throw util::xml_scenario_error("entomology.anopheles.seasonality.dailyValues insufficient daily data for a year");

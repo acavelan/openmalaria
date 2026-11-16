@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "ScenarioXml.h"
 #include "interventions/ITN.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -500,16 +501,16 @@ ITNComponent::ITNComponent( ComponentId id, const scnXml::ITNDescription& elt,
         VectorInterventionComponent(id),
         ripFactor( numeric_limits<double>::signaling_NaN() )
 {
-    initialInsecticide.setParams( elt.getInitialInsecticide() );
+    initialInsecticide = xml::readNormalSampler(elt.getInitialInsecticide());
     const double maxProp = 0.999;       //NOTE: this could be exposed in XML, but probably doesn't need to be
     maxInsecticide = R::qnorm5(maxProp, initialInsecticide.getMu(), initialInsecticide.getSigma(), true, false);
-    holeRate = util::createSampler(elt.getHoleRate());    // per year
-    holeRate->scaleMean( sim::yearsPerStep() );  // convert to per step
-    ripRate = util::createSampler(elt.getRipRate());
-    ripRate->scaleMean( sim::yearsPerStep() );
+    holeRate = xml::readSampler(elt.getHoleRate());    // per year
+    holeRate.scaleMean( sim::yearsPerStep() );  // convert to per step
+    ripRate = xml::readSampler(elt.getRipRate());
+    ripRate.scaleMean( sim::yearsPerStep() );
     ripFactor = elt.getRipFactor().getValue();
-    insecticideDecay = DecayFunction::makeObject( elt.getInsecticideDecay(), "ITNDescription.insecticideDecay" );
-    attritionOfNets = DecayFunction::makeObject( elt.getAttritionOfNets(), "ITNDescription.attritionOfNets" );
+    insecticideDecay = xml::readDecay( elt.getInsecticideDecay(), "ITNDescription.insecticideDecay" );
+    attritionOfNets = xml::readDecay( elt.getAttritionOfNets(), "ITNDescription.attritionOfNets" );
     // assume usage modifier is 100% if none is specified
     double propUse;
     if (elt.getUsage().present()) {
@@ -634,12 +635,12 @@ HumanITN::HumanITN( LocalRng& rng, const ITNComponent& params ) :
     // handling of net. They are sampled once per human: human handling is
     // presumed to be the largest cause of variance.
     util::NormalSample x = util::NormalSample::generate(rng);
-    holeRate = params.holeRate->sample(x);
-    ripRate = params.ripRate->sample(x);
-    insecticideDecayHet = params.insecticideDecay->hetSample(x);
+    holeRate = params.holeRate.sample(x);
+    ripRate = params.ripRate.sample(x);
+    insecticideDecayHet = params.insecticideDecay.heterogeneity.sample(x);
 
     // Sample per-deployment variables as in redeploy:
-    disposalTime = sim::now() + params.attritionOfNets->sampleAgeOfDecay(rng);
+    disposalTime = sim::now() + util::sampleAgeOfDecay(params.attritionOfNets, rng, sim::oneTS());
     // this is sampled independently: initial insecticide content doesn't depend on handling
     initialInsecticide = params.initialInsecticide.sample(rng);
     if( initialInsecticide < 0.0 )
@@ -648,11 +649,11 @@ HumanITN::HumanITN( LocalRng& rng, const ITNComponent& params ) :
         initialInsecticide = params.maxInsecticide;
 }
 
-void HumanITN::redeploy(LocalRng& rng, const VectorInterventionComponent& params0) {
-    const ITNComponent& params = *dynamic_cast<const ITNComponent*>(&params0);
+void HumanITN::redeploy(LocalRng& rng) {
+    const ITNComponent& params = parameters;
     
     deployTime = sim::nowOrTs1();
-    disposalTime = sim::nowOrTs1() + params.attritionOfNets->sampleAgeOfDecay(rng);
+    disposalTime = sim::nowOrTs1() + util::sampleAgeOfDecay(params.attritionOfNets, rng, sim::oneTS());
     nHoles = 0;
     holeIndex = 0.0;
     // this is sampled independently: initial insecticide content doesn't depend on handling
@@ -721,7 +722,7 @@ void HumanITN::checkpoint( ostream& stream ){
     initialInsecticide & stream;
     holeRate & stream;
     ripRate & stream;
-    parameters.insecticideDecay->checkpointSample(insecticideDecayHet, stream);
+    util::checkpointDecaySample(insecticideDecayHet, stream);
 }
 HumanITN::HumanITN( istream& stream, ComponentId id, const ITNComponent& params ) : VectorInterventionState( id ), parameters(params)
 {
@@ -732,7 +733,7 @@ HumanITN::HumanITN( istream& stream, ComponentId id, const ITNComponent& params 
     initialInsecticide & stream;
     holeRate & stream;
     ripRate & stream;
-    parameters.insecticideDecay->checkpointSample(insecticideDecayHet, stream);
+    util::checkpointDecaySample(insecticideDecayHet, stream);
 }
 
 } }

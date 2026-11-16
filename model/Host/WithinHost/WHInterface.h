@@ -33,14 +33,10 @@
 
 using namespace std;
 
-namespace scnXml{
-    class Scenario;
-    class Model;
-    class TreatmentOption;
-}
 class UnittestUtil;
 
 namespace OM {
+namespace interventions { struct Interventions; }
 namespace Host {
     struct Human;
 }
@@ -48,25 +44,8 @@ namespace WithinHost {
 
 using util::LocalRng;
 
-/**
- * Type used to select a treatment option.
- * 
- * Pass by value; it just hides an integer.
- * 
- * Note: this struct and the Treatments class offer a sub-set of the
- * functionality offered by CMDecisionTree, and thus is technically redundant.
- */
-struct TreatmentId{
-    inline bool operator==( const TreatmentId that ){ return id == that.id; }
-    inline bool operator!=( const TreatmentId that ){ return id != that.id; }
-    
-    /// Default constructor: construct to an initial value. Don't pass this value to WHInterface::treatment()!
-    TreatmentId() : id(numeric_limits<uint32_t>::max()) {}
-private:
-    explicit TreatmentId(uint32_t id) : id(id) {}
-    uint32_t id;
-    friend class Treatments;
-};
+struct Treatment;
+struct WithinHostParameters;
 
 /**
  * Interface to the within-host models. These models encapsulate the infections
@@ -78,15 +57,8 @@ class WHInterface {
 public:
     /// @brief Static methods
     //@{
-    /// Initialise static parameters
-    static void init(const OM::Parameters& parameters, const scnXml::Scenario& scenario);
     
-    /** Configure a new treatment option, and return the code used to select
-     * that option later. */
-    static TreatmentId addTreatment( const scnXml::TreatmentOption& desc );
-
-    /// Create an instance using the appropriate model
-    static unique_ptr<WHInterface> createWithinHostModel( LocalRng& rng, double comorbidityFactor );
+    static unique_ptr<WHInterface> createWithinHostModel( LocalRng& rng, double comorbidityFactor, const WithinHostParameters& config );
     //@}
 
     /// @brief Constructors, destructors and checkpointing functions
@@ -130,7 +102,7 @@ public:
      * 
      * This may be used by intervention deployment, thus should use time 
      * sim::nowOrTs1(). */
-    virtual void treatment( Host::Human& human, TreatmentId treatId ) =0;
+    void treatment( Host::Human& human, const Treatment& treat );
     
     /// Conditionally gives Primaquine as a treatment. Reports as appropriate.
     virtual void optionalPqTreatment( Host::Human& human ) =0;
@@ -214,8 +186,6 @@ protected:
     friend class ::UnittestUtil;
 };
 
-/// True if any by-genotype reporting is enabled (read-only)
-extern bool reportInfectionsByGenotype;
 
 }
 }

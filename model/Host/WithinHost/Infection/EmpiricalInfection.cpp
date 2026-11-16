@@ -21,7 +21,6 @@
  */
 
 #include "Host/WithinHost/Infection/EmpiricalInfection.h"
-#include "Host/WithinHost/CommonWithinHost.h"
 #include "util/random.h"
 #include "util/errors.h"
 #include "util/CommandLine.h"
@@ -60,17 +59,7 @@ double EmpiricalInfection::_extinctionLevel;
 double EmpiricalInfection::_overallMultiplier;
 
 
-CommonInfection* createEmpiricalInfection (LocalRng& rng, uint32_t protID, int origin) {
-    return new EmpiricalInfection (rng, protID, origin, 1);
-}
-CommonInfection* checkpointedEmpiricalInfection (istream& stream) {
-    return new EmpiricalInfection (stream);
-}
-
-
 void EmpiricalInfection::init(){
-    CommonWithinHost::createInfection = &createEmpiricalInfection;
-    CommonWithinHost::checkpointedInfection = &checkpointedEmpiricalInfection;
     
   // alpha1 corresponds to 1 day before first patent, alpha2 2 days before first patent etc.
   _alpha1=0.2647;

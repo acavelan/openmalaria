@@ -27,8 +27,6 @@
 
 namespace OM { namespace WithinHost {
 
-//! Create a dummy infection (used directly by unit test).
-CommonInfection* createDummyInfection (LocalRng& rng, uint32_t protID, int origin);
 
 //!  Models of infection.
 /*!
@@ -43,7 +41,6 @@ public:
     
     virtual ~DummyInfection () {}
     
-    static void init ();
     
     virtual bool updateDensity( LocalRng& rng, double survivalFactor, SimTime bsAge, double );
 };

@@ -21,7 +21,6 @@
  */
 
 #include "Host/WithinHost/Infection/MolineauxInfection.h"
-#include "Host/WithinHost/CommonWithinHost.h"
 #include "util/random.h"
 #include "util/errors.h"
 #include "util/CommandLine.h"
@@ -151,17 +150,7 @@ const double case_specific_data[] = {
 
 // ———  static (non-class-member) code  ———
 
-CommonInfection* createMolineauxInfection (LocalRng& rng, uint32_t protID, int origin) {
-    return new MolineauxInfection (rng, protID, origin);
-}
-
-CommonInfection* checkpointedMolineauxInfection (istream& stream) {
-    return new MolineauxInfection (stream);
-}
-
 void MolineauxInfection::init( const Parameters& parameters ){
-    CommonWithinHost::createInfection = &createMolineauxInfection;
-    CommonWithinHost::checkpointedInfection = &checkpointedMolineauxInfection;
     
     multi_factor_gamma = util::ModelOptions::option( util::PARASITE_REPLICATION_GAMMA );
     

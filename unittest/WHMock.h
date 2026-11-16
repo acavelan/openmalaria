@@ -32,7 +32,7 @@ using namespace std;
 namespace OM {
 namespace WithinHost {
 namespace Pathogenesis {
-    class PathogenesisModel;
+    struct PathogenesisModel;
 }
 }
 
@@ -50,7 +50,6 @@ public:
     virtual double probTransmissionToMosquito(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l) const;
     virtual bool summarize(Host::Human& human)const;
     virtual void importInfection(LocalRng& rng);
-    virtual void treatment( Host::Human& human, TreatmentId treatId );
     virtual void optionalPqTreatment( Host::Human& human );
     virtual bool treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlood );
     virtual void treatPkPd(size_t schedule, size_t dosages, double age, double delay_d);

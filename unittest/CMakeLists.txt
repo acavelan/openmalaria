@@ -37,10 +37,15 @@ set (OM_CXXTEST_HEADERS
   DummyInfectionSuite.h
   EmpiricalInfectionSuite.h
   InfectionImmunitySuite.h
+  NativeConfigurationSuite.h
   IncidenceSuite.h
   HumanTransmissionSuite.h
+  InterventionsSuite.h
+  VaccineSuite.h
+  PopulationStateSuite.h
+  SugarFeedingSuite.h
+  NhhInterventionSuite.h
   #DescriptiveInfectionSuite.h
-  #ESCaseManagementSuite.h
   CMDecisionTreeSuite.h
   AgeGroupInterpolationSuite.h
   DecayFunctionSuite.h

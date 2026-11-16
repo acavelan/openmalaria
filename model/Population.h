@@ -22,12 +22,15 @@
 
 #pragma once
 #include "Host/Human.h"
+#include "Host/NeonatalMortality.h"
 
 namespace OM {
+namespace mon::Continuous { struct State; }
 struct Population {
     size_t targetSize = 0;
     int recentBirths = 0;
     vector<Host::Human> humans;
+    Host::NeonatalMortality neonatalMortality;
 };
 
 void createInitialHumans(Population&, const ModelParameters&, util::MasterRng&);
@@ -36,7 +39,7 @@ void checkpoint(Population&, istream&, const ModelParameters&, util::MasterRng&,
     const vector<unique_ptr<interventions::HumanInterventionComponent>>& definitions);
 void checkpoint(Population&, ostream&);
 
-void registerContinousPopulationCallbacks(const Transmission::HostTransmissionParameters& parameters);
+void registerContinousPopulationCallbacks(const Transmission::HostTransmissionParameters& parameters, mon::Continuous::State& reporting);
 
 /// Delegate to print the number of hosts
 void ctsHosts (Population &population, ostream& stream);

@@ -25,7 +25,8 @@
 
 #include "Global.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/Treatments.h"
+#include "Host/WithinHost/WithinHostParameters.h"
+#include "Host/WithinHost/Treatment.h"
 #include "util/vectors.h"
 
 #include <list>
@@ -38,7 +39,7 @@ class InfectionImmunitySuite;
 namespace OM {
 namespace WithinHost {
 namespace Pathogenesis {
-    class PathogenesisModel;
+    struct PathogenesisModel;
 }
 
 /**
@@ -48,13 +49,11 @@ class WHFalciparum : public WHInterface {
 public:
     /// @brief Static methods
     //@{
-    /// Initialise static parameters
-    static void init( const OM::Parameters& parameters, const scnXml::Model& model );
     //@}
 
     /// @brief Constructors, destructors and checkpointing functions
     //@{
-    WHFalciparum( LocalRng& rng, double comorbidityFactor );
+    WHFalciparum( LocalRng& rng, double comorbidityFactor, const WithinHostParameters& config );
     virtual ~WHFalciparum();
     //@}
     
@@ -66,7 +65,6 @@ public:
     virtual inline double getTotalDensity() const{ return totalDensity; }
     
     virtual bool diagnosticResult( LocalRng& rng, const Diagnostic& diagnostic ) const;
-    virtual void treatment( Host::Human& human, TreatmentId treatId );
     virtual bool treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlood );
     
     virtual Pathogenesis::StatePair determineMorbidity( Host::Human& human, double ageYears, bool isDoomed );
@@ -83,7 +81,7 @@ protected:
      * 
      * @param stage Which stages of the infection are affected
      */
-    virtual void clearInfections( Treatments::Stages stage ) =0;
+    virtual void clearInfections( Treatment::Stages stage ) =0;
     
     ///@brief Immunity model parameters
     //@{
@@ -133,7 +131,7 @@ protected:
     std::vector<double> m_y_lag_i, m_y_lag_l;
     
     /// The PathogenesisModel introduces illness dependant on parasite density
-    unique_ptr<Pathogenesis::PathogenesisModel> pathogenesisModel;
+    Pathogenesis::PathogenesisModel pathogenesisModel;
     
     /// End of step on which treatment expires = start of first step after expiry
     SimTime treatExpiryLiver, treatExpiryBlood;
@@ -141,11 +139,7 @@ protected:
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
 
-    /// Length of m_y_lag array. Wouldn't have to be dynamic if Global::interval was known at compile-time.
-    /// set by initHumanParameters
-    static int y_lag_len;
-    
-    static void setParams(double cumYStar, double cumHStar, double aM, double dM);   // for unit test only
+    const WithinHostParameters& config;
     friend class ::InfectionImmunitySuite;
 };
 

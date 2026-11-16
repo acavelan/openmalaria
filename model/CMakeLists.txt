@@ -35,6 +35,8 @@ configure_file(
 set (Model_CPP
   Model.cpp
   ModelInitialization.cpp
+  ScenarioXml.cpp
+  Transmission/HostTransmissionParameters.cpp
   sim.cpp
   Population.cpp
   PopulationAgeStructure.cpp
@@ -46,7 +48,7 @@ set (Model_CPP
   
   Clinical/ClinicalModel.cpp
   Clinical/EventScheduler.cpp
-  Clinical/ESCaseManagement.cpp
+  Clinical/ClinicalXml.cpp
   Clinical/CMDecisionTree.cpp
   Clinical/ImmediateOutcomes.cpp
   Clinical/Episode.cpp
@@ -61,14 +63,15 @@ set (Model_CPP
   PkPd/Drug/LSTMDrugType.cpp
   PkPd/LSTMTreatments.cpp
   
-  Transmission/transmission.cpp
   Transmission/VectorModel.cpp
   Host/HumanTransmission.cpp
   interventions/HumanComponents.cpp
   Transmission/Anopheles/AnophelesModel.cpp
+  Transmission/Anopheles/SugarFeeding.cpp
   Transmission/Anopheles/CalcNvO.cpp
   
   Host/WithinHost/WHInterface.cpp
+  Host/WithinHost/WithinHostXml.cpp
   Host/WithinHost/WHFalciparum.cpp
   Host/WithinHost/WHVivax.cpp
   Host/WithinHost/CommonWithinHost.cpp
@@ -81,9 +84,7 @@ set (Model_CPP
   Host/WithinHost/Infection/MolineauxInfection.cpp
   Host/WithinHost/Infection/PennyInfection.cpp
   Host/WithinHost/Pathogenesis/PathogenesisModel.cpp
-  Host/WithinHost/Pathogenesis/Submodels.cpp
   Host/WithinHost/Diagnostic.cpp
-  Host/WithinHost/Treatments.cpp
   
   mon/Monitoring.cpp
   mon/init.cpp
@@ -100,7 +101,7 @@ set (Model_CPP
   util/UnitParse.cpp
   util/DecayFunction.cpp
   
-  interventions/InterventionManager.cpp
+  interventions/Interventions.cpp
   interventions/ITN.cpp
   interventions/IRS.cpp
   interventions/GVI.cpp

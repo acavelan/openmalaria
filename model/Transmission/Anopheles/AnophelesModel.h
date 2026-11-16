@@ -149,6 +149,12 @@ struct NhhParams {
     string name;
 };
 
+// Parameters for introducing animal hosts, in mosquito species order.
+struct NhhDeploymentParameters {
+    double relativeAvailabilityHuman;
+    double biting, findingRestSite, resting, fecundity;
+};
+
 struct Nhh {
     double avail_i;
     double P_B_I;
@@ -158,18 +164,25 @@ struct Nhh {
     SimTime expiry = sim::never();
 };
 
+struct NhhIntervention {
+    util::SimpleDecayingValue availability, biting, restingSite, resting, fecundity;
+};
+
+void deploy(NhhIntervention&, util::LocalRng&, SimTime time);
+Nhh applyIntervention(Nhh host, const NhhIntervention&, SimTime time);
+
 struct TrapParams {
     TrapParams(): relAvail(numeric_limits<double>::signaling_NaN()) {}
     TrapParams(TrapParams&& o): relAvail(o.relAvail), availDecay(std::move(o.availDecay)) {}
     
     double relAvail; // Initial availability of a trap relative to an adult
-    unique_ptr<util::DecayFunction> availDecay; // Decay of availability
+    util::DecayFunction availDecay; // Decay of availability
 };
 
 struct TrapData {
     size_t instance; // index in trapParams
     double initialAvail; // initial availability (avail per trap * num traps)
-    unique_ptr<DecayFunction> availHet; // parameter for decay of availability
+    util::DecaySample availHet; // parameter for decay of availability
     SimTime deployTime = sim::never(); // deploy time (for decay function)
     SimTime expiry = sim::never(); // date at which this intervention should be deleted
 };
@@ -263,12 +276,6 @@ public:
     virtual void init2 (int nHumans, double meanPopAvail,
         double sum_avail, double sigma_f, double sigma_df, double sigma_dff);
     
-    /** Set up the non-host-specific interventions. */
-    void initVectorInterv( const scnXml::VectorSpeciesIntervention& elt, size_t instance );
-    
-    /** Set up trap parameters. */
-    void initVectorTrap( const scnXml::Description1& desc, size_t instance );
-    
     /** Work out whether another interation is needed for initialisation and if
      * so, make necessary changes.
      *
@@ -345,7 +352,7 @@ public:
     inline double getInterventionEIR() const{ return interventionEIR[sim::inSteps(sim::intervTime())] / initAvail; }
     //@}
 
-    void changeEIRIntervention(const scnXml::NonVector &nonVectorData);
+    void changeEIRIntervention(const vector<double>& daily);
 
     ///@brief Interventions and reporting
     //@{
@@ -383,57 +390,11 @@ public:
     void summarize( size_t species )const;
     //@}
     
-    virtual void checkpoint (istream& stream){ (*this) & stream; }
-    virtual void checkpoint (ostream& stream){ (*this) & stream; }
+    virtual void checkpoint(istream& stream);
+    virtual void checkpoint(ostream& stream);
 
-    /// Checkpointing
-    //Note: below comments about what does and doesn't need checkpointing are ignored here.
-    template<class S>
-    void operator& (S& stream) {
-        mosq.seekingDeathRate & stream;
-        mosq.seekingDuration & stream;
-        mosq.probMosqSurvivalOvipositing & stream;
-        // transmission & stream;
-        seekingDeathRateIntervs & stream;
-        probDeathOvipositingIntervs & stream;
-        partialEIR_i & stream;
-        partialEIR_l & stream;
-        EIRRotateAngle & stream;
-        FSCoeffic & stream;
-        forcedS_v & stream;
-        initNvFromSv & stream;
-        initOvFromSv & stream;
-        emergenceReduction & stream;
-        // interventionSurvival & stream;
-        // EmergenceModel
-        mosqEmergeRate & stream;
-        quinquennialS_v & stream;
-        initNv0FromSv & stream;
-        initSvFromEIR & stream;
-        // (*emergence) & stream;
-        // MosqTransmission
-        mosq.restDuration & stream;
-        mosq.EIPDuration & stream;
-        N_v_length & stream;
-        P_A & stream;
-        P_df & stream;
-        P_dif_i & stream;
-        P_dif_l & stream;
-        P_dff & stream;
-        N_v & stream;
-        O_v_i & stream;
-        O_v_l & stream;
-        S_v_i & stream;
-        S_v_l & stream;
-        P_Amu & stream;
-        P_A1 & stream;
-        P_Ah & stream;
-        //TODO: do we actually need to checkpoint these next three?
-        fArray & stream;
-        ftauArray & stream;
-        uninfected_v & stream;
-        timeStep_N_v0 & stream;
-    }
+    template<class S> void operator&(S& stream) { AnophelesModel::checkpoint(stream); }
+    template<class S> void checkpointFields(S& stream);
 
     MosquitoParams mosq;
 
@@ -647,7 +608,7 @@ public:
      * date; total availability is the sum. */
     list<TrapData> baitedTraps;
 
-    map<string,vector<util::SimpleDecayingValue>> reduceNhhAvailability, reduceP_B_I, reduceP_C_I, reduceP_D_I, reduceFecundity;
+    map<string, vector<NhhIntervention>> nhhInterventions;
 
     /** Description of intervention killing effects on emerging pupae */
     vector<util::SimpleDecayingValue> emergenceReduction;

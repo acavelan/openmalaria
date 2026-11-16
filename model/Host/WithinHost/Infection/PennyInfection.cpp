@@ -21,7 +21,6 @@
  */
 
 #include "Host/WithinHost/Infection/PennyInfection.h"
-#include "Host/WithinHost/CommonWithinHost.h"
 #include "util/random.h"
 #include "util/errors.h"
 #include "util/CommandLine.h"
@@ -139,17 +138,7 @@ const double Omega=0.00025;
 
 //@}
 
-CommonInfection* createPennyInfection (LocalRng& rng, uint32_t protID, int origin) {
-    return new PennyInfection (rng, protID, origin);
-}
-
-CommonInfection* checkpointedPennyInfection (istream& stream) {
-    return new PennyInfection (stream);
-}
-
 void PennyInfection::init() {
-    CommonWithinHost::createInfection = &createPennyInfection;
-    CommonWithinHost::checkpointedInfection = &checkpointedPennyInfection;
 
     if(util::ModelOptions::option (util::IMMUNE_THRESHOLD_GAMMA)) {
         immune_threshold_gamma = true;

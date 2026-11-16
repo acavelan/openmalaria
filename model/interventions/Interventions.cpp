@@ -20,8 +20,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "interventions/InterventionManager.h"
+#include <utility>
+#include "interventions/Interventions.h"
 #include "Population.h"
+#include "ScenarioXml.h"
 #include "util/CommandLine.h"
 #include "util/UnitParse.h"
 #include "interventions/GVI.h"
@@ -38,24 +40,13 @@ namespace OM
 namespace interventions
 {
 
-// ———  InterventionManager  ———
+// ———  Interventions  ———
 
-// static memory:
+Interventions::Interventions() = default;
+Interventions::~Interventions() = default;
 
-std::map<std::string, ComponentId> InterventionManager::identifierMap;
-vector<unique_ptr<HumanInterventionComponent>> InterventionManager::humanComponents;
-vector<ContinuousHumanDeployment> InterventionManager::continuous;
-vector<unique_ptr<TimedDeployment>> InterventionManager::timed;
-uint32_t InterventionManager::nextTimed;
-OM::Host::ImportedInfections InterventionManager::importedInfections;
-
-// declared in HumanComponents.h:
-vector<ComponentId> removeAtIds[SubPopRemove::NUM];
-
-// static functions:
-
-void InterventionManager::init(const scnXml::Interventions &intervElt, const Population &population,
-                               Transmission::TransmissionModel &transmission)
+void Interventions::init(const scnXml::Interventions &intervElt, const Population &population,
+                               Transmission::TransmissionModel &transmission, Clinical::ClinicalParameters& library)
 {
     nextTimed = 0;
 
@@ -70,7 +61,7 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
                 try
                 {
                     SimTime date = UnitParse::readDate(it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
-                    timed.push_back(unique_ptr<TimedDeployment>(new TimedChangeHSDeployment(date, *it)));
+                    timed.push_back(make_unique<TimedChangeHSDeployment>(date, unique_ptr<scnXml::HealthSystem>(it->_clone()), library));
                 }
                 catch (const util::format_error &e)
                 {
@@ -90,7 +81,9 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
                 try
                 {
                     SimTime date = UnitParse::readDate(it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
-                    timed.push_back(unique_ptr<TimedDeployment>(new TimedChangeEIRDeployment(date, *it)));
+                    const auto& daily = it->getEIRDaily();
+                    timed.push_back(make_unique<TimedChangeEIRDeployment>(date,
+                        vector<double>(daily.begin(), daily.end()), it->getEipDuration()));
                 }
                 catch (const util::format_error &e)
                 {
@@ -112,6 +105,7 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
     {
         const scnXml::HumanInterventions &human = intervElt.getHuman().get();
 
+        bool reportVaccine = true;
         // 1. Read components
         for (auto it = human.getComponent().begin(), end = human.getComponent().end(); it != end; ++it)
         {
@@ -130,14 +124,14 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
             if (component.getSubPopRemoval().present())
             {
                 const scnXml::SubPopRemoval &removeOpts = component.getSubPopRemoval().get();
-                if (removeOpts.getOnFirstBout()) { removeAtIds[SubPopRemove::ON_FIRST_BOUT].push_back(id); }
-                if (removeOpts.getOnFirstInfection()) { removeAtIds[SubPopRemove::ON_FIRST_INFECTION].push_back(id); }
-                if (removeOpts.getOnFirstTreatment()) { removeAtIds[SubPopRemove::ON_FIRST_TREATMENT].push_back(id); }
+                if (removeOpts.getOnFirstBout()) { removalRules[SubPopRemove::ON_FIRST_BOUT].push_back(id); }
+                if (removeOpts.getOnFirstInfection()) { removalRules[SubPopRemove::ON_FIRST_INFECTION].push_back(id); }
+                if (removeOpts.getOnFirstTreatment()) { removalRules[SubPopRemove::ON_FIRST_TREATMENT].push_back(id); }
                 if (removeOpts.getAfterYears().present()) { expireAfter = sim::fromYearsN(removeOpts.getAfterYears().get()); }
             }
 
             HumanInterventionComponent *hiComponent;
-            if (component.getScreen().present()) { hiComponent = new ScreenComponent(id, component.getScreen().get()); }
+            if (component.getScreen().present()) { hiComponent = new ScreenComponent(id, component.getScreen().get(), *this); }
             else if (component.getTreatSimple().present())
             {
                 hiComponent = new TreatSimpleComponent(id, component.getTreatSimple().get());
@@ -148,19 +142,19 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
             }
             else if (component.getDecisionTree().present())
             {
-                hiComponent = new DecisionTreeComponent(id, component.getDecisionTree().get());
+                hiComponent = new DecisionTreeComponent(id, component.getDecisionTree().get(), *this, library);
             }
             else if (component.getPEV().present())
             {
-                hiComponent = new VaccineComponent(id, component.getPEV().get(), Vaccine::PEV);
+                hiComponent = new VaccineComponent(id, component.getPEV().get(), Vaccine::PEV, std::exchange(reportVaccine, false));
             }
             else if (component.getBSV().present())
             {
-                hiComponent = new VaccineComponent(id, component.getBSV().get(), Vaccine::BSV);
+                hiComponent = new VaccineComponent(id, component.getBSV().get(), Vaccine::BSV, std::exchange(reportVaccine, false));
             }
             else if (component.getTBV().present())
             {
-                hiComponent = new VaccineComponent(id, component.getTBV().get(), Vaccine::TBV);
+                hiComponent = new VaccineComponent(id, component.getTBV().get(), Vaccine::TBV, std::exchange(reportVaccine, false));
             }
             else if (component.getITN().present())
             {
@@ -196,7 +190,7 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
         {
             const scnXml::Deployment &elt = *it;
             // 2.a intervention components
-            auto intervention = shared_ptr<HumanIntervention>(new HumanIntervention(elt.getComponent(), elt.getCondition()));
+            auto intervention = make_shared<HumanIntervention>(elt.getComponent(), elt.getCondition(), *this);
 
             // 2.b intervention deployments
             for (auto ctsIt = elt.getContinuous().begin(); ctsIt != elt.getContinuous().end(); ++ctsIt)
@@ -353,7 +347,7 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
             for (auto it = elt.getTimedDeployment().begin(); it != elt.getTimedDeployment().end(); ++it)
             {
                 SimTime date = UnitParse::readDate(it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
-                timed.push_back(unique_ptr<TimedDeployment>(new TimedUninfectVectorsDeployment(date)));
+                timed.push_back(make_unique<TimedUninfectVectorsDeployment>(date));
             }
         }
     }
@@ -370,13 +364,13 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
                 const scnXml::VectorIntervention &elt = *it;
                 if (elt.getTimed().present())
                 {
-                    vectorModel->initVectorInterv(elt.getDescription().getAnopheles(), instance, elt.getName());
+                    xml::initVectorIntervention(*vectorModel, elt, instance);
 
                     const scnXml::TimedBaseList::DeploySequence &seq = elt.getTimed().get().getDeploy();
                     for (auto it = seq.begin(); it != seq.end(); ++it)
                     {
                         SimTime date = UnitParse::readDate(it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
-                        timed.push_back(unique_ptr<TimedDeployment>(new TimedVectorDeployment(date, instance)));
+                        timed.push_back(make_unique<TimedVectorDeployment>(date, TimedVectorDeployment::Action::Population, instance));
                     }
                     instance++;
                 }
@@ -403,7 +397,11 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
                         SimTime date =
                             UnitParse::readDate(deploy.getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
                         SimTime lifespan = UnitParse::readDuration(deploy.getLifespan(), UnitParse::NONE);
-                        timed.push_back(unique_ptr<TimedDeployment>(new TimedAddNonHumanHostsDeployment(date, elt.getName(), lifespan, elt.getDescription().getAnopheles(), transmission)));
+                        auto deployment = make_unique<TimedVectorDeployment>(date, TimedVectorDeployment::Action::AddAnimalHosts);
+                        deployment->name = elt.getName();
+                        deployment->lifespan = lifespan;
+                        deployment->nhhParams = xml::readNhhDeployment(elt, vectorModel->speciesIndex);
+                        timed.push_back(std::move(deployment));
                     }
                     instance++;
                 }
@@ -425,13 +423,14 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
                 const scnXml::NonHumanHostsIntervention &elt = *it;
                 if (elt.getTimed().present())
                 {
-                    const scnXml::DecayFunction &decay = elt.getDecay();
                     const scnXml::TimedBaseList::DeploySequence &seq = elt.getTimed().get().getDeploy();
                     for (auto it = seq.begin(); it != seq.end(); ++it)
                     {
                         SimTime date = UnitParse::readDate(it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
-                        timed.push_back(
-                            unique_ptr<TimedDeployment>(new TimedNonHumanHostsDeployment(date, instance, elt.getNonHumanHostsName(), elt.getDescription().getAnopheles(), decay, transmission)));
+                        auto deployment = make_unique<TimedVectorDeployment>(date, TimedVectorDeployment::Action::ModifyAnimalHosts, instance);
+                        deployment->name = elt.getNonHumanHostsName();
+                        xml::initNhhIntervention(*vectorModel, elt, instance);
+                        timed.push_back(std::move(deployment));
                     }
                     instance++;
                 }
@@ -448,7 +447,7 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
             size_t instance = 0;
             for (const scnXml::VectorTrap &trap : intervElt.getVectorTrap().get().getIntervention())
             {
-                vectorModel->initVectorTrap(trap.getDescription(), instance, trap.getName());
+                xml::initVectorTrap(*vectorModel, trap, instance);
                 if (trap.getTimed().present())
                 {
                     for (const scnXml::Deploy1 &deploy : trap.getTimed().get().getDeploy())
@@ -456,7 +455,10 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
                         SimTime date = UnitParse::readDate(deploy.getTime(), UnitParse::STEPS);
                         double ratio = deploy.getRatioToHumans();
                         SimTime lifespan = UnitParse::readDuration(deploy.getLifespan(), UnitParse::NONE);
-                        timed.push_back(unique_ptr<TimedDeployment>(new TimedTrapDeployment(date, instance, ratio, lifespan)));
+                        auto deployment = make_unique<TimedVectorDeployment>(date, TimedVectorDeployment::Action::Trap, instance);
+                        deployment->ratio = ratio;
+                        deployment->lifespan = lifespan;
+                        timed.push_back(std::move(deployment));
                     }
                 }
                 instance += 1;
@@ -471,9 +473,10 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
     stable_sort(continuous.begin(), continuous.end(), byDeployTime);
     stable_sort(timed.begin(), timed.end(), byDeployTime);
 
-    // make sure the list ends with something always in the future, so we don't
-    // have to check nextTimed is within range:
-    timed.push_back(unique_ptr<TimedDeployment>(new DummyTimedDeployment()));
+    // Preserve the former end-marker's warning for a zero-length scenario.
+    if (sim::startDate() >= sim::endDate())
+        cerr << "Warning: timed intervention deployment at date " << sim::startDate()
+             << " happens after last survey" << endl;
 
     if (util::CommandLine::option(util::CommandLine::PRINT_INTERVENTIONS))
     {
@@ -489,6 +492,7 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
             deploy->print_details(std::cout);
             cout << endl;
         }
+        cout << "Dummy" << endl; // Preserve the legacy printed schedule terminator.
         cout << "Human components:" << endl;
         for (auto &component : humanComponents)
         {
@@ -498,7 +502,7 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
     }
 }
 
-ComponentId InterventionManager::getComponentId(const string textId)
+ComponentId Interventions::getComponentId(const string textId) const
 {
     auto it = identifierMap.find(textId);
     if (it == identifierMap.end())
@@ -511,14 +515,14 @@ ComponentId InterventionManager::getComponentId(const string textId)
     return it->second;
 }
 
-void InterventionManager::loadFromCheckpoint(vector<Host::Human> &population, Transmission::TransmissionModel &transmission)
+void Interventions::loadFromCheckpoint(vector<Host::Human> &population, Transmission::TransmissionModel &transmission)
 {
     SimTime date = sim::intervDate();
     // We need to re-deploy changeHS and changeEIR interventions, but nothing
     // else. nextTimed should be zero so we can go through all past interventions.
     // Only redeploy those which happened before this time step.
     assert(nextTimed == 0);
-    while (timed[nextTimed]->date < date)
+    while (nextTimed < timed.size() && timed[nextTimed]->date < date)
     {
         TimedDeployment *deployment = &*timed[nextTimed];
         if (dynamic_cast<TimedChangeHSDeployment *>(deployment) != 0 || dynamic_cast<TimedChangeEIRDeployment *>(deployment) != 0)
@@ -526,13 +530,13 @@ void InterventionManager::loadFromCheckpoint(vector<Host::Human> &population, Tr
             // Note: neither changeHS nor changeEIR interventions care what the
             // current time step is when they are deployed, so we don't need to
             // tell them the deployment date.
-            deployment->deploy(population, transmission);
+            deployment->deploy(population, transmission, *this);
         }
         nextTimed += 1;
     }
 }
 
-void InterventionManager::deploy(vector<Host::Human> &population, Transmission::TransmissionModel &transmission)
+void Interventions::deploy(vector<Host::Human> &population, Transmission::TransmissionModel &transmission)
 {
     if (sim::intervTime() < sim::zero()) return;
 
@@ -541,7 +545,7 @@ void InterventionManager::deploy(vector<Host::Human> &population, Transmission::
 
     // deploy timed interventions
     SimTime now = sim::intervDate();
-    while (timed[nextTimed]->date <= now)
+    while (nextTimed < timed.size() && timed[nextTimed]->date <= now)
     {
         if (util::CommandLine::option(util::CommandLine::VERBOSE))
         {
@@ -550,7 +554,7 @@ void InterventionManager::deploy(vector<Host::Human> &population, Transmission::
             cout << endl;
         }
 
-        timed[nextTimed]->deploy(population, transmission);
+        timed[nextTimed]->deploy(population, transmission, *this);
         nextTimed += 1;
     }
 

@@ -27,7 +27,7 @@
 #include "Host/WithinHost/WHInterface.h"
 
 #include "util/ModelOptions.h"
-#include "interventions/InterventionManager.h"
+#include "interventions/Interventions.h"
 #include "mon/Monitoring.h"
 
 namespace OM { namespace Host {
@@ -110,10 +110,10 @@ Human::Human(SimTime birthDate, const ModelParameters& parameters, util::MasterR
     assert( birthDate == sim::nowOrTs1() || (sim::now() == sim::zero() && birthDate < sim::now()) );
 
     HumanHet het = hetSample(rng);
-    withinHostModel = WithinHost::WHInterface::createWithinHostModel( rng, het.comorbidityFactor );
+    withinHostModel = WithinHost::WHInterface::createWithinHostModel( rng, het.comorbidityFactor, parameters.withinHost );
     double iiFactor = sampleAvailability(parameters.incidence, rng);
     initialize(transmission, rng, het.availabilityFactor * iiFactor, parameters.hostTransmission);
-    clinicalModel = Clinical::ClinicalModel::createClinicalModel(het.treatmentSeekingFactor);
+    clinicalModel = Clinical::ClinicalModel::createClinicalModel(het.treatmentSeekingFactor, parameters.clinical);
 }
 
 void Human::addToCohort(ComponentId id, SimTime duration )
@@ -123,13 +123,12 @@ void Human::addToCohort(ComponentId id, SimTime duration )
     interventions.cohortSet = mon::updateCohortSet( interventions.cohortSet, id, true );
 }
 
-void Human::removeFirstEvent(interventions::SubPopRemove::RemoveAtCode code )
+void Human::removeFirstEvent(const vector<ComponentId>& removeAtList, SimTime date)
 {
-    const vector<ComponentId>& removeAtList = interventions::removeAtIds[code];
     for( auto it = removeAtList.begin(), end = removeAtList.end(); it != end; ++it ){
         auto expIt = interventions.cohortExpiry.find( *it );
         if( expIt != interventions.cohortExpiry.end() ){
-            if( expIt->second >= sim::nowOrTs0() ){
+            if( expIt->second >= date ){
                 // removeFirstEvent() is used for onFirstBout, onFirstTreatment
                 // and onFirstInfection cohort options. Health system memory must
                 // be reset for this to work properly; in theory the memory should
@@ -173,7 +172,7 @@ void Human::checkpoint(istream &stream, const vector<unique_ptr<interventions::H
     clinicalModel & stream;
     rng.checkpoint(stream);
     birthDate & stream;
-    interventions.vaccine & stream;
+    checkpointVaccines(interventions.vaccines, stream, definitions);
     monitoringAgeGroup & stream;
     interventions.cohortSet & stream;
     interventions.nextContinuousDeployment & stream;
@@ -190,7 +189,7 @@ void Human::checkpoint(ostream &stream)
     clinicalModel & stream;
     rng.checkpoint(stream);
     birthDate & stream;
-    interventions.vaccine & stream;
+    checkpointVaccines(interventions.vaccines, stream);
     monitoringAgeGroup & stream;
     interventions.cohortSet & stream;
     interventions.nextContinuousDeployment & stream;

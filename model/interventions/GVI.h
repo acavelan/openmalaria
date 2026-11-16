@@ -83,7 +83,7 @@ private:
         friend class HumanGVI;
     };
     
-    unique_ptr<DecayFunction> decay;
+    DecayFunction decay;
     vector<GVIAnopheles> species;  // vector specific params
     
     friend class HumanGVI;
@@ -99,12 +99,12 @@ public:
     HumanGVI( LocalRng& rng, const GVIComponent& params );
     HumanGVI( istream& stream, ComponentId id, const GVIComponent& parameters );
     
-    virtual void redeploy( LocalRng& rng, const VectorInterventionComponent& );
+    virtual void redeploy(LocalRng& rng);
     
     /** This is the survival factor of the effect. */
     inline double getEffectSurvival(SimTime effectTime)const{
         SimTime age = effectTime - deployTime;  // implies age 1 TS on first use
-        return decayHet->eval( age );
+        return util::eval(parameters.decay, age, *decayHet);
     }
     
     Component::Type componentType() const override { return Component::GVI; }
@@ -126,7 +126,7 @@ protected:
 private:
     const GVIComponent& parameters;
     // this parameter is sampled on first deployment, but never resampled for the same human:
-    unique_ptr<DecayFunction> decayHet;
+    util::DecaySample decayHet;
 };
 
 } }

@@ -23,7 +23,7 @@
 #include "mon/init.h"
 
 #include "Host/WithinHost/Diagnostic.h"
-#include "interventions/InterventionManager.h"
+#include "interventions/Interventions.h"
 #include "mon/Monitoring.h"
 #include "schema/monitoring.h"
 #include "schema/scenario.h"
@@ -198,7 +198,7 @@ SimTime readSurveyDates(const scnXml::Monitoring& monitoring)
     return runtime.surveyDates.back().date;
 }
 
-void initCohorts(const scnXml::Monitoring& monitoring)
+void initCohorts(const scnXml::Monitoring& monitoring, const interventions::Interventions& definitions)
 {
     runtime.cohortSubPopNumbers.clear();
     runtime.cohortSubPopIds.clear();
@@ -207,7 +207,7 @@ void initCohorts(const scnXml::Monitoring& monitoring)
     const scnXml::Cohorts monCohorts = monitoring.getCohorts().get();
     uint32_t nextId = 0;
     for (auto it = monCohorts.getSubPop().begin(), end = monCohorts.getSubPop().end(); it != end; ++it) {
-        const interventions::ComponentId compId = interventions::InterventionManager::getComponentId(it->getId());
+        const interventions::ComponentId compId = definitions.getComponentId(it->getId());
         const bool inserted = runtime.cohortSubPopIds.insert(std::make_pair(compId, nextId)).second;
         if (!inserted) {
             throw util::xml_scenario_error(

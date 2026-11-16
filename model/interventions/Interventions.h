@@ -25,12 +25,14 @@
 
 #include "Global.h"
 #include "interventions/Interfaces.h"
+#include "interventions/HumanComponents.h"
 #include "Host/ImportedInfections.h"
 #include "Transmission/TransmissionModel.h"
 #include "schema/interventions.h"
 
 namespace OM {
-    class Population;
+    struct Population;
+    namespace Clinical { struct ClinicalParameters; }
     namespace Host {
         struct Human;
     }
@@ -41,14 +43,15 @@ class ContinuousHumanDeployment;
 class TimedDeployment;
 
 /** Management of interventions deployed on a per-time-step basis. */
-class InterventionManager {
-public:
+struct Interventions {
+    Interventions();
+    ~Interventions();
     /** Read XML descriptions. */
-    static void init (const scnXml::Interventions& intervElt, const Population &population, Transmission::TransmissionModel& transmission);
+    void init (const scnXml::Interventions& intervElt, const Population &population, Transmission::TransmissionModel& transmission, Clinical::ClinicalParameters& library);
     
     /// Checkpointing
     template<class S>
-    static void checkpoint (S& stream) {
+    void checkpoint (S& stream) {
         using namespace OM::util::checkpoint;
         // most members are only set from XML,
         // nextTimed varies but is re-set by loadFromCheckpoint
@@ -59,7 +62,7 @@ public:
      * 
      * Serves to replace health-system and EIR where changeHS/changeEIR
      * interventions have been used. */
-    static void loadFromCheckpoint(
+    void loadFromCheckpoint(
                 vector<Host::Human> &population,
                 Transmission::TransmissionModel& transmission);
     
@@ -69,14 +72,13 @@ public:
      * 
      * Continuous interventions are deployed as humans reach the target ages.
      * Unlike with vaccines, missing one schedule doesn't preclude the next. */
-    static void deploy(vector<Host::Human> &population, Transmission::TransmissionModel& transmission);
+    void deploy(vector<Host::Human> &population, Transmission::TransmissionModel& transmission);
     
-    static const auto& components() { return humanComponents; }
 
     /** Get a constant reference to a component class with a certain index.
      * 
      * @throws util::base_exception if the index is out-of-range */
-    inline static const HumanInterventionComponent& getComponent( ComponentId id ){
+    inline const HumanInterventionComponent& getComponent( ComponentId id ) const{
         if( id.id >= humanComponents.size() )
             throw util::base_exception( "invalid component id" );
         return *humanComponents[id.id];
@@ -85,23 +87,22 @@ public:
     /** Get a numeric ComponentId from the textual identifier used in the XML.
      * 
      * If textId is unknown, an xml_scenario_error is thrown. */
-    static ComponentId getComponentId( const std::string textId );
+    ComponentId getComponentId( const std::string textId ) const;
     
-private:
     // Map of textual identifiers to numeric identifiers for components
-    static std::map<std::string,ComponentId> identifierMap;
-    // All human intervention components, indexed by a number. This list is used
-    // during initialisation and thereafter only for memory management.
-    static vector<unique_ptr<HumanInterventionComponent>> humanComponents;
+    std::map<std::string,ComponentId> identifierMap;
+    // Owns definitions referenced by deployments and personal intervention state.
+    vector<unique_ptr<HumanInterventionComponent>> humanComponents;
     // Continuous interventions, sorted by deployment age (weakly increasing)
-    static vector<ContinuousHumanDeployment> continuous;
+    vector<ContinuousHumanDeployment> continuous;
     // List of all timed interventions. Should be sorted (time weakly increasing).
-    static vector<unique_ptr<TimedDeployment>> timed;
-    static uint32_t nextTimed;  // not chcekpointed (see loadFromCheckpoint)
+    vector<unique_ptr<TimedDeployment>> timed;
+    uint32_t nextTimed = 0;  // not checkpointed (see loadFromCheckpoint)
     
     // imported infections are not really interventions, and handled by a separate class
-    // (but are grouped here for convenience and due toassociation in schema)
-    static OM::Host::ImportedInfections importedInfections;
+    // (but are grouped here for convenience and due to association in schema)
+    OM::Host::ImportedInfections importedInfections;
+    CohortRemovalRules removalRules;
 };
 
 } }

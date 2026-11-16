@@ -20,9 +20,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "ScenarioXml.h"
 #include "Host/WithinHost/WHVivax.h"
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
-#include "Host/WithinHost/Treatments.h"
+#include "Host/WithinHost/Treatment.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "Host/Human.h"
@@ -44,7 +45,7 @@ namespace WithinHost {
 using namespace OM::util;
 
 struct HypnozoiteReleaseDistribution {
-    HypnozoiteReleaseDistribution(std::unique_ptr<util::LognormalSampler> sampler, double latentRelapse) :
+    HypnozoiteReleaseDistribution(util::LognormalSampler sampler, double latentRelapse) :
         sampler(std::move(sampler)),
         latentRelapse(latentRelapse)
         {}
@@ -57,7 +58,7 @@ struct HypnozoiteReleaseDistribution {
         int maxcount = 1e3;
         
         do{
-            delay = sampler->sample(rng);
+            delay = sampler.sample(rng);
             count += 1;
             
             if( count >= maxcount ){
@@ -70,13 +71,13 @@ struct HypnozoiteReleaseDistribution {
     }
     
 private:
-    std::unique_ptr<util::LognormalSampler> sampler;
+    util::LognormalSampler sampler;
     double latentRelapse;   // days
 };
 
 std::unique_ptr<HypnozoiteReleaseDistribution> createHypnozoiteReleaseDistribution(const scnXml::HypnozoiteReleaseDistribution& elt)
 {
-    return std::make_unique<HypnozoiteReleaseDistribution>(createSampler(elt),  elt.getLatentRelapse());
+    return std::make_unique<HypnozoiteReleaseDistribution>(xml::readSampler(elt),  elt.getLatentRelapse());
 }
 
 // ———  parameters  ———
@@ -299,12 +300,12 @@ void VivaxBrood::treatmentLS(){
 
 // ———  per-host code  ———
 
-WHVivax::WHVivax( LocalRng& rng, double comorbidityFactor ) :
+WHVivax::WHVivax( LocalRng& rng, double comorbidityFactor, const Pathogenesis::PathogenesisParameters& pathogenesisConfig ) :
     cumPrimInf(0),
 	treatExpiryLiver(0), treatExpiryBlood(0),
     pEvent( numeric_limits<double>::quiet_NaN() ),
     pFirstRelapseEvent( numeric_limits<double>::quiet_NaN() ),
-    pSevere( 0.0 )
+    pSevere( 0.0 ), pathogenesisConfig(pathogenesisConfig)
 {
     if( comorbidityFactor != 1.0 ){
         throw TRACED_EXCEPTION_DEFAULT( "This vivax model cannot be used with comorbidity heterogeneity" );
@@ -450,7 +451,7 @@ void WHVivax::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nN
     
     //NOTE: currently we don't model co-infection or indirect deaths
     if( morbidity == Pathogenesis::NONE ){
-        morbidity = Pathogenesis::PathogenesisModel::sampleNMF( rng, ageInYears );
+        morbidity = Pathogenesis::sampleNMF( pathogenesisConfig, rng, ageInYears );
     }
 }
 
@@ -475,15 +476,7 @@ void WHVivax::clearImmunity(){
     throw TRACED_EXCEPTION_DEFAULT( "vivax model does not include immune suppression" );
 }
 
-void WHVivax::treatment( Host::Human& human, TreatmentId treatId ){
-    const Treatments& treat = Treatments::select( treatId );
-    treatSimple( human, treat.liverEffect(), treat.bloodEffect() );
-    
-    // triggered intervention deployments:
-    treat.deploy( human,
-                  mon::Deploy::TREAT,
-                  interventions::VaccineLimits(/*default initialise: no limits*/) );
-}
+
 void WHVivax::optionalPqTreatment( Host::Human& human ){
     // PQ clears liver stages. We don't worry about the effect of PQ on
     // gametocytes, because these are always cleared by blood-stage drugs with
@@ -609,7 +602,7 @@ void WHVivax::init( const OM::Parameters& parameters, const scnXml::Model& model
         assert( pSecondRelease >= 0 && pSecondRelease <= 1 );
     } // else pSecondRelease is NaN and other values don't get used
     bloodStageProtectionLatency = sim::roundToTSFromDays( elt.getBloodStageProtectionLatency().getValue() );
-    bloodStageLength.setParams(elt.getBloodStageLengthDays());
+    bloodStageLength.setScaleShape(elt.getBloodStageLengthDays().getScale(), elt.getBloodStageLengthDays().getShape());
     
     const scnXml::ClinicalEvents& ce = elt.getClinicalEvents();
     pPrimaryA = ce.getPPrimaryInfection().getA();
@@ -631,7 +624,6 @@ void WHVivax::init( const OM::Parameters& parameters, const scnXml::Model& model
     }
 		
     initNHypnozoites();
-    Pathogenesis::PathogenesisModel::init( parameters, model.getClinical(), true );
 }
 void WHVivax::setHSParameters(const scnXml::LiverStageDrug* elt){
     double oldPHetNoPQ = pHetNoPQ;

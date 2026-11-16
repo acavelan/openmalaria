@@ -51,7 +51,7 @@ struct Human {
         return it != interventions.cohortExpiry.end() && it->second >= sim::nowOrTs0();
     }
     void addToCohort(interventions::ComponentId id, SimTime duration);
-    void removeFirstEvent(interventions::SubPopRemove::RemoveAtCode code);
+    void removeFirstEvent(const vector<interventions::ComponentId>& rules, SimTime date);
     void updateCohortSet();
     void checkpoint(istream&, const vector<unique_ptr<interventions::HumanInterventionComponent>>&);
     void checkpoint(ostream&);
