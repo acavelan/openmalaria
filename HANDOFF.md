@@ -57,7 +57,13 @@ Crash-recovery file. Update EVERY green commit. Baseline p5-green: model **18,65
    binds right after createWithinHostModel; Human::set_row RE-BINDS the
    submodel (see Traps: stale mirror). Standalone WHInterface in tests must
    bind a mini-column (InfectionImmunitySuite, SlotAllocatorSuite do).
-   clinical (m_tLastTreatment + es 3×SimTime + esPreviousDensity f64) → transmission
+   [x] cluster d (clinical): columns t_last_treatment + es_case_start/
+   es_time_recovery/es_time_treatment (SimTime, never()) + es_prev_density
+   (f64, NaN); ClinicalModel members DELETED, same bind_columns + const-ref
+   accessors (t_last_treatment() etc.), ctor init-list entries dropped
+   (defaults live in append_row), Human ctor bind + set_row rebind added
+   (now covers withinHostModel AND clinicalModel — grep set_row after each
+   cluster). Wire via refs, per-kind branches unchanged. clinical. → transmission
    (anophEntoAvailabilityRaw/anophEntoAvailability/anophProbMosqBiting/
    anophProbMosqResting per species + relativeAvailabilityHet + outsideTransmission).
    Each cluster: DELETE old member, fix call sites (compiler = checker), tier-a,
@@ -107,6 +113,12 @@ Crash-recovery file. Update EVERY green commit. Baseline p5-green: model **18,65
 - Untracked PROMPT.md/email = user files, leave.
 
 ## Gates log
+- (6.2d, this commit) clinical columns t_last_treatment + es_case_start/
+  es_time_recovery/es_time_treatment (SimTime never()) + es_prev_density (f64
+  NaN); ClinicalModel members DELETED, bind_columns + const-ref accessors;
+  defaults moved into append_row; Human ctor bind + set_row rebind (now also
+  clinicalModel). build clean; unittest 94/94; ctest 52/52; T1 a 53/53 + b
+  seeds1-4 4/4. bench: unchanged codepath cost (deferred to 6.4 batch).
 - PATH CONFUSION (6.2c, resolved): I rebuilt a throwaway /tmp/opencode/build-p6
   (plain Release, no -ffp-contract=off) after the dir "vanished" — the CANONICAL
   build is IN-TREE `/home/razlock/git/fork/build-p6` (cache:

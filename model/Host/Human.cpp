@@ -136,13 +136,15 @@ Human::Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns) :
     vaccine.ctx = &ctx;
     perHostTransmission.initialise (ctx, rng(), het.availabilityFactor * iiFactor);
     clinicalModel = Clinical::ClinicalModel::createClinicalModel(ctx, het.treatmentSeekingFactor);
+    clinicalModel->bind_columns( columns, row );
 }
 
 void Human::set_row( size_t r ) {
     row = r;
-    // Keep the WHInterface's immunity-column row mirror in sync (it caches
-    // cols+row; a stale row reads/writes another host after compaction).
+    // Rebind every submodel caching (cols,row): a stale mirror reads/writes
+    // another host's columns after compaction (WHInterface immunity, Clinical).
     if( withinHostModel ) withinHostModel->bind_columns( *cols, r );
+    if( clinicalModel ) clinicalModel->bind_columns( *cols, r );
 }
 
 namespace {

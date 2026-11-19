@@ -26,6 +26,7 @@
 #include "Global.h"
 #include "interventions/ComponentId.h"
 #include "util/random.h"
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -64,6 +65,12 @@ struct HumanColumns {
     std::vector<double> imm_h, imm_Y, imm_Y_lag;
     /// Primary blood-stage infection count (old WHInterface cumPrimInf, u32).
     std::vector<uint32_t> cum_prim_inf;
+    /// Clinical timestamps (old ClinicalModel m_tLastTreatment + ES-kind
+    /// esCaseStartTime/esTimeOfRecovery/esTimeLastTreatment, SimTime).
+    std::vector<SimTime> t_last_treatment, es_case_start, es_time_recovery,
+                         es_time_treatment;
+    /// ES total density last time step (old ClinicalModel esPreviousDensity).
+    std::vector<double> es_prev_density;
 
     /** Add a row for a newly constructed Human, at the exact moment of its old
      * member inits: rng is copy-seeded from `master` HERE (RNG RULE); dob set;
@@ -80,6 +87,11 @@ struct HumanColumns {
         imm_Y.push_back( 0.0 );
         imm_Y_lag.push_back( 0.0 );
         cum_prim_inf.push_back( 0u );
+        t_last_treatment.push_back( sim::never() );
+        es_case_start.push_back( sim::never() );
+        es_time_recovery.push_back( sim::never() );
+        es_time_treatment.push_back( sim::never() );
+        es_prev_density.push_back( std::numeric_limits<double>::quiet_NaN() );
         return rng.size() - 1;
     }
 
@@ -96,6 +108,11 @@ struct HumanColumns {
         imm_Y.erase( imm_Y.begin() + r );
         imm_Y_lag.erase( imm_Y_lag.begin() + r );
         cum_prim_inf.erase( cum_prim_inf.begin() + r );
+        t_last_treatment.erase( t_last_treatment.begin() + r );
+        es_case_start.erase( es_case_start.begin() + r );
+        es_time_recovery.erase( es_time_recovery.begin() + r );
+        es_time_treatment.erase( es_time_treatment.begin() + r );
+        es_prev_density.erase( es_prev_density.begin() + r );
     }
 };
 
