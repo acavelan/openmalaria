@@ -34,7 +34,7 @@
 #include "Clinical/ClinicalModel.h"
 #include "Population.h"
 #include "Transmission/TransmissionModel.h"
-#include "Transmission/VectorModel.h"
+#include "Transmission/TransmissionModel.h"
 #include "Transmission/PerHost.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -317,7 +317,7 @@ public:
         inst(instance)
     {}
     virtual void deploy (RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission) {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+        Transmission::TransmissionModel *vectorModel = transmission.isVector() ? &transmission : nullptr;
         if(vectorModel)
             vectorModel->deployVectorPopInterv(inst);
     }
@@ -335,7 +335,7 @@ public:
         TimedDeployment( ctx, date ), inst(instance), ratio(ratio), lifespan(lifespan)
     {}
     virtual void deploy (RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission) {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+        Transmission::TransmissionModel *vectorModel = transmission.isVector() ? &transmission : nullptr;
         if(vectorModel)
         {
             double number = population.size() * ratio;

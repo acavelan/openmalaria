@@ -41,7 +41,7 @@ namespace OM {
 namespace interventions {
     using util::DecayFunction;
     using util::NormalSampler;
-    using util::LognormalSampler;
+    using util::Sampler;
     using util::LocalRng;
     using Transmission::PerHostInterventionData;
 
@@ -217,8 +217,8 @@ private:
     };
 
     NormalSampler initialInsecticide;
-    unique_ptr<LognormalSampler> holeRate;	// holes per step
-    unique_ptr<LognormalSampler> ripRate;	// rips per hole per step
+    unique_ptr<Sampler> holeRate;	// holes per step
+    unique_ptr<Sampler> ripRate;	// rips per hole per step
     double maxInsecticide;		// maximum initial insecticide
     double ripFactor;			// factor expressing how significant rips are in comparison to holes
     unique_ptr<DecayFunction> insecticideDecay;

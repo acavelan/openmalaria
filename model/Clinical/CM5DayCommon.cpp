@@ -22,9 +22,9 @@
 
 #include "core/RunContext.h"
 #include "Clinical/DecisionTree5Day.h"
+#include "Clinical/ImmediateOutcomes.h""
 #include "Clinical/CMDecisionTree.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/WHVivax.h"
 #include "util/errors.h"
 #include "util/ModelOptions.h"
 #include "util/random.h"
@@ -55,59 +55,57 @@ void CM5DayCommon::init(){
 
 // ———  per-human, construction and destruction  ———
 
-CM5DayCommon::CM5DayCommon (RunContext& ctx, double tSF) :
-    ClinicalModel(ctx),
-        m_treatmentSeekingFactor (tSF)
-{}
-
-
-// ———  per-human, update  ———
-
-void CM5DayCommon::doClinicalUpdate (RunContext& ctx, Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg) {
+void clinicalUpdate5Day (ClinicalModel& cm, RunContext& ctx, Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg) {
     Episode::State pgState = static_cast<Episode::State>( pg.state );
 
     if (pgState & Episode::MALARIA) {
         if (pgState & Episode::COMPLICATED){
-            severeMalaria (human, pgState, ageYears, doomed);
-        }else if (indirectMortBugfix || !pg.indirectMortality) {
+            severeMalaria (cm, ctx, human, pgState, ageYears, cm.doomed);
+        }else if (ClinicalModel::indirectMortBugfix || !pg.indirectMortality) {
             // NOTE: the "not indirect mortality" bit is a historical accident.
             // Validity is debatable, but there's no point changing now.
             // (This does affect tests.)
-            uncomplicatedEvent (ctx, human, pgState);
+            if (cm.kind == ClinicalModel::Kind::ImmediateOutcomes)
+                immOutUncomplicatedEvent (cm, ctx, human, pgState);
+            else
+                treeUncomplicatedEvent (cm, ctx, human, pgState);
         }
     } else if (pgState & Episode::SICK) { // sick but not from malaria
-        uncomplicatedEvent (ctx, human, pgState);
+        if (cm.kind == ClinicalModel::Kind::ImmediateOutcomes)
+                immOutUncomplicatedEvent (cm, ctx, human, pgState);
+            else
+                treeUncomplicatedEvent (cm, ctx, human, pgState);
     }
     
-    if (pg.indirectMortality && doomed == NOT_DOOMED)
-        doomed = -ctx.clock.one_TS();
+    if (pg.indirectMortality && cm.doomed == NOT_DOOMED)
+        cm.doomed = -ctx.clock.one_TS();
     
-    if( m_tLastTreatment == ctx.clock.ts0() )
+    if( cm.m_tLastTreatment == ctx.clock.ts0() )
         human.removeFirstEvent(interventions::SubPopRemove::ON_FIRST_TREATMENT);
     
     if( pgState & Episode::SICK )
         human.removeFirstEvent(interventions::SubPopRemove::ON_FIRST_BOUT);
 }
 
-void CM5DayCommon::severeMalaria (
+void severeMalaria (ClinicalModel& cm, RunContext& ctx, 
     Human &human,
     Episode::State pgState,
     double ageYears,
     int& doomed
 ) {
     // Probability of getting treatment (only part which is case managment):
-    double p2 = accessSevere * m_treatmentSeekingFactor;
+    double p2 = CM5DayCommon::accessSevere * cm.m_treatmentSeekingFactor;
     // Probability of getting cured after getting treatment:
-    double p3 = cureRateSevere;
+    double p3 = CM5DayCommon::cureRateSevere;
     // p4 is the hospital case-fatality rate from Tanzania
-    double p4 = caseFatalityRate.eval (ageYears);
+    double p4 = ClinicalModel::caseFatalityRate.eval (ageYears);
     // p5a here is the community threshold case-fatality rate
-    double p5a = getCommunityCFR (p4);
+    double p5a = ClinicalModel::getCommunityCFR (p4);
     // p5b here is the in-hospital treatment-failure case-fatality rate
     // In our code it was originally the community CFR, but in the published model description it should be the hospital CFR
     double p5b = (cfr_pf_use_hospital) ? p4 : p5a;
     // p6 is P(seq) for treated patients
-    double p6 = pSequelaeInpatient.eval (ageYears);
+    double p6 = ClinicalModel::pSequelaeInpatient.eval (ageYears);
     // p7 is P(seq) when parasites aren't cleared
     // note: if p7 were not equal p6, we might have to do something similar to p5b
     double p7 = p6;
@@ -151,60 +149,46 @@ void CM5DayCommon::severeMalaria (
     
     //NOTE: we do not model diagnostics in this case
     if( prandom >= q[2] ){      // treated in hospital
-        m_tLastTreatment = ctx.clock.ts0();
+        cm.m_tLastTreatment = ctx.clock.ts0();
         mon::recordEvent(mon::measure("nTreatments3"), human);
         Episode::State stateTreated = Episode::State (pgState | Episode::EVENT_IN_HOSPITAL);
         
         if( prandom >= q[5] ){  // treatment successful at clearing parasites
             // this actually means successful treatment in this case:
-            human.withinHostModel->treatment( human, treatmentSevere );
+            human.withinHostModel->treatment( human, CM5DayCommon::treatmentSevere );
             
             if( prandom < q[6] ){       // death (despite success in clearing parasites)
-                latestReport.update (ctx, human, Episode::State (stateTreated | Episode::DIRECT_DEATH));
+                cm.latestReport.update (ctx, human, Episode::State (stateTreated | Episode::DIRECT_DEATH));
                 doomed  = DOOMED_COMPLICATED;
             }else if( prandom < q[7] ){ // Patient recovers, but with sequelae (don't report full recovery)
-                latestReport.update (ctx, human, Episode::State (stateTreated | Episode::SEQUELAE));
+                cm.latestReport.update (ctx, human, Episode::State (stateTreated | Episode::SEQUELAE));
             }else /*prandom < q[8]*/{   // patient recovers fully
-                latestReport.update (ctx, human, Episode::State (stateTreated | Episode::RECOVERY));
+                cm.latestReport.update (ctx, human, Episode::State (stateTreated | Episode::RECOVERY));
             }
         }else /*prandom < q[5]*/{  // Treated but parasites not cleared (in hospital)
             // No change in parasitological status among in-hospital patients
             
             if( prandom < q[3] ){       // death
-                latestReport.update (ctx, human, Episode::State (stateTreated | Episode::DIRECT_DEATH));
+                cm.latestReport.update (ctx, human, Episode::State (stateTreated | Episode::DIRECT_DEATH));
                 doomed  = DOOMED_COMPLICATED;
             }else if( prandom < q[4] ){ // sequelae without parasite clearance
-                latestReport.update (ctx, human, Episode::State (stateTreated | Episode::SEQUELAE));
+                cm.latestReport.update (ctx, human, Episode::State (stateTreated | Episode::SEQUELAE));
             }else /*prandom < q[5]*/{   // full recovery from episode
-                latestReport.update (ctx, human, pgState);
+                cm.latestReport.update (ctx, human, pgState);
             }
         }
     }else /*prandom < q[2]*/{
         // Not treated, thus no change in parasitological status
         
         if( prandom < q[0] ){   // outcome 0: death in community
-            latestReport.update (ctx, human, Episode::State (pgState | Episode::DIRECT_DEATH));
+            cm.latestReport.update (ctx, human, Episode::State (pgState | Episode::DIRECT_DEATH));
             doomed  = DOOMED_COMPLICATED;
         }else if( prandom < q[1] ){     // outcome 1: sequelae in community
-            latestReport.update (ctx, human, Episode::State (pgState | Episode::SEQUELAE));
+            cm.latestReport.update (ctx, human, Episode::State (pgState | Episode::SEQUELAE));
         }else /*prandom < q[2]*/{       // outcome 2: full recovery from episode in community
-            latestReport.update (ctx, human, pgState);
+            cm.latestReport.update (ctx, human, pgState);
         }
     }
-}
-
-
-// ———  per-human, intervention & checkpointing  ———
-
-void CM5DayCommon::checkpoint (istream& stream) {
-    ClinicalModel::checkpoint (stream);
-    m_tLastTreatment & stream;
-    m_treatmentSeekingFactor & stream;
-}
-void CM5DayCommon::checkpoint (ostream& stream) {
-    ClinicalModel::checkpoint (stream);
-    m_tLastTreatment & stream;
-    m_treatmentSeekingFactor & stream;
 }
 
 }

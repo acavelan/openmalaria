@@ -250,13 +250,14 @@ public:
         vectors::scale(speciesEIR, factor);
     }
 
-    virtual void scale(double factor)
+    void scale(double factor)
     {
         vectors::scale (N_v, factor);
         vectors::scale (O_v_i, factor);
         vectors::scale (O_v_l, factor);
         vectors::scale (S_v_i, factor);
         vectors::scale (S_v_l, factor);
+        if (simpleMPD) vectors::scale (simpleMPD->nOvipositingDelayed, factor);
     }
     
     /** Initialisation which must wait until a human population is available.
@@ -272,7 +273,7 @@ public:
      *
      * Can only usefully run its calculations when not checkpointing, due to
      * population not being the same when loaded from a checkpoint. */
-    virtual void init2 (int nHumans, double meanPopAvail,
+    void init2 (int nHumans, double meanPopAvail,
         double sum_avail, double sigma_f, double sigma_df, double sigma_dff);
     
     /** Set up the non-host-specific interventions. */
@@ -285,7 +286,7 @@ public:
      * so, make necessary changes.
      *
      * @returns true if another iteration is needed. */
-    virtual bool initIterate();
+    bool initIterate();
 
     ///@brief Functions called as part of usual per-time-step operations
     //@{
@@ -329,13 +330,8 @@ public:
     /// Helper function for initialisation.
     void initIterateScale ( double factor );
     
-    virtual double getEmergenceRate(const SimTime &d0, const std::vector<double>& mosqEmergeRate, double nOvipositing)
-    {   
-        // Get emergence at start of step:
-        SimTime dYear1 = mod_nn(d0, sim::oneYear());
-        // Simple model: fixed emergence scaled by larviciding
-        return mosqEmergeRate[dYear1];
-    }
+    /// Emergence rate at start of day d0 (SimpleMPD kind: density-dependent).
+    double getEmergenceRate(const SimTime &d0, const std::vector<double>& mosqEmergeRate, double nOvipositing);
 
     /** Update by one day (may be called multiple times for 1 time-step update).
      * 
@@ -384,10 +380,21 @@ public:
     /// @param vs PA, PDF, PDIF, NV, OV or SV
     double getLastVecStat( VecStat vs )const;
     
-    virtual double getResAvailability() const {
-        return numeric_limits<double>::quiet_NaN();
+    double getResAvailability() const {
+        if (!simpleMPD) return numeric_limits<double>::quiet_NaN();
+        // TODO: why offset by one time step? This is effectively getting the resources available on the last time step
+        // TODO: only have to add one year because of offset
+        const SimpleMPDState& sm = *simpleMPD;
+        SimTime start = ctx.clock.now() - ctx.clock.one_TS() + sim::oneYear();
+        double total = 0;
+        for (SimTime i = start, end = start + ctx.clock.one_TS(); i < end; i = i + sim::oneDay())
+        {
+            SimTime dYear1 = mod_nn(i, sim::oneYear());
+            total += 1.0 / sm.invLarvalResources[dYear1];
+        }
+        return total / ctx.clock.one_TS();
     }
-    virtual double getResRequirements() const {
+    double getResRequirements() const {
         return numeric_limits<double>::quiet_NaN();
     }
     
@@ -395,8 +402,8 @@ public:
     void summarize( RunContext& ctx, size_t species )const;
     //@}
     
-    virtual void checkpoint (istream& stream){ (*this) & stream; }
-    virtual void checkpoint (ostream& stream){ (*this) & stream; }
+    void checkpoint (istream& stream){ (*this) & stream; }
+    void checkpoint (ostream& stream){ (*this) & stream; }
 
     /// Checkpointing
     //Note: below comments about what does and doesn't need checkpointing are ignored here.
@@ -445,6 +452,15 @@ public:
         ftauArray & stream;
         uninfected_v & stream;
         timeStep_N_v0 & stream;
+        // SimpleMPD kind (was SimpleMPDAnophelesModel::operator&; wire order frozen)
+        if (simpleMPD) {
+            simpleMPD->quinquennialOvipositing & stream;
+            simpleMPD->developmentDuration & stream;
+            simpleMPD->probPreadultSurvival & stream;
+            simpleMPD->fEggsLaidByOviposit & stream;
+            simpleMPD->invLarvalResources & stream;
+            simpleMPD->nOvipositingDelayed & stream;
+        }
     }
 
     MosquitoParams mosq;
@@ -663,6 +679,40 @@ public:
 
     /** Description of intervention killing effects on emerging pupae */
     vector<util::SimpleDecayingValue> emergenceReduction;
+
+    ///@brief Simple Mosquito Population Dynamics model (VECTOR_SIMPLE_MPD_MODEL)
+    //@{
+    /** Optional per-species extension state (was SimpleMPDAnophelesModel);
+     * null unless initSimpleMPD() was called. Hooks guarded on simpleMPD. */
+    struct SimpleMPDState {
+        /** Duration of development (egg laying to emergence) in days. */
+        SimTime developmentDuration = sim::never();
+        /** Survival probability egg→emergence w/o density-dependent mortality. */
+        double probPreadultSurvival;
+        /** Mean number of female eggs laid when a mosquito oviposites. */
+        double fEggsLaidByOviposit;
+        /** As quinquennialS_v, but for N_v*P_df (units: animals). */
+        std::vector<double> quinquennialOvipositing;
+        /** Resources for larvae (rather 1 over resources); γ(t) in the model
+         * description ("A Simple Periodically-Forced Difference Equation Model
+         * for Mosquito Population Dynamics", Chitnis 2012). Annual periodicity
+         * (len 365); units: 1 / animals per day. */
+        std::vector<double> invLarvalResources;
+        /** nOvipositing for the last developmentDuration time steps. */
+        std::vector<double> nOvipositingDelayed;
+    };
+
+    void initSimpleMPD (SimTime developmentDuration, double probPreadultSurvival, double fEggsLaidByOviposit) {
+        simpleMPD.reset(new SimpleMPDState());
+        simpleMPD->developmentDuration = developmentDuration;
+        simpleMPD->probPreadultSurvival = probPreadultSurvival;
+        simpleMPD->fEggsLaidByOviposit = fEggsLaidByOviposit;
+        simpleMPD->quinquennialOvipositing.resize(sim::fromYearsI(5), 0.0);
+        simpleMPD->invLarvalResources.resize(sim::oneYear(), 0.0);
+        simpleMPD->nOvipositingDelayed.resize(developmentDuration, 0.0);
+    }
+    std::unique_ptr<SimpleMPDState> simpleMPD;
+    //@}
 };
 
 }

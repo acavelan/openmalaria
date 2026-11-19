@@ -30,9 +30,11 @@
 #include "core/RunContext.h"
 #include "util/errors.h"
 
-namespace scnXml { class NonVector; }
+namespace scnXml { class NonVector; class Entomology; class Vector; }
 
 #include "Transmission/PerHost.h"
+#include "Transmission/Anopheles/AnophelesModel.h"
+#include "Transmission/Anopheles/EmergenceRateEstimator.h"
 #include "Population.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Genotypes.h"
@@ -98,6 +100,20 @@ enum SimulationMode
 /// Abstract base class, defines behaviour of transmission models
 class TransmissionModel
 {
+public:
+    /// Which behaviour this (single, final) model class implements.
+    enum class Kind { Vector, NonVector };
+
+    /// Vector-model constructor (was VectorModel::VectorModel).
+    TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode,
+        vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
+        vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
+        map<string, size_t> speciesIndexList, int populationSize);
+
+    /// Non-vector constructor (was NonVectorModel; defined in xml/entomology.cpp).
+    TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode,
+        const scnXml::Entomology &entoData, const scnXml::NonVector &nonVectorData, int eipDuration);
+
 protected:
     /// The run this model belongs to (clock accessed as ctx.clock).
     RunContext& ctx;
@@ -105,8 +121,12 @@ protected:
     /// Reads all entomological parameters from the input datafile.
     /// @param entoData input configuration for model
     /// @param nGenotypes number of genotypes transmission model is using
-    TransmissionModel(RunContext& ctx, vector<double> initialisationEIR, int interventionMode, size_t nGenotypes)
+    TransmissionModel(RunContext& ctx, vector<double> initialisationEIR, int interventionMode, size_t nGenotypes, Kind kind,
+        vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
+        vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
+        map<string, size_t> speciesIndexList)
         : ctx(ctx)
+        , kind(kind)
         , initialisationEIR(std::move(initialisationEIR))
         , simulationMode(forcedEIR)
         , interventionMode(interventionMode)
@@ -124,7 +144,17 @@ protected:
         , surveySimulatedEIR_l(0.0)
         , adultAge(PerHost::adultAge(ctx.clock))
         , numTransmittingHumans(0)
+        // m_rng(0,0) draws nothing from master; the vector kind re-seeds below
+        , m_rng(0, 0)
+        , initIterations(0)
+        , species(std::move(speciesList))
+        , emergenceRateEstimators(std::move(emergenceRateEstimatorsList))
+        , speciesIndex(std::move(speciesIndexList))
     {
+        // parity: order — vector kind only: seeding LocalRng from master_RNG
+        // consumes master draws (Xoshiro seeds via 4 gen_u64); the non-vector
+        // kind must not touch master here (old NonVectorModel never had an m_rng).
+        if (kind == Kind::Vector) m_rng = LocalRng(ctx.master_RNG);
         // Set VACCINE_GENOTYPE option
         opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
 
@@ -135,12 +165,21 @@ protected:
     }
 
 public:
-    //! Deallocate memory for TransmissionModel parameters and clean up
-    virtual ~TransmissionModel() {}
+    bool isVector() const { return kind == Kind::Vector; }
+
+    /// Get the map of species names to indicies (vector kind).
+    const map<string, size_t> &getSpeciesIndexMap() { return speciesIndex; }
+
+    /// ~Deallocate memory for TransmissionModel parameters and clean up
+    ~TransmissionModel() {}
 
     /** Extra initialisation when not loading from a checkpoint, requiring
      * information from the human population structure. */
-    virtual void init2(const vector<Host::Human> &population) = 0;
+    void init2(const vector<Host::Human> &population)
+    {
+        if (kind == Kind::Vector) { init2_vector(population); }
+        else { simulationMode = forcedEIR; } // no set-up needed; just indicate we're ready to roll
+    }
 
     /// Checkpointing
     template <class S>
@@ -153,7 +192,7 @@ public:
     /** Set some summary items.
      *
      * Overriding functions should call this base version too. */
-    virtual void summarize(RunContext& ctx)
+    void summarize(RunContext& ctx)
     {
         mon::recordStat(ctx, mon::measure("nTransmit"), laggedKappa[ctx.clock.moduloSteps(ctx.clock.now(), laggedKappa.size())]);
         mon::recordStat(ctx, mon::measure("annAvgK"), _annualAverageKappa);
@@ -174,22 +213,61 @@ public:
         surveySimulatedEIR_i = 0.0;
         surveySimulatedEIR_l = 0.0;
         lastSurveyTime = ctx.clock.now();
+
+        if (kind == Kind::Vector) summarize_vector(ctx);
     }
 
     /** Scale the EIR used by the model.
      *
      * EIR is scaled in memory (so will affect this simulation).
      * XML data is not touched. */
-    virtual void scaleEIR(double factor) = 0;
+    void scaleEIR(double factor)
+    {
+        if (kind == Kind::Vector) { scaleEIR_vector(factor); return; }
+        util::vectors::scale(initialisationEIR, factor);
+        annualEIR = util::vectors::sum(initialisationEIR);
+    }
 
-    virtual SimTime initIterate() = 0;
+    SimTime initIterate()
+    {
+        if (kind == Kind::Vector) return initIterate_vector();
+
+        simulationMode = interventionMode;
+        if (simulationMode != dynamicEIR) { return sim::zero(); }
+
+        // initialKappa is used in calculateEIR
+        assert(initialKappa.size() >= ctx.clock.steps_per_year);
+        assert(mod_nn(initialKappa.size(), ctx.clock.steps_per_year) == 0);
+        for (size_t i = ctx.clock.steps_per_year; i < initialKappa.size(); ++i)
+        {
+            initialKappa[mod_nn(i, ctx.clock.steps_per_year)] += initialKappa[i];
+        }
+        double factor = static_cast<double>(ctx.clock.steps_per_year) / static_cast<double>(initialKappa.size());
+        initialKappa.resize(ctx.clock.steps_per_year);
+        for (size_t i = 0; i < initialKappa.size(); ++i)
+        {
+            initialKappa[i] *= factor;
+            // error check:
+            if (!(initialKappa[i] > 0.0)) // if not positive
+                throw TRACED_EXCEPTION("initialKappa is invalid", util::Error::InitialKappa);
+        }
+
+        return sim::zero(); // nothing to do
+    }
 
     /** Needs to be called each step of the simulation before Human::update().
      *
      * when the vector model is used this updates mosquito populations. */
-    virtual void vectorUpdate(const vector<Host::Human> &population){};
+    void vectorUpdate(const vector<Host::Human> &population)
+    {
+        if (kind == Kind::Vector) vectorUpdate_vector(population);
+    }
 
-    virtual void changeEIRIntervention(const scnXml::NonVector &) = 0;
+    void changeEIRIntervention(const scnXml::NonVector &nonVectorData)
+    {
+        if (kind == Kind::Vector) changeEIRIntervention_vector(nonVectorData);
+        else changeEIRIntervention_nonVector(nonVectorData);
+    }
 
     /** Does per-time-step updates and returns the EIR (inoculation rate per host
      * per time step). Should be called exactly once per time-step (at least,
@@ -239,12 +317,18 @@ public:
 
     /** Remove all current infections to mosquitoes, such that without re-
      * infection, humans will then be exposed to zero EIR. */
-    virtual void uninfectVectors() = 0;
+    void uninfectVectors()
+    {
+        if (kind == Kind::Vector) { uninfectVectors_vector(); return; }
+        if (simulationMode != dynamicEIR) cerr << "Warning: uninfectVectors is not efficacious with forced EIR" << endl;
+        // reset history of human infectivity, which scales dynamic EIR:
+        laggedKappa.assign(laggedKappa.size(), 0.0);
+    }
 
     /** Needs to be called each time-step after Human::update() to update summary
      * statististics related to transmission. Also returns kappa (the average
      * human infectiousness weighted by availability to mosquitoes). */
-    virtual double updateKappa(const vector<Host::Human> &population)
+    double updateKappa(const vector<Host::Human> &population)
     {
         // We calculate kappa for output and the non-vector model.
         double sumWt_kappa = 0.0;
@@ -306,10 +390,13 @@ public:
             _sumAnnualKappa = 0.0;
         }
 
+        if (kind == Kind::NonVector && simulationMode == forcedEIR)
+        { initialKappa[ctx.clock.moduloSteps(ctx.clock.ts1(), initialKappa.size())] = laggedKappa[lKMod]; }
+
         return laggedKappa[lKMod]; // kappa now
     }
 
-    virtual void surveyEIR()
+    void surveyEIR()
     {
         tsAdultEIR = tsAdultEntoInocs / tsNumAdults;
         tsAdultEntoInocs = 0.0;
@@ -340,28 +427,67 @@ protected:
      *    individual human is exposed to, per parasite genotype, in units of
      *    inoculations per day. Length set by callee. 
      *    _i for imported infections and _l for local infections */
-    virtual void calculateEIR(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l) const = 0;
-
-    virtual void checkpoint(istream &stream)
+    void calculateEIR(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l) const
     {
-        simulationMode &stream;
-        interventionMode &stream;
-        initialisationEIR &stream;
-        laggedKappa &stream;
-        annualEIR &stream;
-        _annualAverageKappa &stream;
-        _sumAnnualKappa &stream;
-        tsAdultEIR &stream;
-        surveyInputEIR &stream;
-        surveySimulatedEIR &stream;
-        surveySimulatedEIR_i &stream;
-        surveySimulatedEIR_l &stream;
-        lastSurveyTime &stream;
-        adultAge &stream;
-        numTransmittingHumans &stream;
+        if (kind == Kind::Vector) { calculateEIR_vector(human, ageYears, EIR_i, EIR_l); return; }
+
+        EIR_i.resize(1);
+        EIR_l.resize(1); // no support for per-genotype tracking in this model (possible, but we're lazy)
+        // where the full model, with estimates of human mosquito transmission is in use, use this:
+        if (simulationMode == forcedEIR) { EIR_l[0] = initialisationEIR[ctx.clock.moduloYearSteps(ctx.clock.ts0())]; }
+        else if (simulationMode == transientEIRknown)
+        {
+            // where the EIR for the intervention phase is known, obtain this from
+            // the interventionEIR array
+            EIR_l[0] = interventionEIR[ctx.clock.inSteps(ctx.clock.interv)];
+        }
+        else if (simulationMode == dynamicEIR)
+        {
+            EIR_l[0] = initialisationEIR[ctx.clock.moduloYearSteps(ctx.clock.ts0())];
+            if (ctx.clock.interv >= sim::zero())
+            {
+                // we modulate the initialization based on the human infectiousness time steps ago in the
+                // simulation relative to infectiousness at the same time-of-year, pre-intervention.
+                // nspore gives the sporozoite development delay.
+                size_t t = ctx.clock.inSteps(ctx.clock.ts1() - nSpore);
+                EIR_l[0] *= laggedKappa[mod_nn(t, laggedKappa.size())] / initialKappa[mod_nn(t, ctx.clock.steps_per_year)];
+            }
+        }
+        else
+        {
+            throw util::xml_scenario_error("Invalid simulation mode");
+        }
+#ifndef NDEBUG
+        if (!(std::isfinite)(EIR_l[0]))
+        {
+            size_t t = ctx.clock.inSteps(ctx.clock.ts1() - nSpore);
+            ostringstream msg;
+            msg << "Error: non-vect eir is: " << EIR_l[0] << "\nlaggedKappa:\t" << laggedKappa[mod_nn(t, laggedKappa.size())]
+                << "\ninitialKappa:\t" << initialKappa[mod_nn(t, ctx.clock.steps_per_year)] << endl;
+            throw TRACED_EXCEPTION(msg.str(), util::Error::InitialKappa);
+        }
+#endif
+        EIR_l[0] *= human.perHostTransmission.relativeAvailabilityHetAge(ageYears);
+
+        mon::recordStat(mon::measure("innoculationsPerAgeGroup"), human, EIR_l[0]);
+        mon::recordStat(mon::measure("innoculationsPerVector"), human, EIR_l[0]);
     }
 
-    virtual void checkpoint(ostream &stream)
+    void checkpoint(istream &stream)
+    {
+        checkpoint_common(stream);
+        if (kind == Kind::Vector) checkpoint_vector(stream);
+        else { nSpore &stream; interventionEIR &stream; initialKappa &stream; }
+    }
+
+    void checkpoint(ostream &stream)
+    {
+        checkpoint_common(stream);
+        if (kind == Kind::Vector) checkpoint_vector(stream);
+        else { nSpore &stream; interventionEIR &stream; initialKappa &stream; }
+    }
+
+    template<class S> void checkpoint_common(S &stream)
     {
         simulationMode &stream;
         interventionMode &stream;
@@ -474,6 +600,93 @@ private:
     int tsNumAdults = 0; // accumulator for time step adults requesting EIR
 
     bool opt_vaccine_genotype = false;
+
+    // -----  vector kind (was VectorModel; unassigned for the NonVector kind)  -----
+    void init2_vector(const vector<Host::Human> &population);
+    void scaleEIR_vector(double factor);
+    SimTime initIterate_vector();
+    void vectorUpdate_vector(const vector<Host::Human> &population);
+    void calculateEIR_vector(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l) const;
+    void uninfectVectors_vector();
+    void summarize_vector(RunContext& ctx);
+    void changeEIRIntervention_vector(const scnXml::NonVector &nonVectorData);
+    void checkpoint_vector(istream &stream);
+    void checkpoint_vector(ostream &stream);
+
+    void ctsCbN_v0(ostream &stream);
+    void ctsCbP_A(ostream &stream);
+    void ctsCbP_Amu(ostream &stream);
+    void ctsCbP_A1(ostream &stream);
+    void ctsCbP_Ah(ostream &stream);
+    void ctsCbP_df(ostream &stream);
+    void ctsCbP_dif(ostream &stream);
+    void ctsCbN_v(ostream &stream);
+    void ctsCbO_v(ostream &stream);
+    void ctsCbS_v(ostream &stream);
+    void ctsCbAlpha(const vector<Host::Human> &population, ostream &stream);
+    void ctsCbP_B(const vector<Host::Human> &population, ostream &stream);
+    void ctsCbP_CD(const vector<Host::Human> &population, ostream &stream);
+    void ctsNetInsecticideContent(const vector<Host::Human> &population, ostream &stream);
+    void ctsIRSInsecticideContent(const vector<Host::Human> &population, ostream &stream);
+    void ctsIRSEffects(const vector<Host::Human> &population, ostream &stream);
+    void ctsCbResAvailability(ostream &stream);
+    void ctsCbResRequirements(ostream &stream);
+
+public:
+    /// RNG used by the transmission model (vector kind)
+    LocalRng m_rng;
+
+    /// Number of iterations performed during initialization (vector kind).
+    ///
+    /// Special cases: 0 during initial one-human-lifespan warmup, <0 after
+    /// initialisation.
+    int initIterations;
+
+    double meanAvail = 1.0;
+
+    /** Per anopheles species data (vector kind).
+     *
+     * Array will be recreated by constructor, but some members of AnophelesModel
+     * need to be checkpointed. */
+    vector<std::unique_ptr<Anopheles::AnophelesModel>> species;
+    vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimators;
+
+    /** A map of anopheles species/variant name to an index in species
+     * (vector kind; doesn't need checkpointing). */
+    map<string, size_t> speciesIndex;
+
+    /// Deploy a vector population-level intervention (vector kind only).
+    void deployVectorPopInterv(size_t instance);
+    /// Deploy some traps (vector kind only).
+    void deployVectorTrap(size_t instance, double number, SimTime lifespan);
+
+    friend class PerHost;
+
+private:
+    // -----  non-vector kind (was NonVectorModel; unused for the Vector kind)  -----
+    void changeEIRIntervention_nonVector(const scnXml::NonVector &nonVectorData);
+
+    /// multiplier used to calculate a positive EIR value where the measured value is zero
+    const double min_EIR_mult = 0.01;
+
+    //! Variance of Infection Rate according to fielddata
+    const double totalInfectionrateVariance = 1.0;
+
+    const int nYearsWarmupData = 5;
+
+    //! The duration of sporogony in time steps (doesn't need checkpointing)
+    SimTime nSpore = sim::never();
+
+    /** EIR per time interval during the intervention period (non-vector kind).
+     * Units: inoculations per adult per time step */
+    vector<double> interventionEIR;
+
+    /** (non-vector kind) Annual cycle of kappa from the warmup phase.
+     * Checkpointed. */
+    vector<double> initialKappa;
+
+    /// Kind tag: which behaviour this instance implements (was the class split)
+    const Kind kind;
 };
 
 } // namespace Transmission

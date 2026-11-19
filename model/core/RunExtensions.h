@@ -32,7 +32,8 @@
 #include "mon/Monitoring.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
-#include "Host/WithinHost/Infection/CommonInfection.h"
+#include "Host/WithinHost/WHInterface.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "Host/ImportedInfections.h"
 #include "interventions/Deployments.h"
 #include "interventions/GVI.h"
@@ -56,10 +57,24 @@ struct RunExtensions {
     /// WithinHost::Treatments option registry (built while reading XML).
     std::vector<WithinHost::Treatments> whTreatments;
     /// Within-host infection factory, set by the active model's init.
-    WithinHost::CommonInfection* (*createInfection)
+    WithinHost::Infection* (*createInfection)
         (RunContext&, util::LocalRng&, uint32_t, int) = nullptr;
-    WithinHost::CommonInfection* (*checkpointedInfection)
+    WithinHost::Infection* (*checkpointedInfection)
         (RunContext&, std::istream&) = nullptr;
+    /// Unittest backend for WithinHost::WHInterface Kind::Mock (installed by
+    /// unittest/WHMock.cpp; null in production, where Kind::Mock is never
+    /// created). Same fn-pointer-table idiom as createInfection above.
+    struct WHMockHooks {
+        void* state = nullptr;
+        void (*treatment)(void* state);
+        bool (*treatSimple)(void* state, SimTime timeLiver, SimTime timeBlood);
+        void (*treatPkPd)(void* state, RunContext& ctx, size_t schedule,
+            size_t dosages, double age, double delay_d);
+        double (*getTotalDensity)(const void* state);
+        bool (*diagnosticResult)(const void* state, util::LocalRng& rng,
+            const WithinHost::Diagnostic& diagnostic);
+    };
+    const WHMockHooks* whMock = nullptr;
     /// Diagnostics registry (built while reading XML / from defaults).
     std::map<std::string, WithinHost::Diagnostic> diagnostic_set;
     const WithinHost::Diagnostic* monitoring_diagnostic = nullptr;

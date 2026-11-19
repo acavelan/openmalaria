@@ -23,10 +23,8 @@
 #ifndef Hmod_Transmission
 #define Hmod_Transmission
 
-#include "Transmission/NonVectorModel.h"
-#include "Transmission/VectorModel.h"
+#include "Transmission/TransmissionModel.h"
 #include "Transmission/Anopheles/AnophelesModel.h"
-#include "Transmission/Anopheles/SimpleMPDAnophelesModel.h"
 #include "Transmission/Anopheles/EmergenceRateEstimator.h"
 #include "util/ModelOptions.h"
 
@@ -58,10 +56,10 @@ inline SimulationMode readMode(const string &str)
 }
 
 // Factory functions are defined in model/xml/entomology.cpp.
-NonVectorModel *createNonVectorModel(RunContext& ctx, const scnXml::Entomology &entoData);
+TransmissionModel *createNonVectorModel(RunContext& ctx, const scnXml::Entomology &entoData);
 bool anophelesCompare(const scnXml::AnophelesParams &a1, const scnXml::AnophelesParams &a2);
 Anopheles::AnophelesModel *createAnophelesModel(RunContext& ctx, size_t i, const scnXml::AnophelesParams &anoph, vector<double>& initialisationEIR, int populationSize, int interventionMode);
-VectorModel *createVectorModel(RunContext& ctx, const scnXml::Entomology &entoData, int populationSize);
+TransmissionModel *createVectorModel(RunContext& ctx, const scnXml::Entomology &entoData, int populationSize);
 TransmissionModel *createTransmissionModel(RunContext& ctx, const scnXml::Entomology &entoData, int populationSize);
 } // namespace Transmission
 } // namespace OM

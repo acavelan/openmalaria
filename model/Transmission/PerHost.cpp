@@ -22,7 +22,7 @@
 
 #include "Transmission/PerHost.h"
 #include "core/RunExtensions.h"
-#include "Transmission/VectorModel.h"
+#include "Transmission/TransmissionModel.h"
 #include "interventions/InterventionManager.h"
 #include "util/errors.h"
 #include "util/checkpoint.h"

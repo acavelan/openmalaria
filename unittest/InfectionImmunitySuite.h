@@ -24,7 +24,7 @@
 #define Hmod_InfectionImmunitySuite
 
 #include <cxxtest/TestSuite.h>
-#include "Host/WithinHost/DescriptiveWithinHost.h"
+#include "Host/WithinHost/WHInterface.h"
 #include <limits>
 
 using namespace OM::WithinHost;
@@ -40,11 +40,11 @@ public:
 	double invCumulativeHstar = 1.0 / 71.676733;
 	double alpha_m = 1.0 - exp(- 2.411434);
 	double decayM = 2.717773;
-        WHFalciparum::setParams(invCumulativeYstar, invCumulativeHstar, alpha_m, decayM);
+        WHInterface::setParams(invCumulativeYstar, invCumulativeHstar, alpha_m, decayM);
         
-        // We need a concrete class deriving from WHFalciparum; this will do
+        // Any falciparum kind will do:
         LocalRng rng(0, 721347520444481703);
-	wh = new DescriptiveWithinHostModel{ UnittestUtil::ctx(), rng, numeric_limits<double>::quiet_NaN() };
+	wh = new WHInterface{ UnittestUtil::ctx(), rng, numeric_limits<double>::quiet_NaN(), WHInterface::Kind::Descriptive };
     }
     void tearDown () {
 	delete wh;
@@ -70,7 +70,7 @@ public:
     }
     
 private:
-    WHFalciparum* wh;
+    WHInterface* wh;
 };
 
 #endif

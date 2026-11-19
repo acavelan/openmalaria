@@ -41,7 +41,7 @@
 #include "xml/entomology.h"
 #include "interventions/Deployments.h"
 #include "Host/WithinHost/Diagnostic.h"
-#include "Transmission/VectorModel.h"
+#include "Transmission/TransmissionModel.h"
 #include "Transmission/PerHost.h"
 #include "Clinical/ClinicalModel.h"
 #include "mon/Monitoring.h"
@@ -262,7 +262,7 @@ public:
         instance(instance),
         intervName(intervName)
     {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+        Transmission::TransmissionModel *vectorModel = transmission.isVector() ? &transmission : nullptr;
         if(vectorModel)
         {
             util::SpeciesIndexChecker checker(intervName, vectorModel->speciesIndex);
@@ -319,7 +319,7 @@ public:
     }
     virtual void deploy (RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission)
     {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+        Transmission::TransmissionModel *vectorModel = transmission.isVector() ? &transmission : nullptr;
         if(vectorModel)
         {
             for (size_t i = 0; i < vectorModel->speciesIndex.size(); ++i)
@@ -352,7 +352,7 @@ public:
     TimedAddNonHumanHostsDeployment( RunContext& ctx, SimTime date, const string &intervName, SimTime lifespan, const scnXml::Description3::AnophelesSequence list, Transmission::TransmissionModel& transmission) :
         TimedDeployment( ctx, date ), intervName(intervName), lifespan(lifespan)
     {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+        Transmission::TransmissionModel *vectorModel = transmission.isVector() ? &transmission : nullptr;
         if(vectorModel)
         {
             util::SpeciesIndexChecker checker(intervName, vectorModel->speciesIndex);
@@ -375,7 +375,7 @@ public:
 
     virtual void deploy (RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission)
     {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+        Transmission::TransmissionModel *vectorModel = transmission.isVector() ? &transmission : nullptr;
         if(vectorModel)
         {
             double popSize = population.size();
@@ -1220,7 +1220,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
     map<string, size_t> species_index_map;
 
     {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+        Transmission::TransmissionModel *vectorModel = transmission.isVector() ? &transmission : nullptr;
         if (vectorModel != nullptr) species_index_map = vectorModel->getSpeciesIndexMap();
     }
 
@@ -1475,7 +1475,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
     }
     if (intervElt.getVectorPop().present())
     {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+        Transmission::TransmissionModel *vectorModel = transmission.isVector() ? &transmission : nullptr;
         if (vectorModel)
         {
             typedef scnXml::VectorPop::InterventionSequence SeqT;
@@ -1503,7 +1503,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
     }
     if (intervElt.getAddNonHumanHosts().present())
     {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+        Transmission::TransmissionModel *vectorModel = transmission.isVector() ? &transmission : nullptr;
         if (vectorModel)
         {
             typedef scnXml::AddNonHumanHosts::NonHumanHostsSequence SeqT;
@@ -1530,7 +1530,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
     }
     if (intervElt.getNonHumanHostsModifications().present())
     {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+        Transmission::TransmissionModel *vectorModel = transmission.isVector() ? &transmission : nullptr;
         if (vectorModel)
         {
             typedef scnXml::NonHumanHostsModifications::InterventionSequence SeqT;
@@ -1558,7 +1558,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
     }
     if (intervElt.getVectorTrap().present())
     {
-        Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
+        Transmission::TransmissionModel *vectorModel = transmission.isVector() ? &transmission : nullptr;
         if (vectorModel)
         {
             size_t instance = 0;

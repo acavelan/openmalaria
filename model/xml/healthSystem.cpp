@@ -35,10 +35,9 @@
 #include "Host/NeonatalMortality.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
-#include "Host/WithinHost/Pathogenesis/Submodels.h"
+#include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/WHVivax.h"
 #include "Clinical/CM5DayCommon.h"
 #include "Clinical/CMDecisionTree.h"
 #include "Clinical/ClinicalModel.h"
@@ -99,13 +98,13 @@ void PathogenesisModel::init( RunContext& ctx, const Parameters& parameters, con
     if (util::ModelOptions::option (util::PREDETERMINED_EPISODES)) {
         opt_predetermined_episodes = true;
         //no separate init:
-        PyrogenPathogenesis::init( ctx, parameters );
+        PathogenesisModel::initPyrogen( ctx, parameters );
     } else {
         if (util::ModelOptions::option (util::MUELLER_PRESENTATION_MODEL)){
             opt_mueller_pres_model = true;
-            MuellerPathogenesis::init( ctx, parameters );
+            PathogenesisModel::initMueller( ctx, parameters );
         }else{
-            PyrogenPathogenesis::init( ctx, parameters );
+            PathogenesisModel::initPyrogen( ctx, parameters );
         }
     }
 }
@@ -636,7 +635,7 @@ void ClinicalEventScheduler::setParameters(const SimClock& clock, const scnXml::
     }
     cumDailyPrImmUCTS.back() = 1.0;
     
-    caseFatalityRate.scale( alpha );
+    ClinicalModel::caseFatalityRate.scale( alpha );
     
     if( util::ModelOptions::option( util::NON_MALARIA_FEVERS ) ){
         if( !esData.getNonMalariaFevers().present() ){
@@ -724,15 +723,15 @@ void ImmediateOutcomes::setHealthSystem (RunContext& ctx, const scnXml::HSImmedi
     double accessUCOfficial1 = hsDescription.getPSeekOfficialCareUncomplicated1().getValue();
     double accessUCOfficial2 = hsDescription.getPSeekOfficialCareUncomplicated2().getValue();
     // Note: this asymmetry is historical, and probably matters little:
-    accessUCSelfTreat[FirstLine] = hsDescription.getPSelfTreatUncomplicated().getValue();
-    accessUCSelfTreat[SecondLine] = 0.0;
-    accessUCAny[FirstLine] = accessUCOfficial1 + accessUCSelfTreat[FirstLine];
-    accessUCAny[SecondLine] = accessUCOfficial1 + accessUCSelfTreat[SecondLine];
-    accessSevere = hsDescription.getPSeekOfficialCareSevere().getValue();
+    CM5DayCommon::accessUCSelfTreat[CM5DayCommon::FirstLine] = hsDescription.getPSelfTreatUncomplicated().getValue();
+    CM5DayCommon::accessUCSelfTreat[CM5DayCommon::SecondLine] = 0.0;
+    CM5DayCommon::accessUCAny[CM5DayCommon::FirstLine] = accessUCOfficial1 + CM5DayCommon::accessUCSelfTreat[CM5DayCommon::FirstLine];
+    CM5DayCommon::accessUCAny[CM5DayCommon::SecondLine] = accessUCOfficial1 + CM5DayCommon::accessUCSelfTreat[CM5DayCommon::SecondLine];
+    CM5DayCommon::accessSevere = hsDescription.getPSeekOfficialCareSevere().getValue();
     
-    if( accessUCOfficial1 < 0.0 || accessUCSelfTreat[FirstLine] < 0.0 || accessUCAny[FirstLine] > 1.0 ||
-        accessUCOfficial2 < 0.0 || accessUCSelfTreat[SecondLine] < 0.0 || accessUCAny[SecondLine] > 1.0 ||
-        accessSevere < 0.0 || accessSevere > 1.0 )
+    if( accessUCOfficial1 < 0.0 || CM5DayCommon::accessUCSelfTreat[CM5DayCommon::FirstLine] < 0.0 || CM5DayCommon::accessUCAny[CM5DayCommon::FirstLine] > 1.0 ||
+        accessUCOfficial2 < 0.0 || CM5DayCommon::accessUCSelfTreat[CM5DayCommon::SecondLine] < 0.0 || CM5DayCommon::accessUCAny[CM5DayCommon::SecondLine] > 1.0 ||
+        CM5DayCommon::accessSevere < 0.0 || CM5DayCommon::accessSevere > 1.0 )
     {
         throw util::xml_scenario_error ("healthSystem: "
             "pSeekOfficialCareUncomplicated1 and pSelfTreatUncomplicated must be"
@@ -762,29 +761,29 @@ void ImmediateOutcomes::setHealthSystem (RunContext& ctx, const scnXml::HSImmedi
     }
     
     
-    cureRateUCOfficial[FirstLine] = complianceFirstLine * cureRateFirstLine
+    cureRateUCOfficial[CM5DayCommon::FirstLine] = complianceFirstLine * cureRateFirstLine
             + (1 - complianceFirstLine) * nonCompliersEffectiveFirstLine;
-    cureRateUCOfficial[SecondLine] = complianceSecondLine * cureRateSecondLine
+    cureRateUCOfficial[CM5DayCommon::SecondLine] = complianceSecondLine * cureRateSecondLine
             + (1 - complianceSecondLine) * nonCompliersEffectiveSecondLine;
-    cureRateUCSelfTreat[FirstLine] = complianceSelfTreatment * cureRateSelfTreatment
+    cureRateUCSelfTreat[CM5DayCommon::FirstLine] = complianceSelfTreatment * cureRateSelfTreatment
             + (1 - complianceSelfTreatment) * nonCompliersEffectiveFirstLine;
-    cureRateUCSelfTreat[SecondLine] = 0.0;      // as with access, this is a historical asymmetry
+    cureRateUCSelfTreat[CM5DayCommon::SecondLine] = 0.0;      // as with access, this is a historical asymmetry
     
-    cureRateSevere = getHealthSystemACRByName (hsDescription.getInitialACR(), inpatient);
+    CM5DayCommon::cureRateSevere = getHealthSystemACRByName (hsDescription.getInitialACR(), inpatient);
     
-    treatmentUC[FirstLine] = getHealthSystemTreatmentByName(ctx, hsDescription.getTreatmentActions(), firstLine);
+    treatmentUC[CM5DayCommon::FirstLine] = getHealthSystemTreatmentByName(ctx, hsDescription.getTreatmentActions(), firstLine);
     
-    if( secondLine == firstLine ) treatmentUC[SecondLine] = treatmentUC[FirstLine];
-    else treatmentUC[SecondLine] = getHealthSystemTreatmentByName(ctx, hsDescription.getTreatmentActions(), secondLine);
+    if( secondLine == firstLine ) treatmentUC[CM5DayCommon::SecondLine] = treatmentUC[CM5DayCommon::FirstLine];
+    else treatmentUC[CM5DayCommon::SecondLine] = getHealthSystemTreatmentByName(ctx, hsDescription.getTreatmentActions(), secondLine);
     
-    if( inpatient == firstLine ) treatmentSevere = treatmentUC[FirstLine];
-    else if( inpatient == secondLine ) treatmentSevere = treatmentUC[SecondLine];
-    else treatmentSevere = getHealthSystemTreatmentByName(ctx, hsDescription.getTreatmentActions(), inpatient);
+    if( inpatient == firstLine ) CM5DayCommon::treatmentSevere = treatmentUC[CM5DayCommon::FirstLine];
+    else if( inpatient == secondLine ) CM5DayCommon::treatmentSevere = treatmentUC[CM5DayCommon::SecondLine];
+    else CM5DayCommon::treatmentSevere = getHealthSystemTreatmentByName(ctx, hsDescription.getTreatmentActions(), inpatient);
     
     useDiagnosticUC = hsDescription.getUseDiagnosticUC();
     
     if( ModelOptions::option(util::VIVAX_SIMPLE_MODEL) ){
-        WithinHost::WHVivax::setHSParameters(
+        WithinHost::WHInterface::setHSParametersVivax(
             hsDescription.getLiverStageDrug().present() ?
             &hsDescription.getLiverStageDrug().get() : 0 );
     }else if( hsDescription.getLiverStageDrug().present() ){
@@ -795,15 +794,15 @@ void DecisionTree5Day::setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& 
     double accessUCOfficial1 = hsDescription.getPSeekOfficialCareUncomplicated1().getValue();
     double accessUCOfficial2 = hsDescription.getPSeekOfficialCareUncomplicated2().getValue();
     // Note: this asymmetry is historical, and probably matters little:
-    accessUCSelfTreat[FirstLine] = hsDescription.getPSelfTreatUncomplicated().getValue();
-    accessUCSelfTreat[SecondLine] = 0.0;
-    accessUCAny[FirstLine] = accessUCOfficial1 + accessUCSelfTreat[FirstLine];
-    accessUCAny[SecondLine] = accessUCOfficial1 + accessUCSelfTreat[SecondLine];
-    accessSevere = hsDescription.getPSeekOfficialCareSevere().getValue();
+    CM5DayCommon::accessUCSelfTreat[CM5DayCommon::FirstLine] = hsDescription.getPSelfTreatUncomplicated().getValue();
+    CM5DayCommon::accessUCSelfTreat[CM5DayCommon::SecondLine] = 0.0;
+    CM5DayCommon::accessUCAny[CM5DayCommon::FirstLine] = accessUCOfficial1 + CM5DayCommon::accessUCSelfTreat[CM5DayCommon::FirstLine];
+    CM5DayCommon::accessUCAny[CM5DayCommon::SecondLine] = accessUCOfficial1 + CM5DayCommon::accessUCSelfTreat[CM5DayCommon::SecondLine];
+    CM5DayCommon::accessSevere = hsDescription.getPSeekOfficialCareSevere().getValue();
     
-    if( accessUCOfficial1 < 0.0 || accessUCSelfTreat[FirstLine] < 0.0 || accessUCAny[FirstLine] > 1.0 ||
-        accessUCOfficial2 < 0.0 || accessUCSelfTreat[SecondLine] < 0.0 || accessUCAny[SecondLine] > 1.0 ||
-        accessSevere < 0.0 || accessSevere > 1.0 )
+    if( accessUCOfficial1 < 0.0 || CM5DayCommon::accessUCSelfTreat[CM5DayCommon::FirstLine] < 0.0 || CM5DayCommon::accessUCAny[CM5DayCommon::FirstLine] > 1.0 ||
+        accessUCOfficial2 < 0.0 || CM5DayCommon::accessUCSelfTreat[CM5DayCommon::SecondLine] < 0.0 || CM5DayCommon::accessUCAny[CM5DayCommon::SecondLine] > 1.0 ||
+        CM5DayCommon::accessSevere < 0.0 || CM5DayCommon::accessSevere > 1.0 )
     {
         throw util::xml_scenario_error ("healthSystem: "
             "pSeekOfficialCareUncomplicated1 and pSelfTreatUncomplicated must be"
@@ -815,11 +814,11 @@ void DecisionTree5Day::setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& 
     treeUCOfficial = &compile_decision_tree( ctx, hsDescription.getTreeUCOfficial(), true );
     treeUCSelfTreat = &compile_decision_tree( ctx, hsDescription.getTreeUCSelfTreat(), true );
     
-    cureRateSevere = hsDescription.getCureRateSevere().getValue();
-    treatmentSevere = WHInterface::addTreatment( ctx, hsDescription.getTreatmentSevere() );
+    CM5DayCommon::cureRateSevere = hsDescription.getCureRateSevere().getValue();
+    CM5DayCommon::treatmentSevere = WHInterface::addTreatment( ctx, hsDescription.getTreatmentSevere() );
     
     if( ModelOptions::option(util::VIVAX_SIMPLE_MODEL) ){
-        WithinHost::WHVivax::setHSParameters(
+        WithinHost::WHInterface::setHSParametersVivax(
             hsDescription.getLiverStageDrug().present() ?
             &hsDescription.getLiverStageDrug().get() : 0 );
     }else if( hsDescription.getLiverStageDrug().present() ){

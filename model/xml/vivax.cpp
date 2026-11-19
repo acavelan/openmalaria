@@ -29,7 +29,7 @@
 #include "Global.h"
 #include "core/RunContext.h"
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
-#include "Host/WithinHost/WHVivax.h"
+#include "Host/WithinHost/WHInterface.h"
 #include "util/CommandLine.h"
 #include "util/UnitParse.h"
 #include "util/errors.h"
@@ -82,7 +82,7 @@ void initNHypnozoites(){
     }
 }
 
-void WHVivax::init( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model ){
+void WHInterface::initVivax( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model ){
 
     // Default value to use if no <parameters> element is present in XML.
     latentP = UnitParse::readShortDuration(ctx.clock, "15d", UnitParse::DAYS);
@@ -138,7 +138,7 @@ void WHVivax::init( RunContext& ctx, const OM::Parameters& parameters, const scn
     Pathogenesis::PathogenesisModel::init( ctx, parameters, model.getClinical(), true );
 }
 
-void WHVivax::setHSParameters(const scnXml::LiverStageDrug* elt){
+void WHInterface::setHSParametersVivax(const scnXml::LiverStageDrug* elt){
     double oldPHetNoPQ = pHetNoPQ;
     if( elt == 0 ){
         ignoreNoPQ = false;

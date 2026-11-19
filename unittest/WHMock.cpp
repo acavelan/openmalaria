@@ -21,91 +21,54 @@
  */
 
 #include "WHMock.h"
+#include "core/RunExtensions.h"
 #include "Host/WithinHost/Diagnostic.h"
-#include "util/errors.h"
 
 using namespace std;
 
 namespace OM {
 namespace UnitTest {
 
-WHMock::WHMock(RunContext& ctx) :
-    WHInterface(ctx),
-    totalDensity(numeric_limits<double>::quiet_NaN()),
-    nTreatments(0),
-    lastTimeLiver(sim::never()), lastTimeBlood(sim::never())
-{}
-WHMock::~WHMock() {}
+using util::LocalRng;
 
-double WHMock::probTransmissionToMosquito(vector<double> &, vector<double> &) const{
-    throw util::unimplemented_exception( "not needed in unit test" );
+namespace {
+WHMockState* state = nullptr;
+
+void treatment(void*){
+    state->nTreatments += 1;
 }
 
-bool WHMock::summarize(Host::Human& human)const{
-    throw util::unimplemented_exception( "not needed in unit test" );
-}
-
-void WHMock::importInfection(LocalRng& rng){
-    throw util::unimplemented_exception( "not needed in unit test" );
-}
-
-void WHMock::optionalPqTreatment(Host::Human& human){
-    throw util::unimplemented_exception( "not needed in unit test" );
-}
-
-bool WHMock::treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlood ){
-    nTreatments += 1;
-    lastTimeLiver = timeLiver;
-    lastTimeBlood = timeBlood;
+bool treatSimple(void*, SimTime timeLiver, SimTime timeBlood){
+    state->nTreatments += 1;
+    state->lastTimeLiver = timeLiver;
+    state->lastTimeBlood = timeBlood;
     return timeBlood != sim::zero();
 }
 
-void WHMock::treatPkPd(size_t schedule, size_t dosages, double age, double delay_d){
-    nTreatments += 1;
-    pkpd.prescribe( ctx, schedule, dosages, age, numeric_limits<double>::quiet_NaN(), delay_d );
+void treatPkPd(void*, RunContext& ctx, size_t schedule, size_t dosages, double age, double delay_d){
+    state->nTreatments += 1;
+    state->pkpd.prescribe( ctx, schedule, dosages, age, numeric_limits<double>::quiet_NaN(), delay_d );
 }
 
-void WHMock::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears) {
-    throw util::unimplemented_exception( "not needed in unit test" );
+double getTotalDensity(const void*){
+    return state->totalDensity;
 }
 
-inline double WHMock::getTotalDensity() const{
-    return totalDensity;
+bool diagnosticResult(const void*, LocalRng& rng, const WithinHost::Diagnostic& diagnostic){
+    return diagnostic.isPositive( rng, state->totalDensity, numeric_limits<double>::quiet_NaN() );
 }
 
-bool WHMock::diagnosticResult( LocalRng& rng, const Diagnostic& diagnostic ) const{
-    return diagnostic.isPositive( rng, totalDensity, numeric_limits<double>::quiet_NaN() );
+RunExtensions::WHMockHooks hooks = { nullptr, &treatment, &treatSimple, &treatPkPd, &getTotalDensity, &diagnosticResult };
 }
 
-void WHMock::treatment( Host::Human& human, TreatmentId treatId ){
-    nTreatments += 1;
-}
-
-Pathogenesis::StatePair WHMock::determineMorbidity( Host::Human& human, double ageYears, bool isDoomed ){
-    throw util::unimplemented_exception( "not needed in unit test" );
-}
-
-void WHMock::clearImmunity(){
-    throw util::unimplemented_exception( "not needed in unit test" );
-}
-
-double WHMock::getCumulative_h() const{
-    throw util::unimplemented_exception( "not needed in unit test" );
-}
-
-double WHMock::getCumulative_Y() const{
-    throw util::unimplemented_exception( "not needed in unit test" );
-}
-
-InfectionOrigin WHMock::getInfectionOrigin() const{
-    return InfectionOrigin::Indigenous;
-}
-
-void WHMock::checkpoint (istream& stream){
-    throw util::unimplemented_exception( "not needed in unit test" );
-}
-void WHMock::checkpoint (ostream& stream){
-    throw util::unimplemented_exception( "not needed in unit test" );
+unique_ptr<WithinHost::WHInterface> makeWHMock(RunContext& ctx){
+    delete state;
+    state = new WHMockState();
+    hooks.state = state;
+    ctx.ext->whMock = &hooks;
+    LocalRng rng(0, 0);   // unused: the Mock kind's constructor draws nothing
+    return unique_ptr<WithinHost::WHInterface>(
+        new WithinHost::WHInterface( ctx, rng, 1.0, WithinHost::WHInterface::Kind::Mock ));
 }
 
 }

@@ -22,13 +22,7 @@
 
 #include "core/RunExtensions.h"
 #include "core/RunContext.h"
-#include "Host/WithinHost/WHFalciparum.h"
-#include "Host/WithinHost/DescriptiveWithinHost.h"
-#include "Host/WithinHost/CommonWithinHost.h"
-#include "Host/WithinHost/Infection/DummyInfection.h"
-#include "Host/WithinHost/Infection/EmpiricalInfection.h"
-#include "Host/WithinHost/Infection/MolineauxInfection.h"
-#include "Host/WithinHost/Infection/PennyInfection.h"
+#include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
@@ -80,14 +74,14 @@ double alpha_m;
 double decayM;
 
 SimTime Infection::s_latentP = sim::never();
-int WHFalciparum::y_lag_len = 0;
+int WHInterface::y_lag_len = 0;
 
 
 
 // -----  static functions  -----
 
 
-void WHFalciparum::setParams(double cumYStar, double cumHStar, double aM, double dM) {
+void WHInterface::setParams(double cumYStar, double cumHStar, double aM, double dM) {
     invCumulativeYstar = cumYStar;
     invCumulativeHstar = cumHStar;
     alpha_m = aM;
@@ -97,13 +91,10 @@ void WHFalciparum::setParams(double cumYStar, double cumHStar, double aM, double
 
 // -----  Non-static  -----
 
-WHFalciparum::WHFalciparum( RunContext& ctx, LocalRng& rng, double comorbidityFactor ):
-    WHInterface(ctx),
-    m_cumulative_h(0.0), m_cumulative_Y(0.0), m_cumulative_Y_lag(0.0),
-    totalDensity(0.0), hrp2Density(0.0), timeStepMaxDensity(0.0),
-    pathogenesisModel( Pathogenesis::PathogenesisModel::createPathogenesisModel( comorbidityFactor ) ),
-    treatExpiryLiver(0), treatExpiryBlood(0)
+void WHInterface::ctorFalciparum( LocalRng& rng, double comorbidityFactor )
 {
+    pathogenesisModel.reset( Pathogenesis::PathogenesisModel::createPathogenesisModel( comorbidityFactor ) );
+    
     // NOTE: negating a Gaussian sample with mean 0 is pointless — except that
     // the individual samples change. In any case the overhead is negligible.
     //FIXME: Should this be allowed to be greater than 1?
@@ -115,11 +106,7 @@ WHFalciparum::WHFalciparum( RunContext& ctx, LocalRng& rng, double comorbidityFa
     m_y_lag_l.resize(y_lag_len * ctx.genotypes.N());
 }
 
-WHFalciparum::~WHFalciparum()
-{
-}
-
-double WHFalciparum::immunitySurvivalFactor (double ageInYears, double cumulativeExposureJ) {
+double WHInterface::immunitySurvivalFactor (double ageInYears, double cumulativeExposureJ) {
     if (std::isnan(ageInYears) || std::isnan(cumulativeExposureJ) ||
         std::isnan(m_cumulative_h) || std::isnan(m_cumulative_Y)) {
         throw base_exception("nan in immunitySurvivalFactor");
@@ -175,7 +162,7 @@ inline double compute_y_lag(const SimClock& clock, const Genotypes& genotypes, c
     return PTM_beta1 * y10_sum + PTM_beta2 * y15_sum + PTM_beta3 * y20_sum;
 }
 
-double WHFalciparum::probTransmissionToMosquito(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l) const{
+double WHInterface::probTransmissionToMosquito_falciparum(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l) const{
     // This model (often referred to as the gametocyte model) was designed for
     // 5-day time steps. We use the same model (sampling 10, 15 and 20 days
     // ago) for 1-day time steps to avoid having to design and analyse a new
@@ -216,11 +203,11 @@ double WHFalciparum::probTransmissionToMosquito(vector<double> &probTransGenotyp
     return pTransmit;
 }
 
-bool WHFalciparum::diagnosticResult( LocalRng& rng, const Diagnostic& diagnostic ) const{
+bool WHInterface::diagnosticResult_falciparum( LocalRng& rng, const Diagnostic& diagnostic ) const{
     return diagnostic.isPositive( rng, totalDensity, hrp2Density );
 }
 
-void WHFalciparum::treatment( Host::Human& human, TreatmentId treatId ){
+void WHInterface::treatment_falciparum( Host::Human& human, TreatmentId treatId ){
     const Treatments& treat = Treatments::select( ctx, treatId );
     treatSimple( human, treat.liverEffect(), treat.bloodEffect() );
     
@@ -229,7 +216,7 @@ void WHFalciparum::treatment( Host::Human& human, TreatmentId treatId ){
                   mon::Deploy::TREAT,
                   interventions::VaccineLimits(/*default initialise: no limits*/) );
 }
-bool WHFalciparum::treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlood ){
+bool WHInterface::treatSimple_falciparum( Host::Human& human, SimTime timeLiver, SimTime timeBlood ){
     if( timeLiver != sim::zero() ){
         if( timeLiver < sim::zero() )
             clearInfections( Treatments::LIVER );
@@ -247,7 +234,7 @@ bool WHFalciparum::treatSimple( Host::Human& human, SimTime timeLiver, SimTime t
     return false;    // no blood stage treatment
 }
 
-Pathogenesis::StatePair WHFalciparum::determineMorbidity( Host::Human& human,
+Pathogenesis::StatePair WHInterface::determineMorbidity_falciparum( Host::Human& human,
         double ageYears, bool isDoomed )
 {
     Pathogenesis::StatePair result = pathogenesisModel->determineState( human,
@@ -268,7 +255,7 @@ Pathogenesis::StatePair WHFalciparum::determineMorbidity( Host::Human& human,
 
 // -----  immunity  -----
 
-void WHFalciparum::updateImmuneStatus() {
+void WHInterface::updateImmuneStatus() {
     if (immEffectorRemain < 1) {
         m_cumulative_h *= immEffectorRemain;
         m_cumulative_Y *= immEffectorRemain;
@@ -285,8 +272,7 @@ void WHFalciparum::updateImmuneStatus() {
 
 // -----  Checkpointing  -----
 
-void WHFalciparum::checkpoint (istream& stream) {
-    WHInterface::checkpoint( stream );
+void WHInterface::checkpoint_falciparum (istream& stream) {
     _innateImmSurvFact & stream;
     m_cumulative_h & stream;
     m_cumulative_Y & stream;
@@ -300,8 +286,7 @@ void WHFalciparum::checkpoint (istream& stream) {
     treatExpiryLiver & stream;
     treatExpiryBlood & stream;
 }
-void WHFalciparum::checkpoint (ostream& stream) {
-    WHInterface::checkpoint( stream );
+void WHInterface::checkpoint_falciparum (ostream& stream) {
     _innateImmSurvFact & stream;
     m_cumulative_h & stream;
     m_cumulative_Y & stream;

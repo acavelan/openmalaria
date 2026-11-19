@@ -20,8 +20,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "PkPd/Drug/LSTMDrugConversion.h"
-#include "Host/WithinHost/Infection/CommonInfection.h"
+// LSTMDrug Conversion kind (was LSTMDrugConversion; hierarchy collapsed phase 4b):
+// two 1-compartment models with conversion (parent typeData, metaboliteData).
+#include "PkPd/Drug/LSTMDrug.h"
+#include "PkPd/Drug/LSTMDrugType.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "util/errors.h"
 #include "util/StreamValidator.h"
 #include "util/vectors.h"
@@ -32,42 +35,15 @@
 using namespace std;
 
 namespace OM { namespace PkPd {
-    
-LSTMDrugConversion::LSTMDrugConversion(const LSTMDrugType& parent,
-                                       const LSTMDrugType& metabolite,
-                                       LocalRng& rng) :
-    LSTMDrug(parent.sample_Vd(rng)),
-    parentType(parent),
-    metaboliteType(metabolite),
-    qtyG(0.0), qtyP(0.0), qtyM(0.0),
-    nka(-parent.sample_ka(rng)),
-    nkP_sample(-parent.sample_elim_rate(rng)),
-    nconv_sample(-parent.sample_conv_rate(rng)),
-    nkM_sample(-metabolite.sample_elim_rate(rng)),
-    vol_dist_metabolite(metabolite.sample_Vd(rng))
-{}
 
-//LSTMDrugConversion::~LSTMDrugConversion(){}
-
-size_t LSTMDrugConversion::getIndex() const {
-    return parentType.getIndex();       // parent drug's index should work
-}
-double LSTMDrugConversion::getConcentration(size_t index) const {
-    if( index == parentType.getIndex() ){
-        return getParentConcentration();
-    }else if( index == metaboliteType.getIndex() ){
-        return getMetaboliteConcentration();
-    }else return 0.0;
-}
-double LSTMDrugConversion::getParentConcentration() const {
+double LSTMDrug::getParentConcentration() const {
     return qtyP / (vol_dist * last_bm);
 }
-double LSTMDrugConversion::getMetaboliteConcentration() const {
+double LSTMDrug::getMetaboliteConcentration() const {
     return qtyM / (vol_dist_metabolite * last_bm);
 }
 
-
-/// Parameters for func_convFactor and LSTMDrugConversion::calculateFactor
+/// Parameters for func_convFactor and LSTMDrug::calculateFactor_conv
 struct Params_convFactor {
     // Quantities of parent in gut, parent in circulation and metabolite in
     // circulation, in mg (A, B, C in paper):
@@ -134,7 +110,7 @@ const size_t GSL_INTG_CONV_MAX_ITER = 1000;     // 10 seems enough, but no harm 
 gsl_integration_workspace *gsl_intgr_conv_wksp = gsl_integration_workspace_alloc (GSL_INTG_CONV_MAX_ITER);
 //NOTE: we "should" free, but mem-leaks at end of program aren't really important
 // gsl_integration_workspace_free (gsl_intgr_conv_wksp);
-double LSTMDrugConversion::calculateFactor(const Params_convFactor& p, double duration) const{
+double LSTMDrug::calculateFactor_conv(const Params_convFactor& p, double duration) const{
     gsl_function F;
     F.function = &func_convFactor;
     // gsl_function doesn't accept const; we re-apply const later
@@ -159,21 +135,21 @@ double LSTMDrugConversion::calculateFactor(const Params_convFactor& p, double du
     return exp( -intfC );  // drug factor
 }
 
-void LSTMDrugConversion::setConversionParameters(Params_convFactor& p,
+void LSTMDrug::setConversionParameters(Params_convFactor& p,
         double body_mass) const
 {
     p.qtyG = qtyG; p.qtyP = qtyP; p.qtyM = qtyM;
     
     // decay "constants" (dependent on body mass):
-    const double nkP = nkP_sample * pow(body_mass, parentType.neg_m_exponent());      // -y
-    const double nconv = nconv_sample * pow(body_mass, parentType.neg_m_exponent());  // -z
+    const double nkP = nkP_sample * pow(body_mass, typeData->neg_m_exponent());      // -y
+    const double nconv = nconv_sample * pow(body_mass, typeData->neg_m_exponent());  // -z
     p.nka = nka;        // -x
-    p.nkM = nkM_sample * pow(body_mass, metaboliteType.neg_m_exponent());  // -k
+    p.nkM = nkM_sample * pow(body_mass, metaboliteData->neg_m_exponent());  // -k
     p.nl = nkP + nconv;    // -(y + z)
     
     p.f = nka / (p.nl - nka);                           // -x / (x-y-z) = x / (y+z-x)
-    // Let u = parentType.molecular_weight_ratio() = M_C / M_B:
-    const double rz = parentType.molecular_weight_ratio() * nconv; // -u*z
+    // Let u = typeData->molecular_weight_ratio() = M_C / M_B:
+    const double rz = typeData->molecular_weight_ratio() * nconv; // -u*z
     p.g = rz * nka / ((nka - p.nl) * (nka - p.nkM));    // u*z*x / ((y+z-x) * (k-x))
     p.h = rz * nka / ((nka - p.nl) * (p.nkM - p.nl));   // u*z*x / ((y+z-x) * (y+z-k))
     p.i = rz / (p.nl - p.nkM);                          // -u*z / (k - y - z) = u*z / (y+z-k)
@@ -182,38 +158,38 @@ void LSTMDrugConversion::setConversionParameters(Params_convFactor& p,
     p.invVdP = 1.0 / (vol_dist * body_mass); p.invVdM = 1.0 / (vol_dist_metabolite * body_mass);
 }
 
-void LSTMDrugConversion::setKillingParameters(LocalRng& rng, Params_convFactor& p,
-        WithinHost::CommonInfection *inf) const
+void LSTMDrug::setKillingParameters(LocalRng& rng, Params_convFactor& p,
+        WithinHost::Infection *inf) const
 {
     uint32_t genotype = inf->genotype();
-    const LSTMDrugPD& pdP = parentType.getPD(genotype), &pdM =
-            metaboliteType.getPD(genotype);
+    const LSTMDrugPD& pdP = typeData->getPD(genotype), &pdM =
+            metaboliteData->getPD(genotype);
     p.nP = pdP.slope();
     p.VP = pdP.max_killing_rate();
     p.nM = pdM.slope();
     p.VM = pdM.max_killing_rate();
     
     // Use custom code here because we need to handle covariance
-    auto pIndex = parentType.getIndex();
+    auto pIndex = typeData->getIndex();
     if (inf->Kn.count(pIndex) != 0) {
         // Read cached values: IC50 ^ n
         p.KnP = inf->Kn.at(pIndex);
-        p.KnM = inf->Kn.at(metaboliteType.getIndex());
+        p.KnM = inf->Kn.at(metaboliteData->getIndex());
     } else {
         // First usage for this infection / treatment: sample, optionally with correlation.
         auto zscore = NormalSample::generate(rng);
         p.KnP = pdP.IC50_pow_slope(zscore);
         inf->Kn[pIndex] = p.KnP;
         
-        auto metab_zscore = parentType.IC50_correlated_sample(zscore, rng);
+        auto metab_zscore = typeData->IC50_correlated_sample(zscore, rng);
         p.KnM = pdM.IC50_pow_slope(metab_zscore);
-        inf->Kn[metaboliteType.getIndex()] = p.KnM;
+        inf->Kn[metaboliteData->getIndex()] = p.KnM;
     }
 }
 
 // TODO: in high transmission, is this going to get called more often than updateConcentration?
 // When does it make sense to try to optimise (avoid doing decay calcuations here)?
-double LSTMDrugConversion::calculateDrugFactor(LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const {
+double LSTMDrug::drugFactor_conversion(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const {
     if( qtyG == 0.0 && qtyP == 0.0 && qtyM == 0.0 && doses.size() == 0 ){
         return 1.0; // nothing to do
     }
@@ -231,7 +207,7 @@ double LSTMDrugConversion::calculateDrugFactor(LocalRng& rng, WithinHost::Common
         if( time_conc.first < 1.0 /*i.e. today*/ ){
             if( time < time_conc.first ){
                 double duration = time_conc.first - time;
-                totalFactor *= calculateFactor(p, duration);
+                totalFactor *= calculateFactor_conv(p, duration);
                 const double expAbsorb = exp(nka * duration), expPLoss = exp(p.nl * duration);
                 p.qtyM = calculateMetaboliteQuantity(p, expAbsorb, expPLoss, duration);
                 p.qtyP = calculateParentQuantity(p, expAbsorb, expPLoss);
@@ -245,13 +221,13 @@ double LSTMDrugConversion::calculateDrugFactor(LocalRng& rng, WithinHost::Common
         }
     }
     if( time < 1.0 ){
-        totalFactor *= calculateFactor(p, 1.0 - time);
+        totalFactor *= calculateFactor_conv(p, 1.0 - time);
     }
     
     return totalFactor;
 }
 
-void LSTMDrugConversion::updateConcentration( double body_mass ){
+void LSTMDrug::updateConcentration_conversion( double body_mass ){
     if( qtyG == 0.0 && qtyP == 0.0 && qtyM == 0.0 && doses.size() == 0 ){
         return; // nothing to do
     }
@@ -295,8 +271,8 @@ void LSTMDrugConversion::updateConcentration( double body_mass ){
     qtyG = p.qtyG;
     
     util::streamValidate( qtyM );
-    if( qtyP < parentType.getNegligibleConcentration() * body_mass * vol_dist &&
-            qtyM < metaboliteType.getNegligibleConcentration() * body_mass * vol_dist_metabolite )
+    if( qtyP < typeData->getNegligibleConcentration() * body_mass * vol_dist &&
+            qtyM < metaboliteData->getNegligibleConcentration() * body_mass * vol_dist_metabolite )
     {
         // once negligible, try to optimise so that we don't have to do
         // anything next time step
@@ -304,7 +280,7 @@ void LSTMDrugConversion::updateConcentration( double body_mass ){
     }
 }
 
-void LSTMDrugConversion::checkpoint(ostream& stream){
+void LSTMDrug::checkpoint_conversion(ostream& stream){
     qtyG & stream;
     qtyP & stream;
     qtyM & stream;
@@ -313,7 +289,7 @@ void LSTMDrugConversion::checkpoint(ostream& stream){
     nconv_sample & stream;
     nkM_sample & stream;
 }
-void LSTMDrugConversion::checkpoint(istream& stream){
+void LSTMDrug::checkpoint_conversion(istream& stream){
     qtyG & stream;
     qtyP & stream;
     qtyM & stream;

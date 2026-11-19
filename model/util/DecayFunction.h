@@ -36,29 +36,30 @@ namespace OM {
 class SimClock;
 namespace util {
 
-/** An interface for a few types of decay function (some of which may also be
- * suitible survival functions).
+/** A decay function (several also suitible as survival functions): one
+ * enum-tagged value type — behaviour is chosen by DATA (Kind switch in
+ * compute()/sampleAgeOfDecay(), one case per formula), no class hierarchy.
  *
- * Heterogeneity is implemented by passing a DecayFunction object to the eval
- * function; this should be sampled by the same DecayFunction.
+ * Config vs State: the XML layer builds one configured instance per component
+ * parameter (config; hetFactor==0, never eval'd). hetSample() clones it into a
+ * per-individual State carrying that individual's hetFactor. Operator/Emax
+ * nest child configs; the factor applies to EVERY node of a sampled copy
+ * (parity: old makeHetSample recursed hetSample(factor) into children).
  *****************************************************************************/
 class DecayFunction
 {
 public:
-    DecayFunction(bool increasing = false, double initialEfficacy = 1.0, double CV = 0.0) : 
-        increasing(increasing), initialEfficacy(initialEfficacy), het(std::move(LognormalSampler::fromMeanCV(1.0, CV))) {}
+    enum class Kind { Constant, Step, Linear, Exponential, Weibull, Hill,
+                      SmoothCompact, Plus, Minus, Divides, Multiplies, Emax };
 
-    DecayFunction(const DecayFunction& other) : 
-        increasing(other.increasing),
-        initialEfficacy(other.initialEfficacy),
-        het(other.het ? other.het->clone() : nullptr),
-        hetFactor(other.hetFactor),
-        simClock(other.simClock) {}
+    /// Plain-data construction; XML-driven builds go through makeObject.
+    DecayFunction(Kind kind, bool increasing, double initialEfficacy, double CV) :
+        kind(kind), increasing(increasing), initialEfficacy(initialEfficacy),
+        het(Sampler::fromMeanCV(Sampler::Kind::Lognormal, 1.0, CV)) {}
 
-    virtual ~DecayFunction() {}
-
-    /** Return a new decay function, constructed from an XML element.
-     * 
+    /** Return a new decay function, constructed from an XML element
+     * (definition: model/xml/util.cpp — the only code reading the schema).
+     *
      * @param elt XML element specifying which function to use and parameters
      * @param eltName Name of XML element (for reasonable error reporting)
      */
@@ -66,24 +67,36 @@ public:
         const SimClock& clock, const scnXml::DecayFunction& elt, const char* eltName
     );
 
+    DecayFunction(const DecayFunction& other) :
+        kind(other.kind), increasing(other.increasing),
+        initialEfficacy(other.initialEfficacy),
+        het(other.het ? other.het->clone() : nullptr),
+        hetFactor(other.hetFactor), invL(other.invL), k(other.k),
+        Emax(other.Emax), IC50(other.IC50), slope(other.slope),
+        initialConcentration(other.initialConcentration),
+        f1(other.f1 ? make_unique<DecayFunction>(*other.f1) : nullptr),
+        f2(other.f2 ? make_unique<DecayFunction>(*other.f2) : nullptr),
+        simClock(other.simClock) {}
+
     /** Sample a DecayFunction value (should be stored per individual).
-     * 
+     *
      * Note that a DecayFunction is needed to call eval() even if heterogeneity
      * is not wanted. If sigma = 0 then the random number stream will not be
      * touched. */
     unique_ptr<DecayFunction> hetSample(LocalRng& rng) const {
         return hetSample(het->sample(rng));
     }
-    
+
     /** Generate a DecayFunction value from an existing sample. */
     std::unique_ptr<DecayFunction> hetSample(NormalSample sample) const {
         return hetSample(het->sample(sample));
     }
-    
-    /** Generate a DecayFunction value from an existing sample. */
+
+    /** Generate a DecayFunction value from an existing sample: per-individual
+     * State = config clone with factor set recursively (Operator/Emax share it). */
     unique_ptr<DecayFunction> hetSample(double factor) const {
-        unique_ptr<DecayFunction> sample = makeHetSample(factor);
-        sample->hetFactor = factor;
+        unique_ptr<DecayFunction> sample = make_unique<DecayFunction>(*this);
+        sample->setFactor(factor);
         return sample;
     }
 
@@ -91,12 +104,13 @@ public:
      * decayed and not decayed. If you want to use a DecayFunction to model
      * the proportion of objects which have decayed, you need to work out per
      * object the age of decay. This function does that.
-     * 
-     * This is only valid where mu and sigma parameters are zero.
-     * 
+     *
+     * This is only valid where mu and sigma parameters are zero. hetFactor is
+     * irrelevant here (every kind's draw is of the unscaled age).
+     *
      * @returns Age at which an object should decay. */
-    virtual SimTime sampleAgeOfDecay (LocalRng& rng) const =0;
-    
+    SimTime sampleAgeOfDecay (LocalRng& rng) const;
+
     inline double eval(double ageDays) const {
         if(increasing)
             return 1.0 - compute( ageDays ) * initialEfficacy;
@@ -104,20 +118,34 @@ public:
             return compute( ageDays ) * initialEfficacy;
     }
 
-    virtual double compute(double ageDays) const = 0;
-
-    /** Checkpoint a sampled copy, recreating it from this configured function. */
+    /** Checkpoint a sampled copy, recreating it from this configured function.
+     * Wire format frozen: bool present + double hetFactor. */
     void checkpointSample(const unique_ptr<DecayFunction>& sample, ostream& stream) const;
     void checkpointSample(unique_ptr<DecayFunction>& sample, istream& stream) const;
 
 private:
+    /// The formula switch: one case per Kind (was one virtual per subclass).
+    double compute(double ageDays) const;
+
+    void setFactor(double factor) {
+        hetFactor = factor;
+        if(f1) f1->setFactor(factor);
+        if(f2) f2->setFactor(factor);
+    }
+
+    Kind kind;
     bool increasing;
     double initialEfficacy;
     std::unique_ptr<util::Sampler> het;
 
-protected:
-    virtual unique_ptr<DecayFunction> makeHetSample(double factor) const = 0;
     double hetFactor = 0.0;
+    /// Precomputed scale: 1/L days (Step/Linear/Hill/SmoothCompact),
+    /// log(2)/L (Exponential), pow(log 2, 1/k)/L (Weibull). Was per-subclass invL.
+    double invL = 0.0;
+    double k = 0.0;  // Weibull/Hill/SmoothCompact shape
+    // Emax parameters (0 elsewhere):
+    double Emax = 0.0, IC50 = 0.0, slope = 0.0, initialConcentration = 0.0;
+    unique_ptr<DecayFunction> f1, f2;  // nested children (operator: both; emax: f1)
     /// Set by makeObject; needed by sampleAgeOfDecay (round-to-time-step).
     const SimClock* simClock = nullptr;
 };

@@ -394,10 +394,83 @@ void AnophelesModel::init2(int nHumans, double meanPopAvail, double sum_avail, d
     mosqEmergeRate = forcedS_v;
     vectors::scale(mosqEmergeRate, initNv0FromSv);
 
+    // SimpleMPD kind: initialise delayed ovipositing and larval resources
+    if (simpleMPD) {
+        SimpleMPDState& sm = *simpleMPD;
+        // (tsP_dff above == SimpleMPD's old recomputation: (sigma_dff+nhh)*availDivisor*P_surv)
+        double tsP_dff2 = tsP_dff;
+
+        // Initialise nOvipositingDelayed
+        int y1 = sim::oneYear();
+        int tau = mosq.restDuration;
+        for (int t = 0; t < sm.developmentDuration; t++)
+        {
+            sm.nOvipositingDelayed[util::mod_nn(t + tau, sm.developmentDuration)] = tsP_dff2 * initNvFromSv * forcedS_v[t];
+        }
+
+        // Used when calculating invLarvalResources (but not a hard constraint):
+        assert(tau + sm.developmentDuration <= y1);
+        for (int t = 0; t < sim::oneYear(); t++)
+        {
+            double yt = sm.fEggsLaidByOviposit * tsP_dff2 * initNvFromSv * forcedS_v[util::mod_nn(t + y1 - tau - sm.developmentDuration, y1)];
+            sm.invLarvalResources[t] = (sm.probPreadultSurvival * yt - mosqEmergeRate[t]) / (mosqEmergeRate[t] * yt);
+        }
+    }
+
     // All set up to drive simulation from forcedS_v
 }
 
-bool AnophelesModel::initIterate() { return true; }
+bool AnophelesModel::initIterate() {
+    if (simpleMPD) {
+        // SimpleMPD kind: update larval resources from 5-year ovipositing summary
+        SimpleMPDState& sm = *simpleMPD;
+        int y1 = sim::oneYear(), y2 = sim::fromYearsI(2), y3 = sim::fromYearsI(3), y4 = sim::fromYearsI(4), y5 = sim::fromYearsI(5);
+
+        assert((int)mosqEmergeRate.size() == y1);
+
+        for (int t = 0; t < y1; t++)
+        {
+            int ttj = t - sm.developmentDuration;
+            // b · P_df · avg_N_v(t - θj - τ):
+            double yt = sm.fEggsLaidByOviposit * 0.2 *
+                        (sm.quinquennialOvipositing[ttj + y1] + sm.quinquennialOvipositing[ttj + y2] + sm.quinquennialOvipositing[ttj + y3] +
+                         sm.quinquennialOvipositing[ttj + y4] + sm.quinquennialOvipositing[util::mod_nn(ttj + y5, y5)]);
+            sm.invLarvalResources[t] = (sm.probPreadultSurvival * yt - mosqEmergeRate[t]) / (mosqEmergeRate[t] * yt);
+        }
+    }
+    return true;
+}
+
+double AnophelesModel::getEmergenceRate(const SimTime &d0, const std::vector<double>& mosqEmergeRate, double nOvipositing)
+{
+    if (simpleMPD) {
+        // Simple Mosquito Population Dynamics model: emergence depends on the
+        // adult population, resources available, and larviciding.
+        // See: A Simple Periodically-Forced Difference Equation Model for
+        // Mosquito Population Dynamics, N. Chitnis, 2012. TODO: publish & link.
+        SimpleMPDState& sm = *simpleMPD;
+        int d1 = d0 + 1;
+
+        double yt = sm.fEggsLaidByOviposit * sm.nOvipositingDelayed[util::mod_nn(d1, sm.developmentDuration)];
+        double emergence = sm.probPreadultSurvival * yt / (1.0 + sm.invLarvalResources[mod_nn(d0, sim::oneYear())] * yt);
+        sm.nOvipositingDelayed[util::mod_nn(d1, sm.developmentDuration)] = nOvipositing;
+        sm.quinquennialOvipositing[util::mod_nn(d1, sim::fromYearsI(5))] = nOvipositing;
+
+        if (ctx.clock.interv > 0 && emergence < 0)
+        {
+            std::ostringstream oss;
+            oss << "Error: SimpleMPD model: negative emergence at t=" << d0 << ": " << emergence << ". ";
+            oss << "Check the seasonality and make sure it does not go too low. For monthly EIR values, the lowest point should not be below 1% of the peak EIR.";
+            throw util::base_exception(oss.str());
+        }
+
+        return std::max(emergence, 0.0);
+    }
+    // Get emergence at start of step:
+    SimTime dYear1 = mod_nn(d0, sim::oneYear());
+    // Simple model: fixed emergence scaled by larviciding
+    return mosqEmergeRate[dYear1];
+}
 //@}
 
 
