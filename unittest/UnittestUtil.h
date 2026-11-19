@@ -36,7 +36,6 @@
 #include "PkPd/LSTMTreatments.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Infection/Infection.h"
-#include "Host/WithinHost/WHFalciparum.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "Host/WithinHost/Genotypes.h"
 

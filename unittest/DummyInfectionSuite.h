@@ -27,7 +27,7 @@
 #include "UnittestUtil.h"
 #include "ExtraAsserts.h"
 #include "Host/WithinHost/Infection/Infection.h"
-#include "Host/WithinHost/CommonWithinHost.h"
+#include "Host/WithinHost/WHInterface.h"
 #include <limits>
 
 using namespace OM::WithinHost;

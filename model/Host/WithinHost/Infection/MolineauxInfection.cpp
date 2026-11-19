@@ -22,7 +22,7 @@
 
 #include "Host/WithinHost/Infection/Infection.h"
 #include "core/RunExtensions.h"
-#include "Host/WithinHost/CommonWithinHost.h"
+#include "Host/WithinHost/WHInterface.h"
 #include "util/random.h"
 #include "util/errors.h"
 #include "util/CommandLine.h"

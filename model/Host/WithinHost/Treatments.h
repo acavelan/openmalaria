@@ -23,13 +23,38 @@
 #ifndef Hmod_WithinHost_Treatments
 #define Hmod_WithinHost_Treatments
 
-#include "Host/WithinHost/WHInterface.h"
+#include "Global.h"
+#include "core/RunContext.h"
 #include "interventions/Interfaces.h"
 
 using namespace std;
 
+namespace scnXml{
+    class TreatmentOption;
+}
+
 namespace OM {
 namespace WithinHost {
+
+/**
+ * Type used to select a treatment option.
+ * 
+ * Pass by value; it just hides an integer.
+ * 
+ * Note: this struct and the Treatments class offer a sub-set of the
+ * functionality offered by CMDecisionTree, and thus is technically redundant.
+ */
+struct TreatmentId{
+    inline bool operator==( const TreatmentId that ){ return id == that.id; }
+    inline bool operator!=( const TreatmentId that ){ return id != that.id; }
+    
+    /// Default constructor: construct to an initial value. Don't pass this value to WHInterface::treatment()!
+    TreatmentId() : id(numeric_limits<uint32_t>::max()) {}
+private:
+    explicit TreatmentId(uint32_t id) : id(id) {}
+    uint32_t id;
+    friend class Treatments;
+};
 
 /**
  * Objects of this class describe effects of a treatment, after selecting a

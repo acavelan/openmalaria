@@ -38,7 +38,6 @@
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/WHVivax.h"
 #include "Clinical/CM5DayCommon.h"
 #include "Clinical/CMDecisionTree.h"
 #include "Clinical/ClinicalModel.h"
@@ -784,7 +783,7 @@ void ImmediateOutcomes::setHealthSystem (RunContext& ctx, const scnXml::HSImmedi
     useDiagnosticUC = hsDescription.getUseDiagnosticUC();
     
     if( ModelOptions::option(util::VIVAX_SIMPLE_MODEL) ){
-        WithinHost::WHVivax::setHSParameters(
+        WithinHost::WHInterface::setHSParametersVivax(
             hsDescription.getLiverStageDrug().present() ?
             &hsDescription.getLiverStageDrug().get() : 0 );
     }else if( hsDescription.getLiverStageDrug().present() ){
@@ -819,7 +818,7 @@ void DecisionTree5Day::setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& 
     CM5DayCommon::treatmentSevere = WHInterface::addTreatment( ctx, hsDescription.getTreatmentSevere() );
     
     if( ModelOptions::option(util::VIVAX_SIMPLE_MODEL) ){
-        WithinHost::WHVivax::setHSParameters(
+        WithinHost::WHInterface::setHSParametersVivax(
             hsDescription.getLiverStageDrug().present() ?
             &hsDescription.getLiverStageDrug().get() : 0 );
     }else if( hsDescription.getLiverStageDrug().present() ){

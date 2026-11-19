@@ -32,15 +32,11 @@
 #include "Global.h"
 #include "core/RunContext.h"
 #include "Parameters.h"
-#include "Host/WithinHost/CommonWithinHost.h"
-#include "Host/WithinHost/DescriptiveWithinHost.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
-#include "Host/WithinHost/WHFalciparum.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/WHVivax.h"
 #include "mon/Monitoring.h"
 #include "util/AgeGroupInterpolation.h"
 #include "util/CommandLine.h"
@@ -90,9 +86,9 @@ void WHInterface::init( RunContext& ctx, const OM::Parameters& parameters, const
     
     if( util::ModelOptions::option( util::VIVAX_SIMPLE_MODEL ) ){
         opt_vivax_simple = true;
-        WHVivax::init( ctx, parameters, scenario.getModel() );
+        WHInterface::initVivax( ctx, parameters, scenario.getModel() );
     }else{
-        WHFalciparum::init( ctx, parameters, scenario.getModel() );
+        WHInterface::initFalciparum( ctx, parameters, scenario.getModel() );
         
         if (util::ModelOptions::option (util::DUMMY_WITHIN_HOST_MODEL)) {
             opt_dummy_whm = true;
@@ -113,14 +109,14 @@ void WHInterface::init( RunContext& ctx, const OM::Parameters& parameters, const
                 || opt_molineaux_whm || opt_penny_whm;
         
         if( opt_common_whm ){
-            CommonWithinHost::init( ctx, scenario );
+            WHInterface::initCommon( ctx, scenario );
         }else{
-            DescriptiveWithinHostModel::initDescriptive(ctx);
+            WHInterface::initDescriptive(ctx);
         }
     }
 }
 
-void WHFalciparum::init( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model ) {
+void WHInterface::initFalciparum( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model ) {
     sigma_i=sqrt(parameters[Parameter::SIGMA_I_SQ]);
     immPenalty_22=1-exp(parameters[Parameter::IMMUNITY_PENALTY]);
     immEffectorRemain=exp(-parameters[Parameter::IMMUNE_EFFECTOR_DECAY]);
@@ -155,7 +151,7 @@ void WHFalciparum::init( RunContext& ctx, const OM::Parameters& parameters, cons
     Infection::init( latentP );
 }
 
-void CommonWithinHost::init( RunContext& ctx, const scnXml::Scenario& scenario ){
+void WHInterface::initCommon( RunContext& ctx, const scnXml::Scenario& scenario ){
     const scnXml::Human human = scenario.getModel().getHuman();
     if( !human.getWeight().present() ){
         // Technically this is needed by the PK/PD and Molineaux models

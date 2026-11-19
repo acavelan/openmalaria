@@ -34,7 +34,7 @@
 
 using namespace OM::Clinical;
 using namespace OM::WithinHost;
-using UnitTest::WHMock;
+using UnitTest::WHMockState;
 
 class CMDecisionTreeSuite : public CxxTest::TestSuite
 {
@@ -53,8 +53,9 @@ public:
         human.reset( UnittestUtil::createHuman(UnittestUtil::clock().nowOrTs0()).release() );
 
         ETS_ASSERT( human.get() != 0 );
-        whm = dynamic_cast<WHMock*>(UnittestUtil::setHumanWH( *human,
-                unique_ptr<WithinHost::WHInterface>(new WHMock(UnittestUtil::ctx())) ));
+        UnittestUtil::setHumanWH( *human,
+                UnitTest::makeWHMock(UnittestUtil::ctx()) );
+        whm = static_cast<WHMockState*>(UnittestUtil::ctx().ext->whMock->state);
         ETS_ASSERT( whm != 0 );
 
         ageYears = 21;   // any real age will do for most tests
@@ -403,7 +404,7 @@ public:
     
 private:
     unique_ptr<Host::Human> human;
-    WHMock* whm;
+    WHMockState* whm;
     double ageYears;
     Episode::State pgState;
 };

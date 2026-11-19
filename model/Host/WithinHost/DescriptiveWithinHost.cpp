@@ -24,7 +24,7 @@
 #include "Global.h"
 #include "core/RunContext.h"
 #include "Host/Human.h"
-#include "Host/WithinHost/DescriptiveWithinHost.h"
+#include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
@@ -43,7 +43,7 @@ extern bool bugfix_max_dens;    // DescriptiveInfection.cpp
 bool reportPatentInfected = false;
 // -----  Initialization  -----
 
-void DescriptiveWithinHostModel::initDescriptive(RunContext& ctx){
+void WHInterface::initDescriptive(RunContext& ctx){
     reportPatentInfected = (
                                 mon::isUsed(ctx, mon::measure("totalPatentInf"))
                                 || mon::isUsed(ctx, mon::measure("totalPatentInf_Imported"))
@@ -52,14 +52,15 @@ void DescriptiveWithinHostModel::initDescriptive(RunContext& ctx){
                             );
 }
 
-DescriptiveWithinHostModel::DescriptiveWithinHostModel( RunContext& ctx, LocalRng& rng, double comorbidityFactor ) :
-        WHFalciparum( ctx, rng, comorbidityFactor )
+void WHInterface::ctorDescriptive( LocalRng& rng, double comorbidityFactor )
 {
+    ctorFalciparum( rng, comorbidityFactor );
+    
     assert( ctx.clock.one_TS() == sim::fromDays(5) );
     opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
 }
 
-DescriptiveWithinHostModel::~DescriptiveWithinHostModel() {
+void WHInterface::dtorDescriptive() {
     for( auto inf = infections.begin(); inf != infections.end(); ++inf ){
         delete *inf;
     }
@@ -69,36 +70,14 @@ DescriptiveWithinHostModel::~DescriptiveWithinHostModel() {
 
 // -----  Simple infection adders/removers  -----
 
-void DescriptiveWithinHostModel::loadInfection(istream& stream) {
+void WHInterface::loadInfection_descriptive(istream& stream) {
     infections.push_back(new Infection(ctx, stream, Infection::Kind::Descriptive));
 }
 
-void DescriptiveWithinHostModel::clearInfections( Treatments::Stages stage ){
-    for(auto inf = infections.begin(); inf != infections.end();) {
-        if( stage == Treatments::BOTH ||
-            (stage == Treatments::LIVER && !(*inf)->bloodStage()) ||
-            (stage == Treatments::BLOOD && (*inf)->bloodStage())
-        ){
-            delete *inf;
-            inf = infections.erase( inf );
-        }else{
-            ++inf;
-        }
-    }
-    numInfs = infections.size();
-}
+// clearInfections() and clearImmunity_falciparum() are shared with the Common
+// kind (identical code, defined in CommonWithinHost.cpp).
 
-// -----  Interventions  -----
-
-void DescriptiveWithinHostModel::clearImmunity() {
-    for(auto inf = infections.begin(); inf != infections.end(); ++inf) {
-        (*inf)->clearImmunity();
-    }
-    m_cumulative_h = 0.0;
-    m_cumulative_Y_lag = 0.0;
-}
-
-void DescriptiveWithinHostModel::importInfection(LocalRng& rng){
+void WHInterface::importInfection_descriptive(LocalRng& rng){
     if( numInfs < MAX_INFECTIONS ){
         m_cumulative_h += 1;
         numInfs += 1;
@@ -114,7 +93,7 @@ void DescriptiveWithinHostModel::importInfection(LocalRng& rng){
 
 // -----  Density calculations  -----
 
-void DescriptiveWithinHostModel::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
+void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
         vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears)
 {
     // Note: adding infections at the beginning of the update instead of the end
@@ -242,14 +221,9 @@ void DescriptiveWithinHostModel::update(Host::Human &human, LocalRng& rng, int &
     }
 }
 
-InfectionOrigin DescriptiveWithinHostModel::getInfectionOrigin()const
-{
-    return get_infection_origin(infections);
-}
-
 // -----  Summarize  -----
 
-bool DescriptiveWithinHostModel::summarize( Host::Human& human )const{
+bool WHInterface::summarize_descriptive( Host::Human& human )const{
     pathogenesisModel->summarize( human );
     
     InfectionOrigin infectionType = get_infection_origin(infections);
@@ -333,21 +307,21 @@ bool DescriptiveWithinHostModel::summarize( Host::Human& human )const{
 
 // -----  Data checkpointing  -----
 
-void DescriptiveWithinHostModel::checkpoint (istream& stream) {
-    WHFalciparum::checkpoint (stream);
+void WHInterface::checkpoint_descriptive (istream& stream) {
+    checkpoint_falciparum (stream);
     for(int i=0; i<numInfs; ++i) {
-        loadInfection(stream);  // create infections using a virtual function call
+        loadInfection_descriptive(stream);  // create infections from the stream
     }
     assert( numInfs == static_cast<int>(infections.size()) );
 }
-void DescriptiveWithinHostModel::checkpoint (ostream& stream) {
-    WHFalciparum::checkpoint (stream);
+void WHInterface::checkpoint_descriptive (ostream& stream) {
+    checkpoint_falciparum (stream);
     for(Infection* inf : infections)
         *inf & stream;
 }
 
 char const*const not_impl = "feature not available with the \"descriptive\" within-host model";
-void DescriptiveWithinHostModel::treatPkPd(size_t schedule, size_t dosages, double age, double delay_d){
+void WHInterface::treatPkPd_descriptive(size_t schedule, size_t dosages, double age, double delay_d){
     throw TRACED_EXCEPTION( not_impl, util::Error::WHFeatures ); }
 
 }
