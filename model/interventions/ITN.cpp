@@ -678,6 +678,7 @@ void HumanITN::update(Host::Human& human){
         
         int newHoles = 0;
         if( holeRate > 0)
+            // parity: e — per-update hole/rip Poisson draw counts frozen (≤1+1 draws per protected human-day; skip when rates 0) (plan §3e)
             newHoles = human.rng.poisson( holeRate );
 
         nHoles += newHoles;

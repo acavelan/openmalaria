@@ -407,6 +407,7 @@ namespace OM { namespace util {
         
         /** Sample a value. */
         inline double sample(LocalRng& rng) const{
+            // parity: order — local RNG stream: draw call order fixes stream state
             return rng.weibull( scale, shape );
         }
         

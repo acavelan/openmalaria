@@ -172,6 +172,7 @@ PennyInfection::PennyInfection(LocalRng& rng, uint32_t protID, int origin):
     // assign infection dependent immune thresholds
     if( immune_threshold_gamma )/* using gamma distribution */{
         do {
+            // parity: order — local RNG stream: draw call order fixes stream state
             threshold_N = exp(rng.gamma(a_TN,b_TN));
             threshold_C = exp(rng.gamma(a_TC,b_TC));
             threshold_V = exp(rng.gamma(a_TV,b_TV));
@@ -200,6 +201,7 @@ bool PennyInfection::updateDensity( LocalRng& rng, double survivalFactor, SimTim
         size_t today = mod_nn(ageDays, delta_C);
         
         if(update_density_gamma) {
+            // parity: order — local RNG stream: draw call order fixes stream state
             cirDensities[today] = exp(rng.gamma(a_Y,b_Y));
         } else {
             cirDensities[today] = exp(rng.gauss(mu_Y,sigma_Y));
@@ -260,6 +262,7 @@ bool PennyInfection::updateDensity( LocalRng& rng, double survivalFactor, SimTim
             if( update_density_gamma ) {
                 double a_cirDens = pow(log(cirDensity_new),2)/pow(sigma_epsilon,2);
                 double b_cirDens = pow(sigma_epsilon,2)/log(cirDensity_new);
+                // parity: order — local RNG stream: draw call order fixes stream state
                 cirDensity_new = exp(rng.gamma(a_cirDens,b_cirDens) ) * survivalFactor;
             } else {
                 cirDensity_new = exp(rng.gauss(log(cirDensity_new),sigma_epsilon)) * survivalFactor;
@@ -295,6 +298,7 @@ bool PennyInfection::updateDensity( LocalRng& rng, double survivalFactor, SimTim
 
 double PennyInfection::getVariantSpecificSummation(LocalRng& rng, int ageDays) {
     // check if new dominant variant has arrived
+    // parity: order — local RNG stream: draw call order fixes stream state
     bool newVarDominant = rng.bernoulli(prob_lambda_V);
     //draw from bernouli distrb, prob 1/lambda_V
     if (newVarDominant) {

@@ -24,6 +24,7 @@
 
 namespace OM{
     namespace util {
+        // parity: order — the master stream: static-init here, seeded in main after validation (f); checkpointed in model/checkpoint.cpp
         MasterRng master_RNG(0, 0);
     }
 }

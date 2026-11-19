@@ -132,6 +132,7 @@ void DescriptiveWithinHostModel::update(Host::Human &human, LocalRng& rng, int &
         if( opt_vaccine_genotype )
         {
             double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
+            // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
                 infections.push_back(new DescriptiveInfection (rng, genotype, InfectionOrigin::Introduced));
         }
@@ -149,6 +150,7 @@ void DescriptiveWithinHostModel::update(Host::Human &human, LocalRng& rng, int &
         if( opt_vaccine_genotype )
         {
             double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
+            // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
                 infections.push_back(new DescriptiveInfection (rng, genotype, InfectionOrigin::Indigenous));
         }

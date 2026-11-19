@@ -155,6 +155,7 @@ int main(int argc, char* argv[])
             const int seedOverride = util::CommandLine::getSeedOverride();
             const unsigned iseed = seedOverride >= 0 ? unsigned (seedOverride) :
                 scenario->getModel().getComputationParameters().getIseed();
+            // parity: f — validation completes BEFORE master_RNG.seed(): load->check->seed (plan §3f); never seed before checks
             util::master_RNG.seed( iseed, 0 ); // Init RNG with Iseed (--seed overrides)
         }
         util::ModelNameProvider modelNameProvider(scenario->getModel());

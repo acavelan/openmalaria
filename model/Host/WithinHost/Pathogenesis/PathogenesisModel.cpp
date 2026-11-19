@@ -110,6 +110,7 @@ Pathogenesis::StatePair PathogenesisModel::determineState(Host::Human& human,
     StatePair result;
     //TODO(performance): would using a single RNG sample and manipulating probabilities be faster?
     //Decide whether a clinical episode occurs and if so, which type
+    // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
     if( human.rng.bernoulli( pMalariaFever ) ){
         const double prSevereEpisode = timeStepMaxDensity / (timeStepMaxDensity + pg_severeMalThreshold);
         const double comorb_factor = _comorbidityFactor / (1.0 + ageYears * pg_inv_critAgeComorb);
@@ -120,9 +121,11 @@ Pathogenesis::StatePair PathogenesisModel::determineState(Host::Human& human,
         mon::recordStat(mon::measure("expectedSevere"), human, exSevere);
         mon::recordStat(mon::measure("expectedSevereWithoutComorbidities"), human, prSevereEpisode);
         
+        // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
         if( human.rng.bernoulli( prSevereEpisode ) )
             result.state = STATE_SEVERE;
         else {
+            // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if( human.rng.bernoulli( pCoinfection ) )
                 result.state = STATE_COINFECTION;
             else
@@ -140,6 +143,7 @@ Pathogenesis::StatePair PathogenesisModel::determineState(Host::Human& human,
         // except that (a) it affects random numbers, and (b) it affects
         // evaluation of uncomplicated cases with the 5-day HS when
         // indirectMortBugfix is not enabled.
+        // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
         if( human.rng.bernoulli( indirectRisk ) )
             result.indirectMortality = true;        
     }else{
@@ -151,6 +155,7 @@ Pathogenesis::StatePair PathogenesisModel::determineState(Host::Human& human,
 Pathogenesis::State PathogenesisModel::sampleNMF( LocalRng& rng, double ageYears ){
     if ( pg_NMF_incidence.isSet() ) {
         double pNMF = pg_NMF_incidence.eval( ageYears );
+        // parity: order — local RNG stream: draw call order fixes stream state
         if( rng.bernoulli( pNMF ) )
             return Pathogenesis::STATE_NMF;
     }

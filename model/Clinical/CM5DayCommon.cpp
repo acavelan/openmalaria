@@ -144,6 +144,7 @@ void CM5DayCommon::severeMalaria (
     const double exSeq = (p2 * (p3 * (1 - p4) + (1 - p3) * (1 - p5b)) + (1 - p2) * (1 - p5a)) * p6;
     mon::recordStat(mon::measure("expectedSequelae"), human, exSeq);
 
+    // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
     double prandom = human.rng.uniform_01();
     
     //NOTE: we do not model diagnostics in this case

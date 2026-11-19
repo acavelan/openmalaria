@@ -55,18 +55,21 @@ HumanHet hetSample(util::LocalRng& rng)
     HumanHet het;
     if(util::ModelOptions::option (util::TRANS_HET)){
         het.availabilityFactor = 0.2;
+        // parity: order — local RNG stream: draw call order fixes stream state
         if( rng.bernoulli(0.5) ){
             het.availabilityFactor = 1.8;
         }
     }
     if(util::ModelOptions::option (util::COMORB_HET)){
         het.comorbidityFactor = 0.2;
+        // parity: order — local RNG stream: draw call order fixes stream state
         if( rng.bernoulli(0.5) ){
             het.comorbidityFactor = 1.8;
         }
     }
     if(util::ModelOptions::option (util::TREAT_HET)){
         het.treatmentSeekingFactor = 0.2;
+        // parity: order — local RNG stream: draw call order fixes stream state
         if( rng.bernoulli(0.5) ){
             het.treatmentSeekingFactor = 1.8;
         }
@@ -74,11 +77,13 @@ HumanHet hetSample(util::LocalRng& rng)
     if(util::ModelOptions::option (util::TRANS_TREAT_HET)){
         het.treatmentSeekingFactor = 0.2;
         het.availabilityFactor = 1.8;
+        // parity: order — local RNG stream: draw call order fixes stream state
         if( rng.bernoulli(0.5) ){
             het.treatmentSeekingFactor = 1.8;
             het.availabilityFactor = 0.2;
         }
     }else if(util::ModelOptions::option (util::COMORB_TREAT_HET)){
+        // parity: order — local RNG stream: draw call order fixes stream state
         if( rng.bernoulli(0.5) ){
             het.comorbidityFactor = 1.8;
             het.treatmentSeekingFactor = 0.2;
@@ -89,6 +94,7 @@ HumanHet hetSample(util::LocalRng& rng)
     }else if(util::ModelOptions::option (util::COMORB_TRANS_HET)){
         het.availabilityFactor = 1.8;
         het.comorbidityFactor = 1.8;
+        // parity: order — local RNG stream: draw call order fixes stream state
         if( rng.bernoulli(0.5) ){
             het.availabilityFactor = 0.2;
             het.comorbidityFactor = 0.2;
@@ -97,6 +103,7 @@ HumanHet hetSample(util::LocalRng& rng)
         het.availabilityFactor = 1.8;
         het.comorbidityFactor = 1.8;
         het.treatmentSeekingFactor = 0.2;
+        // parity: order — local RNG stream: draw call order fixes stream state
         if( rng.bernoulli(0.5) ){
             het.availabilityFactor = 0.2;
             het.comorbidityFactor = 0.2;
@@ -108,6 +115,7 @@ HumanHet hetSample(util::LocalRng& rng)
 
 Human::Human(SimTime dateOfBirth) :
     infIncidence(InfectionIncidenceModel::createModel()),
+    // parity: order — each Human copies+seeds its LocalRng from the master at construction: human-creation order == master consumption order; never reorder Human ctor
     rng(util::master_RNG),
     dateOfBirth(dateOfBirth)
 {

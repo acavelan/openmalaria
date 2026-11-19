@@ -43,6 +43,7 @@ enum Dim : uint8_t {
 };
 
 struct OutMeasure {
+    // parity: g — defs[] index == internal Measure id; outId order == output column order — string->enum migration must preserve
     const char* name = nullptr; // defs[] only
     int outId = -1;
     bool isDouble = false;

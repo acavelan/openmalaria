@@ -77,6 +77,7 @@ CommonWithinHost::CommonWithinHost( LocalRng& rng, double comorbidityFactor ) :
     int counter = 0;
 #endif
     do {
+        // parity: order — local RNG stream: draw call order fixes stream state
         hetMassMultiplier = rng.gauss( 1.0, hetMassMultStdDev );
 #ifndef NDEBUG
         assert( counter < 100 );        // too many resamples: resamples should rarely be needed...
@@ -158,6 +159,7 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
         if( opt_vaccine_genotype )
         {
             double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
+            // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
                 infections.push_back(createInfection (rng, genotype, InfectionOrigin::Introduced));
             else
@@ -178,6 +180,7 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
         if( opt_vaccine_genotype )
         {
             double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
+            // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
                 infections.push_back(createInfection (rng, genotype, InfectionOrigin::Indigenous));
             else
