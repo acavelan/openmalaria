@@ -25,9 +25,7 @@
 #include "Host/WithinHost/Infection/CommonInfection.h"
 #include "util/errors.h"
 #include "util/CommandLine.h"
-#include "PkPd/Drug/LSTMDrugOneComp.h"
-#include "PkPd/Drug/LSTMDrugThreeComp.h"
-#include "PkPd/Drug/LSTMDrugConversion.h"
+#include "PkPd/Drug/LSTMDrug.h"
 
 #include <cmath>
 #include <iomanip>
@@ -113,13 +111,13 @@ unique_ptr<LSTMDrug> DrugRegistry::createInstance(LocalRng& rng, size_t index) {
     LSTMDrugType& typeData = drugTypes[index];
     if( typeData.conversion_rate ){
         LSTMDrugType& metaboliteData = drugTypes[typeData.metabolite];
-        return unique_ptr<LSTMDrug>(new LSTMDrugConversion( typeData, metaboliteData, rng ));
+        return unique_ptr<LSTMDrug>(new LSTMDrug( LSTMDrug::Kind::Conversion, typeData, &metaboliteData, rng ));
     }else if( typeData.k12 ){
         // k21 is set when k12 is set; k13 and k31 may be set
-        return unique_ptr<LSTMDrug>(new LSTMDrugThreeComp( typeData, rng ));
+        return unique_ptr<LSTMDrug>(new LSTMDrug( LSTMDrug::Kind::ThreeComp, typeData, 0, rng ));
     }else{
         // none of k12/k21/k13/k31 should be set in this case
-        return unique_ptr<LSTMDrug>(new LSTMDrugOneComp( typeData, rng ));
+        return unique_ptr<LSTMDrug>(new LSTMDrug( LSTMDrug::Kind::OneComp, typeData, 0, rng ));
     }
 }
 
