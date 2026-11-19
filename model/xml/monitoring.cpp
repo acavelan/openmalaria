@@ -88,7 +88,7 @@ static void initAgeGroups(const SimClock& clock, const scnXml::Monitoring& monit
 
 } // namespace
 
-void initReporting(const scnXml::Scenario& scenario)
+void initReporting(RunContext& ctx, const scnXml::Scenario& scenario)
 {
     runtime.reportIMR = -1;
     const scnXml::MonitoringOptions& optsElt = scenario.getMonitoring().getSurveyOptions();
@@ -144,7 +144,7 @@ void initReporting(const scnXml::Scenario& scenario)
         ? scenario.getEntomology().getVector().get().getAnopheles().size() : 1;
     const size_t nDrugs = scenario.getPharmacology().present()
         ? scenario.getPharmacology().get().getDrugs().getDrug().size() : 1;
-    internal::initStores(reportedMeasures, nSpecies, nDrugs);
+    internal::initStores(ctx, reportedMeasures, nSpecies, nDrugs);
 }
 
 SimTime readSurveyDates(const SimClock& clock, const scnXml::Monitoring& monitoring)

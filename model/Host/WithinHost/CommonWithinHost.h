@@ -41,7 +41,7 @@ namespace OM { namespace WithinHost {
 class CommonWithinHost : public WHFalciparum
 {
 public:
-    static void init(const SimClock& clock, const scnXml::Scenario& scenario);
+    static void init(RunContext& ctx, const scnXml::Scenario& scenario);
     
     CommonWithinHost( RunContext& ctx, LocalRng& rng, double comorbidityFactor );
     virtual ~CommonWithinHost();

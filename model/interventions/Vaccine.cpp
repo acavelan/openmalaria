@@ -158,7 +158,7 @@ bool PerHumanVaccine::possiblyVaccinate( Host::Human& human,
         effect = &effects.back();
     }
     
-    effect->perGenotypeInitialEfficacy.resize(WithinHost::Genotypes::N());
+    effect->perGenotypeInitialEfficacy.resize(ctx->genotypes.N());
 
     for(size_t g=0; g<params.perGenotypeInitialMeanEfficacy.size(); g++)
         effect->perGenotypeInitialEfficacy[g] = params.getInitialEfficacy(human.rng, numDosesAdministered, g);

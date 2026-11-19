@@ -31,28 +31,6 @@
 namespace OM {
 namespace WithinHost {
 
-namespace GT /*for genotype impl details*/{
-// ———  Model constants (after init)  ———
-// keys are cumulative probabilities; last entry should equal 1; values are genotype codes
-map<double,uint32_t> cum_initial_freqs;
-
-// we give each allele of each loci a unique code
-map<string, map<string, uint32_t> > alleleCodes;
-uint32_t nextAlleleCode = 0;
-
-
-vector<Genotypes::Genotype> genotypes;
-// ———  Model variables  ———
-enum SampleMode{
-    SAMPLE_FIRST,      // always choose first genotype (essentially the off switch)
-    SAMPLE_INITIAL,    // sample from initial probabilities
-    SAMPLE_TRACKING    // sample from tracked success at genotype level (no recombination)
-};
-// Mode to use now (until switched) and from the start of the intervention period.
-SampleMode current_mode = SAMPLE_FIRST, interv_mode = SAMPLE_FIRST;
-}
-size_t Genotypes::N_genotypes = 1;
-
 Genotypes::Genotype Genotypes::Genotype::cross( const Genotype& that )const{
     Genotype result(*that.alleles.begin(),
                     init_freq*that.init_freq,
@@ -66,7 +44,7 @@ Genotypes::Genotype Genotypes::Genotype::cross( const Genotype& that )const{
 void Genotypes::initSingle()
 {
     // no specification implies there is a single genotype
-    GT::genotypes.assign( 1, Genotypes::Genotype(
+    genotypes.assign( 1, Genotypes::Genotype(
         0 /*allele code*/, 1.0/*frequency*/, 1.0/*fitness*/, false /*hrp2 deficiency*/) );
     N_genotypes = 1;
 }
@@ -74,34 +52,30 @@ void Genotypes::initSingle()
 
 
 void Genotypes::preMainSimInit(){
-    GT::current_mode = GT::interv_mode;
+    current_mode = interv_mode;
 }
 
-uint32_t Genotypes::findAlleleCode(const string& locus, const string& allele){
-    auto it = GT::alleleCodes.find(locus);
-    if( it == GT::alleleCodes.end() ) return numeric_limits<uint32_t>::max();
+uint32_t Genotypes::findAlleleCode(const string& locus, const string& allele) const {
+    auto it = alleleCodes.find(locus);
+    if( it == alleleCodes.end() ) return numeric_limits<uint32_t>::max();
     auto it2 = it->second.find( allele );
     if( it2 == it->second.end() ) return numeric_limits<uint32_t>::max();
     return it2->second;
 }
 
-const vector< Genotypes::Genotype >& Genotypes::getGenotypes(){
-    return GT::genotypes;
-}
-
 uint32_t Genotypes::sampleGenotype( LocalRng& rng, vector<double>& genotype_weights ){
-    if( GT::current_mode == GT::SAMPLE_FIRST ){
+    if( current_mode == SAMPLE_FIRST ){
         return 0;       // always the first genotype code
-    }else if( GT::current_mode == GT::SAMPLE_INITIAL
+    }else if( current_mode == SAMPLE_INITIAL
             || genotype_weights.size() == 0 )
     {
         // parity: order — local RNG stream: draw call order fixes stream state
         double sample = rng.uniform_01();
-        auto it = GT::cum_initial_freqs.upper_bound( sample );
-        assert( it != GT::cum_initial_freqs.end() );
+        auto it = cum_initial_freqs.upper_bound( sample );
+        assert( it != cum_initial_freqs.end() );
         return it->second;
     }else{
-        assert( GT::current_mode == GT::SAMPLE_TRACKING );
+        assert( state.current_mode == SAMPLE_TRACKING );
         assert( genotype_weights.size() == N_genotypes );
         double weight_sum = util::vectors::sum( genotype_weights );
         assert( weight_sum >= 0.0 && weight_sum < 1e5 );        // possible loss of precision or other error
@@ -115,30 +89,30 @@ uint32_t Genotypes::sampleGenotype( LocalRng& rng, vector<double>& genotype_weig
     }
 }
 
-double Genotypes::initialFreq( size_t genotype ){
-    if( GT::genotypes.size() == 0 ){
+double Genotypes::initialFreq( size_t genotype ) const {
+    if( genotypes.size() == 0 ){
         assert( genotype == 0 );
         assert( N_genotypes == 1 );
         return 1.0;     // only 1 genotype, thus initial frequency is 100%
     }else{
-        return GT::genotypes[genotype].init_freq;
+        return genotypes[genotype].init_freq;
     }
 }
 
 
 // ———  checkpointing  ———
 
-void Genotypes::staticCheckpoint( ostream& stream ){
-    int t = GT::current_mode;
+void Genotypes::staticCheckpoint( Genotypes& state, ostream& stream ){
+    int t = state.current_mode;
     t & stream;
 }
-void Genotypes::staticCheckpoint( istream& stream ){
+void Genotypes::staticCheckpoint( Genotypes& state, istream& stream ){
     int t;
     t & stream;
-    GT::current_mode = static_cast<GT::SampleMode>(t);
-    assert( GT::current_mode == GT::SAMPLE_FIRST ||
-        GT::current_mode == GT::SAMPLE_INITIAL ||
-        GT::current_mode == GT::SAMPLE_TRACKING );
+    state.current_mode = static_cast<SampleMode>(t);
+    assert( state.current_mode == SAMPLE_FIRST ||
+        state.current_mode == SAMPLE_INITIAL ||
+        state.current_mode == SAMPLE_TRACKING );
 }
 
 }

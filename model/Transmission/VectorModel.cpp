@@ -191,7 +191,7 @@ const string &reverseLookup(const map<string, size_t> &m, size_t i)
 VectorModel::VectorModel(RunContext& ctx, vector<double> initEIR, int interventionMode, vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
                          vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList, map<string, size_t> speciesIndexList,
                          int populationSize)
-    : TransmissionModel(ctx, std::move(initEIR), interventionMode, WithinHost::Genotypes::N())
+    : TransmissionModel(ctx, std::move(initEIR), interventionMode, ctx.genotypes.N())
     // parity: order — vector-model LocalRng copy-seeded from master at construction; construction order frozen
     , m_rng(ctx.master_RNG)
     , initIterations(0)
@@ -394,8 +394,8 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
     else
     {
         assert(simulationMode == dynamicEIR);
-        EIR_i.assign(WithinHost::Genotypes::N(), 0.0);
-        EIR_l.assign(WithinHost::Genotypes::N(), 0.0);
+        EIR_i.assign(ctx.genotypes.N(), 0.0);
+        EIR_l.assign(ctx.genotypes.N(), 0.0);
         const double ageFactor = host.relativeAvailabilityAge(ageYears);
         for (size_t i = 0; i < speciesIndex.size(); ++i)
         {
@@ -427,7 +427,7 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
 // Every Global::interval days:
 void VectorModel::vectorUpdate(const vector<Host::Human> &population)
 {
-    const size_t nGenotypes = WithinHost::Genotypes::N();
+    const size_t nGenotypes = ctx.genotypes.N();
     std::vector<double> probTransmission_i, probTransmission_l;
     std::vector<double> sum_avail(speciesIndex.size());
     std::vector<double> sigma_df(speciesIndex.size());

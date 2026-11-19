@@ -29,7 +29,7 @@ class UnittestUtil;
 namespace scnXml{
     class PKPDMedication;
 }
-namespace OM {
+namespace OM { class RunContext;
 namespace Host{
     class Human;
 }
@@ -88,7 +88,7 @@ private:
 class LSTMModel {
 public:
     /// Static initialisation
-    static void init ( const scnXml::Scenario& scenario );
+    static void init ( RunContext& ctx, const scnXml::Scenario& scenario );
     
     /// Checkpointing
     template<class S>

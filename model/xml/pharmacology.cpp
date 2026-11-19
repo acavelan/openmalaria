@@ -65,7 +65,7 @@ LSTMDrugPD::LSTMDrugPD( const scnXml::Phenotype& phenotype ){
     V = phenotype.getMax_killing_rate ();  
 }
 
-void LSTMDrugType::init (const scnXml::Pharmacology::DrugsType& drugData) {
+void LSTMDrugType::init (RunContext& ctx, const scnXml::Pharmacology::DrugsType& drugData) {
     drugTypes.reserve(drugData.getDrug().size());
     for( const scnXml::PKPDDrug& drug : drugData.getDrug() ){
         const string& abbrev = drug.getAbbrev();
@@ -74,12 +74,12 @@ void LSTMDrugType::init (const scnXml::Pharmacology::DrugsType& drugData) {
             throw TRACED_EXCEPTION_DEFAULT (string ("Drug added twice: ").append(abbrev));
         
         size_t i = drugTypes.size();
-        drugTypes.emplace_back( i, drug );
+        drugTypes.emplace_back( ctx, i, drug );
         drugTypeNames[abbrev] = i;
     }
 }
 
-LSTMDrugType::LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData) :
+LSTMDrugType::LSTMDrugType (RunContext& ctx, size_t index, const scnXml::PKPDDrug& drugData) :
         index (index), metabolite(0),
         negligible_concentration(numeric_limits<double>::quiet_NaN()),
         neg_m_exp(numeric_limits<double>::quiet_NaN()),
@@ -205,7 +205,7 @@ LSTMDrugType::LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData) :
         map<string,size_t> loci;
         vector<vector<uint32_t> > loc_alleles;
         for( const scnXml::Restriction& restriction : phenotype.getRestriction() ){
-            uint32_t allele = Genotypes::findAlleleCode( restriction.getOnLocus(), restriction.getToAllele() );
+            uint32_t allele = ctx.genotypes.findAlleleCode( restriction.getOnLocus(), restriction.getToAllele() );
             if( allele == numeric_limits<uint32_t>::max() ){
                 throw util::xml_scenario_error("phenotype has "
                     "restriction on locus " + string(restriction.getOnLocus())
@@ -230,10 +230,10 @@ LSTMDrugType::LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData) :
                 " restrictions required when num. phenotypes > 1" );
         }else{
             // All genotypes map to phenotype 0
-            genotype_mapping.assign( Genotypes::getGenotypes().size(), 0 );
+            genotype_mapping.assign( ctx.genotypes.getGenotypes().size(), 0 );
         }
     }else{
-        const vector<Genotypes::Genotype>& genotypes = Genotypes::getGenotypes();
+        const vector<Genotypes::Genotype>& genotypes = ctx.genotypes.getGenotypes();
         genotype_mapping.assign( genotypes.size(), 0 );
         for( size_t j = 0; j < genotypes.size(); ++j ){
             uint32_t phenotype = numeric_limits<uint32_t>::max();
@@ -369,9 +369,9 @@ void LSTMTreatments::init(const scnXml::Treatments& data){
 
 // ———  LSTMModel::init (origin: LSTMModel.cpp)  ———
 
-void LSTMModel::init( const scnXml::Scenario& scenario ){
+void LSTMModel::init( RunContext& ctx, const scnXml::Scenario& scenario ){
     if (scenario.getPharmacology().present()) {
-        LSTMDrugType::init(scenario.getPharmacology().get().getDrugs());
+        LSTMDrugType::init(ctx, scenario.getPharmacology().get().getDrugs());
         LSTMTreatments::init(scenario.getPharmacology().get().getTreatments());
     }
 }

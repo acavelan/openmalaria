@@ -166,6 +166,7 @@ public:
     /** Create from a list of XML elements: list of intervention components
      * and list of conditions of deployment. **/
     explicit HumanIntervention(
+        RunContext& ctx,
         const xsd::cxx::tree::sequence<scnXml::Component, false>& componentList,
         const xsd::cxx::tree::sequence<scnXml::Condition, false>& conditionList );
     /** Create from a list of XML elements: list of intervention components

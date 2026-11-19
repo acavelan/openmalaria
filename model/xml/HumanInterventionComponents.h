@@ -72,6 +72,7 @@ HumanIntervention::HumanIntervention(
     std::stable_sort( components.begin(), components.end(), componentCmp );
 }
 HumanIntervention::HumanIntervention(
+    RunContext& ctx,
     const xsd::cxx::tree::sequence<scnXml::Component>& componentList,
     const xsd::cxx::tree::sequence<scnXml::Condition>& conditionList )
 {
@@ -97,7 +98,7 @@ HumanIntervention::HumanIntervention(
     for( auto it = conditionList.begin(), end = conditionList.end(); it != end; ++it ) {
         double min = it->getMinValue().present() ? it->getMinValue().get() : -numeric_limits<double>::infinity();
         double max = it->getMaxValue().present() ? it->getMaxValue().get() : numeric_limits<double>::infinity();
-        conditions.push_back(mon::setupCondition( it->getMeasure(), min, max, it->getInitialState() ));
+        conditions.push_back(mon::setupCondition( ctx, it->getMeasure(), min, max, it->getInitialState() ));
     }
 }
 HumanIntervention::HumanIntervention( const xsd::cxx::tree::sequence<scnXml::DTDeploy>& componentList ){

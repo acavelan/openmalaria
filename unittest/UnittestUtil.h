@@ -318,7 +318,7 @@ public:
     
     static void PkPdSuiteSetup () {
         ModelOptions::reset();
-        WithinHost::Genotypes::initSingle();
+        ctx().genotypes.initSingle();
 
         //Note: we fudge this call since it's not so easy to falsely initialize scenario element.
         //PkPdModel::init ();
@@ -386,7 +386,7 @@ public:
                      0.9027777777777778 /*k13*/, 0.07948639559767655 /*k31*/),
                 PD(3.45 /* vmax */, 0.020831339 /* IC50 */, 6.0 /* slope */ )));
         
-        PkPd::LSTMDrugType::init (drugs);
+        PkPd::LSTMDrugType::init (ctx(), drugs);
         
         // Treatments
         scnXml::PKPDSchedule sched1("sched1");

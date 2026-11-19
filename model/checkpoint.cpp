@@ -63,7 +63,7 @@ void checkpoint (RunContext& ctx, istream& stream, SimTime &endTime, SimTime &es
         Host::NeonatalMortality::staticCheckpoint (stream);
         Host::InfectionIncidenceModel::staticCheckpoint (stream);
         Clinical::InfantMortality::staticCheckpoint(stream);
-        WithinHost::Genotypes::staticCheckpoint(stream);
+        WithinHost::Genotypes::staticCheckpoint(ctx.genotypes, stream);
         mon::Continuous::checkpoint(stream);
         mon::checkpoint( stream );
 #       ifdef OM_STREAM_VALIDATOR
@@ -111,7 +111,7 @@ void checkpoint (RunContext& ctx, ostream& stream, SimTime &endTime, SimTime &es
     Host::NeonatalMortality::staticCheckpoint (stream);
     Host::InfectionIncidenceModel::staticCheckpoint (stream);
     Clinical::InfantMortality::staticCheckpoint(stream);
-    WithinHost::Genotypes::staticCheckpoint(stream);
+    WithinHost::Genotypes::staticCheckpoint(ctx.genotypes, stream);
     mon::Continuous::checkpoint(stream);
     mon::checkpoint( stream );
 # ifdef OM_STREAM_VALIDATOR

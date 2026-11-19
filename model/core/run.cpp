@@ -155,7 +155,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
     util::XMLChecker().PerformPostValidationChecks(*scenario);
 
     // 1) elements with no dependencies on other elements initialised here:
-    WithinHost::Genotypes::init( *scenario );
+    WithinHost::Genotypes::init( ctx.genotypes, *scenario );
     {
         const int seedOverride = util::CommandLine::getSeedOverride();
         const unsigned iseed = seedOverride >= 0 ? unsigned (seedOverride) :
@@ -176,7 +176,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
     WithinHost::diagnostics::init( parameters, *scenario ); // Depends on Parameters.
 
     // 5) elements depending on only elements initialised in (4).
-    mon::initReporting( *scenario ); // Reporting init depends on diagnostics and monitoring
+    mon::initReporting( ctx, *scenario ); // Reporting init depends on diagnostics and monitoring
 
     // Init models used by humans
     Transmission::PerHost::init( ctx, scenario->getModel().getHuman().getAvailabilityToMosquitoes() );
@@ -284,7 +284,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
         ctx.clock.interv = sim::zero();
         Host::InfectionIncidenceModel::preMainSimInit();
         Clinical::InfantMortality::preMainSimInit();
-        WithinHost::Genotypes::preMainSimInit();
+        ctx.genotypes.preMainSimInit();
         population->resetRecentBirths();
         transmission->summarize(); // Only to reset TransmissionModel::inoculationsPerAgeGroup
         mon::initMainSim();

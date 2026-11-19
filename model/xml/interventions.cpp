@@ -1091,7 +1091,7 @@ VaccineComponent::VaccineComponent( RunContext& ctx, ComponentId component, cons
     const scnXml::VaccineDescription::InitialEfficacySequence ies = vd.getInitialEfficacy();
     const scnXml::VaccineDescription::PhenotypeSequence ps = vd.getPhenotype();
 
-    //cout << ies.size() << " " << ps.size() << " " << WithinHost::Genotypes::N() << endl;
+    //cout << ies.size() << " " << ps.size() << " " << ctx.genotypes.N() << endl;
 
     if(opt_vaccine_genotype == false && ies.size() == 0)
         throw util::xml_scenario_error( "Vaccine: initialEfficacy is required but is missing" );
@@ -1099,12 +1099,12 @@ VaccineComponent::VaccineComponent( RunContext& ctx, ComponentId component, cons
     if(opt_vaccine_genotype == true && ies.size() != 0)
         throw util::xml_scenario_error( "Vaccine: initialEfficacy outside of phenotype definition with VACCINE_GENOTYPE option enabled is not allowed" );
     
-/*    if(opt_vaccine_genotype == true && ies.size() == 0 && ps.size() != WithinHost::Genotypes::N())
+/*    if(opt_vaccine_genotype == true && ies.size() == 0 && ps.size() != ctx.genotypes.N())
         throw util::xml_scenario_error( "Vaccine: Phenotype sequence must reference all genotypes" );
     */
     if(opt_vaccine_genotype == true)
     {
-        perGenotypeInitialMeanEfficacy.resize(WithinHost::Genotypes::N());
+        perGenotypeInitialMeanEfficacy.resize(ctx.genotypes.N());
 
         for(size_t i = 0; i < ps.size(); ++i)
         {
@@ -1116,9 +1116,9 @@ VaccineComponent::VaccineComponent( RunContext& ctx, ComponentId component, cons
             for(size_t j = 0; j < restrictions.size(); ++j)
             {
                 //cout << "\tonLocus: " << restrictions[j].getOnLocus() << ", " << "toAllelle: " << restrictions[j].getToAllele() << endl;
-                //cout << "\tmatching allelle code: " << WithinHost::Genotypes::findAlleleCode(restrictions[j].getOnLocus(), restrictions[j].getToAllele()) << endl;
+                //cout << "\tmatching allelle code: " << ctx.genotypes.findAlleleCode(restrictions[j].getOnLocus(), restrictions[j].getToAllele()) << endl;
 
-                uint32_t allele_code = WithinHost::Genotypes::findAlleleCode(restrictions[j].getOnLocus(), restrictions[j].getToAllele());
+                uint32_t allele_code = ctx.genotypes.findAlleleCode(restrictions[j].getOnLocus(), restrictions[j].getToAllele());
 
                 if( allele_code == numeric_limits<uint32_t>::max() ){
                     throw util::xml_scenario_error("phenotype has "
@@ -1127,7 +1127,7 @@ VaccineComponent::VaccineComponent( RunContext& ctx, ComponentId component, cons
                     "has not been defined in parasiteGenetics section");
                 }
 
-                if (allele_code >= WithinHost::Genotypes::N())
+                if (allele_code >= ctx.genotypes.N())
                     throw util::xml_scenario_error( string("Vaccine phenotype: Invalid Locus ") + restrictions[j].getOnLocus() + string(" and allele ") + restrictions[j].getToAllele());
 
                 if (perGenotypeInitialMeanEfficacy[allele_code].size() != 0)
@@ -1144,7 +1144,7 @@ VaccineComponent::VaccineComponent( RunContext& ctx, ComponentId component, cons
         }
 
         // Check that all genotypes have been adressed
-        for(size_t i = 0; i < WithinHost::Genotypes::N(); ++i)
+        for(size_t i = 0; i < ctx.genotypes.N(); ++i)
         {
             if(perGenotypeInitialMeanEfficacy[i].size() == 0)
                 throw util::xml_scenario_error( "Vaccine phenotype: missing restriction for at least one locus and allele pair" );
@@ -1311,7 +1311,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
         {
             const scnXml::Deployment &elt = *it;
             // 2.a intervention components
-            auto intervention = shared_ptr<HumanIntervention>(new HumanIntervention(elt.getComponent(), elt.getCondition()));
+            auto intervention = shared_ptr<HumanIntervention>(new HumanIntervention(ctx, elt.getComponent(), elt.getCondition()));
 
             // 2.b intervention deployments
             for (auto ctsIt = elt.getContinuous().begin(); ctsIt != elt.getContinuous().end(); ++ctsIt)

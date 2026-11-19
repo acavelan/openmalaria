@@ -26,6 +26,7 @@
 #include "Global.h"
 #include "util/mod.h"
 #include "util/random.h"
+#include "Host/WithinHost/Genotypes.h"
 #include <string>
 #include <vector>
 
@@ -186,6 +187,8 @@ public:
      * percentile-stream seed depends on it; run_simulation reseeds from
      * --seed/Iseed after validation. */
     util::MasterRng master_RNG{0, 0};
+    /// Genotype registry (built by Genotypes::init during scenario load).
+    WithinHost::Genotypes genotypes;
     /// Intervention states saved for checkpoints (checkpoint read/write).
 };
 

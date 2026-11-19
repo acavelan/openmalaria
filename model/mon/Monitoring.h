@@ -34,7 +34,7 @@
 #include <variant>
 #include <vector>
 
-namespace OM {
+namespace OM { class RunContext;
 namespace Host {
 class Human;
 }
@@ -90,7 +90,7 @@ struct RuntimeState {
 };
 
 extern RuntimeState runtime;
-void initStores(const std::vector<OutMeasure>& enabledMeasures, size_t nSpecies, size_t nDrugs);
+void initStores(RunContext& ctx, const std::vector<OutMeasure>& enabledMeasures, size_t nSpecies, size_t nDrugs);
 
 } // namespace internal
 
@@ -106,7 +106,7 @@ inline SimTime nextSurveyDate() {
     const auto& r = internal::runtime;
     return r.isInit && r.surveyIndex < r.surveyDates.size() ? r.surveyDates[r.surveyIndex].date : sim::future();
 }
-size_t setupCondition(const std::string& measureName, double minValue, double maxValue, bool initialState);
+size_t setupCondition(RunContext& ctx, const std::string& measureName, double minValue, double maxValue, bool initialState);
 bool checkCondition(size_t conditionKey);
 uint32_t updateCohortSet(uint32_t old, interventions::ComponentId subPop, bool isMember);
 

@@ -41,7 +41,7 @@ namespace scnXml{
     class PKPDDrug;
     class Phenotype;
 }
-namespace OM {
+namespace OM { class RunContext;
 namespace WithinHost {
     class CommonInfection;
 }
@@ -108,7 +108,7 @@ public:
     ///@brief Static functions
     //@{
     /** Initialise the drug model. Called at start of simulation. */
-    static void init (const scnXml::Drugs& data);
+    static void init (RunContext& ctx, const scnXml::Drugs& data);
     /** Clear previous data. Only needed for testing. */
     static void clear();
     
@@ -140,7 +140,7 @@ public:
      * @param index     Index of drug in internal list
      * @param drugData Scenario data for this drug (PK params, PD params per phenotype)
      */
-    LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData);
+    LSTMDrugType (RunContext& ctx, size_t index, const scnXml::PKPDDrug& drugData);
     ~LSTMDrugType ();
     
     LSTMDrugType(LSTMDrugType&&) = default;

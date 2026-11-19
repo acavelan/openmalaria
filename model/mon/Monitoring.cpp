@@ -81,7 +81,7 @@ size_t MeasureStore::index(size_t a, size_t c, size_t sp, size_t g, size_t d) co
 
 namespace {
 
-void addStore(const OutMeasure& om, size_t nSpecies, size_t nDrugs, bool forceNoCategories)
+void addStore(RunContext& ctx, const OutMeasure& om, size_t nSpecies, size_t nDrugs, bool forceNoCategories)
 {
     assert(om.measure < MeasureCount);
     MeasureStore store;
@@ -93,7 +93,7 @@ void addStore(const OutMeasure& om, size_t nSpecies, size_t nDrugs, bool forceNo
     store.nAges = forceNoCategories ? 1 : (om.dims & Dim::Age ? runtime.ageGroupUpperBound.size() : 1);
     store.nCohorts = forceNoCategories ? 1 : (om.dims & Dim::Cohort ? runtime.nCohorts : 1);
     store.nSpecies = forceNoCategories ? 1 : (om.dims & Dim::Species ? nSpecies : 1);
-    store.nGenotypes = forceNoCategories ? 1 : (om.dims & Dim::Genotype ? WithinHost::Genotypes::N() : 1);
+    store.nGenotypes = forceNoCategories ? 1 : (om.dims & Dim::Genotype ? ctx.genotypes.N() : 1);
     store.nDrugs = forceNoCategories ? 1 : (om.dims & Dim::Drug ? nDrugs : 1);
     const size_t reportCount = store.size() * runtime.nSurveys;
     if (om.isDouble) store.reports.emplace<vector<double>>(reportCount, 0.0);
@@ -104,17 +104,17 @@ void addStore(const OutMeasure& om, size_t nSpecies, size_t nDrugs, bool forceNo
 
 } // namespace
 
-void initStores(const vector<OutMeasure>& enabledMeasures, size_t nSpecies, size_t nDrugs)
+void initStores(RunContext& ctx, const vector<OutMeasure>& enabledMeasures, size_t nSpecies, size_t nDrugs)
 {
     runtime.stores.clear();
     runtime.storesByMeasure.assign(MeasureCount, {});
-    for (const OutMeasure& om : enabledMeasures) addStore(om, nSpecies, nDrugs, false);
+    for (const OutMeasure& om : enabledMeasures) addStore(ctx, om, nSpecies, nDrugs, false);
 }
 
-void ensureConditionStore(const OutMeasure& om)
+void ensureConditionStore(RunContext& ctx, const OutMeasure& om)
 {
     assert(om.measure < MeasureCount);
-    if (runtime.storesByMeasure[om.measure].empty()) addStore(om, 1, 1, true);
+    if (runtime.storesByMeasure[om.measure].empty()) addStore(ctx, om, 1, 1, true);
 }
 
 double surveySum(Measure measure, size_t survey)
@@ -282,7 +282,7 @@ void updateSurveyNumbers()
 }
 
 } // namespace
-size_t setupCondition(const string& measureName, double minValue, double maxValue, bool initialState)
+size_t setupCondition(RunContext& ctx, const string& measureName, double minValue, double maxValue, bool initialState)
 {
     const OutMeasure om = findOutMeasure(measureName);
     if (om.measure == invalidMeasure) {
@@ -292,7 +292,7 @@ size_t setupCondition(const string& measureName, double minValue, double maxValu
     if (!isValidCondition(om.measure)) {
         throw util::xml_scenario_error("cannot use measure " + measureName + " as condition of deployment");
     }
-    internal::ensureConditionStore(om);
+    internal::ensureConditionStore(ctx, om);
 
     runtime.conditions.push_back({initialState, om.measure, minValue, maxValue});
     return runtime.conditions.size() - 1;
