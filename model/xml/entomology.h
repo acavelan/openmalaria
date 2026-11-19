@@ -34,12 +34,12 @@
 
 namespace OM {
 namespace Transmission {
-    class VectorModel;
+    class TransmissionModel;
 
     /// Loop over per-species vector population interventions, deploying to
     /// the species indicated by each element's mosquito attribute.
-    void initVectorInterv(VectorModel &vm, const scnXml::Description::AnophelesSequence &list, size_t instance, const std::string &name);
-    void initVectorTrap(VectorModel &vm, const scnXml::VectorTrap::DescriptionSequence list, size_t instance, const scnXml::VectorTrap::NameOptional name_opt);
+    void initVectorInterv(TransmissionModel &vm, const scnXml::Description::AnophelesSequence &list, size_t instance, const std::string &name);
+    void initVectorTrap(TransmissionModel &vm, const scnXml::VectorTrap::DescriptionSequence list, size_t instance, const scnXml::VectorTrap::NameOptional name_opt);
 }
 }
 #endif
