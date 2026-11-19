@@ -70,7 +70,7 @@ int InfectionIncidenceModel::ctsNewInfections = 0;
 
 // -----  static initialisation  -----
 
-void InfectionIncidenceModel::init ( const Parameters& parameters ) {
+void InfectionIncidenceModel::init ( RunContext& ctx, const Parameters& parameters ) {
     baseline_avail_shape_param = parameters[Parameter::BASELINE_AVAILABILITY_SHAPE];
     baseline_avail_offset = 0.5 * pow(baseline_avail_shape_param, 2);
     
@@ -124,7 +124,7 @@ void InfectionIncidenceModel::init ( const Parameters& parameters ) {
         }
     }
     
-    mon::Continuous::registerCallback( "new infections", "\tnew infections", &InfectionIncidenceModel::ctsReportNewInfections );
+    mon::Continuous::registerCallback(ctx,  "new infections", "\tnew infections", &InfectionIncidenceModel::ctsReportNewInfections );
 }
 
 

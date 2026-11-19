@@ -185,7 +185,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
 
     // Init models used by humans
     Transmission::PerHost::init( ctx, scenario->getModel().getHuman().getAvailabilityToMosquitoes() );
-    Host::InfectionIncidenceModel::init( parameters );
+    Host::InfectionIncidenceModel::init( ctx, parameters );
     WithinHost::WHInterface::init( ctx, parameters, *scenario );
     Clinical::ClinicalModel::init( ctx, parameters, *scenario );
     Host::NeonatalMortality::init( ctx, scenario->getModel().getClinical() );

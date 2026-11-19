@@ -55,7 +55,7 @@ public:
   ///@brief Static initialisation & constructors
   //@{
   /// Read in/initialise parameters
-  static void init(const Parameters& parameters);
+  static void init(RunContext& ctx, const Parameters& parameters);
   /// Create a new instance
   static InfectionIncidenceModel* createModel (RunContext& ctx);
   

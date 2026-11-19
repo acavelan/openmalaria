@@ -128,10 +128,10 @@ protected:
         // Set VACCINE_GENOTYPE option
         opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
 
-        mon::Continuous::registerCallback("input EIR", "\tinput EIR", std::bind(&TransmissionModel::ctsCbInputEIR, this, _1));
-        mon::Continuous::registerCallback("simulated EIR", "\tsimulated EIR", std::bind(&TransmissionModel::ctsCbSimulatedEIR, this, _1));
-        mon::Continuous::registerCallback("human infectiousness", "\thuman infectiousness", std::bind(&TransmissionModel::ctsCbKappa, this, _1));
-        mon::Continuous::registerCallback("num transmitting humans", "\tnum transmitting humans", std::bind(&TransmissionModel::ctsCbNumTransmittingHumans, this, _1));
+        mon::Continuous::registerCallback(ctx, "input EIR", "\tinput EIR", std::bind(&TransmissionModel::ctsCbInputEIR, this, _1));
+        mon::Continuous::registerCallback(ctx, "simulated EIR", "\tsimulated EIR", std::bind(&TransmissionModel::ctsCbSimulatedEIR, this, _1));
+        mon::Continuous::registerCallback(ctx, "human infectiousness", "\thuman infectiousness", std::bind(&TransmissionModel::ctsCbKappa, this, _1));
+        mon::Continuous::registerCallback(ctx, "num transmitting humans", "\tnum transmitting humans", std::bind(&TransmissionModel::ctsCbNumTransmittingHumans, this, _1));
     }
 
 public:

@@ -87,6 +87,17 @@ struct RunExtensions {
     interventions::ComponentId vaccineReportComponent =
         interventions::ComponentId::wholePop();
 
+    // ——— continuous output (was: mon/Continuous.cpp statics) ———
+    /// Continuous-output file; its resume position; callback registry.
+    std::fstream ctsOStream;
+    std::streamoff ctsStreamOffset = 0;
+    std::map<std::string, std::tuple<std::string,
+        std::function<void(Population&, std::ostream&)>>> ctsRegistered;
+    std::vector<std::tuple<std::string,
+        std::function<void(Population&, std::ostream&)>>> ctsToReport;
+    SimTime ctsPeriod = sim::zero();
+    bool ctsDuringInit = false;
+
     /// Monitoring runtime state (survey numbers, stores, conditions; mon/).
     /// (In ext, not RunContext: the state's map keys need ComponentId
     /// complete, which would cycle RunContext.h through Interfaces.h.)

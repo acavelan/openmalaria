@@ -261,7 +261,13 @@ using util::xml_scenario_error;
 
         /* Initialise: enable outputs registered and requested in XML.
          * Search for Continuous::registerCallback to see outputs available. */
-        void init (const RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint) {
+        void init (RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint) {
+            auto& ctsOStream = ctx.ext->ctsOStream;
+            auto& registered = ctx.ext->ctsRegistered;
+            auto& toReport = ctx.ext->ctsToReport;
+            SimTime& ctsPeriod = ctx.ext->ctsPeriod;
+            bool& duringInit = ctx.ext->ctsDuringInit;
+            auto& streamOffset = ctx.ext->ctsStreamOffset;
             const scnXml::Monitoring::ContinuousOptional& ctsOpt = monitoring.getContinuous();
             if( !ctsOpt.present() ) {
                 ctsPeriod = sim::zero();
