@@ -28,6 +28,8 @@
 #include "Clinical/ESCaseManagement.h"
 #include "util/AgeGroupInterpolation.h"
 
+namespace scnXml { class Clinical; class HSEventScheduler; }
+
 #include <list>
 
 namespace OM {

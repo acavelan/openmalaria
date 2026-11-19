@@ -25,6 +25,8 @@
 
 #include "Clinical/CM5DayCommon.h"
 
+namespace scnXml { class HSImmediateOutcomes; }
+
 namespace OM {
 namespace Clinical {
 
