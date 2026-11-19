@@ -27,7 +27,6 @@
 #include "util/ModelOptions.h"
 #include "util/errors.h"
 #include "util/StreamValidator.h"
-#include <schema/scenario.h>
 
 #include <limits>
 
@@ -57,83 +56,6 @@ AgeGroupInterpolator ClinicalEventScheduler::MF_need_antibiotic;
 
 // -----  static init  -----
 
-void ClinicalEventScheduler::init( const Parameters& parameters, const scnXml::Clinical& clinical )
-{
-    if( sim::oneTS() != sim::oneDay() )
-        throw util::xml_scenario_error ("ClinicalEventScheduler is only designed for a 1-day time step.");
-    
-    opt_non_malaria_fevers = util::ModelOptions::option( util::NON_MALARIA_FEVERS );
-    
-    alpha = exp( -parameters[Parameter::CFR_NEG_LOG_ALPHA] );
-    if( !(0.0<=alpha && alpha<=1.0) ){
-        throw util::xml_scenario_error(
-            "Clinical outcomes: propDeathsFirstDay should be within range [0,1]");
-    }
-    neg_v = -parameters[Parameter::CFR_SCALE_FACTOR];
-    
-    if( util::ModelOptions::option( util::NON_MALARIA_FEVERS ) ){
-        if( !clinical.getNonMalariaFevers().present() ){
-            throw util::xml_scenario_error("NonMalariaFevers element of model->clinical required");
-        }
-        const scnXml::Clinical::NonMalariaFeversType& nmfDesc2 =
-            clinical.getNonMalariaFevers().get();
-        if( !nmfDesc2.getPrNeedTreatmentMF().present() ||
-            !nmfDesc2.getPrNeedTreatmentNMF().present() ){
-            throw util::xml_scenario_error( "prNeedTreatmentMF and "
-                "prNeedTreatmentNMF elements required in model->clinical->"
-                "NonMalariaFevers" );
-        }
-        NMF_need_antibiotic.set( nmfDesc2.getPrNeedTreatmentNMF().get(), "prNeedTreatmentNMF" );
-        MF_need_antibiotic.set( nmfDesc2.getPrNeedTreatmentMF().get(), "prNeedTreatmentMF" );
-    }
-}
-
-void ClinicalEventScheduler::setParameters(const scnXml::HSEventScheduler& esData) {
-    const scnXml::ClinicalOutcomes& coData = esData.getClinicalOutcomes();
-    
-    maxUCSeekingMemory = sim::fromDays(coData.getMaxUCSeekingMemory());
-    uncomplicatedCaseDuration = sim::fromDays(coData.getUncomplicatedCaseDuration());
-    complicatedCaseDuration = sim::fromDays(coData.getComplicatedCaseDuration());
-    extraDaysAtRisk = sim::fromDays(coData.getComplicatedRiskDuration()) - complicatedCaseDuration;
-    if( uncomplicatedCaseDuration < sim::fromDays(1)
-	|| complicatedCaseDuration < sim::fromDays(1)
-	|| maxUCSeekingMemory < sim::zero()
-	|| extraDaysAtRisk + complicatedCaseDuration < sim::fromDays(1) // at risk at least 1 day
-	|| extraDaysAtRisk > sim::zero()        // at risk longer than case duration
-    ){
-	throw util::xml_scenario_error(
-            "Clinical outcomes: constraints on case/risk/memory duration not met (see documentation)");
-    }
-    
-    cumDailyPrImmUCTS.reserve( coData.getDailyPrImmUCTS().size() );
-    double cumP = 0.0;
-    for( auto it = coData.getDailyPrImmUCTS().begin(); it != coData.getDailyPrImmUCTS().end(); ++it ){
-        cumP += *it;
-        cumDailyPrImmUCTS.push_back( cumP );
-    }
-    if( cumP < 0.999 || cumP > 1.001 ){
-        throw util::xml_scenario_error( "Event scheduler: dailyPrImmUCTS seq must add up to 1" );
-    }
-    cumDailyPrImmUCTS.back() = 1.0;
-    
-    caseFatalityRate.scale( alpha );
-    
-    if( util::ModelOptions::option( util::NON_MALARIA_FEVERS ) ){
-        if( !esData.getNonMalariaFevers().present() ){
-            throw util::xml_scenario_error("NonMalariaFevers element of healthSystem->EventScheduler required");
-        }
-        const scnXml::HSESNMF& nmfDesc = esData.getNonMalariaFevers().get();
-        
-        double pT = nmfDesc.getPrTreatment();
-        logOddsAbBase = log( pT / (1.0 - pT) );
-        logOddsAbNegTest = log(nmfDesc.getEffectNegativeTest());
-        logOddsAbPosTest = log(nmfDesc.getEffectPositiveTest());
-        logOddsAbNeed = log(nmfDesc.getEffectNeed());
-        logOddsAbInformal = log(nmfDesc.getEffectInformal());
-        oneMinusEfficacyAb = 1.0 - nmfDesc.getTreatmentEfficacy();
-        severeNmfMortality.set( nmfDesc.getCFR(), "CFR" );
-    }
-}
 
 
 // -----  construction, destruction and checkpointing  -----

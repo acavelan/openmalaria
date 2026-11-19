@@ -24,7 +24,7 @@
 #include "util/CommandLine.h"
 #include "util/errors.h"
 #include "util/StreamValidator.h"
-#include "util/DocumentLoader.h"
+#include "xml/DocumentLoader.h"
 /* if you get compile errors like "version.h not found", run CMake first */
 #include "util/version.h"
 

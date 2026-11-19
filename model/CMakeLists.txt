@@ -31,78 +31,11 @@ configure_file(
     @ONLY
 )
 
-# Don't use aux_source_directory on . because we don't want to compile openMalaria.cpp in to the lib.
-set (Model_CPP
-  sim.cpp
-  Population.cpp
-  PopulationAgeStructure.cpp
-  checkpoint.cpp
-  
-  Host/Human.cpp
-  Host/InfectionIncidenceModel.cpp
-  Host/NeonatalMortality.cpp
-  
-  Clinical/ClinicalModel.cpp
-  Clinical/EventScheduler.cpp
-  Clinical/ESCaseManagement.cpp
-  Clinical/CMDecisionTree.cpp
-  Clinical/ImmediateOutcomes.cpp
-  Clinical/Episode.cpp
-  Clinical/DecisionTree5Day.cpp
-  Clinical/CM5DayCommon.cpp
-  
-  PkPd/LSTMModel.cpp
-  PkPd/Drug/LSTMDrug.cpp
-  PkPd/Drug/LSTMDrugOneComp.cpp
-  PkPd/Drug/LSTMDrugThreeComp.cpp
-  PkPd/Drug/LSTMDrugConversion.cpp
-  PkPd/Drug/LSTMDrugType.cpp
-  PkPd/LSTMTreatments.cpp
-  
-  Transmission/VectorModel.cpp
-  Transmission/PerHost.cpp
-  Transmission/Anopheles/AnophelesModel.cpp
-  Transmission/Anopheles/CalcNvO.cpp
-  
-  Host/WithinHost/WHInterface.cpp
-  Host/WithinHost/WHFalciparum.cpp
-  Host/WithinHost/WHVivax.cpp
-  Host/WithinHost/CommonWithinHost.cpp
-  Host/WithinHost/DescriptiveWithinHost.cpp
-  Host/WithinHost/Genotypes.cpp
-  Host/WithinHost/Infection/CommonInfection.cpp
-  Host/WithinHost/Infection/DescriptiveInfection.cpp
-  Host/WithinHost/Infection/DummyInfection.cpp
-  Host/WithinHost/Infection/EmpiricalInfection.cpp
-  Host/WithinHost/Infection/MolineauxInfection.cpp
-  Host/WithinHost/Infection/PennyInfection.cpp
-  Host/WithinHost/Pathogenesis/PathogenesisModel.cpp
-  Host/WithinHost/Pathogenesis/Submodels.cpp
-  Host/WithinHost/Diagnostic.cpp
-  Host/WithinHost/Treatments.cpp
-  
-  mon/Monitoring.cpp
-  mon/init.cpp
-  mon/Continuous.cpp
-  
-  util/errors.cpp
-  util/checkpoint.cpp
-  util/ModelOptions.cpp
-  util/CommandLine.cpp
-  util/AgeGroupInterpolation.cpp
-  util/sampler.cpp
-  util/SpeciesIndexChecker.cpp
-  util/DocumentLoader.cpp
-  util/random.cpp
-  util/UnitParse.cpp
-  util/DecayFunction.cpp
-  
-  interventions/InterventionManager.cpp
-  interventions/ITN.cpp
-  interventions/IRS.cpp
-  interventions/GVI.cpp
-  interventions/Vaccine.cpp
-)
+# Plan §7 row 2: GLOB replaces the hand-maintained list (phases 2-7 add/remove
+# files freely). main.cpp is the openMalaria executable's entry point (root
+# CMakeLists), never part of the lib. StreamValidator is opt-in (below).
+file (GLOB_RECURSE Model_CPP CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+list (FILTER Model_CPP EXCLUDE REGEX "/(main|StreamValidator)\.cpp$")
 
 if (${OM_STREAM_VALIDATOR})
   list(APPEND Model_CPP util/StreamValidator.cpp)

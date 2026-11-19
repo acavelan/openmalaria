@@ -26,6 +26,7 @@
 
 #include <limits>
 #include <sstream>
+#include <cstring>  // was pulled in transitively via the scenario schema (now in model/xml)
 #include <assert.h>
 using namespace std;
 

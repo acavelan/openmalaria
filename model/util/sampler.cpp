@@ -53,24 +53,6 @@ void NormalSampler::setParams( double m, double s ){
     sigma = s;
 }
 
-void NormalSampler::setParams(const scnXml::SampledValueN& elt){
-    mu = elt.getMean();
-    if( elt.getDistr() == "const" ){
-        if( elt.getSD().present() && elt.getSD().get() != 0.0) {
-            throw util::xml_scenario_error( "attribute SD must be zero or omitted when distr=\"const\" or is omitted" );
-        }
-        sigma = 0.0;
-        return;
-    }
-    
-    if( elt.getDistr() != "normal" ){
-        throw util::xml_scenario_error( "expected distr to be one of \"const\", \"lognormal\" (note: not all distributions are supported here)" );
-    }
-    if( !elt.getSD().present() ){
-        throw util::xml_scenario_error( "attribute \"SD\" required for sampled normal value when distr is not const" );
-    }
-    sigma = elt.getSD().get();
-}
 
 double NormalSampler::sample(LocalRng& rng) const{
     if( sigma == 0.0 ){

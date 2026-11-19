@@ -31,6 +31,8 @@
 
 #include "util/random.h"
 
+namespace scnXml { class Mosq; }
+
 namespace OM {
 namespace Transmission {
 

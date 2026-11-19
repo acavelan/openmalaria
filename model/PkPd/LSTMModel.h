@@ -44,6 +44,9 @@ struct MedicateData {
         time(numeric_limits< double >::signaling_NaN())
     {}
     
+    /// Set from an XML element (defined in model/xml/pharmacology.cpp).
+    void load( const scnXml::PKPDMedication& med );
+    
     /// Checkpointing
     template<class S>
     void operator& (S& stream) {
@@ -53,7 +56,6 @@ struct MedicateData {
     }
     
 private:
-    void load( const scnXml::PKPDMedication& med );
     
     inline MedicateData multiplied( double doseMult ){
         MedicateData r( *this );

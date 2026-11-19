@@ -26,7 +26,7 @@
 #include "Host/Human.h"
 #include "Host/WithinHost/Pathogenesis/State.h"
 #include "Clinical/Episode.h"
-#include <schema/healthSystem.h>
+namespace scnXml { class DecisionTree; }
 
 namespace OM {
 namespace WithinHost {

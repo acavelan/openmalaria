@@ -399,48 +399,6 @@ void AnophelesModel::init2(int nHumans, double meanPopAvail, double sum_avail, d
 bool AnophelesModel::initIterate() { return true; }
 //@}
 
-void AnophelesModel::initVectorInterv(const scnXml::VectorSpeciesIntervention &elt, size_t instance)
-{
-    if (emergenceReduction.size() <= instance) emergenceReduction.resize(instance + 1);
-
-    if (elt.getEmergenceReduction().present())
-    {
-        const scnXml::EmergenceReduction &elt2 = elt.getEmergenceReduction().get();
-        if (elt2.getInitial() > 1.0) throw util::xml_scenario_error("emergenceReduction intervention: initial effect must be ≤ 1");
-        emergenceReduction[instance].set(elt2.getInitial(), elt2.getDecay(), "emergenceReduction");
-    }
-    if (probAdditionalDeathSugarFeedingIntervs.size() <= instance) probAdditionalDeathSugarFeedingIntervs.resize(instance + 1);
-    if (seekingDeathRateIntervs.size() <= instance) seekingDeathRateIntervs.resize(instance + 1);
-    if (probDeathOvipositingIntervs.size() <= instance) probDeathOvipositingIntervs.resize(instance + 1);
-
-    if (elt.getProbAdditionalDeathSugarFeeding().present())
-    {
-        const scnXml::ProbAdditionalDeathSugarFeeding &elt2 = elt.getProbAdditionalDeathSugarFeeding().get();
-        if (elt2.getInitial() < -1.0) throw util::xml_scenario_error("probAdditionalDeathSugarFeeding intervention: initial effect must be ≥ -1");
-        probAdditionalDeathSugarFeedingIntervs[instance].set(elt2.getInitial(), elt2.getDecay(), "seekingDeathRateIncrease");
-    }
-    if (elt.getSeekingDeathRateIncrease().present())
-    {
-        const scnXml::SeekingDeathRateIncrease &elt2 = elt.getSeekingDeathRateIncrease().get();
-        if (elt2.getInitial() < -1.0) throw util::xml_scenario_error("seekingDeathRateIncrease intervention: initial effect must be ≥ -1");
-        seekingDeathRateIntervs[instance].set(elt2.getInitial(), elt2.getDecay(), "seekingDeathRateIncrease");
-    }
-    if (elt.getProbDeathOvipositing().present())
-    {
-        const scnXml::ProbDeathOvipositing &elt2 = elt.getProbDeathOvipositing().get();
-        if (elt2.getInitial() < 0.0 || elt2.getInitial() > 1.0)
-            throw util::xml_scenario_error("probDeathOvipositing intrevention: initial effect must be in range [0,1]");
-        probDeathOvipositingIntervs[instance].set(elt2.getInitial(), elt2.getDecay(), "probDeathOvipositing");
-    }
-}
-void AnophelesModel::initVectorTrap(const scnXml::Description1 &desc, size_t instance)
-{
-    assert(trapParams.size() == instance); // if triggered, this is a code error not XML
-    TrapParams params;
-    params.relAvail = desc.getRelativeAvailability().getValue();
-    params.availDecay = DecayFunction::makeObject(desc.getDecayOfAvailability(), "decayOfAvailability");
-    trapParams.push_back(std::move(params));
-}
 
 void AnophelesModel::deployVectorPopInterv(LocalRng &rng, size_t instance)
 {
@@ -827,44 +785,6 @@ void AnophelesModel::update(SimTime d0, double tsP_A, double tsP_Amu, double tsP
 }
 
 // -----  Summary and intervention functions  -----
-void AnophelesModel::changeEIRIntervention(const scnXml::NonVector &nonVectorData)
-{
-    // assert(nonVectorData.getEIRDaily().present()); // XML loading code should enforce this
-    const scnXml::NonVector::EIRDailySequence &daily = nonVectorData.getEIRDaily();
-
-    // const scnXml::DailyValues &seasM = seasonality.getDailyValues().get();
-    // const scnXml::DailyValues::ValueSequence &daily = seasM.getValue();
-
-    // The minimum EIR allowed in the array. The product of the average EIR and a constant.
-    double minEIR = 0.01 * averageEIR(nonVectorData);
-
-    if (daily.size() < static_cast<size_t>(sim::oneYear()))
-        throw util::xml_scenario_error("entomology.anopheles.seasonality.dailyValues insufficient daily data for a year");
-
-    vector<int> nDays(sim::inSteps(sim::fromDays(daily.size() - 1)) + 1, 0);
-
-    interventionEIR.assign(nDays.size(), 0.0);
-
-    size_t required_days = static_cast<size_t>((sim::endDate() - sim::startDate()) + 1);
-
-    if (daily.size() < required_days)
-        throw util::xml_scenario_error("Insufficient intervention phase EIR values provided");
-
-    for (SimTime mpcday = sim::zero(), endDay = sim::fromDays(daily.size()); mpcday < endDay; mpcday = mpcday + sim::oneDay())
-    {
-        double EIRdaily = std::max(static_cast<double>(daily[mpcday]), minEIR);
-
-        // istep is the time period to which the day is assigned.
-        size_t istep = sim::inSteps(mpcday);
-        nDays[istep]++;
-        interventionEIR[istep] += EIRdaily;
-    }
-    // divide by number of records assigned to each interval (usually one per day)
-    for (size_t i = 0; i < interventionEIR.size(); ++i)
-    {
-        interventionEIR[i] *= sim::oneTS() / static_cast<double>(nDays[i]);
-    }
-}
 
 void AnophelesModel::uninfectVectors()
 {

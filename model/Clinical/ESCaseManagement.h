@@ -26,7 +26,7 @@
 #include "Global.h"
 #include "Clinical/CMDecisionTree.h"    // needed for ESDecisionMap
 #include "Host/WithinHost/WHInterface.h"
-#include "schema/pharmacology.h"
+namespace scnXml { class HSEventScheduler; }
 
 namespace OM { namespace Clinical {
 using WithinHost::WHInterface;

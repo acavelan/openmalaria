@@ -25,7 +25,6 @@
 #include "util/ModelOptions.h"
 #include "util/CommandLine.h"
 #include "util/UnitParse.h"
-#include "schema/scenario.h"
 #include "mon/Monitoring.h"
 
 #include <cstdlib>

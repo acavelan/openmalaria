@@ -25,10 +25,21 @@
 
 #include "Global.h"
 #include "mon/Monitoring.h"
-#include <schema/interventions.h>
 #include <limits>
 
-namespace scnXml{ class DeploymentBase; }
+namespace scnXml{
+    class DeploymentBase;
+    class Component;
+    class Condition;
+    class DTDeploy;
+    class Deploy;
+    class TriggeredDeployments;
+}
+namespace xsd{ namespace cxx{ namespace tree{
+    // real declaration: template<typename T, bool fund = fundamental_p<T>::r>
+    // declarations below spell the bool explicitly so no default is needed
+    template<typename T, bool> class sequence;
+} } }
 
 namespace OM {
 namespace Host {
@@ -150,16 +161,16 @@ public:
     /** Create from a list of XML elements: list of intervention components
      * with unconditional deployment (for triggered deployments). **/
     explicit HumanIntervention(
-        const xsd::cxx::tree::sequence<scnXml::Component>& componentList );
+        const xsd::cxx::tree::sequence<scnXml::Component, false>& componentList );
     /** Create from a list of XML elements: list of intervention components
      * and list of conditions of deployment. **/
     explicit HumanIntervention(
-        const xsd::cxx::tree::sequence<scnXml::Component>& componentList,
-        const xsd::cxx::tree::sequence<scnXml::Condition>& conditionList );
+        const xsd::cxx::tree::sequence<scnXml::Component, false>& componentList,
+        const xsd::cxx::tree::sequence<scnXml::Condition, false>& conditionList );
     /** Create from a list of XML elements: list of intervention components
      * with unconditional deployment (for triggered deployments). **/
     explicit HumanIntervention(
-        const xsd::cxx::tree::sequence<scnXml::DTDeploy>& componentList );
+        const xsd::cxx::tree::sequence<scnXml::DTDeploy, false>& componentList );
     
     /** Deploy all components to a pre-selected human. */
     void deploy( Host::Human& human, mon::Deploy::Method method,
@@ -185,7 +196,7 @@ public:
     
 private:
     struct SubList : protected HumanIntervention{
-        SubList( const scnXml::TriggeredDeployments::DeployType& elt );
+        SubList( const scnXml::Deploy& elt );
         
         void deploy( Host::Human& human, mon::Deploy::Method method,
             VaccineLimits vaccLimits )const;

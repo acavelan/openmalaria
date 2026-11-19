@@ -33,7 +33,6 @@
 #include "util/UnitParse.h"
 #include "util/CommandLine.h"
 #include "util/sampler.h"
-#include <schema/scenario.h>
 #include <algorithm>
 #include <limits>
 #include <cmath>
@@ -43,41 +42,7 @@ namespace WithinHost {
 
 using namespace OM::util;
 
-struct HypnozoiteReleaseDistribution {
-    HypnozoiteReleaseDistribution(std::unique_ptr<util::LognormalSampler> sampler, double latentRelapse) :
-        sampler(std::move(sampler)),
-        latentRelapse(latentRelapse)
-        {}
-    
-    /// Sample the time until next release
-    SimTime sampleReleaseDelay(LocalRng& rng) const {
-        double liverStageMaximumDays = 16.0*30.0; // maximum of about 16 months in liver stage 
-        double delay = numeric_limits<double>::quiet_NaN();       // in days
-        int count = 0;
-        int maxcount = 1e3;
-        
-        do{
-            delay = sampler->sample(rng);
-            count += 1;
-            
-            if( count >= maxcount ){
-                throw util::xml_scenario_error( "<vivax><hypnozoiteRelease>  [random delay calculation causes probably an indefinite loop]:\n The hypnozoite release distribution seems off, sigma of secondRelease could be too high. We except the hypnozoite to reside a maximum of 16 months in the liver stage. Sigma choose well, dear padawan." );
-            }
-        } while( delay > liverStageMaximumDays || delay < 0.0  );
-        
-        assert( delay >= 0 && delay < liverStageMaximumDays );
-        return sim::roundToTSFromDays( delay + latentRelapse );
-    }
-    
-private:
-    std::unique_ptr<util::LognormalSampler> sampler;
-    double latentRelapse;   // days
-};
 
-std::unique_ptr<HypnozoiteReleaseDistribution> createHypnozoiteReleaseDistribution(const scnXml::HypnozoiteReleaseDistribution& elt)
-{
-    return std::make_unique<HypnozoiteReleaseDistribution>(createSampler(elt),  elt.getLatentRelapse());
-}
 
 // ———  parameters  ———
 
@@ -118,19 +83,6 @@ VivaxBrood *sampleBrood = 0;
 
 // number of hypnozoites per brood:
 map<double,int> nHypnozoitesProbMap;
-void initNHypnozoites(){
-    assert(baseNumberHypnozoites <= 1 && baseNumberHypnozoites >= 0);
-    double total = 0.0;
-    for( int n = 0; n <= maxNumberHypnozoites; ++n )
-        total += pow( baseNumberHypnozoites, n );
-    
-    double cumP = 0.0;
-    for( int n = 0; n <= maxNumberHypnozoites; ++n ){
-        cumP += pow( baseNumberHypnozoites, n ) / total;
-        // pair n with the cumulative probability of sampling n:
-        nHypnozoitesProbMap[cumP] = n;
-    }
-}
 
 
 int sampleNHypnozoites(LocalRng& rng){
@@ -591,87 +543,6 @@ double WHVivax::getTotalDensity() const{ throw TRACED_EXCEPTION( not_impl, util:
 double WHVivax::getCumulative_h() const{ throw TRACED_EXCEPTION( not_impl, util::Error::WHFeatures ); }
 double WHVivax::getCumulative_Y() const{ throw TRACED_EXCEPTION( not_impl, util::Error::WHFeatures ); }
 
-void WHVivax::init( const OM::Parameters& parameters, const scnXml::Model& model ){
-
-    // Default value to use if no <parameters> element is present in XML.
-    latentP = UnitParse::readShortDuration("15d", UnitParse::DAYS);
-    try
-    {
-        if (model.getParameters().present())
-        {
-            latentP = UnitParse::readShortDuration(
-                model.getParameters().get().getLatentp(), UnitParse::NONE);
-        }
-    }
-    catch( const util::format_error& e )
-    {
-            throw util::xml_scenario_error( string("model/parameters/latentP: ").append(e.message()) );
-    }
-
-    if( !model.getVivax().present() )
-        throw util::xml_scenario_error( "no vivax model description in scenario XML" );
-    const scnXml::Vivax& elt = model.getVivax().get();
-    probBloodStageInfectiousToMosq = elt.getProbBloodStageInfectiousToMosq().getValue();
-    maxNumberHypnozoites = elt.getHypnozoiteRelease().getNumberHypnozoites().getMax();
-    baseNumberHypnozoites = elt.getHypnozoiteRelease().getNumberHypnozoites().getBase();
-    const scnXml::HypnozoiteRelease& hr = elt.getHypnozoiteRelease();
-    latentRelapse1st = createHypnozoiteReleaseDistribution(hr.getFirstReleaseDays());
-    if(hr.getSecondReleaseDays().present()){
-        latentRelapse2nd = createHypnozoiteReleaseDistribution(hr.getSecondReleaseDays().get());
-        pSecondRelease = hr.getPSecondRelease();
-        assert( pSecondRelease >= 0 && pSecondRelease <= 1 );
-    } // else pSecondRelease is NaN and other values don't get used
-    bloodStageProtectionLatency = sim::roundToTSFromDays( elt.getBloodStageProtectionLatency().getValue() );
-    bloodStageLength.setParams(elt.getBloodStageLengthDays());
-    
-    const scnXml::ClinicalEvents& ce = elt.getClinicalEvents();
-    pPrimaryA = ce.getPPrimaryInfection().getA();
-    pPrimaryB = ce.getPPrimaryInfection().getB();
-    pRelapseOneA = ce.getPRelapseOne().getA();
-    pRelapseOneB = ce.getPRelapseOne().getB();
-    pRelapseTwoA = ce.getPRelapseTwoPlus().getA();
-    pRelapseTwoB = ce.getPRelapseTwoPlus().getB();
-    pEventIsSevere = ce.getPEventIsSevere().getValue();
-    vivaxClinOption = ce.getVivaxClinOption();
-    
-	// Define accepted values for vivaxClinOption
-    const std::set<std::string> acceptedOptions = {"A1j", "A2j", "B1j", "B2j"};
-
-   // Check if vivaxClinOption is valid
-    if (acceptedOptions.find(vivaxClinOption) == acceptedOptions.end()) {
-        throw util::xml_scenario_error("Invalid vivaxClinOption: " + vivaxClinOption +
-                                     ". Accepted values are: A1j, A2j, B1j, B2j.");
-    }
-		
-    initNHypnozoites();
-    Pathogenesis::PathogenesisModel::init( parameters, model.getClinical(), true );
-}
-void WHVivax::setHSParameters(const scnXml::LiverStageDrug* elt){
-    double oldPHetNoPQ = pHetNoPQ;
-    if( elt == 0 ){
-        ignoreNoPQ = false;
-        pHetNoPQ = 0.0;
-        pReceivePQ = 0.0;
-        effectivenessPQ = 1.0;  // sensible default: does not affect simple liver stage treatment option
-    }else{
-        ignoreNoPQ = elt->getIgnoreCannotReceive().present() ?
-            elt->getIgnoreCannotReceive().get().getValue() : false;
-        pHetNoPQ = elt->getPHumanCannotReceive().getValue();
-        pReceivePQ = elt->getPUseUncomplicated().present() ?
-            elt->getPUseUncomplicated().get().getValue() :  0.0;
-        if( pReceivePQ > 0.0 ){
-            if( util::CommandLine::option(util::CommandLine::DEPRECATION_WARNINGS) ){
-                cerr << "Deprecation warning: pUseUncomplicated is deprecated; it is "
-                    "suggested to use the liver stage simple treatment option instead." << endl;
-            }
-        }
-        effectivenessPQ = elt->getEffectivenessOnUse().getValue();
-    }
-    
-    if( !std::isnan(oldPHetNoPQ) && oldPHetNoPQ != pHetNoPQ ){
-        throw util::xml_scenario_error( "changeHS cannot change pHumanCannotReceive value" );
-    }
-}
 
 }
 }

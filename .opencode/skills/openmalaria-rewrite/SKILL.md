@@ -98,3 +98,12 @@ hunting (phases 6–9) → `performance-patterns`. Any logic/fixture work →
 (user): valgrind is extremely slow here — run memcheck/callgrind only on tiny
 popSize scenarios (e.g. a small box scenario), never on the pop-2000
 benchmark.**
+
+**Ponytail (user requirement, 2026-11-19): always load and follow the `ponytail`
+skill** for every coding task in this rewrite — lazy-first ladder (YAGNI →
+reuse in-repo → stdlib → platform → installed dep → one line → minimum code).
+It never overrides the correctness ladder, T1 gates, or frozen contracts — it
+only constrains *how much* code a compliant solution may write. Comments are
+LOC-free (cloc code column only), so `// parity:` notes stay cheap; code is
+not.
+

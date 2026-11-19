@@ -60,10 +60,6 @@ public:
      * information from the human population structure. */
     virtual void init2(const vector<Host::Human> &population);
 
-    virtual void initVectorInterv(const scnXml::Description::AnophelesSequence &list, size_t instance, const string &name);
-    virtual void initVectorTrap(const scnXml::VectorTrap::DescriptionSequence list, size_t instance,
-                                const scnXml::VectorTrap::NameOptional name);
-
     virtual void scaleEIR(double factor);
 
     virtual SimTime initIterate();

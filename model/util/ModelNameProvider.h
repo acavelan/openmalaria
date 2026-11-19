@@ -23,7 +23,7 @@
 #ifndef Hmod_util_ModelNameProvider
 #define Hmod_util_ModelNameProvider
 
-#include <schema/scenario.h>
+namespace scnXml { class Model; }
 #include "util/errors.h"
 
 namespace OM
@@ -51,22 +51,7 @@ namespace OM
         class ModelNameProvider
         {
         public:
-            ModelNameProvider(const scnXml::Model& model)
-            {
-                const bool useNamedModel = model.getModelName().present();
-                if (useNamedModel)
-                {
-                    const std::string nameFromXML = model.getModelName().get().getName();
-                    if (nameFromXML == "base")
-                    {
-                        modelInUse = ModelNames::base;
-                    }
-                    else
-                    {
-                        throw util::xml_scenario_error("Unrecognized model name: " + nameFromXML);
-                    }
-                }
-            }
+            ModelNameProvider( const scnXml::Model& model );
 
             ~ModelNameProvider(){}
 

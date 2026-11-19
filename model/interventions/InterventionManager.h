@@ -27,7 +27,7 @@
 #include "interventions/Interfaces.h"
 #include "Host/ImportedInfections.h"
 #include "Transmission/TransmissionModel.h"
-#include "schema/interventions.h"
+namespace scnXml { class Interventions; }
 
 namespace OM {
     class Population;
