@@ -105,6 +105,12 @@ struct FlatTree {
     std::vector<int> reports;         // Report: monitoring output numbers
     std::vector<PkPdTreat> pkpd;      // TreatPKPD (delay_h is not applied here)
     std::vector<std::pair<SimTime,SimTime>> simple; // TreatSimple liver/blood
+    /** THE clinical→interventions seam (phase 5, plan §5): compiled leaves
+     * hold interventions by value (the only sanctioned direction; the
+     * interventions module must not include Clinical/ — the last two
+     * runtime edges live in the xml load layer: DecisionTreeComponent in
+     * xml/HumanInterventionComponents.h and changeHS setHS in
+     * xml/interventions.cpp; phase 7 owns moving those behind ctx.ext). */
     std::vector<interventions::HumanIntervention> deploys;
     std::vector<const WithinHost::Diagnostic*> diagnostics;
 };

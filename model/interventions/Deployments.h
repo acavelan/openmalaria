@@ -31,7 +31,6 @@
 #include "Global.h"
 #include "core/RunContext.h"
 #include "util/errors.h"
-#include "Clinical/ClinicalModel.h"
 #include "Population.h"
 #include "Transmission/TransmissionModel.h"
 #include "Transmission/PerHost.h"
