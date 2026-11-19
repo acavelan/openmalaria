@@ -77,14 +77,19 @@ phase off tag `p(N−1)-green`; ≤5 fix iterations on a red gate, then revert +
 
 ## Forbidden
 
-- Editing `test/expected/` or `unittest/` fixtures outside a phase-0 re-bless
-  clause commit or the phase-8 break commit.
+- Editing `test/expected/` or `unittest/` fixtures outside an authorized
+  re-bless commit (phase-0 clause, checkpoint-conversion re-bless blessed from
+  the A0 reference, or the phase-8 break commit).
 - Deleting/modelling-away any model variant, scenario, or suite (user veto).
 - **Threads, multi-seed runs, in-process batch — the binary is one core, one
   seed, one run per invocation** (user veto). Parallelism lives outside the binary.
 - Checkpoint reproducibility expectations: checkpoint = post-warmup snapshot,
   interventions never checkpointed, restore = event replay ignoring coverage
   filters (plan §6); no phase may serialize per-host intervention state.
+- **Carrying a "checkpoint bytes frozen" constraint into a phase brief (user
+  veto, reiterated: checkpoints may break freely — re-bless the affected box
+  goldens from the A0 reference in the same commit + keep one round-trip smoke
+  test; T1/T2/T3 unchanged).**
 - New dependencies without a PERF.md row justifying them.
 - Touching a `friend`ed class without updating its suites in the same commit.
 - Trusting round-N mining claims over source: verify flags against source
