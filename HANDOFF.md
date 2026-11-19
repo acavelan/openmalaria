@@ -105,10 +105,22 @@ Crash-recovery file. Update EVERY green commit. Baseline p5-green: model **18,65
    Host::update (Human.cpp), // parity comments travel. HostView{cols ref, row,
    rng ref, scratch, ...} per §9. het_sample = Human.cpp hetSample (contract:
    max 4 draws, 3 leading ifs + else-if chain — verified vs §9, annotate).
-5. [ ] 6.5 FINAL GATE: T1 a+b 63/63; ctest+unittest; bench p6-final vs 12.51
-   (recover toward ≤12.33; revert offender if worse > noise floor max(1%,2×MAD));
-   cloc; census statics/draws refresh if moved; PERF.md row 6; column table +
-   7 handoff notes for phase 7.
+5. [x] 6.5 FINAL GATE: T1 a+b 63/63 (seeds 1-10, 1ccf84f4+docs); ctest 52/52;
+   unittest 94/94; bench p6-final **12.58s mad .010** (+0.56% vs p5 12.51,
+   under floor; +2.0% vs A0 12.33 — layout phase, p8 A2-rebuild budget
+   unchanged); cloc model **18,895** (+238 vs p5), unittest C++ 3,794 (+96);
+   census refresh: draws.sh repair DEFERRED (scanner/annotate bit-rotted on
+   phase-4..6 file moves: order-rows with empty line crash int(); committed
+   CSV restored untouched) — draw-set invariance proven by T1 63/63 +
+   RngGoldens + TwoRunsSuite instead; PERF.md rows 6 + 6-notes written.
+   B/row measured = 303 fixed (+heap spans) vs ≈158 study target: the gap is
+   LocalRng 104B (vs 32B raw-state assumed) + 120B of 5× std::vector headers
+   (cohorts + 4 anoph per-species) — compaction = phase-7/8 decision, T1
+   re-proof required. Phase-7 handoff: HostView gains iv/mon fields as PerHost
+   intervention-effect columns dissolve (landing zone untouched all phase);
+   copulaGaussianSamples map still a PerHost member (copula g per (host,
+   subPop) — §9 pins the shape); Deployments.h/EventScheduler/Population read
+   transmission columns via the *_ref accessors already in place.
 
 ## Traps (inherited + p6-specific)
 - Compaction read-by-position: inside Population::update's erase loop,
