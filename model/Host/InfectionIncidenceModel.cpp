@@ -179,7 +179,7 @@ double InfectionIncidenceModel::getModelExpectedInfections (LocalRng& rng, doubl
   switch(kind) {
   case Kind::HetWorkaround:  // parity: old HeterogeneityWorkaroundII formula
     return (Sinf+(1-Sinf) / 
-      (1 + effectiveEIR/(ctx.clock.one_TS()*phTrans.relativeAvailabilityHet)*EstarInv)) *
+      (1 + effectiveEIR/(ctx.clock.one_TS()*phTrans.rel_avail_het())*EstarInv)) *
       susceptibility() * effectiveEIR;
   case Kind::NegBinom:  // parity: old NegBinomMAII formula
     // Documentation: http://www.plosmedicine.org/article/fetchSingleRepresentation.action?uri=info:doi/10.1371/journal.pmed.1001157.s009

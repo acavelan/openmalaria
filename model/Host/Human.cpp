@@ -134,6 +134,7 @@ Human::Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns) :
     double iiFactor = infIncidence->getAvailabilityFactor(rng(), 1.0);
     perHostTransmission.ctx = &ctx;
     vaccine.ctx = &ctx;
+    perHostTransmission.bind_columns( columns, row );
     perHostTransmission.initialise (ctx, rng(), het.availabilityFactor * iiFactor);
     clinicalModel = Clinical::ClinicalModel::createClinicalModel(ctx, het.treatmentSeekingFactor);
     clinicalModel->bind_columns( columns, row );
@@ -145,6 +146,7 @@ void Human::set_row( size_t r ) {
     // another host's columns after compaction (WHInterface immunity, Clinical).
     if( withinHostModel ) withinHostModel->bind_columns( *cols, r );
     if( clinicalModel ) clinicalModel->bind_columns( *cols, r );
+    perHostTransmission.bind_columns( *cols, r );
 }
 
 namespace {

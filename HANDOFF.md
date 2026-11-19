@@ -63,9 +63,18 @@ Crash-recovery file. Update EVERY green commit. Baseline p5-green: model **18,65
    accessors (t_last_treatment() etc.), ctor init-list entries dropped
    (defaults live in append_row), Human ctor bind + set_row rebind added
    (now covers withinHostModel AND clinicalModel — grep set_row after each
-   cluster). Wire via refs, per-kind branches unchanged. clinical. → transmission
-   (anophEntoAvailabilityRaw/anophEntoAvailability/anophProbMosqBiting/
-   anophProbMosqResting per species + relativeAvailabilityHet + outsideTransmission).
+   cluster). Wire via refs, per-kind branches unchanged.
+   [x] cluster e (transmission): PerHost members DELETED → columns
+   anoph_ento_raw/anoph_ento_avail/anoph_prob_biting/anoph_prob_resting
+   (nested vector<double> per row, resize happens in initialise exactly where
+   the old member resize ran), rel_avail_het (signaling_NaN default = old ctor
+   tripwire), outside_trans (u8, old bool, same 1-byte wire). PerHost gained
+   bind_columns + const-ref accessors + HostColumns.h include (still leaf —
+   HostColumns pulls only leaves). Human ctor binds BEFORE
+   perHostTransmission.initialise (it writes columns); set_row rebinds.
+   Call-site sed notes: longest-token-first (anophEntoAvailabilityRaw before
+   ...Availability). → 6.3 scratch (EIR_per_genotype_i/l +
+   probTransGenotype_i/l hoist) then 6.4 HostView + 7 free fns.
    Each cluster: DELETE old member, fix call sites (compiler = checker), tier-a,
    tier-b 1-4, HANDOFF, commit. Intervention-effect columns stay in PerHost
    (phase-7 landing zone — do NOT touch polymorphism).
@@ -113,6 +122,14 @@ Crash-recovery file. Update EVERY green commit. Baseline p5-green: model **18,65
 - Untracked PROMPT.md/email = user files, leave.
 
 ## Gates log
+- (6.2e, this commit) transmission columns (anoph_ento_raw/avail,
+  anoph_prob_biting/resting nested, rel_avail_het signaling_NaN default,
+  outside_trans u8); PerHost members DELETED, bind_columns + const-ref
+  accessors + leaf HostColumns.h include; Human ctor binds before
+  perHostTransmission.initialise; set_row rebinds all three mirrors
+  (withinHostModel, clinicalModel, perHostTransmission — grep set_row per
+  cluster). ALL §7-pinned columns now migrated. build clean; unittest 94/94;
+  ctest 52/52; T1 a 53/53 + b seeds1-4 4/4.
 - (6.2d, this commit) clinical columns t_last_treatment + es_case_start/
   es_time_recovery/es_time_treatment (SimTime never()) + es_prev_density (f64
   NaN); ClinicalModel members DELETED, bind_columns + const-ref accessors;

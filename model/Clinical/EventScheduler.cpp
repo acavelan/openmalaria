@@ -92,7 +92,7 @@ void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human, double 
 	    cm.esPgState = Episode::NONE;	// recovery (reset to healthy state)
 	    
 	    // And returns to transmission (if was removed)
-	    human.perHostTransmission.outsideTransmission = false;
+	    human.perHostTransmission.outside_trans() = false;
 	}
     }
     
@@ -296,7 +296,7 @@ void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human, double 
 	// This should have an effect from the start of the next time step.
 	// NOTE: This is not very accurate, but considered of little importance.
 	if (cm.esPgState & Episode::EVENT_IN_HOSPITAL)
-	    human.perHostTransmission.outsideTransmission = true;
+	    human.perHostTransmission.outside_trans() = true;
 	
 	if (cm.esPgState & Episode::COMPLICATED) {
 	    // ClinicalEventScheduler::complicatedCaseDuration should to some respects be associated
