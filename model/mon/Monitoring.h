@@ -105,7 +105,7 @@ uint32_t updateCohortSet(RunContext& ctx, uint32_t old, interventions::Component
 
 // ----- management API -----
 
-void updateAgeGroup(RunContext& ctx, size_t& index, SimTime age);
+void updateAgeGroup(RunContext& ctx, uint16_t& index, SimTime age);
 void initMainSim(RunContext& ctx);
 void concludeSurvey(RunContext& ctx);
 void writeSurveyData(RunContext& ctx);

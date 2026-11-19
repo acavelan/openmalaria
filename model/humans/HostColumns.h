@@ -24,7 +24,10 @@
 #define Hmod_humans_HostColumns
 
 #include "Global.h"
-#include "util/random.h"#include <vector>
+#include "interventions/ComponentId.h"
+#include "util/random.h"
+#include <utility>
+#include <vector>
 
 namespace OM {
 
@@ -43,8 +46,45 @@ struct HumanColumns {
      * Human's construction point — Human ctor body, old member-init slot). */
     std::vector<util::LocalRng> rng;
 
+    /// Date of birth (old Human::dateOfBirth).
+    std::vector<SimTime> dob;
+    /// Time of death; sim::never() while alive (old Human::dead bool — the
+    /// wire never carried `dead`, so this column is deliberately not on it).
+    std::vector<SimTime> death;
+    /// Monitoring cohort-set bitmask (old Human::cohortSet).
+    std::vector<uint32_t> cohort_set;
+    /// Sub-population memberships (old Human::subPopExp): per row, (id,expiry)
+    /// pairs sorted ascending by id — same iteration order as the old map.
+    std::vector<std::vector<std::pair<interventions::ComponentId, SimTime>>> cohorts;
+    /// Monitoring age-group index (old Human::monitoringAgeGroup, size_t).
+    std::vector<uint16_t> mon_age_group;
+    /// Next continuous-distribution index (old Human::nextCtsDist).
+    std::vector<uint32_t> next_cts_dist;
+
+    /** Add a row for a newly constructed Human, at the exact moment of its old
+     * member inits: rng is copy-seeded from `master` HERE (RNG RULE); dob set;
+     * everything else at construction defaults (alive, no cohorts). */
+    size_t append_row( SimTime dateOfBirth, util::MasterRng& master ) {
+        rng.emplace_back( master );
+        dob.push_back( dateOfBirth );
+        death.push_back( sim::never() );
+        cohort_set.push_back( 0u );
+        cohorts.emplace_back();
+        mon_age_group.push_back( 0u );
+        next_cts_dist.push_back( 0u );
+        return rng.size() - 1;
+    }
+
     /// Drop row `r` from every column (Population-only; mirrors humans.erase).
-    void erase_at( size_t r ) { rng.erase( rng.begin() + r ); }
+    void erase_at( size_t r ) {
+        rng.erase( rng.begin() + r );
+        dob.erase( dob.begin() + r );
+        death.erase( death.begin() + r );
+        cohort_set.erase( cohort_set.begin() + r );
+        cohorts.erase( cohorts.begin() + r );
+        mon_age_group.erase( mon_age_group.begin() + r );
+        next_cts_dist.erase( next_cts_dist.begin() + r );
+    }
 };
 
 }
