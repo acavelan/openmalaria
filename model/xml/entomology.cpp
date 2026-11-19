@@ -384,11 +384,12 @@ VectorModel *createVectorModel(RunContext& ctx, const scnXml::Entomology &entoDa
         PerHostAnophParams::init(ctx, anoph.getMosq());
 
         Anopheles::AnophelesModel *anophModel = createAnophelesModel(ctx, i, anoph, initialisationEIR, populationSize, interventionMode);
-        std::unique_ptr<Anopheles::EmergenceRateEstimator> estimator;
-        if (util::ModelOptions::option(util::USE_EXACT_NV0_SOLVER))
-            estimator = std::make_unique<Anopheles::EmergenceRateSolver>(*anophModel, populationSize);
-        else
-            estimator = std::make_unique<Anopheles::EmergenceRateAdaptiveFitter>(*anophModel);
+        std::unique_ptr<Anopheles::EmergenceRateEstimator> estimator =
+            std::make_unique<Anopheles::EmergenceRateEstimator>(
+                util::ModelOptions::option(util::USE_EXACT_NV0_SOLVER) ?
+                    Anopheles::EmergenceRateEstimator::Kind::Solver
+                  : Anopheles::EmergenceRateEstimator::Kind::AdaptiveFitter,
+                *anophModel, populationSize);
 
         species.push_back(std::unique_ptr<Anopheles::AnophelesModel>(anophModel));
         emergenceRateEstimators.push_back(std::move(estimator));
