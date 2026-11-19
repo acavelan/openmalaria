@@ -32,36 +32,6 @@ namespace OM { namespace interventions {
 
 vector<GVIComponent*> GVIComponent::componentsByIndex;
 
-GVIComponent::GVIComponent( ComponentId id, const scnXml::GVIDescription& elt,
-        const map<string,size_t>& species_name_map ) :
-        Transmission::HumanVectorInterventionComponent(id)
-{
-    decay = DecayFunction::makeObject( elt.getDecay(), "interventions.human.vector.decay" );
-    // assume usage modifier is 100% if none is specified
-    double propUse;
-    if (elt.getUsage().present()) {
-        propUse = elt.getUsage().get().getValue();
-    }
-    else {
-        propUse = 1.0;
-    }
-    if( !( propUse >= 0.0 && propUse <= 1.0 ) ){
-        throw util::xml_scenario_error("GVI.description.usage: must be within range [0,1]");
-    }
-    
-    typedef scnXml::GVIDescription::AnophelesParamsSequence AP;
-    const AP& ap = elt.getAnophelesParams();
-    species.resize( species_name_map.size() );
-    util::SpeciesIndexChecker checker( "GVI intervention", species_name_map );
-    for( AP::const_iterator it = ap.begin(); it != ap.end(); ++it ) {
-        species[checker.getIndex(it->getMosquito())].init (*it, propUse);
-    }
-    checker.checkNoneMissed();
-    
-    if( componentsByIndex.size() <= id.id ) componentsByIndex.resize( id.id+1, 0 );
-    componentsByIndex[id.id] = this;
-}
-
 void GVIComponent::deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
     human.perHostTransmission.deployComponent(human.rng, *this);
     mon::recordDeploy(mon::measure("nMassGVI"), mon::measure("nCtsGVI"), human, method);
@@ -78,25 +48,6 @@ unique_ptr<PerHostInterventionData> GVIComponent::makeHumanPart(LocalRng& rng) c
 }
 unique_ptr<PerHostInterventionData> GVIComponent::makeHumanPart( istream& stream, ComponentId id ) const{
     return unique_ptr<PerHostInterventionData>(new HumanGVI( stream, id ));
-}
-
-void GVIComponent::GVIAnopheles::init(const scnXml::GVIDescription::AnophelesParamsType& elt,
-                                          double proportionUse)
-{
-    assert( (std::isnan)(deterrency) ); // double init
-    deterrency = elt.getDeterrency().present() ? elt.getDeterrency().get().getValue() : 0.0;
-    preprandialKilling = elt.getPreprandialKillingEffect().present() ? elt.getPreprandialKillingEffect().get().getValue() : 0.0;
-    postprandialKilling = elt.getPostprandialKillingEffect().present() ? elt.getPostprandialKillingEffect().get().getValue() : 0.0;
-    fecundityReduction = elt.getFecundityReduction().present() ? elt.getFecundityReduction().get().getValue() : 0.0;
-    // Simpler version of ITN usage/action:
-    double propActive = elt.getPropActive();
-    if(propActive != 1.0 && propActive != 0.0)
-        throw util::xml_scenario_error("GVI.description.propActive: must be either 0 or 1");
-
-    assert( proportionUse >= 0.0 && proportionUse <= 1.0 );
-    assert( propActive >= 0.0 && propActive <= 1.0 );
-    proportionProtected = proportionUse * propActive;
-    proportionUnprotected = 1.0 - proportionProtected;
 }
 
 

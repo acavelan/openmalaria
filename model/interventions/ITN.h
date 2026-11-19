@@ -26,7 +26,15 @@
 #include "util/DecayFunction.h"
 #include "Transmission/PerHost.h"
 #include "util/sampler.h"
-#include "schema/interventions.h"
+namespace scnXml
+{
+    class ITNDescription;
+    class AnophelesParams1;
+    class ITNKillingEffect;
+    class ITNEffectLogit;
+    class ITNDeterrency;
+    class TwoStageDeterrency;
+}
 
 namespace OM {
 namespace interventions {
@@ -168,7 +176,7 @@ private:
             proportionProtected( numeric_limits<double>::signaling_NaN() ),
             proportionUnprotected( numeric_limits<double>::signaling_NaN() )
         {}
-        void init(const scnXml::ITNDescription::AnophelesParamsType& elt,
+        void init(const scnXml::AnophelesParams1& elt,
                   double proportionUse, double maxInsecticide);
         
         /// Get deterrency. See ComponentParams::effect for a more detailed description.
