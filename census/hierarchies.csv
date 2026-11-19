@@ -1,0 +1,18 @@
+root,derived_count,members,virtuals,vtable_heavy,total_code_LOC,depth,planned_phase,config_state_note,files
+AgeGroupInterpolation,4,5,13,yes,208,3,4b,"linear/none only (cspline dead, F6) -> enum + free fn; virtual eval is a per-human-day cost (phase 6/8 scratch cols)",model/util/AgeGroupInterpolation.cpp;model/util/AgeGroupInterpolation.h
+AnophelesModel,1,2,16,yes,348,2,4b,SimpleMPD -> optional member + 4 guarded hooks (§5); solver flip at phase 8,model/Transmission/Anopheles/AnophelesModel.h;model/Transmission/Anopheles/SimpleMPDAnophelesModel.h
+CMDecisionTree,15,16,33,yes,651,2,4a,compiled decision tree + flat node-array interpreter (§5); child order = XSD sequence (contract d),model/Clinical/CMDecisionTree.cpp;model/Clinical/CMDecisionTree.h
+ClinicalModel,4,5,16,yes,196,3,4a/4b,3-config -> 2-state collapse (§5); DT interpreter owned by 4a,model/Clinical/CM5DayCommon.h;model/Clinical/ClinicalModel.h;model/Clinical/DecisionTree5Day.h;model/Clinical/EventScheduler.h;model/Clinical/ImmediateOutcomes.h
+DecayFunction,0,1,4,no,54,1,4b,exponential/extrap piecewise -> enum + free fn,model/util/DecayFunction.h
+EmergenceRateEstimator,2,3,2,no,187,2,4b,solver vs fitter -> tag+switch; ATSB secant path phase 8/9,model/Transmission/Anopheles/EmergenceRateEstimator.h
+HumanInterventionComponent,11,12,37,yes,866,3,7,dense components by type-rank + date-cursor (§5); bases cycle out of PerHost.h at phase 5,model/Transmission/PerHost.h;model/interventions/GVI.h;model/interventions/HumanInterventionComponents.h;model/interventions/IRS.h;model/interventions/ITN.h;model/interventions/Interfaces.h;model/interventions/Vaccine.h
+Infection,6,7,18,yes,293,3,4b,slots <=21/host behind ONE SlotAllocator; variant tag columns (§5),model/Host/WithinHost/Infection/CommonInfection.h;model/Host/WithinHost/Infection/DescriptiveInfection.h;model/Host/WithinHost/Infection/DummyInfection.h;model/Host/WithinHost/Infection/EmpiricalInfection.h;model/Host/WithinHost/Infection/Infection.h;model/Host/WithinHost/Infection/MolineauxInfection.h;model/Host/WithinHost/Infection/PennyInfection.h
+InfectionIncidenceModel,3,4,8,no,69,2,4b,merged incidence 4-config -> 1 (§5),model/Host/InfectionIncidenceModel.h
+LSTMDrug,3,4,25,no,144,2,4b,"PK variants as enum + free fn formulas (PkPd kept, rewritten flat §2)",model/PkPd/Drug/LSTMDrug.h;model/PkPd/Drug/LSTMDrugConversion.h;model/PkPd/Drug/LSTMDrugOneComp.h;model/PkPd/Drug/LSTMDrugThreeComp.h
+PathogenesisModel,3,4,13,no,74,3,4b,variant switch; submodels flattened,model/Host/WithinHost/Pathogenesis/PathogenesisModel.h;model/Host/WithinHost/Pathogenesis/Submodels.h
+PerHostInterventionData,3,4,29,yes,487,2,5->7,interventions bases out of PerHost.h (5); Copy effect structs on sidecar (7),model/Transmission/PerHost.h;model/interventions/GVI.h;model/interventions/IRS.h;model/interventions/ITN.h
+Sampler,2,3,6,no,181,2,4b,gamma/lognormal -> enum dispatch; inline GSL ports phase 9 (F2 gates),model/util/sampler.h
+TimedDeployment,10,11,22,yes,553,3,7,flat TimedDeploymentKind enum + payload struct (§9),model/interventions/Deployments.h
+TransmissionModel,2,3,38,no,510,2,4b,PerHost class deleted (5); dense per-host arrays; one vector LocalRNG stream (§9),model/Transmission/NonVectorModel.h;model/Transmission/TransmissionModel.h;model/Transmission/VectorModel.h
+WHInterface,4,5,69,yes,282,3,4b,69 virtuals = largest hierarchy; variants as equations over shared machinery (§5),model/Host/WithinHost/CommonWithinHost.h;model/Host/WithinHost/DescriptiveWithinHost.h;model/Host/WithinHost/WHFalciparum.h;model/Host/WithinHost/WHInterface.h;model/Host/WithinHost/WHVivax.h
+base_exception,2,3,3,no,115,2,none,util error types; not model state — no rewrite,model/util/errors.h
