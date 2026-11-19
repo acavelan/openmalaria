@@ -36,7 +36,7 @@ using namespace ::OM::util;
 enum CaseType { FirstLine, SecondLine, NumCaseTypes };
 
 // These parameters are set by setHealthSystem() and do not need checkpointing.
-const CMDecisionTree *treeUCOfficial = 0, *treeUCSelfTreat = 0;
+const FlatTree *treeUCOfficial = 0, *treeUCSelfTreat = 0;
 
 // ———  static, init  ———
 
@@ -57,12 +57,12 @@ void DecisionTree5Day::uncomplicatedEvent ( RunContext& ctx, Human& human, Episo
     // parity: d — clinical decision fraction draw order (plan §3d)
     double x = human.rng.uniform_01();
     if( x < accessUCAny[regimen] * m_treatmentSeekingFactor ){
-        CMHostData hostData( human, sim::inYears(human.age(ctx.clock.ts0())), pgState );
-        
         // Run tree (which may deploy treatment)
-        CMDTOut output = ( x < accessUCSelfTreat[regimen] * m_treatmentSeekingFactor ) ?
-            treeUCSelfTreat->exec( ctx, hostData ) :
-            treeUCOfficial->exec( ctx, hostData );
+        DTExecCtx ec( ctx, human, sim::inYears( human.age( ctx.clock.ts0() ) ),
+                      pgState );
+        CMDTOut output = exec_decision_tree(
+            x < accessUCSelfTreat[regimen] * m_treatmentSeekingFactor ?
+                *treeUCSelfTreat : *treeUCOfficial, ec );
         
         if( output.treated ){   // if any treatment or intervention deployed
             m_tLastTreatment = ctx.clock.ts0();

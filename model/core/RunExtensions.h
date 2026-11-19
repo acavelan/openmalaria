@@ -49,8 +49,10 @@
 namespace OM {
 
 struct RunExtensions {
-    /// Decision-tree library (frees memory at end of run; dedup on add).
-    std::vector<std::unique_ptr<Clinical::CMDecisionTree>> decision_library;
+    /// Compiled decision trees (frees memory at end of run; was:
+    /// decision_library of polymorphic trees with equality dedup — the dedup
+    /// only saved memory, identical trees behave identically).
+    std::vector<std::unique_ptr<Clinical::FlatTree>> decision_trees;
     /// WithinHost::Treatments option registry (built while reading XML).
     std::vector<WithinHost::Treatments> whTreatments;
     /// Within-host infection factory, set by the active model's init.
