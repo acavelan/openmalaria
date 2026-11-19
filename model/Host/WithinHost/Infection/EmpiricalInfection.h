@@ -41,9 +41,9 @@ public:
   /// @brief Construction and destruction
   //@{
   /// For checkpointing (don't use for anything else)
-  EmpiricalInfection(istream& stream);
+  EmpiricalInfection(RunContext& ctx, istream& stream);
   /// Per instance initialisation; create new inf.
-  EmpiricalInfection(LocalRng& rng, uint32_t protID, int origin, double growthRateMultiplier);
+  EmpiricalInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin, double growthRateMultiplier);
   /** Destructor
    * 
    * Note: this destructor does nothing in order to allow shallow copying to

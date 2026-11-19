@@ -23,6 +23,7 @@
 #ifndef Hmod_DescriptiveInfection
 #define Hmod_DescriptiveInfection
 
+#include "core/RunContext.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/random.h"
 
@@ -62,21 +63,21 @@ public:
      * Init constants common to all Phase A (AJTMH 75(2)) infections (i.e.
      * those models documented in the referenced publication).
      */
-    static void init(const OM::Parameters& parameters);
+    static void init(RunContext& ctx, const OM::Parameters& parameters);
     //@}
     
     ///@name Constructors
     //@{
     /// Default constructor
-    DescriptiveInfection (LocalRng& rng, uint32_t genotype, int origin);
+    DescriptiveInfection (RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin);
     /// Checkpoint loading constructor
-    DescriptiveInfection (istream& stream);
+    DescriptiveInfection (RunContext& ctx, istream& stream);
     //@}
     
     /** Returns true when age reaches the pre-determined duration (i.e. when
     * this infection terminates). */
     bool expired () {
-        return sim::ts0() > m_startDate + m_duration;
+        return ctx.clock.ts0() > m_startDate + m_duration;
     }
     
     /** Determines parasite density of an individual infection (5-day time step
@@ -106,7 +107,7 @@ public:
      * normal distribution using parameters for 53 patients from Georgia.
      * Mean log duration of an infection values from AJTM p.9 eq.5.
      */
-    static SimTime infectionDuration(LocalRng& rng);
+    static SimTime infectionDuration(RunContext& ctx, LocalRng& rng);
     
     /// Includes the effect of attenuated infections by SP concentrations, when using IPT
     virtual void IPTattenuateAsexualDensity () {}

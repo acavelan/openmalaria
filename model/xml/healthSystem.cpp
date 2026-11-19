@@ -29,6 +29,7 @@
 // defined in the original files (extern re-declared below).
 
 #include "Global.h"
+#include "core/RunContext.h"
 #include "Parameters.h"
 #include "Host/NeonatalMortality.h"
 #include "Host/WithinHost/Diagnostic.h"
@@ -79,13 +80,13 @@ extern double pg_indirRiskCoFactor, pg_severeMalThreshold, pg_comorbIntercept,
 extern AgeGroupInterpolator pg_NMF_incidence;
 extern bool opt_predetermined_episodes, opt_mueller_pres_model;
 
-void PathogenesisModel::init( const Parameters& parameters, const scnXml::Clinical& clinical, bool nmfOnly ){
+void PathogenesisModel::init( RunContext& ctx, const Parameters& parameters, const scnXml::Clinical& clinical, bool nmfOnly ){
     if( util::ModelOptions::option( util::NON_MALARIA_FEVERS ) ){
         if( !clinical.getNonMalariaFevers().present() ){
             throw util::xml_scenario_error("NonMalariaFevers element of model->clinical required");
         }
         const scnXml::Clinical::NonMalariaFeversType& nmfDesc = clinical.getNonMalariaFevers().get();
-        pg_NMF_incidence.set( nmfDesc.getIncidence(), "incidence" );
+        pg_NMF_incidence.set( ctx.clock, nmfDesc.getIncidence(), "incidence" );
     }
     if( nmfOnly ) return;
     
@@ -97,21 +98,21 @@ void PathogenesisModel::init( const Parameters& parameters, const scnXml::Clinic
     if (util::ModelOptions::option (util::PREDETERMINED_EPISODES)) {
         opt_predetermined_episodes = true;
         //no separate init:
-        PyrogenPathogenesis::init( parameters );
+        PyrogenPathogenesis::init( ctx, parameters );
     } else {
         if (util::ModelOptions::option (util::MUELLER_PRESENTATION_MODEL)){
             opt_mueller_pres_model = true;
-            MuellerPathogenesis::init( parameters );
+            MuellerPathogenesis::init( ctx, parameters );
         }else{
-            PyrogenPathogenesis::init( parameters );
+            PyrogenPathogenesis::init( ctx, parameters );
         }
     }
 }
 
 }
 
-TreatmentId Treatments::addTreatment( const scnXml::TreatmentOption& desc ){
-    Treatments treatment( desc );
+TreatmentId Treatments::addTreatment( RunContext& ctx, const scnXml::TreatmentOption& desc ){
+    Treatments treatment( ctx, desc );
     TreatmentId id( treatments.size() );
     treatments.push_back( std::move(treatment) );
     return id;
@@ -123,16 +124,16 @@ Treatments::Stages stageFromString( const std::string& str ){
     if( str == "both" ) return Treatments::BOTH;
     throw util::format_error( std::string("stage must be liver, blood or both, not ").append(str) );
 }
-Treatments::Treatments( const scnXml::TreatmentOption& elt ) :
-    TriggeredDeployments(elt), timeLiver(sim::zero()), timeBlood(sim::zero())
+Treatments::Treatments( RunContext& ctx, const scnXml::TreatmentOption& elt ) :
+    TriggeredDeployments(ctx, elt), timeLiver(sim::zero()), timeBlood(sim::zero())
 {
     for( auto it = elt.getClearInfections().begin(), end = elt.getClearInfections().end();
         it != end; ++it )
     {
         try{
             //NOTE: if changing XSD, this should not be called "timesteps" or have a default unit
-            SimTime len = UnitParse::readShortDuration( it->getTimesteps(), UnitParse::STEPS );
-            if( len < -sim::oneTS() || len == sim::zero() ){ 
+            SimTime len = UnitParse::readShortDuration(ctx.clock,  it->getTimesteps(), UnitParse::STEPS );
+            if( len < -ctx.clock.one_TS() || len == sim::zero() ){ 
                 throw util::format_error( "timesteps must be ≥ 1 or have special value -1" );
             }
             Stages stage = stageFromString( it->getStage() );
@@ -161,9 +162,9 @@ using namespace OM::util;
 extern std::vector<double> prevByGestationalAge;
 extern const WithinHost::Diagnostic* neonatalDiagnostic;
 
-void NeonatalMortality::init( const scnXml::Clinical& clinical ){
+void NeonatalMortality::init( RunContext& ctx, const scnXml::Clinical& clinical ){
     SimTime fiveMonths = sim::fromDays( 5 * 30 );
-    prevByGestationalAge.assign( sim::inSteps(fiveMonths), 0.0 );
+    prevByGestationalAge.assign( ctx.clock.inSteps(fiveMonths), 0.0 );
     
     if( clinical.getNeonatalMortality().present() ){
         neonatalDiagnostic = &WithinHost::diagnostics::get(
@@ -214,7 +215,7 @@ extern const CMDecisionTree *treeUCOfficial, *treeUCSelfTreat;
  */
 class CMDTMultiple : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTMultiple& node, bool isUC );
+    static const CMDecisionTree& create( RunContext& ctx, const ::scnXml::DTMultiple& node, bool isUC );
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -228,10 +229,10 @@ protected:
         return true;    // no tests failed; must be the same
     }
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
         CMDTOut result(false);
         for( auto it = children.begin(), end = children.end(); it != end; ++it ) {
-            CMDTOut r2 = (*it)->exec( hostData );
+            CMDTOut r2 = (*it)->exec( ctx, hostData );
             result.treated = result.treated || r2.treated;
         }
         return result;
@@ -253,7 +254,7 @@ private:
  */
 class CMDTCaseType : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTCaseType& node, bool isUC );
+    static const CMDecisionTree& create( RunContext& ctx, const ::scnXml::DTCaseType& node, bool isUC );
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -265,12 +266,12 @@ protected:
         return true;    // no tests failed; must be the same
     }
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
         // Uses of this in complicated cases should trigger an exception during initialisation.
         assert( (hostData.pgState & Episode::SICK) && !(hostData.pgState & Episode::COMPLICATED) );
         
-        if( hostData.pgState & Episode::SECOND_CASE ) return secondLine.exec( hostData );
-        else return firstLine.exec( hostData );
+        if( hostData.pgState & Episode::SECOND_CASE ) return secondLine.exec( ctx, hostData );
+        else return firstLine.exec( ctx, hostData );
     }
     
 private:
@@ -288,7 +289,7 @@ private:
  */
 class CMDTInfectionOrigin : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTInfectionOrigin& node, bool isUC );
+    static const CMDecisionTree& create( RunContext& ctx, const ::scnXml::DTInfectionOrigin& node, bool isUC );
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -301,14 +302,14 @@ protected:
         return true;    // no tests failed; must be the same
     }
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
         WithinHost::InfectionOrigin InfectionOrigin = hostData.withinHost().getInfectionOrigin();
         if(InfectionOrigin == WithinHost::InfectionOrigin::Imported)
-            return imported.exec( hostData );
+            return imported.exec( ctx, hostData );
         else if (InfectionOrigin == WithinHost::InfectionOrigin::Introduced)
-            return introduced.exec( hostData );
+            return introduced.exec( ctx, hostData );
         else
-            return indigenous.exec( hostData );
+            return indigenous.exec( ctx, hostData );
     }
     
 private:
@@ -326,7 +327,7 @@ private:
  */
 class CMDTDiagnostic : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTDiagnostic& node, bool isUC );
+    static const CMDecisionTree& create( RunContext& ctx, const ::scnXml::DTDiagnostic& node, bool isUC );
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -339,13 +340,13 @@ protected:
         return true;    // no tests failed; must be the same
     }
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
         CMDTOut result;
         
         if( hostData.withinHost().diagnosticResult( hostData.human.rng, diagnostic ) )
-            result = positive.exec( hostData );
+            result = positive.exec( ctx, hostData );
         else
-            result = negative.exec( hostData );
+            result = negative.exec( ctx, hostData );
         result.screened = true;
 
         return result;
@@ -366,7 +367,7 @@ private:
 
 class CMDTUncomplicated : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTUncomplicated& node, bool isUC );
+    static const CMDecisionTree& create( RunContext& ctx, const ::scnXml::DTUncomplicated& node, bool isUC );
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -379,18 +380,18 @@ protected:
         return true;    // no tests failed; must be the same
     }
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
         const Clinical::Episode &latest = hostData.human.clinicalModel->getLatestReport();
 
         if ( ((hostData.pgState & Episode::SICK) && !(hostData.pgState & Episode::COMPLICATED)) || (hostData.pgState & Episode::MALARIA) )
         {
-            if (latest.time + memory >= sim::nowOrTs0())
-                return positive.exec( hostData );
+            if (latest.time + memory >= ctx.clock.nowOrTs0())
+                return positive.exec( ctx, hostData );
             else
-                return negative.exec( hostData );
+                return negative.exec( ctx, hostData );
         }
         else
-            return negative.exec( hostData );
+            return negative.exec( ctx, hostData );
     }
     
 private:
@@ -411,7 +412,7 @@ private:
 
 class CMDTSevere : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTSevere& node, bool isUC );
+    static const CMDecisionTree& create( RunContext& ctx, const ::scnXml::DTSevere& node, bool isUC );
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -424,13 +425,13 @@ protected:
         return true;    // no tests failed; must be the same
     }
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
         CMDTOut result;
 
         if (hostData.pgState & Episode::COMPLICATED)
-            result = positive.exec( hostData );
+            result = positive.exec( ctx, hostData );
         else
-            result = negative.exec( hostData );
+            result = negative.exec( ctx, hostData );
 
         // result.screened = true;
         return result;
@@ -455,7 +456,7 @@ private:
  */
 class CMDTRandom : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTRandom& node, bool isUC );
+    static const CMDecisionTree& create( RunContext& ctx, const ::scnXml::DTRandom& node, bool isUC );
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -472,11 +473,11 @@ protected:
         return true;    // no tests failed; must be the same
     }
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
         // parity: d — decision-tree contract: child order = XSD sequence, cumulative keys, one uniform_01 per Random node (plan §3d)
         auto it = branches.upper_bound( hostData.human.rng.uniform_01() );
         assert( it != branches.end() );
-        return it->second->exec( hostData );
+        return it->second->exec( ctx, hostData );
     }
     
 private:
@@ -492,7 +493,7 @@ private:
  */
 class CMDTAge : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTAge& node, bool isUC );
+    static const CMDecisionTree& create( RunContext& ctx, const ::scnXml::DTAge& node, bool isUC );
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -509,12 +510,12 @@ protected:
         return true;    // no tests failed; must be the same
     }
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
         // age is that of human at start of time step (i.e. may be as low as 0)
         auto it = branches.upper_bound( hostData.ageYears );
         if( it == branches.end() )
             throw TRACED_EXCEPTION( "bad age-based decision tree switch", util::Error::PkPd );
-        return it->second->exec( hostData );
+        return it->second->exec( ctx, hostData );
     }
     
 private:
@@ -537,7 +538,7 @@ protected:
         return p != 0;  // same type: is equivalent
     }
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
         return CMDTOut(false);
     }
 };
@@ -565,7 +566,7 @@ protected:
         return true;    // no tests failed; must be the same
     }
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
         for( const int outId : outIds ){
             mon::recordEvent(mon::measure("nCMDTReport"), hostData.human, 1, outId);
         }
@@ -584,7 +585,7 @@ protected:
         return p != 0;  // same type: is equivalent
     }
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
         return CMDTOut(true /*report treatment*/);
     }
 };
@@ -620,7 +621,7 @@ protected:
         return true;    // no tests failed; must be the same
     }
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
         for( const TreatInfo& treatment : treatments ){
             hostData.withinHost().treatPkPd( treatment.schedule, treatment.dosage, hostData.ageYears, 0.0 );
         }
@@ -650,15 +651,15 @@ private:
  */
 class CMDTTreatSimple : public CMDecisionTree {
 public:
-    CMDTTreatSimple( const scnXml::DecisionTree::TreatSimpleSequence& elt ) :
+    CMDTTreatSimple( RunContext& ctx, const scnXml::DecisionTree::TreatSimpleSequence& elt ) :
         timeLiver(sim::zero()), timeBlood(sim::zero())
     {
         for (const auto &treatElt : elt) {
             //NOTE: this code is currently identical to that in SimpleTreatComponent
             try{
-                SimTime durL = UnitParse::readShortDuration( treatElt.getDurationLiver(), UnitParse::NONE ),
-                    durB = UnitParse::readShortDuration( treatElt.getDurationBlood(), UnitParse::NONE );
-                SimTime neg1 = -sim::oneTS();
+                SimTime durL = UnitParse::readShortDuration(ctx.clock,  treatElt.getDurationLiver(), UnitParse::NONE ),
+                    durB = UnitParse::readShortDuration(ctx.clock,  treatElt.getDurationBlood(), UnitParse::NONE );
+                SimTime neg1 = -ctx.clock.one_TS();
                 if( durL < neg1 || durB < neg1 ){
                     throw util::xml_scenario_error( "treatSimple: cannot have durationBlood or durationLiver less than -1" );
                 }
@@ -686,7 +687,7 @@ protected:
     }
 
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
         bool bsTreatment = false;
         for(size_t i=0; i<timeLiver.size(); i++)
         {
@@ -706,7 +707,7 @@ private:
  * interventions to be deployed, though we don't use pointers it finds. */
 class CMDTDeploy : public CMDecisionTree, interventions::HumanIntervention {
 public:
-    CMDTDeploy( const scnXml::DecisionTree::DeploySequence& seq ) :
+    CMDTDeploy( RunContext& ctx, const scnXml::DecisionTree::DeploySequence& seq ) :
         HumanIntervention(seq) {}
     
 protected:
@@ -724,8 +725,8 @@ protected:
         return true;    // no tests failed; must be the same
     }
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
-        deploy( hostData.human,
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
+        deploy( ctx, hostData.human,
                   mon::Deploy::TREAT,
                   interventions::VaccineLimits(/*default initialise: no limits*/) );
         
@@ -738,7 +739,7 @@ protected:
 
 class CMDTCohort : public CMDecisionTree {
 public:
-    static const CMDecisionTree& create( const ::scnXml::DTCohort& node, bool isUC );
+    static const CMDecisionTree& create( RunContext& ctx, const ::scnXml::DTCohort& node, bool isUC );
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -751,14 +752,14 @@ protected:
         return true;    // no tests failed; must be the same
     }
     
-    virtual CMDTOut exec( CMHostData hostData ) const{
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const{
         CMDTOut result;
 
         // Rely on the health system memory to not count the same episode twice
         if(hostData.human.isInSubPop(component))
-            result = positive.exec( hostData );
+            result = positive.exec( ctx, hostData );
         else
-            result = negative.exec( hostData );
+            result = negative.exec( ctx, hostData );
 
         // result.screened = true;
         return result;
@@ -801,17 +802,17 @@ const CMDecisionTree& save_decision( CMDecisionTree* decision ){
     return *decision_library.back();
 }
 
-const CMDecisionTree& CMDecisionTree::create( const scnXml::DecisionTree& node, bool isUC){
-    if( node.getMultiple().present() ) return CMDTMultiple::create( node.getMultiple().get(), isUC);
+const CMDecisionTree& CMDecisionTree::create( RunContext& ctx, const scnXml::DecisionTree& node, bool isUC){
+    if( node.getMultiple().present() ) return CMDTMultiple::create( ctx, node.getMultiple().get(), isUC);
     // branching nodes
-    if( node.getCaseType().present() ) return CMDTCaseType::create( node.getCaseType().get(), isUC);
-    if( node.getInfectionOrigin().present() ) return CMDTInfectionOrigin::create( node.getInfectionOrigin().get(), isUC);
-    if( node.getDiagnostic().present() ) return CMDTDiagnostic::create( node.getDiagnostic().get(), isUC);
-    if( node.getUncomplicated().present() ) return CMDTUncomplicated::create( node.getUncomplicated().get(), isUC);
-    if( node.getSevere().present() ) return CMDTSevere::create( node.getSevere().get(), true);
-    if( node.getRandom().present() ) return CMDTRandom::create( node.getRandom().get(), isUC);
-    if( node.getAge().present() ) return CMDTAge::create( node.getAge().get(), isUC);
-    if( node.getCohort().present() ) return CMDTCohort::create( node.getCohort().get(), isUC);
+    if( node.getCaseType().present() ) return CMDTCaseType::create( ctx, node.getCaseType().get(), isUC);
+    if( node.getInfectionOrigin().present() ) return CMDTInfectionOrigin::create( ctx, node.getInfectionOrigin().get(), isUC);
+    if( node.getDiagnostic().present() ) return CMDTDiagnostic::create( ctx, node.getDiagnostic().get(), isUC);
+    if( node.getUncomplicated().present() ) return CMDTUncomplicated::create( ctx, node.getUncomplicated().get(), isUC);
+    if( node.getSevere().present() ) return CMDTSevere::create( ctx, node.getSevere().get(), true);
+    if( node.getRandom().present() ) return CMDTRandom::create( ctx, node.getRandom().get(), isUC);
+    if( node.getAge().present() ) return CMDTAge::create( ctx, node.getAge().get(), isUC);
+    if( node.getCohort().present() ) return CMDTCohort::create( ctx, node.getCohort().get(), isUC);
 
     // action nodes
     if( node.getNoTreatment().present() ) return save_decision( new CMDTNoTreatment() );
@@ -820,105 +821,105 @@ const CMDecisionTree& CMDecisionTree::create( const scnXml::DecisionTree& node, 
     if( node.getTreatPKPD().size() ) return save_decision(
         new CMDTTreatPKPD( node.getTreatPKPD() ) );
     if( node.getTreatSimple().size() ) return save_decision(
-        new CMDTTreatSimple( node.getTreatSimple() ) );
+        new CMDTTreatSimple( ctx, node.getTreatSimple() ) );
     if( node.getDeploy().size() ) return save_decision(
-        new CMDTDeploy( node.getDeploy() ) );
+        new CMDTDeploy( ctx, node.getDeploy() ) );
     throw xml_scenario_error( "unterminated decision tree" );
 }
 
-const CMDecisionTree& CMDTMultiple::create( const scnXml::DTMultiple& node, bool isUC ){
+const CMDecisionTree& CMDTMultiple::create( RunContext& ctx, const scnXml::DTMultiple& node, bool isUC ){
     CMDTMultiple* self = new CMDTMultiple();
     for( const scnXml::DTCaseType& sn : node.getCaseType() ){
         // parity: d — child chain built in XSD element-sequence order (plan §3d)
-        self->children.push_back( &CMDTCaseType::create(sn, isUC) );
+        self->children.push_back( &CMDTCaseType::create( ctx, sn, isUC) );
     }
     for( const scnXml::DTInfectionOrigin& sn : node.getInfectionOrigin() ){
-        self->children.push_back( &CMDTInfectionOrigin::create(sn, isUC) );
+        self->children.push_back( &CMDTInfectionOrigin::create( ctx, sn, isUC) );
     }
     for( const scnXml::DTDiagnostic& sn : node.getDiagnostic() ){
-        self->children.push_back( &CMDTDiagnostic::create(sn, isUC) );
+        self->children.push_back( &CMDTDiagnostic::create( ctx, sn, isUC) );
     }
     for( const scnXml::DTUncomplicated& sn : node.getUncomplicated() ){
-        self->children.push_back( &CMDTUncomplicated::create(sn, isUC) );
+        self->children.push_back( &CMDTUncomplicated::create( ctx, sn, isUC) );
     }
     for( const scnXml::DTSevere& sn : node.getSevere() ){
-        self->children.push_back( &CMDTSevere::create(sn, isUC) );
+        self->children.push_back( &CMDTSevere::create( ctx, sn, isUC) );
     }
     for( const scnXml::DTRandom& sn : node.getRandom() ){
-        self->children.push_back( &CMDTRandom::create(sn, isUC) );
+        self->children.push_back( &CMDTRandom::create( ctx, sn, isUC) );
     }
     for( const scnXml::DTAge& sn : node.getAge() ){
-        self->children.push_back( &CMDTAge::create(sn, isUC) );
+        self->children.push_back( &CMDTAge::create( ctx, sn, isUC) );
     }
     for( const scnXml::DTCohort& sn : node.getCohort() ){
-        self->children.push_back( &CMDTCohort::create(sn, isUC) );
+        self->children.push_back( &CMDTCohort::create( ctx, sn, isUC) );
     }
     if( node.getTreatPKPD().size() ){
         self->children.push_back( &save_decision(new CMDTTreatPKPD(node.getTreatPKPD())) );
     }
     if( node.getTreatSimple().size() ){
-        self->children.push_back( &save_decision(new CMDTTreatSimple(node.getTreatSimple())) );
+        self->children.push_back( &save_decision(new CMDTTreatSimple(ctx, node.getTreatSimple())) );
     }
     if( node.getReport().size() ){
         self->children.push_back( &save_decision(new CMDTReport(node.getReport())) );
     }
     if( node.getDeploy().size() ){
-        self->children.push_back( &save_decision(new CMDTDeploy(node.getDeploy())) );
+        self->children.push_back( &save_decision(new CMDTDeploy(ctx, node.getDeploy())) );
     }
     return save_decision( self );
 }
 
-const CMDecisionTree& CMDTCaseType::create( const scnXml::DTCaseType& node, bool isUC ){
+const CMDecisionTree& CMDTCaseType::create( RunContext& ctx, const scnXml::DTCaseType& node, bool isUC ){
     if( !isUC ){
         throw util::xml_scenario_error( "decision tree: caseType can only be used for uncomplicated cases" );
     }
     return save_decision( new CMDTCaseType(
-        CMDecisionTree::create( node.getFirstLine(), isUC ),
-        CMDecisionTree::create( node.getSecondLine(), isUC )
+        CMDecisionTree::create( ctx, node.getFirstLine(), isUC ),
+        CMDecisionTree::create( ctx, node.getSecondLine(), isUC )
     ) );
 }
 
-const CMDecisionTree& CMDTInfectionOrigin::create( const scnXml::DTInfectionOrigin& node, bool isUC ){
+const CMDecisionTree& CMDTInfectionOrigin::create( RunContext& ctx, const scnXml::DTInfectionOrigin& node, bool isUC ){
     return save_decision( new CMDTInfectionOrigin(
-        CMDecisionTree::create( node.getImported(), isUC ),
-        CMDecisionTree::create( node.getIntroduced(), isUC ),
-        CMDecisionTree::create( node.getIndigenous(), isUC )
+        CMDecisionTree::create( ctx, node.getImported(), isUC ),
+        CMDecisionTree::create( ctx, node.getIntroduced(), isUC ),
+        CMDecisionTree::create( ctx, node.getIndigenous(), isUC )
     ) );
 }
 
-const CMDecisionTree& CMDTDiagnostic::create( const scnXml::DTDiagnostic& node, bool isUC ){
+const CMDecisionTree& CMDTDiagnostic::create( RunContext& ctx, const scnXml::DTDiagnostic& node, bool isUC ){
     return save_decision( new CMDTDiagnostic(
         diagnostics::get( node.getDiagnostic() ),
-        CMDecisionTree::create( node.getPositive(), isUC ),
-        CMDecisionTree::create( node.getNegative(), isUC )
+        CMDecisionTree::create( ctx, node.getPositive(), isUC ),
+        CMDecisionTree::create( ctx, node.getNegative(), isUC )
     ) );
 }
 
-const CMDecisionTree& CMDTUncomplicated::create( const scnXml::DTUncomplicated& node, bool isUC ){
+const CMDecisionTree& CMDTUncomplicated::create( RunContext& ctx, const scnXml::DTUncomplicated& node, bool isUC ){
     return save_decision( new CMDTUncomplicated(
-        UnitParse::readShortDuration(node.getMemory(), UnitParse::STEPS),
-        CMDecisionTree::create( node.getPositive(), isUC ),
-        CMDecisionTree::create( node.getNegative(), isUC )
+        UnitParse::readShortDuration(ctx.clock, node.getMemory(), UnitParse::STEPS),
+        CMDecisionTree::create( ctx, node.getPositive(), isUC ),
+        CMDecisionTree::create( ctx, node.getNegative(), isUC )
     ) );
 }
 
-const CMDecisionTree& CMDTSevere::create( const scnXml::DTSevere& node, bool isUC ){
+const CMDecisionTree& CMDTSevere::create( RunContext& ctx, const scnXml::DTSevere& node, bool isUC ){
     return save_decision( new CMDTSevere(
-        CMDecisionTree::create( node.getPositive(), isUC ),
-        CMDecisionTree::create( node.getNegative(), isUC )
+        CMDecisionTree::create( ctx, node.getPositive(), isUC ),
+        CMDecisionTree::create( ctx, node.getNegative(), isUC )
     ) );
 }
 
-const CMDecisionTree& CMDTCohort::create( const scnXml::DTCohort& node, bool isUC ){
+const CMDecisionTree& CMDTCohort::create( RunContext& ctx, const scnXml::DTCohort& node, bool isUC ){
     return save_decision( new CMDTCohort(
         node.getComponent(),
-        CMDecisionTree::create( node.getPositive(), isUC ),
-        CMDecisionTree::create( node.getNegative(), isUC )
+        CMDecisionTree::create( ctx, node.getPositive(), isUC ),
+        CMDecisionTree::create( ctx, node.getNegative(), isUC )
     ) );
 }
 
 
-const CMDecisionTree& CMDTRandom::create(
+const CMDecisionTree& CMDTRandom::create(RunContext& ctx,
     const scnXml::DTRandom& node, bool isUC )
 {
     CMDTRandom* result = new CMDTRandom();
@@ -927,7 +928,7 @@ const CMDecisionTree& CMDTRandom::create(
     for( const scnXml::Outcome& outcome : node.getOutcome() ){
         // parity: d — cumulative keys summed in XSD outcome order; map<double> numeric key order; last key must be 1 (plan §3d)
         cum_p += outcome.getP();
-        result->branches.insert( make_pair(cum_p, &CMDecisionTree::create( outcome, isUC )) );
+        result->branches.insert( make_pair(cum_p, &CMDecisionTree::create( ctx, outcome, isUC )) );
     }
     
     // Test cum_p is approx. 1.0 in case the input tree is wrong. We require no
@@ -941,7 +942,7 @@ const CMDecisionTree& CMDTRandom::create(
     return save_decision( result );
 }
 
-const CMDecisionTree& CMDTAge::create(const scnXml::DTAge& node, bool isUC){
+const CMDecisionTree& CMDTAge::create(RunContext& ctx, const scnXml::DTAge& node, bool isUC){
     CMDTAge* result = new CMDTAge();
     
     double lastAge = numeric_limits<double>::quiet_NaN();
@@ -957,7 +958,7 @@ const CMDecisionTree& CMDTAge::create(const scnXml::DTAge& node, bool isUC){
             double lb = age.getLb();
             result->branches.insert( make_pair(lb, lastNode) );
         }
-        lastNode = &CMDecisionTree::create(age, isUC);
+        lastNode = &CMDecisionTree::create( ctx, age, isUC);
         lastAge = age.getLb();
     }
     double noLb = numeric_limits<double>::infinity();
@@ -965,9 +966,9 @@ const CMDecisionTree& CMDTAge::create(const scnXml::DTAge& node, bool isUC){
     
     return save_decision( result );
 }
-void ClinicalEventScheduler::init( const Parameters& parameters, const scnXml::Clinical& clinical )
+void ClinicalEventScheduler::init( RunContext& ctx, const Parameters& parameters, const scnXml::Clinical& clinical )
 {
-    if( sim::oneTS() != sim::oneDay() )
+    if( ctx.clock.one_TS() != sim::oneDay() )
         throw util::xml_scenario_error ("ClinicalEventScheduler is only designed for a 1-day time step.");
     
     opt_non_malaria_fevers = util::ModelOptions::option( util::NON_MALARIA_FEVERS );
@@ -991,12 +992,12 @@ void ClinicalEventScheduler::init( const Parameters& parameters, const scnXml::C
                 "prNeedTreatmentNMF elements required in model->clinical->"
                 "NonMalariaFevers" );
         }
-        NMF_need_antibiotic.set( nmfDesc2.getPrNeedTreatmentNMF().get(), "prNeedTreatmentNMF" );
-        MF_need_antibiotic.set( nmfDesc2.getPrNeedTreatmentMF().get(), "prNeedTreatmentMF" );
+        NMF_need_antibiotic.set( ctx.clock, nmfDesc2.getPrNeedTreatmentNMF().get(), "prNeedTreatmentNMF" );
+        MF_need_antibiotic.set( ctx.clock, nmfDesc2.getPrNeedTreatmentMF().get(), "prNeedTreatmentMF" );
     }
 }
 
-void ClinicalEventScheduler::setParameters(const scnXml::HSEventScheduler& esData) {
+void ClinicalEventScheduler::setParameters(const SimClock& clock, const scnXml::HSEventScheduler& esData) {
     const scnXml::ClinicalOutcomes& coData = esData.getClinicalOutcomes();
     
     maxUCSeekingMemory = sim::fromDays(coData.getMaxUCSeekingMemory());
@@ -1039,16 +1040,16 @@ void ClinicalEventScheduler::setParameters(const scnXml::HSEventScheduler& esDat
         logOddsAbNeed = log(nmfDesc.getEffectNeed());
         logOddsAbInformal = log(nmfDesc.getEffectInformal());
         oneMinusEfficacyAb = 1.0 - nmfDesc.getTreatmentEfficacy();
-        severeNmfMortality.set( nmfDesc.getCFR(), "CFR" );
+        severeNmfMortality.set( clock, nmfDesc.getCFR(), "CFR" );
     }
 }
-void ESCaseManagement::setHealthSystem(const scnXml::HSEventScheduler& esData){
-    escm_uncomplicated = &CMDecisionTree::create( esData.getUncomplicated(), true );
-    escm_complicated = &CMDecisionTree::create( esData.getComplicated(), false );
+void ESCaseManagement::setHealthSystem(RunContext& ctx, const scnXml::HSEventScheduler& esData){
+    escm_uncomplicated = &CMDecisionTree::create( ctx, esData.getUncomplicated(), true );
+    escm_complicated = &CMDecisionTree::create( ctx, esData.getComplicated(), false );
     
     // Calling our parent class like this is messy. Changing this would require
     // moving change-of-health-system handling into ClinicalModel.
-    ClinicalEventScheduler::setParameters( esData );
+    ClinicalEventScheduler::setParameters( ctx.clock, esData );
 }
 // ———  static, utility functions  ———
 
@@ -1091,18 +1092,18 @@ const scnXml::TreatmentActions::CQOptional& getHealthSystemTreatmentOptional(
     if( drug == "QN" ) return treatActs.getQN();
     throw util::xml_scenario_error ("healthSystem.drugRegimen: firstLine / secondLine / inpatient has bad value");
 }
-WithinHost::TreatmentId getHealthSystemTreatmentByName( const scnXml::TreatmentActions& treatActs, const string& drug )
+WithinHost::TreatmentId getHealthSystemTreatmentByName( RunContext& ctx, const scnXml::TreatmentActions& treatActs, const string& drug )
 {
     const scnXml::TreatmentActions::CQOptional& elt = getHealthSystemTreatmentOptional( treatActs, drug );
     if( !elt.present() )
         throw util::xml_scenario_error( string("healthSystem.treatmentActions: description required for ").append(drug) );
-    return WithinHost::WHInterface::addTreatment( elt.get() );
+    return WithinHost::WHInterface::addTreatment( ctx, elt.get() );
 }
 
 
 // ———  static, init  ———
 
-void ImmediateOutcomes::setHealthSystem (const scnXml::HSImmediateOutcomes& hsDescription) {
+void ImmediateOutcomes::setHealthSystem (RunContext& ctx, const scnXml::HSImmediateOutcomes& hsDescription) {
     const string &firstLine = hsDescription.getDrugRegimen().getFirstLine(),
         &secondLine = hsDescription.getDrugRegimen().getSecondLine(),
         &inpatient = hsDescription.getDrugRegimen().getInpatient();
@@ -1160,14 +1161,14 @@ void ImmediateOutcomes::setHealthSystem (const scnXml::HSImmediateOutcomes& hsDe
     
     cureRateSevere = getHealthSystemACRByName (hsDescription.getInitialACR(), inpatient);
     
-    treatmentUC[FirstLine] = getHealthSystemTreatmentByName(hsDescription.getTreatmentActions(), firstLine);
+    treatmentUC[FirstLine] = getHealthSystemTreatmentByName(ctx, hsDescription.getTreatmentActions(), firstLine);
     
     if( secondLine == firstLine ) treatmentUC[SecondLine] = treatmentUC[FirstLine];
-    else treatmentUC[SecondLine] = getHealthSystemTreatmentByName(hsDescription.getTreatmentActions(), secondLine);
+    else treatmentUC[SecondLine] = getHealthSystemTreatmentByName(ctx, hsDescription.getTreatmentActions(), secondLine);
     
     if( inpatient == firstLine ) treatmentSevere = treatmentUC[FirstLine];
     else if( inpatient == secondLine ) treatmentSevere = treatmentUC[SecondLine];
-    else treatmentSevere = getHealthSystemTreatmentByName(hsDescription.getTreatmentActions(), inpatient);
+    else treatmentSevere = getHealthSystemTreatmentByName(ctx, hsDescription.getTreatmentActions(), inpatient);
     
     useDiagnosticUC = hsDescription.getUseDiagnosticUC();
     
@@ -1179,7 +1180,7 @@ void ImmediateOutcomes::setHealthSystem (const scnXml::HSImmediateOutcomes& hsDe
         throw util::xml_scenario_error( "health-system's liverStageDrug element only supported by vivax" );
     }
 }
-void DecisionTree5Day::setHealthSystem(const scnXml::HSDT5Day& hsDescription){
+void DecisionTree5Day::setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& hsDescription){
     double accessUCOfficial1 = hsDescription.getPSeekOfficialCareUncomplicated1().getValue();
     double accessUCOfficial2 = hsDescription.getPSeekOfficialCareUncomplicated2().getValue();
     // Note: this asymmetry is historical, and probably matters little:
@@ -1200,11 +1201,11 @@ void DecisionTree5Day::setHealthSystem(const scnXml::HSDT5Day& hsDescription){
             "be in range [0,1]");
     }
     
-    treeUCOfficial = &CMDecisionTree::create( hsDescription.getTreeUCOfficial(), true );
-    treeUCSelfTreat = &CMDecisionTree::create( hsDescription.getTreeUCSelfTreat(), true );
+    treeUCOfficial = &CMDecisionTree::create( ctx, hsDescription.getTreeUCOfficial(), true );
+    treeUCSelfTreat = &CMDecisionTree::create( ctx, hsDescription.getTreeUCSelfTreat(), true );
     
     cureRateSevere = hsDescription.getCureRateSevere().getValue();
-    treatmentSevere = WHInterface::addTreatment( hsDescription.getTreatmentSevere() );
+    treatmentSevere = WHInterface::addTreatment( ctx, hsDescription.getTreatmentSevere() );
     
     if( ModelOptions::option(util::VIVAX_SIMPLE_MODEL) ){
         WithinHost::WHVivax::setHSParameters(
@@ -1214,21 +1215,21 @@ void DecisionTree5Day::setHealthSystem(const scnXml::HSDT5Day& hsDescription){
         throw util::xml_scenario_error( "health-system's liverStageDrug element only supported by vivax" );
     }
 }
-void ClinicalModel::init( const Parameters& parameters, const scnXml::Scenario& scenario ) {
+void ClinicalModel::init( RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario ) {
     const scnXml::Clinical& clinical = scenario.getModel().getClinical();
     try{
         indirectMortBugfix = util::ModelOptions::option (util::INDIRECT_MORTALITY_FIX);
         //NOTE: if changing XSD, this should not have a default unit:
-        healthSystemMemory = UnitParse::readShortDuration(clinical.getHealthSystemMemory(), UnitParse::STEPS);
+        healthSystemMemory = UnitParse::readShortDuration(ctx.clock, clinical.getHealthSystemMemory(), UnitParse::STEPS);
         oddsRatioThreshold = exp( parameters[Parameter::LOG_ODDS_RATIO_CF_COMMUNITY] );
-        InfantMortality::init( parameters );
+        InfantMortality::init( ctx, parameters );
     }catch( const util::format_error& e ){
         throw util::xml_scenario_error( string("model/clinical/healthSystemMemory: ").append(e.message()) );
     }
     
     if (util::ModelOptions::option (util::CLINICAL_EVENT_SCHEDULER)){
         opt_event_scheduler = true;
-        ClinicalEventScheduler::init( parameters, clinical );
+        ClinicalEventScheduler::init( ctx, parameters, clinical );
     }else{
         if( scenario.getHealthSystem().getImmediateOutcomes().present() ){
             opt_imm_outcomes = true;
@@ -1243,27 +1244,27 @@ void ClinicalModel::init( const Parameters& parameters, const scnXml::Scenario& 
     }
 }
 
-void ClinicalModel::setHS( const scnXml::HealthSystem& healthSystem ){
-    caseFatalityRate.set( healthSystem.getCFR(), "CFR" );
-    pSequelaeInpatient.set( healthSystem.getPSequelaeInpatient(), "pSequelaeInpatient" );
+void ClinicalModel::setHS( RunContext& ctx, const scnXml::HealthSystem& healthSystem ){
+    caseFatalityRate.set( ctx.clock, healthSystem.getCFR(), "CFR" );
+    pSequelaeInpatient.set( ctx.clock, healthSystem.getPSequelaeInpatient(), "pSequelaeInpatient" );
     if( opt_event_scheduler ){
         if( !healthSystem.getEventScheduler().present() ){
             throw util::xml_scenario_error ("Expected EventScheduler "
                 "section in healthSystem data (initial or intervention)");
         }
-        ESCaseManagement::setHealthSystem(healthSystem.getEventScheduler().get());
+        ESCaseManagement::setHealthSystem(ctx, healthSystem.getEventScheduler().get());
     }else if( opt_imm_outcomes ){
         if ( !healthSystem.getImmediateOutcomes().present() ){
             throw util::xml_scenario_error ("Expected ImmediateOutcomes "
                 "section in healthSystem data (initial or intervention)");
         }
-        ImmediateOutcomes::setHealthSystem(healthSystem.getImmediateOutcomes().get());
+        ImmediateOutcomes::setHealthSystem(ctx, healthSystem.getImmediateOutcomes().get());
     }else{
         if( !healthSystem.getDecisionTree5Day().present() ){
             throw util::xml_scenario_error ("Expected DecisionTree5Day "
                 "section in healthSystem data (initial or intervention)");
         }
-        DecisionTree5Day::setHealthSystem(healthSystem.getDecisionTree5Day().get());
+        DecisionTree5Day::setHealthSystem(ctx, healthSystem.getDecisionTree5Day().get());
     }
 }
 }

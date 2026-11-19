@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include "interventions/ITN.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -149,8 +150,8 @@ double factors::RelativeAttractiveness::relativeAttractiveness (
 
 // —————  main, public classes  —————
 
-void ITNComponent::deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
-    human.perHostTransmission.deployComponent( human.rng, *this );
+void ITNComponent::deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
+    human.perHostTransmission.deployComponent( ctx, human.rng, *this );
     mon::recordDeploy(mon::measure("nMassITNs"), mon::measure("nEPI_ITNs"), human, method);
 }
 
@@ -162,15 +163,15 @@ void ITNComponent::print_details( std::ostream& out )const{
     out << id().id << "\tITN";
 }
 
-unique_ptr<PerHostInterventionData> ITNComponent::makeHumanPart(LocalRng& rng) const{
-    return unique_ptr<PerHostInterventionData>(new HumanITN( rng, *this ));
+unique_ptr<PerHostInterventionData> ITNComponent::makeHumanPart(RunContext& ctx, LocalRng& rng) const{
+    return unique_ptr<PerHostInterventionData>(new HumanITN( ctx, rng, *this ));
 }
-unique_ptr<PerHostInterventionData> ITNComponent::makeHumanPart( istream& stream, ComponentId id ) const{
-    return unique_ptr<PerHostInterventionData>(new HumanITN( stream, id ));
+unique_ptr<PerHostInterventionData> ITNComponent::makeHumanPart( RunContext& ctx, istream& stream, ComponentId id ) const{
+    return unique_ptr<PerHostInterventionData>(new HumanITN( ctx, stream, id ));
 }
 
-HumanITN::HumanITN( LocalRng& rng, const ITNComponent& params ) :
-        PerHostInterventionData( params.id() ),
+HumanITN::HumanITN( RunContext& ctx, LocalRng& rng, const ITNComponent& params ) :
+        PerHostInterventionData( ctx, params.id() ),
         nHoles( 0 ),
         holeIndex( 0.0 )
 {
@@ -183,7 +184,7 @@ HumanITN::HumanITN( LocalRng& rng, const ITNComponent& params ) :
     insecticideDecayHet = params.insecticideDecay->hetSample(x);
 
     // Sample per-deployment variables as in redeploy:
-    disposalTime = sim::now() + params.attritionOfNets->sampleAgeOfDecay(rng);
+    disposalTime = ctx.clock.now() + params.attritionOfNets->sampleAgeOfDecay(rng);
     // this is sampled independently: initial insecticide content doesn't depend on handling
     initialInsecticide = params.initialInsecticide.sample(rng);
     if( initialInsecticide < 0.0 )
@@ -195,8 +196,8 @@ HumanITN::HumanITN( LocalRng& rng, const ITNComponent& params ) :
 void HumanITN::redeploy(LocalRng& rng, const OM::Transmission::HumanVectorInterventionComponent& params0) {
     const ITNComponent& params = *dynamic_cast<const ITNComponent*>(&params0);
     
-    deployTime = sim::nowOrTs1();
-    disposalTime = sim::nowOrTs1() + params.attritionOfNets->sampleAgeOfDecay(rng);
+    deployTime = ctx.clock.nowOrTs1();
+    disposalTime = ctx.clock.nowOrTs1() + params.attritionOfNets->sampleAgeOfDecay(rng);
     nHoles = 0;
     holeIndex = 0.0;
     // this is sampled independently: initial insecticide content doesn't depend on handling
@@ -211,7 +212,7 @@ void HumanITN::update(Host::Human& human){
     const ITNComponent& params = *ITNComponent::componentsByIndex[m_id.id];
     if( deployTime != sim::never() ){
         // First use is at age 0 relative to ts0()
-        if( sim::ts0() >= disposalTime ){
+        if( ctx.clock.ts0() >= disposalTime ){
             deployTime = sim::never();
             human.removeFromCohort(id());
             return;
@@ -268,7 +269,7 @@ void HumanITN::checkpoint( ostream& stream ){
     ripRate & stream;
     ITNComponent::componentsByIndex[m_id.id]->insecticideDecay->checkpointSample(insecticideDecayHet, stream);
 }
-HumanITN::HumanITN( istream& stream, ComponentId id ) : PerHostInterventionData( id )
+HumanITN::HumanITN( RunContext& ctx, istream& stream, ComponentId id ) : PerHostInterventionData( ctx, id )
 {
     deployTime & stream;
     disposalTime & stream;

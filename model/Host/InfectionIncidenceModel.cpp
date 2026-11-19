@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include "Host/InfectionIncidenceModel.h"
 #include "Host/Human.h"
 #include "Transmission/PerHost.h"
@@ -137,14 +138,15 @@ void InfectionIncidenceModel::ctsReportNewInfections (const vector<Host::Human> 
 
 // -----  non-static non-checkpointing constructors  -----
 
-InfectionIncidenceModel* InfectionIncidenceModel::createModel () {
-    if (opt_neg_bin_mass_action) return new NegBinomMAII ();
-    if(opt_lognormal_mass_action) return new LogNormalMAII ();
-    if (opt_any_het) return new HeterogeneityWorkaroundII();
-    return new InfectionIncidenceModel();
+InfectionIncidenceModel* InfectionIncidenceModel::createModel (RunContext& ctx) {
+    if (opt_neg_bin_mass_action) return new NegBinomMAII (ctx);
+    if(opt_lognormal_mass_action) return new LogNormalMAII (ctx);
+    if (opt_any_het) return new HeterogeneityWorkaroundII(ctx);
+    return new InfectionIncidenceModel(ctx);
 }
 
-InfectionIncidenceModel::InfectionIncidenceModel () :
+InfectionIncidenceModel::InfectionIncidenceModel (RunContext& ctx) :
+  ctx(ctx),
   m_pInfected(0.0), m_cumulativeEIRa(0.0)
 {}
 
@@ -180,12 +182,12 @@ double InfectionIncidenceModel::getModelExpectedInfections (LocalRng& rng, doubl
   // First two lines are availability adjustment: S_1(i,t) from AJTMH 75 (suppl 2) p12 eqn. (5)
   // Note that NegBinomMAII and LogNormalMAII supercede this model; see below
   return (Sinf+(1-Sinf) / 
-    (1 + effectiveEIR/sim::oneTS()*EstarInv)) *
+    (1 + effectiveEIR/ctx.clock.one_TS()*EstarInv)) *
     susceptibility() * effectiveEIR;
 }
 double HeterogeneityWorkaroundII::getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost& phTrans) {
   return (Sinf+(1-Sinf) / 
-    (1 + effectiveEIR/(sim::oneTS()*phTrans.relativeAvailabilityHet)*EstarInv)) *
+    (1 + effectiveEIR/(ctx.clock.one_TS()*phTrans.relativeAvailabilityHet)*EstarInv)) *
     susceptibility() * effectiveEIR;
 }
 double NegBinomMAII::getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost&) {

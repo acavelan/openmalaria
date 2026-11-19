@@ -22,6 +22,7 @@
 
 #include "Global.h"
 
+#include "core/RunContext.h"
 #include "core/run.h"
 
 #include "util/errors.h"
@@ -37,10 +38,11 @@ int main(int argc, char* argv[])
     int exitStatus = EXIT_SUCCESS;
 
     string scenarioFile;
+    RunContext ctx;   // everything this run owns (plan §5)
     
     try {
         scenarioFile = util::CommandLine::parse (argc, argv);
-        run_simulation(scenarioFile);
+        run_simulation(ctx, scenarioFile);
     } catch (const OM::util::cmd_exception& e) {
         if( e.getCode() == 0 ){
             // this is not an error, but exiting due to command line

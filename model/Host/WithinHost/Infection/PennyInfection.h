@@ -38,9 +38,9 @@ public:
     static void init();
     
     /// Constructor
-    PennyInfection(LocalRng& rng, uint32_t protID, int origin);
+    PennyInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin);
     /// Resume from a checkpoint
-    PennyInfection (istream& stream);
+    PennyInfection (RunContext& ctx, istream& stream);
     /// Destructor
     virtual ~PennyInfection () {};
     

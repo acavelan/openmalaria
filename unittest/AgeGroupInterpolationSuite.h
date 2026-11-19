@@ -60,7 +60,7 @@ public:
     void testPiecewiseConst () {
         agvElt->setInterpolation( "none" );
         AgeGroupInterpolator o;
-        o.set( *agvElt, "testPiecewiseConst" );
+        o.set( UnittestUtil::clock(), *agvElt, "testPiecewiseConst" );
         for( size_t i = 0; i < testLen; ++i ){
             TS_ASSERT_APPROX( o.eval( testAges[ i ] ), piecewiseConstValues[ i ] );
         }
@@ -69,7 +69,7 @@ public:
     void testLinearInterp () {
         agvElt->setInterpolation( "linear" );
         AgeGroupInterpolator o;
-        o.set( *agvElt, "testLinearInterp" );
+        o.set( UnittestUtil::clock(), *agvElt, "testLinearInterp" );
         for( size_t i = 0; i < testLen; ++i ){
             TS_ASSERT_APPROX( o.eval( testAges[ i ] ), linearInterpValues[ i ] );
         }

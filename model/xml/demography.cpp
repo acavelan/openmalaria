@@ -37,7 +37,7 @@ namespace OM {
     // Free function defined in PopulationAgeStructure.cpp (external linkage):
     void minimizeCalc_rss (double (*func) (double,double), double param1, double param2);
 
-void AgeStructure::estimateRemovalRates( const scnXml::Demography& demography ){
+void AgeStructure::estimateRemovalRates( RunContext& ctx, const scnXml::Demography& demography ){
     // mu1, alpha1: These are estimated here
     // mu0, alpha0: These are fixed alpha0=4.0, mu0 calculated from the other parameters
     // rho - population growth rate (input)

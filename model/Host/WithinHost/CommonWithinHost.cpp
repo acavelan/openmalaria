@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/CommonWithinHost.h"
 #include "Host/WithinHost/Diagnostic.h"
@@ -36,8 +37,8 @@ using namespace std;
 namespace OM {
 namespace WithinHost {
 
-CommonInfection* (* CommonWithinHost::createInfection) (LocalRng& rng, uint32_t protID, int origin);
-CommonInfection* (* CommonWithinHost::checkpointedInfection) (istream& stream);
+CommonInfection* (* CommonWithinHost::createInfection) (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin);
+CommonInfection* (* CommonWithinHost::checkpointedInfection) (RunContext& ctx, istream& stream);
 
 double hetMassMultStdDev = std::numeric_limits<double>::signaling_NaN();
 double minHetMassMult = std::numeric_limits<double>::signaling_NaN();
@@ -48,10 +49,10 @@ bool reportInfectedOrPatentInfected = false;
 // -----  Initialization  -----
 
 
-CommonWithinHost::CommonWithinHost( LocalRng& rng, double comorbidityFactor ) :
-        WHFalciparum( rng, comorbidityFactor )
+CommonWithinHost::CommonWithinHost( RunContext& ctx, LocalRng& rng, double comorbidityFactor ) :
+        WHFalciparum( ctx, rng, comorbidityFactor )
 {
-    assert( sim::oneTS() == sim::fromDays(1) || sim::oneTS() == sim::fromDays(5) );
+    assert( ctx.clock.one_TS() == sim::fromDays(1) || ctx.clock.one_TS() == sim::fromDays(5) );
     
     opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
 
@@ -114,7 +115,7 @@ void CommonWithinHost::importInfection(LocalRng& rng){
         // should use initial frequencies to select genotypes.
         vector<double> weights( 0 );        // zero length: signal to use initial frequencies
         uint32_t genotype = Genotypes::sampleGenotype(rng, weights);
-        infections.push_back(createInfection(rng, genotype, WithinHost::InfectionOrigin::Imported));
+        infections.push_back(createInfection(ctx, rng, genotype, WithinHost::InfectionOrigin::Imported));
     }
     assert( numInfs == static_cast<int>(infections.size()) );
 }
@@ -144,12 +145,12 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
             double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
             // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
-                infections.push_back(createInfection (rng, genotype, InfectionOrigin::Introduced));
+                infections.push_back(createInfection (ctx, rng, genotype, InfectionOrigin::Introduced));
             else
                 nNewInfsDiscarded++;
         }
         else if (opt_vaccine_genotype == false)
-            infections.push_back(createInfection (rng, genotype, InfectionOrigin::Introduced));
+            infections.push_back(createInfection (ctx, rng, genotype, InfectionOrigin::Introduced));
     }
     // Update nNewInfs, this is the number that will be reported in Human
     nNewInfs_i -= nNewInfsDiscarded;
@@ -165,12 +166,12 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
             double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
             // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
-                infections.push_back(createInfection (rng, genotype, InfectionOrigin::Indigenous));
+                infections.push_back(createInfection (ctx, rng, genotype, InfectionOrigin::Indigenous));
             else
                 nNewInfsDiscarded++;
         }
         else if (opt_vaccine_genotype == false)
-            infections.push_back(createInfection (rng, genotype, InfectionOrigin::Indigenous));
+            infections.push_back(createInfection (ctx, rng, genotype, InfectionOrigin::Indigenous));
     }
     // Update nNewInfs, this is the number that will be reported in Human
     nNewInfs_l -= nNewInfsDiscarded;
@@ -184,12 +185,12 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
     hrp2Density = 0.0;
     timeStepMaxDensity = 0.0;
     
-    bool treatmentLiver = treatExpiryLiver > sim::ts0();
-    bool treatmentBlood = treatExpiryBlood > sim::ts0();
+    bool treatmentLiver = treatExpiryLiver > ctx.clock.ts0();
+    bool treatmentBlood = treatExpiryBlood > ctx.clock.ts0();
     
     double body_mass = massByAge.eval( ageInYears ) * hetMassMultiplier;
     
-    for( SimTime now = sim::ts0(), end = sim::ts0() + sim::oneTS(); now < end; now = now + sim::oneDay() ){
+    for( SimTime now = ctx.clock.ts0(), end = ctx.clock.ts0() + ctx.clock.one_TS(); now < end; now = now + sim::oneDay() ){
         // every day, medicate drugs, update each infection, then decay drugs
         pkpdModel.medicate(rng);
         
@@ -240,7 +241,7 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
     assert( (std::isfinite)(totalDensity) );        // inf probably wouldn't be a problem but NaN would be
     
     // Cache total density for infectiousness calculations
-    int y_lag_i = sim::moduloSteps(sim::ts1(), y_lag_len);
+    int y_lag_i = ctx.clock.moduloSteps(ctx.clock.ts1(), y_lag_len);
     for( size_t g = 0; g < Genotypes::N(); ++g )
     {
         m_y_lag_i[y_lag_i * Genotypes::N() + g] = 0.0;
@@ -373,7 +374,7 @@ void CommonWithinHost::checkpoint (istream& stream) {
     hetMassMultiplier & stream;
     pkpdModel & stream;
     for(int i = 0; i < numInfs; ++i) {
-        infections.push_back (checkpointedInfection (stream));
+        infections.push_back (checkpointedInfection (ctx, stream));
     }
     assert( numInfs == static_cast<int>(infections.size()) );
 }

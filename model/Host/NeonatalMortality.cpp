@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include "Host/NeonatalMortality.h"
 #include "Population.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -74,7 +75,7 @@ bool NeonatalMortality::eventNeonatalMortality(LocalRng& rng) {
   return rng.uniform_01() <= riskFromMaternalInfection;
 }
 
-void NeonatalMortality::update (vector<Host::Human> &population) {
+void NeonatalMortality::update (RunContext& ctx, vector<Host::Human> &population) {
     // ———  find potential mothers and their prevalence  ———
     // For individuals in the age range 20-25, we sum:
     int nCounter=0;	// total number
@@ -83,7 +84,7 @@ void NeonatalMortality::update (vector<Host::Human> &population) {
     for (Human& human : population){
         // diagnosticDefault() gives patency after the last time step's
         // update, so it's appropriate to use age at the beginning of this step.
-        SimTime age = human.age(sim::ts0());
+        SimTime age = human.age(ctx.clock.ts0());
         
         // Note: since we're using a linked list, we have to iterate until we reach
         // the individuals we're interested in. Due to population structure, it's
@@ -105,7 +106,7 @@ void NeonatalMortality::update (vector<Host::Human> &population) {
     
     double maxPrev = prev2025;
     //update the vector containing the prevalence by gestational age
-    size_t index = sim::moduloSteps(sim::ts0(), prevByGestationalAge.size());
+    size_t index = ctx.clock.moduloSteps(ctx.clock.ts0(), prevByGestationalAge.size());
     prevByGestationalAge[index] = prev2025;
     for(size_t i = 0; i < prevByGestationalAge.size(); ++i) {
         if (prevByGestationalAge[i] > maxPrev) {

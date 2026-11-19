@@ -45,7 +45,7 @@ public:
     //@{
     /** Configure a new treatment option, and return the code used to select
      * that option later. */
-    static TreatmentId addTreatment( const scnXml::TreatmentOption& desc );
+    static TreatmentId addTreatment( RunContext& ctx, const scnXml::TreatmentOption& desc );
     
     /** Return the corresponding treatment description. */
     static inline const Treatments& select( TreatmentId treatId ){
@@ -84,7 +84,7 @@ private:
     static vector<Treatments> treatments;
     
     // non-static:
-    Treatments( const scnXml::TreatmentOption& elt );
+    Treatments( RunContext& ctx, const scnXml::TreatmentOption& elt );
     
     SimTime timeLiver, timeBlood;
     

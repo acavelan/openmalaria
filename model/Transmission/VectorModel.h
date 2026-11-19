@@ -50,7 +50,7 @@ public:
     /// Get the map of species names to indicies.
     const map<string, size_t> &getSpeciesIndexMap() { return speciesIndex; }
 
-    VectorModel(vector<double> initEIR, int interventionMode, vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
+    VectorModel(RunContext& ctx, vector<double> initEIR, int interventionMode, vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
                 vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList, map<string, size_t> speciesIndexList,
                 int populationSize);
 

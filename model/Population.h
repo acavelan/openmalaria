@@ -30,12 +30,14 @@
 #include <vector>
 
 namespace OM {
+class RunContext;
+
 
 /** The simulated human population. */
 class Population
 {
 public:
-    Population(size_t size);
+    Population(RunContext& ctx, size_t size);
 
     /** Create the initial population of Humans */
     void createInitialHumans();
@@ -60,6 +62,8 @@ public:
     void checkpoint(ostream& stream);
 
     /** The simulated human hosts */
+RunContext& ctx;
+
     vector<Host::Human> humans;
 
 private:
@@ -70,12 +74,12 @@ private:
     int recentBirths = 0;
 };
 
-void registerContinousPopulationCallbacks();
+void registerContinousPopulationCallbacks(RunContext& ctx);
 
 /// Delegate to print the number of hosts
 void ctsHosts (Population &population, ostream& stream);
 /// Delegate to print cumulative numbers of hosts under various age limits
-void ctsHostDemography (Population &population, ostream& stream);
+void ctsHostDemography (RunContext& ctx, Population &population, ostream& stream);
 /// Delegate to print the number of births since last count
 void ctsRecentBirths (Population &population, ostream& stream);
 /// Delegate to print the number of patent hosts
@@ -87,7 +91,7 @@ void ctsImmunityY (Population &population, ostream& stream);
 /// Delegate to print immunity's cumulativeY parameter (median across population)
 void ctsMedianImmunityY (Population &population, ostream& stream);
 /// Delegate to print the mean age-based availability reduction of each human relative to an adult
-void ctsMeanAgeAvailEffect (Population &population, ostream& stream);
+void ctsMeanAgeAvailEffect (RunContext& ctx, Population &population, ostream& stream);
 void ctsITNCoverage (Population &population, ostream& stream);
 void ctsIRSCoverage (Population &population, ostream& stream);
 void ctsGVICoverage (Population &population, ostream& stream);

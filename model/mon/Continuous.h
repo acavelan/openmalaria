@@ -47,7 +47,7 @@ namespace Continuous {
 	 * assume we shouldn't overwrite existing files for security reasons).
 	 * 
 	 * Callbacks should be registered before init() is called. */
-	void init (const scnXml::Monitoring& monitoring, bool isCheckpoint);
+	void init (const RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint);
 
     void checkpoint(ostream& stream);
     void checkpoint(istream& stream);
@@ -72,7 +72,7 @@ namespace Continuous {
 	
 	/// Generate time-step's output. Called at beginning of time step.
         /// Passed population since some callbacks use this to generate output.
-	void update (Population &population);
+	void update (const RunContext& ctx, Population &population);
 
 } // namespace Continuous
 } // namespace mon

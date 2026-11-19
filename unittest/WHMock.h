@@ -44,7 +44,7 @@ using namespace WithinHost;
  */
 class WHMock : public WHInterface {
 public:
-    WHMock();
+    WHMock(OM::RunContext& ctx);
     virtual ~WHMock();
     
     virtual double probTransmissionToMosquito(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l) const;

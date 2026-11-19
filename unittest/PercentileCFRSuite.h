@@ -54,7 +54,7 @@ namespace OM { namespace Clinical { extern double oddsRatioThreshold; } }
 // way CM5DayCommon (Clinical/CM5DayCommon.h:39) does: derive.
 namespace {
 struct CFRProbe : public OM::Clinical::ClinicalModel {
-    void doClinicalUpdate (OM::Host::Human&, double,
+    void doClinicalUpdate (OM::RunContext&, OM::Host::Human&, double,
                            OM::WithinHost::Pathogenesis::StatePair&) override {}
     static double community (double cfr) { return getCommunityCFR(cfr); }
 };

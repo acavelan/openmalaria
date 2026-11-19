@@ -23,6 +23,7 @@
 #ifndef OM_INTERVENTIONS_GVI
 #define OM_INTERVENTIONS_GVI
 
+#include "core/RunContext.h"
 #include "Transmission/PerHost.h"
 #include "interventions/Interfaces.h"
 #include "util/DecayFunction.h"
@@ -47,17 +48,17 @@ public:
      * @param elt Component description from XML
      * @param species_name_map Map of species names to indices.
      */
-    GVIComponent( ComponentId, const scnXml::GVIDescription& elt,
+    GVIComponent( RunContext& ctx, ComponentId, const scnXml::GVIDescription& elt,
                const map<string,size_t>& species_name_map );
     
-    void deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits )const;
+    void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const;
     
     virtual Component::Type componentType() const;
     
     virtual void print_details( std::ostream& out )const;
     
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng& rng) const;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream, ComponentId ) const;
+    virtual unique_ptr<PerHostInterventionData> makeHumanPart(RunContext& ctx, LocalRng& rng) const;
+    virtual unique_ptr<PerHostInterventionData> makeHumanPart( RunContext& ctx, istream& stream, ComponentId ) const;
     
 private:
     /** Per mosquito-species parameters for generic vector intervention model. */
@@ -105,14 +106,14 @@ private:
  */
 class HumanGVI : public PerHostInterventionData {
 public:
-    HumanGVI( LocalRng& rng, const GVIComponent& params );
-    HumanGVI( istream& stream, ComponentId );
+    HumanGVI( RunContext& ctx, LocalRng& rng, const GVIComponent& params );
+    HumanGVI( RunContext& ctx, istream& stream, ComponentId );
     
     virtual void redeploy( LocalRng& rng, const Transmission::HumanVectorInterventionComponent& );
     
     /** This is the survival factor of the effect. */
     inline double getEffectSurvival(const GVIComponent& params)const{
-        SimTime age = sim::nowOrTs1() - deployTime;  // implies age 1 TS on first use
+        SimTime age = ctx.clock.nowOrTs1() - deployTime;  // implies age 1 TS on first use
         return decayHet->eval( age );
     }
     

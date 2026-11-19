@@ -24,6 +24,7 @@
 #define Hmod_AnophelesModel
 
 #include "Global.h"
+#include "core/RunContext.h"
 #include "Transmission/PerHost.h"
 #include "util/SimpleDecayingValue.h"
 #include "util/vectors.h"
@@ -183,9 +184,14 @@ struct TrapData {
 class AnophelesModel
 {
 public:
+    /// The run this model belongs to (clock accessed as ctx.clock).
+    RunContext& ctx;
+
+
     ///@brief Initialisation and destruction
     //@{
-    AnophelesModel () :
+    AnophelesModel (RunContext& ctx) :
+            ctx(ctx),
             nhh_avail(numeric_limits<double>::signaling_NaN()),
             nhh_sigma_df(numeric_limits<double>::signaling_NaN()),
             nhh_sigma_dff(numeric_limits<double>::signaling_NaN()),
@@ -294,7 +300,7 @@ public:
     void advancePeriod (double sum_avail, double sigma_df, vector<double>& sigma_dif_i, vector<double>& sigma_dif_l, double sigma_dff, bool isDynamic);
 
     /// Intermediatary from vector model equations used to calculate EIR
-    inline double getInitPartialEIR() const{ return partialInitEIR[sim::moduloYearSteps(sim::ts0())] / initAvail; }
+    inline double getInitPartialEIR() const{ return partialInitEIR[ctx.clock.moduloYearSteps(ctx.clock.ts0())] / initAvail; }
     //@}
 
     /// Intermediatary from vector model equations used to calculate EIR
@@ -348,7 +354,7 @@ public:
                    vector<double>& partialEIR_i, vector<double>& partialEIR_l, double EIR_factor);
     
     /// Intermediatary from vector model equations used to calculate EIR in intervention mode
-    inline double getInterventionEIR() const{ return interventionEIR[sim::inSteps(sim::intervTime())] / initAvail; }
+    inline double getInterventionEIR() const{ return interventionEIR[ctx.clock.inSteps(ctx.clock.interv)] / initAvail; }
     //@}
 
     void changeEIRIntervention(const scnXml::NonVector &nonVectorData);
@@ -371,7 +377,7 @@ public:
 
     /// Get mean emergence per day during last time-step
     inline double getLastN_v0 () const{
-        return timeStep_N_v0 / sim::oneTS();
+        return timeStep_N_v0 / ctx.clock.one_TS();
     }
     
     /// Get mean P_A/P_df/P_dif/N_v/O_v/S_v during last time-step
@@ -566,7 +572,7 @@ public:
      *
      * Values at index ((d-1) mod N_v_length) are used to derive the state of
      * the population on day d. The state during days (t×I+1) through to ((t+1)×I)
-     * where t is sim::ts0() and I is sim::oneTS() is what
+     * where t is ctx.clock.ts0() and I is ctx.clock.one_TS() is what
      * drives the transmission at time-step t.
      * 
      * These arrays should be checkpointed. */

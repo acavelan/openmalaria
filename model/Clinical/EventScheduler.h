@@ -24,6 +24,7 @@
 #define Hmod_ClinicalEventSchduler
 
 #include "Global.h"
+#include "core/RunContext.h"
 #include "Clinical/ClinicalModel.h"
 #include "Clinical/ESCaseManagement.h"
 #include "util/AgeGroupInterpolation.h"
@@ -47,15 +48,15 @@ using util::AgeGroupInterpolator;
 class ClinicalEventScheduler : public ClinicalModel
 {
 public:
-    static void init (const OM::Parameters& parameters, const scnXml::Clinical& clinical);
-    static void setParameters (const scnXml::HSEventScheduler& esData);
+    static void init (RunContext& ctx, const OM::Parameters& parameters, const scnXml::Clinical& clinical);
+    static void setParameters (const SimClock& clock, const scnXml::HSEventScheduler& esData);
 
-    ClinicalEventScheduler (double tSF);
+    ClinicalEventScheduler (RunContext& ctx, double tSF);
     
     virtual bool isExistingCase();
 
 protected:
-    virtual void doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg);
+    virtual void doClinicalUpdate (RunContext& ctx, Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg);
 
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
@@ -120,13 +121,13 @@ private:
     /// Current state of sickness
     Episode::State pgState;
 
-    /** Set to when a bout should start. If sim::ts0() equals this, a bout
+    /** Set to when a bout should start. If ctx.clock.ts0() equals this, a bout
      * is started (UC & severe behaviour different).
      *
      * Note: medications are not delayed by this. */
     SimTime caseStartTime = sim::never();
 
-    /** The individual recovers when sim::ts0() >= timeOfRecovery,
+    /** The individual recovers when ctx.clock.ts0() >= timeOfRecovery,
      * assuming they didn't die. */
     SimTime timeOfRecovery = sim::never();
 

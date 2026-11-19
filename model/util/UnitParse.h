@@ -24,8 +24,11 @@
 #define Hmod_OM_util_timeConversions
 
 #include "Global.h"
+#include "core/RunContext.h"
 
 namespace OM {
+
+class SimClock;
 
 /** Encapsulation of code to parse times with units from strings.
  * 
@@ -57,24 +60,24 @@ namespace UnitParse {
      * Supports units of days (5d), and steps (2t) with integer values,
      * rounding inputs to the nearest time step.
      * 
-     * Call sim::init() first. */
-    SimTime readShortDuration( const std::string& str, DefaultUnit defUnit );
+     * Call ctx.clock.init() first. */
+    SimTime readShortDuration( const SimClock& clock, const std::string& str, DefaultUnit defUnit );
     
     /** Like readShortDuration(), but also allow inputs to be in fractional
      * years.
      * 
-     * Call sim::init() first. */
-    SimTime readDuration( const std::string& str, DefaultUnit defUnit );
+     * Call ctx.clock.init() first. */
+    SimTime readDuration( const SimClock& clock, const std::string& str, DefaultUnit defUnit );
     
     /** Like readDuration(), but without rounding. Output is in days and may
      * not be an integer.
      * 
-     * Call sim::init() first. */
-    double durationToDays( const std::string& str, DefaultUnit defUnit );
+     * Call ctx.clock.init() first. */
+    double durationToDays( const SimClock& clock, const std::string& str, DefaultUnit defUnit );
     
     /** Returns sim::never() when it doesn't recognise a date. Throws when it does
      * but encounters definite format errors. */
-    SimTime parseDate( const std::string& str );
+    SimTime parseDate( const SimClock& clock, const std::string& str );
 
     /** Read a date or relative time specifier found in the XML; dates are
      * rebased relative to a starting date so that they work the same as other
@@ -83,9 +86,9 @@ namespace UnitParse {
      * 
      * Supports dates (e.g. 2015-10-08) as well as times relative to the start
      * of the intervention period (as readDuration will parse). Returns a time
-     * to be compared against sim::intervDate(). Again, the result is rounded to
+     * to be compared against ctx.clock.interv_date(). Again, the result is rounded to
      * the nearest time step. */
-    SimTime readDate( const std::string& str, DefaultUnit defUnit );
+    SimTime readDate( const SimClock& clock, const std::string& str, DefaultUnit defUnit );
 }
 
 }

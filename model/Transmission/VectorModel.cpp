@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include "Transmission/VectorModel.h"
 #include "Population.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -100,7 +101,7 @@ void VectorModel::ctsCbAlpha(const vector<Host::Human> &population, ostream &str
         double total = 0.0;
         for (const Host::Human &human : population)
         {
-            total += human.perHostTransmission.entoAvailabilityFull(i, sim::inYears(human.age(sim::now())));
+            total += human.perHostTransmission.entoAvailabilityFull(i, sim::inYears(human.age(ctx.clock.now())));
         }
         stream << '\t' << total / population.size();
     }
@@ -187,10 +188,10 @@ const string &reverseLookup(const map<string, size_t> &m, size_t i)
     throw TRACED_EXCEPTION_DEFAULT("reverseLookup: key not found"); // shouldn't ever happen
 }
 
-VectorModel::VectorModel(vector<double> initEIR, int interventionMode, vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
+VectorModel::VectorModel(RunContext& ctx, vector<double> initEIR, int interventionMode, vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
                          vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList, map<string, size_t> speciesIndexList,
                          int populationSize)
-    : TransmissionModel(std::move(initEIR), interventionMode, WithinHost::Genotypes::N())
+    : TransmissionModel(ctx, std::move(initEIR), interventionMode, WithinHost::Genotypes::N())
     // parity: order — vector-model LocalRng copy-seeded from master at construction; construction order frozen
     , m_rng(util::master_RNG)
     , initIterations(0)
@@ -263,7 +264,7 @@ void VectorModel::init2(const vector<Host::Human> &population)
     double sumRelativeAvailability = 0.0;
     for (const Host::Human &human : population)
     {
-        sumRelativeAvailability += human.perHostTransmission.relativeAvailabilityAge(sim::inYears(human.age(sim::now())));
+        sumRelativeAvailability += human.perHostTransmission.relativeAvailabilityAge(sim::inYears(human.age(ctx.clock.now())));
     }
     int popSize = population.size();
     // value should be unimportant when no humans are available, though inf/nan is not acceptable
@@ -282,7 +283,7 @@ void VectorModel::init2(const vector<Host::Human> &population)
         for (const Host::Human &human : population)
         {
             const OM::Transmission::PerHost &host = human.perHostTransmission;
-            double prod = host.entoAvailabilityFull(i, sim::inYears(human.age(sim::now())));
+            double prod = host.entoAvailabilityFull(i, sim::inYears(human.age(ctx.clock.now())));
             sum_avail += prod;
             prod *= host.probMosqBiting(i);
             sigma_f += prod;
@@ -367,7 +368,7 @@ void VectorModel::calculateEIR(Host::Human &human, double ageYears, vector<doubl
     }
     else if (simulationMode == forcedEIR)
     {
-        // double eir = initialisationEIR[sim::moduloYearSteps(sim::ts0())] * host.relativeAvailabilityHetAge(ageYears);
+        // double eir = initialisationEIR[ctx.clock.moduloYearSteps(ctx.clock.ts0())] * host.relativeAvailabilityHetAge(ageYears);
 
         // cout << "global: " << eir << " " <<  endl;
         // mon::recordStat(mon::measure("innoculationsPerAgeGroup"), human, eir);
@@ -446,7 +447,7 @@ void VectorModel::vectorUpdate(const vector<Host::Human> &population)
             // NOTE: calculate availability relative to age at end of time step;
             // not my preference but consistent with TransmissionModel::getEIR().
             // TODO: even stranger since probTransmission comes from the previous time step
-            const double avail = host.entoAvailabilityFull(s, sim::inYears(human.age(sim::ts1())));
+            const double avail = host.entoAvailabilityFull(s, sim::inYears(human.age(ctx.clock.ts1())));
             sum_avail[s] += avail;
             const double df = avail * host.probMosqBiting(s) * host.probMosqResting(s);
             sigma_df[s] += df;

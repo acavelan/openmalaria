@@ -252,6 +252,10 @@ namespace dummyXML{
 
 class UnittestUtil {
 public:
+    // Shared clock fixture for all suites (one process, many suites).
+    static RunContext& ctx() { static RunContext c; return c; }
+    static const SimClock& clock() { return ctx().clock; }
+
     static void initTime(int daysPerStep){
         dummyXML::model.setModelOptions(dummyXML::modelOpts);
         dummyXML::modelParams.setInterval( daysPerStep );
@@ -263,19 +267,19 @@ public:
         dummyXML::monitoring.setSurveys( dummyXML::surveys );
         dummyXML::scenario.setMonitoring( dummyXML::monitoring );
         util::ModelNameProvider modelNameProvider(dummyXML::scenario.getModel());
-        sim::init( dummyXML::scenario, modelNameProvider );
+        ctx().clock.init( dummyXML::scenario, modelNameProvider );
         
         // we could just use zero, but we may spot more errors by using some weird number
-        sim::s_t0 = sim::fromYearsN(83.2591);
-        sim::s_t1 = sim::s_t0;
+        ctx().clock.t0 = ctx().clock.from_years_n(83.2591);
+        ctx().clock.t1 = ctx().clock.t0;
 #ifndef NDEBUG
-        sim::in_update = true;  // may not always be correct but we're more interested in getting around this check than using it in unit tests
+        ctx().clock.in_update = true;  // may not always be correct but we're more interested in getting around this check than using it in unit tests
 #endif
     }
     static void incrTime(SimTime incr){
-        //NOTE: for unit tests, we do not differentiate between s_t0 and s_t1
-        sim::s_t0 = sim::s_t0 + incr;
-        sim::s_t1 = sim::s_t0;
+        //NOTE: for unit tests, we do not differentiate between t0 and t1
+        ctx().clock.t0 = ctx().clock.t0 + incr;
+        ctx().clock.t1 = ctx().clock.t0;
     }
     
     static const scnXml::Parameters& prepareParameters(){
@@ -476,7 +480,7 @@ public:
     }
     
     static unique_ptr<Host::Human> createHuman(SimTime dateOfBirth){
-        return unique_ptr<Host::Human>( new Host::Human(dateOfBirth) );
+        return unique_ptr<Host::Human>( new Host::Human(ctx(), dateOfBirth) );
     }
     // Set the WithinHost model used by the human, and return a pointer to it. Do not delete this!
     static WithinHost::WHInterface* setHumanWH(Host::Human& human, unique_ptr<WithinHost::WHInterface> wh){

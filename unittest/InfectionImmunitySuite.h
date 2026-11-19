@@ -44,7 +44,7 @@ public:
         
         // We need a concrete class deriving from WHFalciparum; this will do
         LocalRng rng(0, 721347520444481703);
-	wh = new DescriptiveWithinHostModel{ rng, numeric_limits<double>::quiet_NaN() };
+	wh = new DescriptiveWithinHostModel{ UnittestUtil::ctx(), rng, numeric_limits<double>::quiet_NaN() };
     }
     void tearDown () {
 	delete wh;

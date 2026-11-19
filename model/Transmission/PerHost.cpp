@@ -69,7 +69,7 @@ void PerHost::update(Host::Human& human){
     }
 }
 
-void PerHost::deployComponent( LocalRng& rng, const HumanVectorInterventionComponent& params ){
+void PerHost::deployComponent( RunContext& ctx, LocalRng& rng, const HumanVectorInterventionComponent& params ){
     // This adds per-host per-intervention details to the host's data set.
     // This data is never removed since it can contain per-host heterogeneity samples.
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
@@ -80,7 +80,7 @@ void PerHost::deployComponent( LocalRng& rng, const HumanVectorInterventionCompo
         }
     }
     // no deployment for that description: must make a new one
-    activeComponents.push_back( params.makeHumanPart(rng) );
+    activeComponents.push_back( params.makeHumanPart(ctx, rng) );
 }
 
 // Note: in the case an intervention is not present, we can use the approximation
@@ -149,7 +149,7 @@ void PerHost::checkpointIntervs( istream& stream ){
                 dynamic_cast<const HumanVectorInterventionComponent*>( &gen_params );
             if( params == 0 )
                 throw util::base_exception( "" );       // see catch block below
-            activeComponents.push_back( params->makeHumanPart( stream, id ) );
+            activeComponents.push_back( params->makeHumanPart( *ctx, stream, id ) );
         }catch( util::base_exception& e ){
             // two causes, both boil down to index being wrong
             throw util::checkpoint_error( "bad value in checkpoint file" );

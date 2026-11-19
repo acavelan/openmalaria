@@ -46,9 +46,9 @@ using util::LocalRng;
  * All parameters (inc. non-static) are only set by initParameters(). */
 class VaccineComponent : public HumanInterventionComponent {
 public:
-    VaccineComponent( ComponentId id, const scnXml::VaccineDescription& seq, Vaccine::Types type );
+    VaccineComponent( RunContext& ctx, ComponentId id, const scnXml::VaccineDescription& seq, Vaccine::Types type );
     
-    void deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits )const;
+    void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits )const;
     
     virtual Component::Type componentType() const;
     

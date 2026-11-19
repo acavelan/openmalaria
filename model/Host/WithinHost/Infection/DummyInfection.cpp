@@ -30,11 +30,11 @@
 
 namespace OM { namespace WithinHost {
     
-CommonInfection* createDummyInfection (LocalRng& rng, uint32_t protID, int origin) {
-    return new DummyInfection (rng, protID, origin);
+CommonInfection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+    return new DummyInfection (ctx, rng, protID, origin);
 }
-CommonInfection* checkpointedDummyInfection (istream& stream) {
-    return new DummyInfection (stream);
+CommonInfection* checkpointedDummyInfection (RunContext& ctx, istream& stream) {
+    return new DummyInfection (ctx, stream);
 }
 
 void DummyInfection::init () {
@@ -42,8 +42,8 @@ void DummyInfection::init () {
     CommonWithinHost::checkpointedInfection = &checkpointedDummyInfection;
 }
 
-DummyInfection::DummyInfection (LocalRng& rng, uint32_t protID, int origin) :
-    CommonInfection(protID, origin)
+DummyInfection::DummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) :
+    CommonInfection(ctx, protID, origin)
 {
     m_density=16;	// increased by DH to avoid zeros in initialKappa
 }
@@ -63,8 +63,8 @@ bool DummyInfection::updateDensity( LocalRng& rng, double survivalFactor, SimTim
 }
 
 
-DummyInfection::DummyInfection (istream& stream) :
-    CommonInfection (stream)
+DummyInfection::DummyInfection (RunContext& ctx, istream& stream) :
+    CommonInfection (ctx, stream)
 {}
 
 } }

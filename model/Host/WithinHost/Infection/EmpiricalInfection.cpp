@@ -60,11 +60,11 @@ double EmpiricalInfection::_extinctionLevel;
 double EmpiricalInfection::_overallMultiplier;
 
 
-CommonInfection* createEmpiricalInfection (LocalRng& rng, uint32_t protID, int origin) {
-    return new EmpiricalInfection (rng, protID, origin, 1);
+CommonInfection* createEmpiricalInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+    return new EmpiricalInfection (ctx, rng, protID, origin, 1);
 }
-CommonInfection* checkpointedEmpiricalInfection (istream& stream) {
-    return new EmpiricalInfection (stream);
+CommonInfection* checkpointedEmpiricalInfection (RunContext& ctx, istream& stream) {
+    return new EmpiricalInfection (ctx, stream);
 }
 
 
@@ -138,8 +138,8 @@ void EmpiricalInfection::init(){
 
 /* Initialises a new infection by assigning the densities for the last 3 prepatent days
 */
-EmpiricalInfection::EmpiricalInfection(LocalRng& rng, uint32_t protID, int origin, double growthRateMultiplier) :
-    CommonInfection(protID, origin)
+EmpiricalInfection::EmpiricalInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin, double growthRateMultiplier) :
+    CommonInfection(ctx, protID, origin)
 {
   //sample the parasite densities for the last 3 prepatent days
   //note that the lag decreases with time
@@ -273,8 +273,8 @@ void EmpiricalInfection::overrideInflationFactors(double inflationMean, double i
 
 // -----  checkpointing  -----
 
-EmpiricalInfection::EmpiricalInfection (istream& stream) :
-    CommonInfection(stream)
+EmpiricalInfection::EmpiricalInfection (RunContext& ctx, istream& stream) :
+    CommonInfection(ctx, stream)
 {
     _laggedLogDensities[0] & stream;
     _laggedLogDensities[1] & stream;

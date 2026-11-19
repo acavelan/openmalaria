@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include "Host/WithinHost/Pathogenesis/Submodels.h"
 #include "Parameters.h"
 #include "mon/Monitoring.h"
@@ -37,9 +38,9 @@ namespace Pathogenesis {
 double rateMultiplier_31;
 double densityExponent_32;
 
-void MuellerPathogenesis::init( const Parameters& parameters ){
+void MuellerPathogenesis::init( RunContext& ctx, const Parameters& parameters ){
     rateMultiplier_31 = parameters[Parameter::MUELLER_RATE_MULTIPLIER]
-        * sim::yearsPerStep();
+        * ctx.clock.years_per_step;
     densityExponent_32 = parameters[Parameter::MUELLER_DENSITY_EXPONENT];
 }
 
@@ -64,19 +65,19 @@ const size_t n = 11;
 double a = numeric_limits<double>::signaling_NaN(),
     b = numeric_limits<double>::signaling_NaN();
 
-void PyrogenPathogenesis::init( const Parameters& parameters ){
+void PyrogenPathogenesis::init( RunContext& ctx, const Parameters& parameters ){
     initPyroThres = parameters[Parameter::Y_STAR_0];
     
     double delt = 1.0 / n;
     double smuY = -log(0.5) /
-        (sim::stepsPerYear() * parameters[Parameter::Y_STAR_HALF_LIFE]);
+        (ctx.clock.steps_per_year * parameters[Parameter::Y_STAR_HALF_LIFE]);
     b = -smuY * delt;
     
     Ystar2_13 = parameters[Parameter::Y_STAR_SQ];
     
     //alpha: factor determining increase in pyrogenic threshold
     double alpha14 = parameters[Parameter::ALPHA];
-    a = alpha14 * sim::oneTS() * delt;  
+    a = alpha14 * ctx.clock.one_TS() * delt;  
     
     //Ystar1: critical value of parasite density in determing increase in pyrog t
     Ystar1_26 = parameters[Parameter::Y_STAR_1];

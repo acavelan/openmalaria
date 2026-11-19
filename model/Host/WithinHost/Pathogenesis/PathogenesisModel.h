@@ -32,6 +32,7 @@ namespace scnXml{
     class HSESNMF;
     class Clinical;
 }
+namespace OM { class RunContext; }
 
 namespace OM {
     namespace Host { class Human; }
@@ -45,7 +46,7 @@ using util::LocalRng;
 class PathogenesisModel {
 public:
     /// Calls static init on correct PathogenesisModel.
-    static void init( const Parameters& parameters, const scnXml::Clinical& clinical, bool nmfOnly );
+    static void init( RunContext& ctx, const Parameters& parameters, const scnXml::Clinical& clinical, bool nmfOnly );
 
     /** Create a sub-class instance, dependant on global options.
     *

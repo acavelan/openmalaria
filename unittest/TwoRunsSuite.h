@@ -125,7 +125,8 @@ public:
         std::string err;
         for (int run = 1; run <= 2 && ok; ++run) {
             try {
-                OM::run_simulation(scenarioFile);
+                RunContext ctx; // each run gets a fresh context: runs must not share state
+                OM::run_simulation(ctx, scenarioFile);
                 (run == 1 ? run1 : run2) = captureRun("tworuns.bin");
             } catch (const std::exception& e) {
                 ok = false;

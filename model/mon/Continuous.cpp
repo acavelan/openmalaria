@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include "mon/Continuous.h"
 #include "util/errors.h"
 #include "util/CommandLine.h"
@@ -91,25 +92,25 @@ namespace OM {
             registered[optName] = {titles, f};
         }
 
-        void update (Population &population){
+        void update (const RunContext& ctx, Population &population){
             if( ctsPeriod == sim::zero() )
                 return;	// output disabled
             if( !duringInit ){
-                if( sim::intervTime() < sim::zero()
-                    || mod_nn(sim::intervTime(), ctsPeriod) != sim::zero() )
+                if( ctx.clock.interv < sim::zero()
+                    || mod_nn(ctx.clock.interv, ctsPeriod) != sim::zero() )
                     return;
             } else {
-                if( mod_nn(sim::now(), ctsPeriod) != sim::zero() )
+                if( mod_nn(ctx.clock.now(), ctsPeriod) != sim::zero() )
                     return;
-                ctsOStream << sim::inSteps(sim::now()) << '\t';
+                ctsOStream << ctx.clock.inSteps(ctx.clock.now()) << '\t';
             }
 
-            if( duringInit && sim::intervTime() < sim::zero() ){
+            if( duringInit && ctx.clock.interv < sim::zero() ){
                 ctsOStream << "nan";
             }else{
                 // NOTE: we could switch this to output dates, but (1) it would be
                 // breaking change and (2) it may be harder to use.
-                ctsOStream << sim::inSteps(sim::intervTime());
+                ctsOStream << ctx.clock.inSteps(ctx.clock.interv);
             }
             for (const auto& report : toReport) std::get<1>(report)(population, ctsOStream);
 

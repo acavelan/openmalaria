@@ -23,6 +23,7 @@
 #ifndef Hmod_CM5DayCommon
 #define Hmod_CM5DayCommon
 
+#include "core/RunContext.h"
 #include "Host/WithinHost/Pathogenesis/State.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
@@ -45,11 +46,11 @@ public:
      * 
      * @param tSF Treatment-seeking factor. Normally 1 but allows simple heterogeneity.
      */
-    CM5DayCommon (double tSF);
+    CM5DayCommon (RunContext& ctx, double tSF);
     
     virtual bool isExistingCase () {
         // If treated in the recent past:
-        return sim::now() > m_tLastTreatment && sim::now() <= m_tLastTreatment + healthSystemMemory;
+        return ctx.clock.now() > m_tLastTreatment && ctx.clock.now() <= m_tLastTreatment + healthSystemMemory;
     }
     
 protected:
@@ -61,13 +62,13 @@ protected:
     static double cureRateSevere;
     static WithinHost::TreatmentId treatmentSevere;
     
-    virtual void doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg);
+    virtual void doClinicalUpdate (RunContext& ctx, Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg);
 
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
 
     /** Called when a non-severe/complicated malaria sickness occurs. */
-    virtual void uncomplicatedEvent(Human& human, Episode::State pgState) =0;
+    virtual void uncomplicatedEvent(RunContext& ctx, Human& human, Episode::State pgState) =0;
 
     //! treatment seeking for heterogeneity
     double m_treatmentSeekingFactor;

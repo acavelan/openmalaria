@@ -38,7 +38,7 @@ const CMDecisionTree *escm_uncomplicated = 0,
     *escm_complicated = 0;
 
 
-CMDTOut ESCaseManagement::execute (
+CMDTOut ESCaseManagement::execute (RunContext& ctx,
         const CMHostData& hostData
 ) {
     assert (hostData.pgState & Episode::SICK);
@@ -48,7 +48,7 @@ CMDTOut ESCaseManagement::execute (
     
     const CMDecisionTree& tree = (hostData.pgState & Episode::COMPLICATED) ?
         *escm_complicated : *escm_uncomplicated;
-    return tree.exec( hostData );
+    return tree.exec( ctx, hostData );
 }
 
 } }

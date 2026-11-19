@@ -30,12 +30,14 @@ class Scenario;
 class Monitoring;
 }
 
+class SimClock;
+
 namespace OM {
 namespace mon {
 
-SimTime readSurveyDates(const scnXml::Monitoring& monitoring);
+SimTime readSurveyDates(const SimClock& clock, const scnXml::Monitoring& monitoring);
 void initReporting(const scnXml::Scenario& scenario);
-void initCohorts(const scnXml::Monitoring& monitoring);
+void initCohorts(const SimClock& clock, const scnXml::Monitoring& monitoring);
 
 } // namespace mon
 } // namespace OM
