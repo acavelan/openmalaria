@@ -1259,7 +1259,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             }
             else if (component.getTreatPKPD().present())
             {
-                hiComponent = new TreatPKPDComponent(id, component.getTreatPKPD().get());
+                hiComponent = new TreatPKPDComponent(ctx, id, component.getTreatPKPD().get());
             }
             else if (component.getDecisionTree().present())
             {

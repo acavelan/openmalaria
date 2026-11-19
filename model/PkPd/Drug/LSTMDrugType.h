@@ -103,33 +103,16 @@ private:
  * None of this data is checkpointed, because it is loaded by init() from XML
  * data. (Although if it cannot be reproduced by reloading it should be
  * checkpointed.) */
+struct DrugRegistry;
+
 class LSTMDrugType {
+friend struct DrugRegistry;   // registry owns the list; reads type internals
 public:
     ///@brief Static functions
     //@{
-    /** Initialise the drug model. Called at start of simulation. */
+    /** Initialise the drug model (registry ctx.drugs). Called at start of
+     * simulation; defined in model/xml/pharmacology.cpp. */
     static void init (RunContext& ctx, const scnXml::Drugs& data);
-    /** Clear previous data. Only needed for testing. */
-    static void clear();
-    
-    /** Get the number of drug types. */
-    static size_t numDrugTypes();
-    
-    /** Find a DrugType by its abbreviation, and returns its index.
-     *
-     * Throws if the drug isn't found, so you can rely on it returning a valid
-     * index if it doesn't throw. */
-    static size_t findDrug(string abbreviation);
-    
-    /** Get a reference to drug type data for some index. This can't be used
-     * to change the data. */
-    static LSTMDrugType& get(size_t index);
-    
-    /** Get a list of all drug types which are (possibly) being used. */
-    static const vector<size_t>& getDrugsInUse();
-    
-    /** Create a per-human drug module for a given drug index. */
-    static unique_ptr<LSTMDrug> createInstance( LocalRng& rng, size_t index );
     //@}
     
     
@@ -230,6 +213,38 @@ private:
     // Allow LSTMDrug to access private members
     friend class LSTMDrugPD;
     friend inline double drugEffect (const LSTMDrugType& drugType, double& concentration, double duration, double weight_kg, double dose_mg);
+};
+
+
+/** All drug types of the current run (was: LSTMDrugType statics). */
+struct DrugRegistry {
+    /** Clear previous data. Only needed for testing. */
+    void clear();
+    
+    /** Get the number of drug types. */
+    size_t numDrugTypes() const;
+    
+    /** Find a DrugType by its abbreviation, and returns its index.
+     *
+     * Throws if the drug isn't found, so you can rely on it returning a valid
+     * index if it doesn't throw. */
+    size_t findDrug(string abbreviation);
+    
+    /** Get a reference to drug type data for some index. This can't be used
+     * to change the data. */
+    LSTMDrugType& get(size_t index);
+    
+    /** Get a list of all drug types which are (possibly) being used. */
+    const vector<size_t>& getDrugsInUse() const;
+    
+    /** Create a per-human drug module for a given drug index. */
+    unique_ptr<LSTMDrug> createInstance( LocalRng& rng, size_t index );
+    
+    // The list of drug types. Not checkpointed.
+    vector<LSTMDrugType> drugTypes;
+    map<string,size_t> drugTypeNames;
+    /// List of all indices of drugs being used
+    vector<size_t> drugsInUse;
 };
 
 } }

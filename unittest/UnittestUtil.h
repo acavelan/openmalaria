@@ -409,7 +409,7 @@ public:
         treatments.getSchedule().push_back(sched1);
         treatments.getSchedule().push_back(sched2);
         treatments.getDosages().push_back(dosage1);
-        PkPd::LSTMTreatments::init(treatments);
+        PkPd::LSTMTreatments::init(ctx(), treatments);
     }
     
     // For when infection parameters shouldn't be used; enforce by setting to NaNs.
@@ -472,7 +472,7 @@ public:
     
     static void medicate(LocalRng& rng, PkPd::LSTMModel& pkpd, size_t typeIndex, double qty,
                          double time){
-        pkpd.medicateDrug(rng, typeIndex, qty, time);
+        pkpd.medicateDrug(ctx(), rng, typeIndex, qty, time);
     }
     
     static void clearMedicateQueue( PkPd::LSTMModel& pkpd ){

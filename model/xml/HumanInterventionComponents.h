@@ -295,10 +295,10 @@ private:
 //NOTE: this is similar to CMDTTreatPKPD, but supporting only a single "treatment"
 class TreatPKPDComponent : public HumanInterventionComponent {
 public:
-    TreatPKPDComponent( ComponentId id, const scnXml::DTTreatPKPD& elt ) :
+    TreatPKPDComponent( RunContext& ctx, ComponentId id, const scnXml::DTTreatPKPD& elt ) :
         HumanInterventionComponent(id),
-            schedule(PkPd::LSTMTreatments::findSchedule(elt.getSchedule())),
-            dosage(PkPd::LSTMTreatments::findDosages(elt.getDosage())),
+            schedule(ctx.treatments.findSchedule(elt.getSchedule())),
+            dosage(ctx.treatments.findDosages(elt.getDosage())),
             delay_d(elt.getDelay_h() / 24.0 /* convert to days */)
     {
     }

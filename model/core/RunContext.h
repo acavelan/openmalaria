@@ -27,6 +27,8 @@
 #include "util/mod.h"
 #include "util/random.h"
 #include "Host/WithinHost/Genotypes.h"
+#include "PkPd/Drug/LSTMDrugType.h"
+#include "PkPd/LSTMMedicate.h"
 #include <string>
 #include <vector>
 
@@ -189,6 +191,10 @@ public:
     util::MasterRng master_RNG{0, 0};
     /// Genotype registry (built by Genotypes::init during scenario load).
     WithinHost::Genotypes genotypes;
+    /// Drug-type registry (PkPd; built by LSTMDrugType::init).
+    PkPd::DrugRegistry drugs;
+    /// PK/PD treatment-course registry (LSTMTreatments::init).
+    PkPd::TreatmentRegistry treatments;
     /// Intervention states saved for checkpoints (checkpoint read/write).
 };
 

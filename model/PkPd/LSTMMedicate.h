@@ -65,8 +65,20 @@ struct DosageTable {
     map<double,double> table;
 };
 
-extern vector<Schedule> schedules;
-extern vector<DosageTable> dosages;
+/** Treatment courses of the current run (was: LSTMTreatments statics). */
+struct TreatmentRegistry {
+    /** Clear previous data. Only needed for testing. */
+    void clear();
+    /** Get the index of a named schedule. */
+    size_t findSchedule( const std::string& name );
+    /** Get the index of a named dosage table. */
+    size_t findDosages( const std::string& name );
+    
+    vector<Schedule> schedules;
+    map<string,size_t> scheduleNames;
+    vector<DosageTable> dosages;
+    map<string,size_t> dosagesNames;
+};
 
 } }
 #endif

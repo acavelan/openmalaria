@@ -595,10 +595,11 @@ protected:
  */
 class CMDTTreatPKPD : public CMDecisionTree {
 public:
-    CMDTTreatPKPD( const scnXml::DecisionTree::TreatPKPDSequence& seq ){
+    CMDTTreatPKPD( RunContext& ctx, const scnXml::DecisionTree::TreatPKPDSequence& seq ){
         treatments.reserve( seq.size() );
         for( const scnXml::DTTreatPKPD& treatElt : seq ){
             treatments.push_back( TreatInfo(
+                ctx.treatments,
                 treatElt.getSchedule(),
                 treatElt.getDosage(),
                 treatElt.getDelay_h()
@@ -630,9 +631,9 @@ protected:
     
 private:
     struct TreatInfo{
-        TreatInfo( const string& s, const string& d, double h ) :
-            schedule(PkPd::LSTMTreatments::findSchedule(s)),
-            dosage(PkPd::LSTMTreatments::findDosages(d)),
+        TreatInfo( PkPd::TreatmentRegistry& tr, const string& s, const string& d, double h ) :
+            schedule(tr.findSchedule(s)),
+            dosage(tr.findDosages(d)),
             delay_h(h) {}
         inline bool operator!=( const TreatInfo& that )const{
             return schedule != that.schedule ||
@@ -819,7 +820,7 @@ const CMDecisionTree& CMDecisionTree::create( RunContext& ctx, const scnXml::Dec
     if( node.getReport().size() ) return save_decision( new CMDTReport(node.getReport()) );
     if( node.getTreatFailure().present() ) return save_decision( new CMDTTreatFailure() );
     if( node.getTreatPKPD().size() ) return save_decision(
-        new CMDTTreatPKPD( node.getTreatPKPD() ) );
+        new CMDTTreatPKPD( ctx, node.getTreatPKPD() ) );
     if( node.getTreatSimple().size() ) return save_decision(
         new CMDTTreatSimple( ctx, node.getTreatSimple() ) );
     if( node.getDeploy().size() ) return save_decision(
@@ -855,7 +856,7 @@ const CMDecisionTree& CMDTMultiple::create( RunContext& ctx, const scnXml::DTMul
         self->children.push_back( &CMDTCohort::create( ctx, sn, isUC) );
     }
     if( node.getTreatPKPD().size() ){
-        self->children.push_back( &save_decision(new CMDTTreatPKPD(node.getTreatPKPD())) );
+        self->children.push_back( &save_decision(new CMDTTreatPKPD(ctx, node.getTreatPKPD())) );
     }
     if( node.getTreatSimple().size() ){
         self->children.push_back( &save_decision(new CMDTTreatSimple(ctx, node.getTreatSimple())) );

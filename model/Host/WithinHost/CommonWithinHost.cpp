@@ -98,7 +98,7 @@ void CommonWithinHost::clearInfections( Treatments::Stages stage ){
 
 void CommonWithinHost::treatPkPd(size_t schedule, size_t dosage, double age, double delay_d){
     double mass = massByAge.eval( age ) * hetMassMultiplier;
-    pkpdModel.prescribe( schedule, dosage, age, mass, delay_d );
+    pkpdModel.prescribe( ctx, schedule, dosage, age, mass, delay_d );
 }
 void CommonWithinHost::clearImmunity() {
     for(auto inf = infections.begin(); inf != infections.end(); ++inf) {
@@ -192,7 +192,7 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
     
     for( SimTime now = ctx.clock.ts0(), end = ctx.clock.ts0() + ctx.clock.one_TS(); now < end; now = now + sim::oneDay() ){
         // every day, medicate drugs, update each infection, then decay drugs
-        pkpdModel.medicate(rng);
+        pkpdModel.medicate(ctx, rng);
         
         double sumLogDens = 0.0;
         
@@ -283,7 +283,7 @@ struct InfGenotypeSorter {
 
 bool CommonWithinHost::summarize( Host::Human& human )const{
     pathogenesisModel->summarize( human );
-    pkpdModel.summarize( human );
+    pkpdModel.summarize( ctx, human );
     
     InfectionOrigin infectionType = get_infection_origin(infections);
     
@@ -372,7 +372,7 @@ bool CommonWithinHost::summarize( Host::Human& human )const{
 void CommonWithinHost::checkpoint (istream& stream) {
     WHFalciparum::checkpoint (stream);
     hetMassMultiplier & stream;
-    pkpdModel & stream;
+    pkpdModel.checkpoint(ctx, stream);
     for(int i = 0; i < numInfs; ++i) {
         infections.push_back (checkpointedInfection (ctx, stream));
     }
@@ -382,7 +382,7 @@ void CommonWithinHost::checkpoint (istream& stream) {
 void CommonWithinHost::checkpoint (ostream& stream) {
     WHFalciparum::checkpoint (stream);
     hetMassMultiplier & stream;
-    pkpdModel & stream;
+    pkpdModel.checkpoint(stream);
     for(auto inf = infections.begin(); inf != infections.end(); ++inf) {
         (**inf) & stream;
     }
