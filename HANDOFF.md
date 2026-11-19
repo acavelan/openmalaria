@@ -19,10 +19,11 @@ Crash-recovery file. Update EVERY green commit. Baseline p4a-green: model **19,1
 
 - **PathogenesisModel** (Mueller/Pyrogen/Predet + Submodels.{h,cpp} deleted → final class, Kind switch in getPEpisode): Δ **−64** (cum. −262). Gates: ctest 52/52, unittest 91/91, T1 tier-a 53/53 (incl. checkpoint-stop box tests → per-kind checkpoint bytes proven: Mueller writes comorb only; Pyrogen/Predet +pyrogenThres). 13 virtuals + 3 vtables gone; initMueller/initPyrogen statics on the class (xml init calls them); py_* file-statics unchanged (census init-tagged).
 
+- **ClinicalModel** (base + CM5DayCommon + DecisionTree5Day + ImmediateOutcomes + ClinicalEventScheduler → ONE final class, `enum class Kind`; behaviours became free fns clinicalUpdate5Day/treeUncomplicatedEvent/immOutUncomplicatedEvent/esClinicalUpdate): Δ **−22** (cum. −284), unittest −7. Gates: ctest 52/52, unittest 91/91 (PercentileCFRSuite probe deleted — getCommunityCFR now public), T1 tier-a 53/53. ES per-human fields merged as es* (unused by 5-day kinds, never serialized there); checkpoint dispatches per kind, bytes frozen; ctor keeps ES tSF!=1 throw. Old classes survive ONLY as static config holders (xml/healthSystem.cpp setHS API byte-identical). es* fields left uninit-cleared: ctor inits all (esPreviousDensity=NaN like old ES).
+
 ## Queue (risk order, small first)
-1–4 DONE (DecayFunction, AgeGroupInterp, Incidence, Pathogenesis)
-5. ClinicalModel rest (3-config→2-state collapse) — NEXT
-6. EmergenceRateEstimator (solver-vs-fitter tag)
+1–5 DONE (DecayFunction, AgeGroupInterp, Incidence, Pathogenesis, ClinicalModel)
+6. EmergenceRateEstimator (solver-vs-fitter tag) — NEXT; tier-b seeds 1–4 DUE at this 6th hierarchy
 7. LSTMDrug PK variants (enum + free fns)
 8. AnophelesModel/SimpleMPD (optional member + 4 hooks)
 9. Sampler (deferred: LognormalSampler is a concrete member type in ITN/IRS/GVI/PkPd/vivax — churn; not HumanInterventionComponent so still 4b scope)
@@ -36,3 +37,4 @@ Crash-recovery file. Update EVERY green commit. Baseline p4a-green: model **19,1
 - ext lifetime only after ensure_extensions; no header-inline deref of ctx.ext; gcc ctor-arg right-to-left eval was real (4a).
 - Checkpoint bytes frozen: classes serializing via &stream keep field order.
 - TwoRunsSuite = statics tripwire; rerun if file-statics move. Census refresh at end: ./util/census/statics.sh build-p4b + statics_tag.py.
+- Hierarchy collapse hits INHERITED-SCOPE name lookup: base-class statics resolved unqualified inside every member definition body (update fns AND xml/healthSystem.cpp setHealthSystem/setParameters bodies). Qualify per body (CM5DayCommon::/ClinicalModel::…) or the error only appears post-edit. Convert via scripted pass from `git show HEAD:file` (fresh anchors + asserts), never from a possibly-stale working copy.
