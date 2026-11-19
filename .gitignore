@@ -14,3 +14,8 @@ lib
 .clangd
 *.swp
 .vscode
+
+.opencode/skills/linux-perf/
+.opencode/skills/performance-patterns/
+.opencode/skills/cpp-performance/
+.opencode/skills/test-driven-development/

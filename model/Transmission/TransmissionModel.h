@@ -135,7 +135,11 @@ protected:
         , _sumAnnualKappa(0.0)
         , tsAdultEIR(0.0)
         , surveyInputEIR(0.0)
+        , surveyInputEIR_i(0.0)
+        , surveyInputEIR_l(0.0)
         , surveySimulatedEIR(0.0)
+        , surveySimulatedEIR_i(0.0)
+        , surveySimulatedEIR_l(0.0)
         , adultAge(PerHost::adultAge())
         , numTransmittingHumans(0)
     {
