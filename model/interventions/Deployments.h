@@ -34,7 +34,6 @@
 #include "Clinical/ClinicalModel.h"
 #include "Population.h"
 #include "Transmission/TransmissionModel.h"
-#include "Transmission/TransmissionModel.h"
 #include "Transmission/PerHost.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -73,6 +72,11 @@ public:
     virtual ~TimedDeployment() {}
     
     virtual void deploy (RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission) =0;
+    
+    /** Re-applied at checkpoint restore (true only for changeHS/changeEIR —
+     * they mutate model state, unlike per-host deployments). Phase-5: the
+     * declared-API replacement for dynamic_cast in loadFromCheckpoint. */
+    virtual bool replayedOnRestore() const { return false; }
     
     virtual void print_details( std::ostream& out )const =0;
     

@@ -25,7 +25,7 @@
 
 #include "core/RunContext.h"
 #include "util/DecayFunction.h"
-#include "Transmission/PerHost.h"
+#include "Transmission/VectorIntervention.h"
 namespace scnXml
 {
     class IRSDescription;
@@ -54,6 +54,8 @@ public:
     
     virtual unique_ptr<PerHostInterventionData> makeHumanPart(RunContext& ctx, LocalRng& rng) const;
     virtual unique_ptr<PerHostInterventionData> makeHumanPart( RunContext& ctx, istream& stream, ComponentId ) const;
+    
+    const IRSComponent* asIRSComponent() const override { return this; }
     
 private:
     /** Per mosquito-species parameters for extended IRS model. */

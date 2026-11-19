@@ -21,6 +21,7 @@
  */
 
 #include "Transmission/PerHost.h"
+#include "Transmission/VectorIntervention.h"
 #include "core/RunExtensions.h"
 #include "Transmission/TransmissionModel.h"
 #include "interventions/InterventionManager.h"
@@ -43,6 +44,10 @@ PerHost::PerHost () :
         relativeAvailabilityHet(numeric_limits<double>::signaling_NaN())
 {
 }
+
+PerHost::~PerHost() = default;
+PerHost::PerHost( PerHost&& ) = default;
+PerHost& PerHost::operator= ( PerHost&& ) = default;
 
 void PerHost::initialise (RunContext& ctx, LocalRng& rng, double availabilityFactor) {
     relativeAvailabilityHet = availabilityFactor;
@@ -145,7 +150,7 @@ void PerHost::checkpointIntervs( istream& stream ){
             const interventions::HumanInterventionComponent& gen_params =
                 interventions::InterventionManager::getComponent( *ctx, id );   // may throw
             const HumanVectorInterventionComponent *params =
-                dynamic_cast<const HumanVectorInterventionComponent*>( &gen_params );
+                gen_params.asVectorIntervention();   // declared seam (was dynamic_cast)
             if( params == 0 )
                 throw util::base_exception( "" );       // see catch block below
             activeComponents.push_back( params->makeHumanPart( *ctx, stream, id ) );

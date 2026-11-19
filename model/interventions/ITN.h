@@ -25,7 +25,7 @@
 
 #include "core/RunContext.h"
 #include "util/DecayFunction.h"
-#include "Transmission/PerHost.h"
+#include "Transmission/VectorIntervention.h"
 #include "util/sampler.h"
 namespace scnXml
 {
@@ -168,6 +168,8 @@ public:
     
     virtual unique_ptr<PerHostInterventionData> makeHumanPart(RunContext& ctx, LocalRng& rng) const;
     virtual unique_ptr<PerHostInterventionData> makeHumanPart( RunContext& ctx, istream& stream, ComponentId id ) const;
+    
+    const ITNComponent* asITNComponent() const override { return this; }
     
 private:
     /** Per mosquito-species parameters for extended ITN model. */
