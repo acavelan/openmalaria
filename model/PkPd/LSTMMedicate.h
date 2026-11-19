@@ -30,7 +30,6 @@
 #include "Global.h"
 #include "PkPd/LSTMModel.h"
 #include "util/errors.h"
-#include "schema/pharmacology.h"
 
 #include <vector>
 #include <map>
@@ -43,14 +42,10 @@ class UnittestUtil;
 namespace OM { namespace PkPd {
 
 struct Schedule {
-    void load( const scnXml::PKPDSchedule::MedicateSequence& seq );
-    
     vector<MedicateData> medications;
 };
 
 struct DosageTable {
-    void load( const xsd::cxx::tree::sequence<scnXml::PKPDDosageRange>& seq, bool isBodyMass );
-    
     /** Get dosage multilier from age or body mass.
      * 
      * Dosings may be given as a table using age or body mass as the key (first

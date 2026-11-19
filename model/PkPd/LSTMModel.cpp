@@ -29,20 +29,11 @@
 #include "util/checkpoint_containers.h"
 #include "util/errors.h"
 
-#include "schema/scenario.h"
-
 #include <cassert>
 
 namespace OM { namespace PkPd {
 
 // ———  static  ———
-
-void LSTMModel::init( const scnXml::Scenario& scenario ){
-    if (scenario.getPharmacology().present()) {
-        LSTMDrugType::init(scenario.getPharmacology().get().getDrugs());
-        LSTMTreatments::init(scenario.getPharmacology().get().getTreatments());
-    }
-}
 
 // ———  non-static set up / tear down functions  ———
 
