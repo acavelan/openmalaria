@@ -79,8 +79,8 @@ namespace Host {
             if( rateNow > 0.0 ){
                 for(Human& human : population){
                     // parity: e — bernoulli import draw per human-day; rate->draw->importInfection(order) frozen (plan §3e)
-                    if(human.rng.bernoulli( rateNow )){
-                        human.withinHostModel->importInfection(human.rng);
+                    if(human.rng().bernoulli( rateNow )){
+                        human.withinHostModel->importInfection(human.rng());
                         mon::recordEvent(mon::measure("nNewInfections"), human);
                         mon::recordEvent(mon::measure("nNewInfections_Imported"), human);
                     }

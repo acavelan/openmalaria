@@ -68,7 +68,7 @@ void Population::createInitialHumans()
         while (cumulativePop < targetPop) {
             SimTime dob = sim::zero() - ctx.clock.fromTS(iage);
             util::streamValidate( dob );
-            humans.push_back( Host::Human (ctx, dob) );
+            humans.push_back( Host::Human (ctx, dob, cols) );
             ++cumulativePop;
         }
     }
@@ -94,6 +94,8 @@ void Population::update()
         bool outmigrate = cumPop >= AgeStructure::targetCumPop(ctx, ctx.clock.inSteps(it->age(ctx.clock.ts1())), size);
         
         if( isDead || outmigrate ){
+            // mirror the removal into the SoA columns (same row index)
+            cols.erase_at( size_t(it - humans.begin()) );
             it = humans.erase (it);
             continue;
         }
@@ -101,11 +103,16 @@ void Population::update()
         ++it;
     } // end of per-human updates
 
+    // Erasing shifted rows 1..n left; renumber so Human::row matches position
+    // again (newborns below append at the correct index themselves).
+    for( size_t i = 0; i < humans.size(); ++i )
+        humans[i].set_row( i );
+
     // increase population size to targetPop
     recentBirths += (size - cumPop);
     while (cumPop < (int)size) {
         // humans born at end of this time step = beginning of next, hence ts1
-        humans.push_back( Host::Human (ctx, ctx.clock.ts1()) );
+        humans.push_back( Host::Human (ctx, ctx.clock.ts1(), cols) );
         ++cumPop;
     }
 }
@@ -116,7 +123,7 @@ void Population::checkpoint(istream& stream)
     recentBirths & stream;
 
     for(size_t i = 0; i < size && !stream.eof(); ++i) {
-        humans.push_back( Host::Human (ctx, sim::zero()) );
+        humans.push_back( Host::Human (ctx, sim::zero(), cols) );
         humans.back().checkpoint(stream);
     }
     if (humans.size() != size)
@@ -176,7 +183,7 @@ void ctsPatentHosts (RunContext& ctx, Population &population, ostream& stream){
     int patent = 0;
     for(Host::Human &human : population.humans) {
         auto diag = WithinHost::diagnostics::monitoringDiagnostic( ctx );
-        if( human.withinHostModel->diagnosticResult(human.rng, diag) )
+        if( human.withinHostModel->diagnosticResult(human.rng(), diag) )
             ++patent;
     }
     stream << '\t' << patent;

@@ -113,7 +113,7 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
         {
             double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
             // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-            if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
+            if(vaccineFactor == 1.0 || human.rng().bernoulli(vaccineFactor))
                 infections.push_back(new Infection (ctx, rng, genotype, InfectionOrigin::Introduced, Infection::Kind::Descriptive));
         }
         else if (opt_vaccine_genotype == false)
@@ -131,7 +131,7 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
         {
             double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
             // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-            if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
+            if(vaccineFactor == 1.0 || human.rng().bernoulli(vaccineFactor))
                 infections.push_back(new Infection (ctx, rng, genotype, InfectionOrigin::Indigenous, Infection::Kind::Descriptive));
         }
         else if (opt_vaccine_genotype == false)
@@ -255,7 +255,7 @@ bool WHInterface::summarize_descriptive( Host::Human& human )const{
         if( reportPatentInfected ){
             for(auto inf = infections.begin(); inf != infections.end(); ++inf)
             {
-                if( diagnostics::monitoringDiagnostic( ctx ).isPositive( human.rng, (*inf)->getDensity(), std::numeric_limits<double>::quiet_NaN() ) )
+                if( diagnostics::monitoringDiagnostic( ctx ).isPositive( human.rng(), (*inf)->getDensity(), std::numeric_limits<double>::quiet_NaN() ) )
                 {
                     mon::recordStat(mon::measure("totalPatentInf"), human);
                     if((*inf)->origin() == InfectionOrigin::Indigenous)
@@ -276,7 +276,7 @@ bool WHInterface::summarize_descriptive( Host::Human& human )const{
             for( auto gtype: dens_by_gtype ){
                 // we had at least one infection of this genotype
                 mon::recordStat(mon::measure("nInfectByGenotype"), human, 1, 0, gtype.first, 0);
-                if( diagnostics::monitoringDiagnostic( ctx ).isPositive(human.rng, gtype.second, std::numeric_limits<double>::quiet_NaN()) ){
+                if( diagnostics::monitoringDiagnostic( ctx ).isPositive(human.rng(), gtype.second, std::numeric_limits<double>::quiet_NaN()) ){
                     mon::recordStat(mon::measure("nPatentByGenotype"), human, 1, 0, gtype.first, 0);
                     mon::recordStat(mon::measure("logDensByGenotype"), human, log(gtype.second), 0, gtype.first, 0);
                 }
@@ -287,7 +287,7 @@ bool WHInterface::summarize_descriptive( Host::Human& human )const{
     // Some treatments (simpleTreat with steps=-1) clear infections immediately
     // (and are applied after update()), thus infections.size() may be 0 while
     // totalDensity > 0. Here we report the last calculated density.
-    if( diagnostics::monitoringDiagnostic( ctx ).isPositive(human.rng, totalDensity, std::numeric_limits<double>::quiet_NaN()) ){
+    if( diagnostics::monitoringDiagnostic( ctx ).isPositive(human.rng(), totalDensity, std::numeric_limits<double>::quiet_NaN()) ){
         mon::recordStat(mon::measure("nPatent"), human);
         if(infectionType == InfectionOrigin::Imported)
             mon::recordStat(mon::measure("nPatent_Imported"), human);

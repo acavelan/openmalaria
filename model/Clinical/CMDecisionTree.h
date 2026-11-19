@@ -121,7 +121,7 @@ struct FlatTree {
 struct DTExecCtx {
     DTExecCtx( RunContext& ctx_, Host::Human& human_, double ageYears_,
                Episode::State pgState_ ) :
-        ctx( ctx_ ), human( human_ ), rng( human_.rng ),
+        ctx( ctx_ ), human( human_ ), rng( human_.rng() ),
         ageYears( ageYears_ ), pgState( pgState_ ) {}
     RunContext& ctx;
     Host::Human& human;

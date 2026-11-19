@@ -24,6 +24,7 @@
 #define Hmod_human
 #include "Global.h"
 #include "core/RunContext.h"
+#include "humans/HostColumns.h"
 #include "Transmission/PerHost.h"
 #include "InfectionIncidenceModel.h"
 #include "interventions/HumanComponents.h"
@@ -52,10 +53,18 @@ public:
     /// construction; a pointer so Human stays move-assignable.
     RunContext* ctx;
 
+    /// This human's SoA columns (owned by Population; same lifetime as ctx).
+    HumanColumns* cols;
+    /// This human's row index in every column (kept in sync by Population;
+    /// renumbered after every structural erase — see Population::update).
+    size_t row;
+
     /** Initialise all variables of a human datatype.
     * 
-    * @param dateOfBirth date of birth (usually start of next time step) */
-    Human(RunContext& ctx, SimTime dateOfBirth);
+    * @param dateOfBirth date of birth (usually start of next time step)
+    * @param columns persistent columns receiving this human's row (the rng
+    * row is copy-seeded from the master HERE — the old member-init moment) */
+    Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns);
 
     /// Allow move construction
     Human(Human&&) = default;
@@ -116,7 +125,12 @@ public:
     * and clinical outcomes (morbidity, reporting). */
     unique_ptr<Clinical::ClinicalModel> clinicalModel;
 
-    util::LocalRng rng;
+    /** Per-host RNG: SoA column row, not a member (accessor below keeps the
+     * old `human.rng()` call syntax; 4×u64 Xoshiro state per row). */
+    inline util::LocalRng& rng();
+
+    /** Set the column row index (Population-only; see Population::update). */
+    void set_row( size_t r );
 
     /** Vaccines */
     interventions::PerHumanVaccine vaccine;
@@ -158,6 +172,10 @@ void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& tran
 
 inline SimTime Human::age( SimTime time ) const { 
     return time - dateOfBirth; 
+}
+
+inline util::LocalRng& Human::rng() {
+    return cols->rng[row];
 }
 
 inline bool Human::isInSubPop( interventions::ComponentId id ) const {

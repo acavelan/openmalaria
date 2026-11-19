@@ -77,7 +77,7 @@ void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human, double 
                 const double pSequelae = ClinicalModel::pSequelaeInpatient.eval( ageYears );
                 mon::recordStat(mon::measure("expectedSequelae"), human, pSequelae);
 		// parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-		if( human.rng.uniform_01() < pSequelae ){
+		if( human.rng().uniform_01() < pSequelae ){
 		    cm.esPgState = Episode::State (cm.esPgState | Episode::SEQUELAE);
                 }else{
 		    cm.esPgState = Episode::State (cm.esPgState | Episode::RECOVERY);
@@ -122,7 +122,7 @@ void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human, double 
                     indirectMortality = pg.indirectMortality;
                     
                     // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-                    double uVariate = human.rng.uniform_01();
+                    double uVariate = human.rng().uniform_01();
                     size_t i = 0;       // units: days
                     for(; i < ClinicalEventScheduler::cumDailyPrImmUCTS.size(); ++i){
                         if( uVariate < ClinicalEventScheduler::cumDailyPrImmUCTS[i] ){
@@ -189,7 +189,7 @@ void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human, double 
             if( inHospital )
                 mon::recordStat(mon::measure("expectedHospitalDeaths"), human, pDeath);
 	    // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-	    if (human.rng.uniform_01() < pDeath) {
+	    if (human.rng().uniform_01() < pDeath) {
 		cm.esPgState = Episode::State (cm.esPgState | Episode::DIRECT_DEATH | Episode::EVENT_FIRST_DAY);
 		// Human is killed at end of time at risk
 		//cm.esTimeOfRecovery += ClinicalEventScheduler::extraDaysAtRisk;	(no point updating; will be set later: ATORWD)
@@ -208,7 +208,7 @@ void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human, double 
                         ClinicalEventScheduler::MF_need_antibiotic.eval( ageYears ) :
                         ClinicalEventScheduler::NMF_need_antibiotic.eval( ageYears );
                 // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-                bool needTreat = human.rng.bernoulli(pNeedTreat);
+                bool needTreat = human.rng().bernoulli(pNeedTreat);
                 
                 // Calculate chance of antibiotic administration:
                 double pTreatment = 0.0;
@@ -238,7 +238,7 @@ void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human, double 
                 double treatmentEffectMult = 1.0;
                 
                 // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-                if( human.rng.uniform_01() < pTreatment ){
+                if( human.rng().uniform_01() < pTreatment ){
                     /*FIXME: impossible due to above; NMF output removed
                     Survey::current().addInt( Report::MI_NMF_TREATMENTS, human, 1 );
                     treatmentEffectMult = ClinicalEventScheduler::oneMinusEfficacyAb;
@@ -249,7 +249,7 @@ void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human, double 
                 // chance of death:
                 if( needTreat ){
                     double pDeath = ClinicalEventScheduler::severeNmfMortality.eval( ageYears ) * treatmentEffectMult;
-                    if( human.rng.uniform_01() < pDeath ){
+                    if( human.rng().uniform_01() < pDeath ){
                         cm.esPgState = Episode::State (cm.esPgState | Episode::DIRECT_DEATH);
                     }
                 }
@@ -279,7 +279,7 @@ void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human, double 
                 if( cm.esPgState & Episode::EVENT_IN_HOSPITAL )
                     mon::recordStat(mon::measure("expectedHospitalDeaths"), human, pDeath);
 		// parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-		if (human.rng.uniform_01() < pDeath) {
+		if (human.rng().uniform_01() < pDeath) {
 		    cm.esPgState = Episode::State (cm.esPgState | Episode::DIRECT_DEATH);
 		    // Human is killed at end of time at risk
 		    cm.esTimeOfRecovery = cm.esTimeOfRecovery + ClinicalEventScheduler::extraDaysAtRisk;	// may be re-set later (see ATORWD)

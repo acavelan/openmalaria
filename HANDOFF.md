@@ -19,9 +19,14 @@ Crash-recovery file. Update EVERY green commit. Baseline p5-green: model **18,65
    + clamp table). NOTE goldens are FULL-SUITE-CONTEXT fixed (registration order
    frozen; --abort-on-fail) — ctor consumes exactly 1 draw, below-cap import +1.
    UnittestUtil gained setNumInfs/getNumInfs/resetModelOptions (friend).
-2. [ ] 6.2 columns — DECIDED ARCHITECTURE (implementing next):
-   `model/humans/HostColumns.h`: struct with ONE std::vector per pinned column;
-   owned by `Population` as member `cols`; passed by reference; zero globals.
+2. [ ] 6.2 columns — `model/humans/HostColumns.h` struct, ONE vector per
+   pinned column; owned by `Population` as member `cols`; zero globals.
+   [x] cluster a (rng): `HumanColumns{ vector<LocalRng> rng; erase_at(r) }`;
+   Human gained `cols`/`row` + accessor `rng()` (old `human.rng` syntax kept
+   as `human.rng()`); ctor appends its row and copy-seeds the rng IN THE CTOR
+   BODY at the old member-init slot (census fact 1 — T1-proven). Population
+   mirrors erase (cols.erase_at) + renumber pass after the erase loop;
+   push_back rows are correct by construction. UnittestUtil gained testCols().
    `Human` gains `HumanColumns* cols; size_t row;` (ctor appends its row EXACTLY
    where it constructs today — rng column appends `LocalRng(ctx.master_RNG)`
    IN PLACE of the old member init: same ctor point = same master consumption,

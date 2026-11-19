@@ -54,7 +54,7 @@ void treeUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx, Human& human, E
     cm.latestReport.update (ctx, human, Episode::State( pgState ) );
 
     // parity: d — clinical decision fraction draw order (plan §3d)
-    double x = human.rng.uniform_01();
+    double x = human.rng().uniform_01();
     if( x < CM5DayCommon::accessUCAny[regimen] * cm.m_treatmentSeekingFactor ){
         // Run tree (which may deploy treatment)
         DTExecCtx ec( ctx, human, sim::inYears( human.age( ctx.clock.ts0() ) ),

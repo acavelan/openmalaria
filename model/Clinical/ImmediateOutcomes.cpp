@@ -57,7 +57,7 @@ void immOutUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx,
     cm.latestReport.update (ctx, human, Episode::State( pgState ) );
 
     // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-    double x = human.rng.uniform_01();
+    double x = human.rng().uniform_01();
     if( x < CM5DayCommon::accessUCAny[regimen] * cm.m_treatmentSeekingFactor ){
         // UC1: official care OR self treatment
         // UC2: official care only
@@ -65,7 +65,7 @@ void immOutUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx,
         if( ImmediateOutcomes::useDiagnosticUC ){
             mon::recordEvent(mon::measure("nTreatDiagnostics"), human);
             auto diag = WithinHost::diagnostics::monitoringDiagnostic( ctx );
-            if( !human.withinHostModel->diagnosticResult(human.rng, diag) )
+            if( !human.withinHostModel->diagnosticResult(human.rng(), diag) )
                 return; // negative outcome: no treatment
         }
         
@@ -75,7 +75,7 @@ void immOutUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx,
         double p = ( x < CM5DayCommon::accessUCSelfTreat[regimen] * cm.m_treatmentSeekingFactor ) ?
             ImmediateOutcomes::cureRateUCSelfTreat[regimen] : ImmediateOutcomes::cureRateUCOfficial[regimen];
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-        if( human.rng.bernoulli(p) ){
+        if( human.rng().bernoulli(p) ){
             // Could report Episode::RECOVERY to cm.latestReport,
             // but we don't report out-of-hospital recoveries anyway.
             human.withinHostModel->treatment( human, ImmediateOutcomes::treatmentUC[regimen] );

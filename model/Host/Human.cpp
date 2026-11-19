@@ -114,23 +114,32 @@ HumanHet hetSample(util::LocalRng& rng)
     return het;
 }
 
-Human::Human(RunContext& ctx, SimTime dateOfBirth) :
+Human::Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns) :
     ctx(&ctx),
+    cols(&columns),
+    row( columns.rng.size() ),
     infIncidence(InfectionIncidenceModel::createModel(ctx)),
-    // parity: order — each Human copies+seeds its LocalRng from the master at construction: human-creation order == master consumption order; never reorder Human ctor
-    rng(ctx.master_RNG),
     dateOfBirth(dateOfBirth)
 {
+    // parity: order — each Human copies+seeds its LocalRng from the master at
+    // construction (now as its rng column row, same ctor point): human-creation
+    // order == master consumption order; never reorder Human ctor.
+    columns.rng.emplace_back( ctx.master_RNG );
+
     // Initial humans are created at time 0 and may have dateOfBirth in past. Otherwise dateOfBirth must be now.
     assert( dateOfBirth == ctx.clock.nowOrTs1() || (ctx.clock.now() == sim::zero() && dateOfBirth < ctx.clock.now()) );
 
-    HumanHet het = hetSample(rng);
-    withinHostModel = WithinHost::WHInterface::createWithinHostModel( ctx, rng, het.comorbidityFactor );
-    double iiFactor = infIncidence->getAvailabilityFactor(rng, 1.0);
+    HumanHet het = hetSample(rng());
+    withinHostModel = WithinHost::WHInterface::createWithinHostModel( ctx, rng(), het.comorbidityFactor );
+    double iiFactor = infIncidence->getAvailabilityFactor(rng(), 1.0);
     perHostTransmission.ctx = &ctx;
     vaccine.ctx = &ctx;
-    perHostTransmission.initialise (ctx, rng, het.availabilityFactor * iiFactor);
+    perHostTransmission.initialise (ctx, rng(), het.availabilityFactor * iiFactor);
     clinicalModel = Clinical::ClinicalModel::createClinicalModel(ctx, het.treatmentSeekingFactor);
+}
+
+void Human::set_row( size_t r ) {
+    row = r;
 }
 
 void Human::addToCohort(ComponentId id, SimTime duration )
@@ -191,7 +200,7 @@ void Human::checkpoint(istream &stream)
     infIncidence & stream;
     withinHostModel & stream;
     clinicalModel & stream;
-    rng.checkpoint(stream);
+    rng().checkpoint(stream);
     dateOfBirth & stream;
     vaccine.checkpoint(*ctx, stream);
     monitoringAgeGroup & stream;
@@ -206,7 +215,7 @@ void Human::checkpoint(ostream &stream)
     infIncidence & stream;
     withinHostModel & stream;
     clinicalModel & stream;
-    rng.checkpoint(stream);
+    rng().checkpoint(stream);
     dateOfBirth & stream;
     vaccine.checkpoint(*ctx, stream);
     monitoringAgeGroup & stream;
@@ -278,7 +287,7 @@ void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& tran
     int nNewInfs_i = human.infIncidence->numNewInfections( human, expectedNNewInfs_i);
 
     // age1 used when medicating drugs (small effect) and in immunity model (which was parameterised for it)
-    human.withinHostModel->update(human, human.rng, nNewInfs_i, nNewInfs_l, EIR_per_genotype_i, EIR_per_genotype_l, age1);
+    human.withinHostModel->update(human, human.rng(), nNewInfs_i, nNewInfs_l, EIR_per_genotype_i, EIR_per_genotype_l, age1);
     human.infIncidence->reportNumNewInfections(human, nNewInfs_i, nNewInfs_l);
 
     // age1 used to get case fatality and sequelae probabilities, determine pathogenesis

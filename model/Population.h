@@ -64,6 +64,9 @@ public:
     /** The simulated human hosts */
 RunContext& ctx;
 
+    /** Persistent SoA columns; row i == humans[i] (model/humans/HostColumns.h) */
+    HumanColumns cols;
+
     vector<Host::Human> humans;
 
 private:

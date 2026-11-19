@@ -440,9 +440,9 @@ void WHInterface::optionalPqTreatment_vivax( Host::Human& human ){
     // gametocytes, because these are always cleared by blood-stage drugs with
     // Vivax, and PQ is not given without BS drugs. NOTE: this ignores drug failure.
     // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-    if (pReceivePQ > 0.0 && (ignoreNoPQ || !noPQ) && human.rng.bernoulli(pReceivePQ)){
+    if (pReceivePQ > 0.0 && (ignoreNoPQ || !noPQ) && human.rng().bernoulli(pReceivePQ)){
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-        if( human.rng.bernoulli(effectivenessPQ) ){
+        if( human.rng().bernoulli(effectivenessPQ) ){
             for( auto it = vivaxInfections.begin(); it != vivaxInfections.end(); ++it ){
                 it->treatmentLS();
             }
@@ -463,7 +463,7 @@ bool WHInterface::treatSimple_vivax( Host::Human& human, SimTime timeLiver, SimT
             "(liverStageDrug) option; it is suggested to use the former over the latter");
         }
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-        if( (ignoreNoPQ || !noPQ) && (effectivenessPQ == 1.0 || human.rng.bernoulli(effectivenessPQ)) ){
+        if( (ignoreNoPQ || !noPQ) && (effectivenessPQ == 1.0 || human.rng().bernoulli(effectivenessPQ)) ){
             if( timeLiver >= sim::zero() ){
                 treatExpiryLiverVivax = max( int(treatExpiryLiverVivax), ctx.clock.nowOrTs1() + timeLiver );
             }else{
