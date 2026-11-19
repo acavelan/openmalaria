@@ -149,10 +149,35 @@ void summarize(RunContext& ctx, Human &human, bool surveyOnlyNewEp);
 /** Per-sweep scratch reused across humans within a time step (owned by the
  * sweep caller — the run loop). Holds the EIR-per-genotype out-vectors that
  * getEIR overwrites via assign() each host, so the buffer allocates once per
- * run instead of once per host per tick. Folded into HostView at phase 6.4. */
+ * run instead of once per host per tick, plus the scalars the §9 host-update
+ * stages hand to each other (all written before read within one host's pass). */
 struct HostScratch {
     std::vector<double> EIR_per_genotype_i, EIR_per_genotype_l;
+    SimTime age0;
+    double age1, eir_i, eir_l, eir;
+    int nNewInfs_i, nNewInfs_l;
 };
+
+/** Per-host view for the 7 §9 update stages (pinned phases-6-7 shape).
+ * Phase-6 form carries Human& because the submodels still hang off it;
+ * phase 7 dissolves them into columns and the view shrinks toward
+ * {cols,row,rng,scratch,iv,mon}. */
+struct HostView {
+    RunContext& ctx;
+    Human& human;
+    Transmission::TransmissionModel& transmission;
+    HostScratch& scratch;
+};
+
+/// The 7 §9 stages, in call order; Host::update is the driver. Bodies moved
+/// verbatim from the old Host::update (draw/FP order sacred).
+bool host_is_dead(HostView& v);
+void host_update_mon_cohorts(HostView& v);
+void host_calculate_eir(HostView& v);
+void host_sample_new_infections(HostView& v);
+void host_within_host_update(HostView& v);
+void host_clinical_update(HostView& v);
+void host_update_infant_deaths(HostView& v);
 
 void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& transmission, HostScratch& scratch);
 

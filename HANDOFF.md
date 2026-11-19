@@ -89,7 +89,17 @@ Crash-recovery file. Update EVERY green commit. Baseline p5-green: model **18,65
    are per-host reallocations inside clean sweeps (run.cpp loop, updateKappa loop)
    → hoist into a scratch struct owned by the sweep caller. age_years/availability
    are recomputed per use, no per-call alloc — leave unless bench shows cost.
-4. [ ] 6.4 HostView + 7 free fns (§9 order: host_is_dead, host_update_mon_cohorts,
+4. [x] 6.4 HostView + 7 free fns: HostView{ctx,human,transmission,scratch}
+   in Human.h (pinned §9 {cols,row,rng,scratch,iv,mon} shrinks in phase 7 as
+   submodels dissolve; cols/row/rng reachable via human). HostScratch gained
+   age0/age1/eir_i/eir_l/eir/nNewInfs_i/l (all written-before-read per host).
+   7 stages host_is_dead → host_update_mon_cohorts → host_calculate_eir →
+   host_sample_new_infections → host_within_host_update → host_clinical_update
+   → host_update_infant_deaths, bodies VERBATIM from old Host::update, driver
+   Host::update assembles the view + age0 and early-returns on dead (order
+   identical). hetSample §9 draw contract verified (3 leading ifs + one
+   else-if chain draw, max 4) + parity annotation added.
+   OLD text (kept for archaeology): §9 order: host_is_dead, host_update_mon_cohorts,
    host_calculate_eir, host_sample_new_infections, host_within_host_update,
    host_clinical_update, host_update_infant_deaths) — bodies MOVED verbatim from
    Host::update (Human.cpp), // parity comments travel. HostView{cols ref, row,
@@ -128,6 +138,11 @@ Crash-recovery file. Update EVERY green commit. Baseline p5-green: model **18,65
 - Untracked PROMPT.md/email = user files, leave.
 
 ## Gates log
+- (6.4, this commit) HostView + 7 §9 free functions (bodies verbatim, driver
+  Host::update order-identical); het_sample contract checked+annotated.
+  build clean; unittest 94/94; ctest 52/52; T1 a 53/53 + b seeds1-4 4/4.
+  bench 12.58s mad .020 (noise band of 6.3; decomposition is structure for
+  phase 7, not a lever — recovery came from 6.2c hoists + 6.3 scratch).
 - (6.3, this commit) HostScratch (run-loop-owned EIR vectors) + updateKappa
   probTransGenotype hoist (assign-pattern reuse, mirrors vectorUpdate).
   build clean; unittest 94/94; ctest 52/52; T1 a 53/53 + b seeds1-4 4/4.
