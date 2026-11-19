@@ -38,3 +38,9 @@ Crash-recovery file. Update EVERY green commit. Baseline p4a-green: model **19,1
 - Checkpoint bytes frozen: classes serializing via &stream keep field order.
 - TwoRunsSuite = statics tripwire; rerun if file-statics move. Census refresh at end: ./util/census/statics.sh build-p4b + statics_tag.py.
 - Hierarchy collapse hits INHERITED-SCOPE name lookup: base-class statics resolved unqualified inside every member definition body (update fns AND xml/healthSystem.cpp setHealthSystem/setParameters bodies). Qualify per body (CM5DayCommon::/ClinicalModel::…) or the error only appears post-edit. Convert via scripted pass from `git show HEAD:file` (fresh anchors + asserts), never from a possibly-stale working copy.
+
+## CRASH-CHECKPOINT (2026-11-19, quota)
+- HEAD: `397ffc88` ClinicalModel hierarchy green + HANDOFF committed. All gates green at this commit (ctest 52/52, unittest 91/91, T1 tier-a 53/53). Cum. model LOC −284.
+- NEXT: hierarchy 6 = EmergenceRateEstimator (model/Transmission/Anopheles/EmergenceRateEstimator.h, 2 subclasses → tag+switch; census note: ATSB secant path phase 8/9). TIER-B seeds 1–4 DUE right after its commit (6th hierarchy). Then LSTMDrug, AnophelesModel/SimpleMPD, Sampler, TransmissionModel, WHInterface, immunity. FINAL gate at end (see Gate commands section).
+- Uncommitted: nothing in model tree (clinical set all in 397ffc88). Untracked PROMPT.md/email = user files, leave.
+- Follow-up deliberately deferred (not blocking): move setHS-overwritten clinical statics (treeUCOfficial, escm_*, accessUCAny…) to ctx.ext — needs TwoRunsSuite rerun; optional.
