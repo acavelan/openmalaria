@@ -78,7 +78,13 @@ Crash-recovery file. Update EVERY green commit. Baseline p5-green: model **18,65
    Each cluster: DELETE old member, fix call sites (compiler = checker), tier-a,
    tier-b 1-4, HANDOFF, commit. Intervention-effect columns stay in PerHost
    (phase-7 landing zone — do NOT touch polymorphism).
-3. [ ] 6.3 scratch (consumer-owned, per-sweep): EIR_per_genotype_i/l stack vectors
+3. [x] 6.3 scratch (consumer-owned, per-sweep): HostScratch{eir_i,eir_l} in
+   Human.h, owned by the run.cpp host loop, threaded into Host::update
+   (getEIR assign()-overwrites = reuse byte-safe; the early-return path never
+   reads them). updateKappa: probTransGenotype_i/l hoisted to pre-loop locals
+   + assign(N,0.0) per host (same bytes as old vector(N), mirrors the existing
+   vectorUpdate scratch pattern). age_years/availability left (no per-call alloc).
+   OLD text: EIR_per_genotype_i/l stack vectors
    in Host::update loop + probTransGenotype_i/l in TransmissionModel::updateKappa
    are per-host reallocations inside clean sweeps (run.cpp loop, updateKappa loop)
    → hoist into a scratch struct owned by the sweep caller. age_years/availability
@@ -122,6 +128,10 @@ Crash-recovery file. Update EVERY green commit. Baseline p5-green: model **18,65
 - Untracked PROMPT.md/email = user files, leave.
 
 ## Gates log
+- (6.3, this commit) HostScratch (run-loop-owned EIR vectors) + updateKappa
+  probTransGenotype hoist (assign-pattern reuse, mirrors vectorUpdate).
+  build clean; unittest 94/94; ctest 52/52; T1 a 53/53 + b seeds1-4 4/4.
+  bench 12.55s mad .010 (+0.3% vs p5).
 - (6.2e, this commit) transmission columns (anoph_ento_raw/avail,
   anoph_prob_biting/resting nested, rel_avail_het signaling_NaN default,
   outside_trans u8); PerHost members DELETED, bind_columns + const-ref
