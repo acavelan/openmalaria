@@ -35,7 +35,6 @@
 #include "util/random.h"
 #include "util/ModelOptions.h"
 #include "util/StreamValidator.h"
-#include <schema/scenario.h>
 
 #include <cmath>
 

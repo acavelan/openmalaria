@@ -33,7 +33,6 @@
 #include "util/UnitParse.h"
 #include "util/CommandLine.h"
 #include "util/sampler.h"
-#include <schema/scenario.h>
 #include <algorithm>
 #include <limits>
 #include <cmath>
