@@ -21,6 +21,7 @@
  */
 
 #include "interventions/InterventionManager.h"
+#include "xml/entomology.h"
 #include "Population.h"
 #include "util/CommandLine.h"
 #include "util/UnitParse.h"
@@ -370,7 +371,7 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
                 const scnXml::VectorIntervention &elt = *it;
                 if (elt.getTimed().present())
                 {
-                    vectorModel->initVectorInterv(elt.getDescription().getAnopheles(), instance, elt.getName());
+                    initVectorInterv(*vectorModel, elt.getDescription().getAnopheles(), instance, elt.getName());
 
                     const scnXml::TimedBaseList::DeploySequence &seq = elt.getTimed().get().getDeploy();
                     for (auto it = seq.begin(); it != seq.end(); ++it)
@@ -448,7 +449,7 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
             size_t instance = 0;
             for (const scnXml::VectorTrap &trap : intervElt.getVectorTrap().get().getIntervention())
             {
-                vectorModel->initVectorTrap(trap.getDescription(), instance, trap.getName());
+                initVectorTrap(*vectorModel, trap.getDescription(), instance, trap.getName());
                 if (trap.getTimed().present())
                 {
                     for (const scnXml::Deploy1 &deploy : trap.getTimed().get().getDeploy())

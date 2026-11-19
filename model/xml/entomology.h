@@ -1,0 +1,45 @@
+/* This file is part of OpenMalaria.
+ * 
+ * Copyright (C) 2005-2026 Swiss Tropical and Public Health Institute
+ * Copyright (C) 2005-2015 Liverpool School Of Tropical Medicine
+ * Copyright (C) 2020-2026 University of Basel
+ * Copyright (C) 2025-2026 The Kids Research Institute Australia
+ *
+ * OpenMalaria is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or (at
+ * your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ */
+
+// Declarations for the entomology conversion functions defined in
+// model/xml/entomology.cpp (moved from VectorModel). Include from
+// conversion-layer code only (schema types are required here).
+
+#ifndef Hmod_xml_entomology
+#define Hmod_xml_entomology
+
+#include "Global.h"
+#include "schema/interventions.h"
+
+#include <string>
+
+namespace OM {
+namespace Transmission {
+    class VectorModel;
+
+    /// Loop over per-species vector population interventions, deploying to
+    /// the species indicated by each element's mosquito attribute.
+    void initVectorInterv(VectorModel &vm, const scnXml::Description::AnophelesSequence &list, size_t instance, const std::string &name);
+    void initVectorTrap(VectorModel &vm, const scnXml::VectorTrap::DescriptionSequence list, size_t instance, const scnXml::VectorTrap::NameOptional name_opt);
+}
+}
+#endif
