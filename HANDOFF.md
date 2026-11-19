@@ -22,9 +22,9 @@ Crash-recovery file. Update EVERY green commit. Baseline p4a-green: model **19,1
 - **ClinicalModel** (base + CM5DayCommon + DecisionTree5Day + ImmediateOutcomes + ClinicalEventScheduler → ONE final class, `enum class Kind`; behaviours became free fns clinicalUpdate5Day/treeUncomplicatedEvent/immOutUncomplicatedEvent/esClinicalUpdate): Δ **−22** (cum. −284), unittest −7. Gates: ctest 52/52, unittest 91/91 (PercentileCFRSuite probe deleted — getCommunityCFR now public), T1 tier-a 53/53. ES per-human fields merged as es* (unused by 5-day kinds, never serialized there); checkpoint dispatches per kind, bytes frozen; ctor keeps ES tSF!=1 throw. Old classes survive ONLY as static config holders (xml/healthSystem.cpp setHS API byte-identical). es* fields left uninit-cleared: ctor inits all (esPreviousDensity=NaN like old ES).
 
 ## Queue (risk order, small first)
-1–5 DONE (DecayFunction, AgeGroupInterp, Incidence, Pathogenesis, ClinicalModel)
-6. EmergenceRateEstimator (solver-vs-fitter tag) — NEXT; tier-b seeds 1–4 DUE at this 6th hierarchy
-7. LSTMDrug PK variants (enum + free fns)
+1–6 DONE (DecayFunction, AgeGroupInterp, Incidence, Pathogenesis, ClinicalModel, EmergenceRateEstimator)
+6. EmergenceRateEstimator: Δ **−1** LOC (2 virtuals + 2 vtables gone; header-only final class, Kind {AdaptiveFitter, Solver}, solver body private member; ctor keeps fitter shiftAngle derivation; entomology.cpp option→Kind). Gates: 52/52, 91/91, tier-a 53/53 + **tier-b seeds 1–4 4/4** (6-hierarchy cadence ✓ — next tier-b due after hierarchy 9).
+7. LSTMDrug PK variants (enum + free fns) — NEXT
 8. AnophelesModel/SimpleMPD (optional member + 4 hooks)
 9. Sampler (deferred: LognormalSampler is a concrete member type in ITN/IRS/GVI/PkPd/vivax — churn; not HumanInterventionComponent so still 4b scope)
 10. TransmissionModel (PerHost stays for phase 5)
