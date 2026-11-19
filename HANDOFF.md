@@ -13,10 +13,11 @@ Crash-recovery file. Update EVERY green commit. Baseline p4a-green: model **19,1
 - **DecayFunction** (9 subclasses + factory in xml/util.cpp → 1 enum-tagged value type): Δ **−101** model LOC. Gates: ctest 52/52, unittest 91/91, T1 tier-a 53/53. 4 virtuals + 9 vtables gone; factory keeps error order verbatim (Emax child built BETWEEN present-checks and range-checks — preserved); RTL arg-order of old `max(f1->sAOD, f2->sAOD)` mirrored explicitly (f2 draws first) — T1-invisible in corpus (no operator/emax decays) but pinned. Checkpoint bytes: bool+double unchanged. No suite changes (API kept: makeObject/hetSample/eval/sampleAgeOfDecay/checkpointSample).
 
 
+- **AgeGroupInterpolation** (base + PiecewiseConstant/InterpolationPoints/PiecewiseLinear/Dummy → final `AgeGroupInterpolator` {Kind, map}): Δ **−76** (cum. −177). Gates: ctest 52/52, unittest 91/91, T1 tier-a 53/53. 13 virtuals + 5 vtables gone; hot `eval` now inlined switch (was virtual); std::map<double,double> KEPT (numeric key order load-bearing); build code verbatim in `set()` (error texts differ between kinds — preserved); **AgeGroupDummy::singleton static KILLED** (phase-3 "legal survivor" #2 — census statics refresh at end covers it).
+
 ## Queue (risk order, small first)
-1. ~~DecayFunction~~ DONE (see above)
-2. AgeGroupInterpolation (4 classes; subclasses in xml/util.cpp too) — NEXT
-3. InfectionIncidenceModel (4→1 merged config — §5 canonical)
+1. ~~DecayFunction~~ DONE · 2. ~~AgeGroupInterpolation~~ DONE
+3. InfectionIncidenceModel (4→1 merged config — §5 canonical) — NEXT
 4. Sampler (gamma/lognormal enum)
 5. EmergenceRateEstimator (solver-vs-fitter tag)
 6. PathogenesisModel + Submodels

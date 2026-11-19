@@ -31,9 +31,7 @@
 
 namespace OM { namespace util {
 
-// ———  AgeGroupInterpolation derivatives  ———
-    
-    void AgeGroupInterpolation::outputSamples( const SimClock& clock, const string name ){
+    void AgeGroupInterpolator::outputSamples( const SimClock& clock, const string name ){
         if( !util::CommandLine::option(util::CommandLine::SAMPLE_INTERPOLATIONS) ){
             return;
         }
@@ -44,40 +42,29 @@ namespace OM { namespace util {
             fstream << age << "," << this->eval( age ) << endl;
         }
     }
-    
-    /** Dummy object, for initialization. Potentially makes code safer.
-     ********************************************/
-    class AgeGroupDummy : public AgeGroupInterpolation
-    {
-    public:
-        static AgeGroupDummy singleton;
-        
-        virtual double eval( double ageYears ) const {
-            throw TRACED_EXCEPTION_DEFAULT( "AgeGroupDummy" );
-        }
-        virtual void scale( double factor ) {
-            throw TRACED_EXCEPTION_DEFAULT( "AgeGroupDummy" );
-        }
-        virtual double firstGlobalMaximum() {
-            throw TRACED_EXCEPTION_DEFAULT( "AgeGroupDummy" );
-        }
-    };
-    AgeGroupDummy AgeGroupDummy::singleton;
-    
-    
-    // -----  AgeGroupInterpolator  -----
-    
-    AgeGroupInterpolator::AgeGroupInterpolator() :
-        obj(&AgeGroupDummy::singleton) {}
-    
-    void AgeGroupInterpolator::reset(){
-        assert( obj != nullptr );  // should not do that
-        if( obj != &AgeGroupDummy::singleton ){
-            delete obj;
-            obj = &AgeGroupDummy::singleton;
-        }
+
+    // parity: old AgeGroupDummy methods (this file) — unset interpolator is a bug.
+    [[noreturn]] void AgeGroupInterpolator::dummyThrow() const {
+        throw TRACED_EXCEPTION_DEFAULT( "AgeGroupDummy" );
     }
-    bool AgeGroupInterpolator::isSet()    {
-        return obj != &AgeGroupDummy::singleton;
+
+    // parity: identical loop in both old subclasses (xml/util.cpp:538/:601)
+    void AgeGroupInterpolator::scale( double factor ){
+        if( kind == Kind::Dummy ) dummyThrow();
+        for( auto& kv : data ) kv.second *= factor;
+    }
+
+    // parity: identical scan in both old subclasses (xml/util.cpp:544/:647);
+    // first-wins on ties, min() start value kept (not lowest()).
+    double AgeGroupInterpolator::firstGlobalMaximum() const {
+        if( kind == Kind::Dummy ) dummyThrow();
+        double age = 0.0, max = numeric_limits<double>::min();
+        for( const auto& kv : data ){
+            if( kv.second > max ){
+                max = kv.second;
+                age = kv.first;
+            }
+        }
+        return age;
     }
 } }
