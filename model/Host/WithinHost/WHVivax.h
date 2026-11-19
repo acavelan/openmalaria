@@ -25,6 +25,9 @@
 
 #include "Global.h"
 #include "Host/WithinHost/WHInterface.h"
+#include "util/errors.h"
+#include "util/sampler.h"
+#include <limits>
 
 #include <list>
 #include <memory>
@@ -43,6 +46,37 @@ namespace Pathogenesis {
 }
 
 class WHVivax;
+
+struct HypnozoiteReleaseDistribution {
+    HypnozoiteReleaseDistribution(std::unique_ptr<util::LognormalSampler> sampler, double latentRelapse) :
+        sampler(std::move(sampler)),
+        latentRelapse(latentRelapse)
+        {}
+    
+    /// Sample the time until next release
+    SimTime sampleReleaseDelay(LocalRng& rng) const {
+        double liverStageMaximumDays = 16.0*30.0; // maximum of about 16 months in liver stage 
+        double delay = numeric_limits<double>::quiet_NaN();       // in days
+        int count = 0;
+        int maxcount = 1e3;
+        
+        do{
+            delay = sampler->sample(rng);
+            count += 1;
+            
+            if( count >= maxcount ){
+                throw util::xml_scenario_error( "<vivax><hypnozoiteRelease>  [random delay calculation causes probably an indefinite loop]:\n The hypnozoite release distribution seems off, sigma of secondRelease could be too high. We except the hypnozoite to reside a maximum of 16 months in the liver stage. Sigma choose well, dear padawan." );
+            }
+        } while( delay > liverStageMaximumDays || delay < 0.0  );
+        
+        assert( delay >= 0 && delay < liverStageMaximumDays );
+        return sim::roundToTSFromDays( delay + latentRelapse );
+    }
+    
+private:
+    std::unique_ptr<util::LognormalSampler> sampler;
+    double latentRelapse;   // days
+};
 /**
  * A brood is the set of hypnozoites resulting from an innoculation, plus an
  * associated blood stage.

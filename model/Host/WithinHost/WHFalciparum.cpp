@@ -38,7 +38,6 @@
 #include "util/StreamValidator.h"
 #include "util/checkpoint_containers.h"
 #include "util/UnitParse.h"
-#include "schema/scenario.h"
 
 #include <cmath>
 #include <gsl/gsl_cdf.h>
@@ -52,31 +51,31 @@ using namespace OM::util;
 // -----  private model parameters  -----
 
 //Standard dev innate immunity for densities
-static double sigma_i;
+double sigma_i;
 
 // contribution of parasite densities to acquired immunity in the presence of fever
-static double immPenalty_22;
+double immPenalty_22;
 
 // Remaining immunity against asexual parasites(after time step, each of 2 components y and h)
 // This variable decays the effectors m_cumulative_h and m_cumulative_Y in a way that their
 // effects on densities (1-Dh and 1-Dy) decay exponentially.
-static double asexImmRemain;
+double asexImmRemain;
 
 // Remaining immunity against asexual parasites(after each time step, each of 2 components y and h)
 // This variable decays the effectors m_cumulative_h and m_cumulative_Y exponentially.
-static double immEffectorRemain;
+double immEffectorRemain;
 
 /// Critical value for immunity trigger (cumulative densities)
-static double invCumulativeYstar;
+double invCumulativeYstar;
 /// Critical value for immunity trigger (cumulative inoculations)
-static double invCumulativeHstar;
+double invCumulativeHstar;
 
 /// Maternal protection at birth
-static double alpha_m;
+double alpha_m;
 
 /// More or less (up to 0.693) inverse quantity of alphaMStar (AJTM p. 9 eq. 12),
 /// decay rate of maternal protection in years^(-1).
-static double decayM;
+double decayM;
 
 SimTime Infection::s_latentP = sim::never();
 int WHFalciparum::y_lag_len = 0;
@@ -85,40 +84,6 @@ int WHFalciparum::y_lag_len = 0;
 
 // -----  static functions  -----
 
-void WHFalciparum::init( const OM::Parameters& parameters, const scnXml::Model& model ) {
-    sigma_i=sqrt(parameters[Parameter::SIGMA_I_SQ]);
-    immPenalty_22=1-exp(parameters[Parameter::IMMUNITY_PENALTY]);
-    immEffectorRemain=exp(-parameters[Parameter::IMMUNE_EFFECTOR_DECAY]);
-    asexImmRemain=exp(-parameters[Parameter::ASEXUAL_IMMUNITY_DECAY]);
-    
-    // calculate inverses here, so we can use multiplication later (faster):
-    invCumulativeYstar = 1.0 / parameters[Parameter::CUMULATIVE_Y_STAR];
-    invCumulativeHstar = 1.0 / parameters[Parameter::CUMULATIVE_H_STAR];
-    alpha_m = 1.0 - exp(-parameters[Parameter::NEG_LOG_ONE_MINUS_ALPHA_M]);
-    decayM = parameters[Parameter::DECAY_M];
-    
-    y_lag_len = sim::inSteps(sim::fromDays(20)) + 1;
-    
-    //NOTE: should also call cleanup() on the PathogenesisModel, but it only frees memory which the OS does anyway
-    Pathogenesis::PathogenesisModel::init( parameters, model.getClinical(), false );
-    
-    // Default value to use if no <parameters> element is present in XML.
-    SimTime latentP = UnitParse::readShortDuration("15d", UnitParse::DAYS);
-    try
-    {
-        if (model.getParameters().present())
-        {
-            latentP = UnitParse::readShortDuration(
-                model.getParameters().get().getLatentp(), UnitParse::NONE);
-        }
-    }
-    catch( const util::format_error& e )
-    {
-            throw util::xml_scenario_error( string("model/parameters/latentP: ").append(e.message()) );
-    }
-
-    Infection::init( latentP );
-}
 
 void WHFalciparum::setParams(double cumYStar, double cumHStar, double aM, double dM) {
     invCumulativeYstar = cumYStar;
