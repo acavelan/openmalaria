@@ -40,21 +40,22 @@ namespace OM {
 
 using util::LocalRng;
 
-/*! PathogenesisModel abstract base class.
+/*! Pathogenesis model: one final class, behaviour chosen by DATA (Kind switch
+ * — the old Mueller/Pyrogen/Predet subclass trio, incl. the Submodels.h merge,
+ * differed only in getPEpisode + one extra state field + checkpoint bytes).
  *
  * Previously named MorbidityModel and PresentationModel. */
 class PathogenesisModel {
 public:
+    enum class Kind { Mueller, Pyrogen, Predet };
+
     /// Calls static init on correct PathogenesisModel.
     static void init( RunContext& ctx, const Parameters& parameters, const scnXml::Clinical& clinical, bool nmfOnly );
 
-    /** Create a sub-class instance, dependant on global options.
-    *
-    * @param cF = Comorbidity factor (currently set in Human). */
+    /** Create an instance, Kind dependant on global options.
+     *
+     * @param cF = Comorbidity factor (currently set in Human). */
     static PathogenesisModel* createPathogenesisModel(double cF);
-    
-    
-    virtual ~PathogenesisModel() {}
 
     /** Determines the health of the individual based on his/her parasitemia.
      *
@@ -69,28 +70,41 @@ public:
     
     /** Summarize PathogenesisModel details
      *
-     * Only PyrogenPathogenesis implements this; other models don't have anything
-     * to add to the summary. */
-    virtual void summarize (const Host::Human& human) {}
+     * Only the pyrogen-threshold kinds (Pyrogen, Predet) have anything to add
+     * to the summary (parity: old PyrogenPathogenesis::summarize). */
+    void summarize (const Host::Human& human);
 
-    /// Checkpointing
+    /// Checkpointing (wire format per old concrete kind, frozen):
+    /// Mueller: comorbidity factor; Pyrogen/Predet: + pyrogenic threshold.
     template<class S>
     void operator& (S& stream) {
-        checkpoint (stream);
+        _comorbidityFactor & stream;
+        if( kind != Kind::Mueller ) _pyrogenThres & stream;
     }
 
-protected:
-    /** Create a PathogenesisModel. */
-    PathogenesisModel(double cF);
-
-    virtual void checkpoint (istream& stream);
-    virtual void checkpoint (ostream& stream);
+    /// Read parameters (parity: old MuellerPathogenesis::init /
+    /// PyrogenPathogenesis::init; called from PathogenesisModel::init in xml).
+    static void initMueller( RunContext& ctx, const Parameters& parameters );
+    static void initPyrogen( RunContext& ctx, const Parameters& parameters );
 
 protected:
-    virtual double getPEpisode(double timeStepMaxDensity, double totalDensity)=0;
+    /** Create a PathogenesisModel (_pyrogenThres = initPyroThres for the
+     * pyrogenic kinds, per old PyrogenPathogenesis ctor). */
+    PathogenesisModel(double cF, Kind kind);
+
+    /// Episode probability: one case per Kind (were three virtual overrides).
+    double getPEpisode(double timeStepMaxDensity, double totalDensity);
 
     //! comorbidity factor for heterogeneity
     double _comorbidityFactor;
+
+private:
+    /// Determine the current pyrogenic threshold (Pyrogen and Predet kinds).
+    void updatePyrogenThres(double totalDensity);
+
+    Kind kind;
+    /// Critical density for fever (clinical episodes); Pyrogen and Predet only
+    double _pyrogenThres;
 };
 
 } } }

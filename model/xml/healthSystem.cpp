@@ -35,7 +35,7 @@
 #include "Host/NeonatalMortality.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
-#include "Host/WithinHost/Pathogenesis/Submodels.h"
+#include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/WHVivax.h"
@@ -99,13 +99,13 @@ void PathogenesisModel::init( RunContext& ctx, const Parameters& parameters, con
     if (util::ModelOptions::option (util::PREDETERMINED_EPISODES)) {
         opt_predetermined_episodes = true;
         //no separate init:
-        PyrogenPathogenesis::init( ctx, parameters );
+        PathogenesisModel::initPyrogen( ctx, parameters );
     } else {
         if (util::ModelOptions::option (util::MUELLER_PRESENTATION_MODEL)){
             opt_mueller_pres_model = true;
-            MuellerPathogenesis::init( ctx, parameters );
+            PathogenesisModel::initMueller( ctx, parameters );
         }else{
-            PyrogenPathogenesis::init( ctx, parameters );
+            PathogenesisModel::initPyrogen( ctx, parameters );
         }
     }
 }

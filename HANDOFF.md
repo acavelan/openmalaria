@@ -17,14 +17,15 @@ Crash-recovery file. Update EVERY green commit. Baseline p4a-green: model **19,1
 
 - **InfectionIncidenceModel** (4→1: subclasses Default/HetWorkaround/NegBinom/LogNormal → Kind enum, per the file's own TODO): Δ **−21** (cum. −198). Gates: ctest 52/52, unittest 91/91, T1 tier-a 53/53 + **tier-b seeds 1–4 bit-identical** (3-hierarchy early-warning). 3 virtuals + 3 vtables gone; per-human unique_ptr kept (Human state, checkpoint bytes unchanged: kind is option-derived, not serialized). File-statics in that .cpp are census-tagged init-only (phase-3 legal), untouched.
 
+- **PathogenesisModel** (Mueller/Pyrogen/Predet + Submodels.{h,cpp} deleted → final class, Kind switch in getPEpisode): Δ **−64** (cum. −262). Gates: ctest 52/52, unittest 91/91, T1 tier-a 53/53 (incl. checkpoint-stop box tests → per-kind checkpoint bytes proven: Mueller writes comorb only; Pyrogen/Predet +pyrogenThres). 13 virtuals + 3 vtables gone; initMueller/initPyrogen statics on the class (xml init calls them); py_* file-statics unchanged (census init-tagged).
+
 ## Queue (risk order, small first)
-1–3 DONE · 4. Sampler (gamma/lognormal enum) — NEXT
-4. Sampler (gamma/lognormal enum)
-5. EmergenceRateEstimator (solver-vs-fitter tag)
-6. PathogenesisModel + Submodels
-7. ClinicalModel rest (3-config→2-state collapse)
-8. LSTMDrug PK variants (enum + free fns)
-9. AnophelesModel/SimpleMPD (optional member + 4 hooks)
+1–4 DONE (DecayFunction, AgeGroupInterp, Incidence, Pathogenesis)
+5. ClinicalModel rest (3-config→2-state collapse) — NEXT
+6. EmergenceRateEstimator (solver-vs-fitter tag)
+7. LSTMDrug PK variants (enum + free fns)
+8. AnophelesModel/SimpleMPD (optional member + 4 hooks)
+9. Sampler (deferred: LognormalSampler is a concrete member type in ITN/IRS/GVI/PkPd/vivax — churn; not HumanInterventionComponent so still 4b scope)
 10. TransmissionModel (PerHost stays for phase 5)
 11. WHInterface + WHFalciparum/Descriptive/Vivax/Dummy (largest; per-species infection models inside)
 12. immunity components (InfectionImmunity* — find rows in census)
