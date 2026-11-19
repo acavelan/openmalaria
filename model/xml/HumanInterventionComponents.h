@@ -160,7 +160,7 @@ void TriggeredDeployments::deploy(Human& human,
     }
 }
 
-TriggeredDeployments::SubList::SubList( const scnXml::TriggeredDeployments::DeployType& elt ) :
+TriggeredDeployments::SubList::SubList( const scnXml::Deploy& elt ) :
         HumanIntervention( elt.getComponent() ),
         minAge( sim::fromYearsN( elt.getMinAge() ) ),
         maxAge( sim::future() ),

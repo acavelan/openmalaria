@@ -25,10 +25,19 @@
 
 #include "Global.h"
 #include "mon/Monitoring.h"
-#include <schema/interventions.h>
 #include <limits>
 
-namespace scnXml{ class DeploymentBase; }
+namespace scnXml{
+    class DeploymentBase;
+    class Component;
+    class Condition;
+    class DTDeploy;
+    class Deploy;
+    class TriggeredDeployments;
+}
+// xsd::cxx::tree::sequence template (with its default argument) for the
+// constructor declarations below; the scnXml element types are f.d. above.
+#include <xsd/cxx/tree/containers.hxx>
 
 namespace OM {
 namespace Host {
@@ -185,7 +194,7 @@ public:
     
 private:
     struct SubList : protected HumanIntervention{
-        SubList( const scnXml::TriggeredDeployments::DeployType& elt );
+        SubList( const scnXml::Deploy& elt );
         
         void deploy( Host::Human& human, mon::Deploy::Method method,
             VaccineLimits vaccLimits )const;
