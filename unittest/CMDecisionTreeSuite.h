@@ -57,8 +57,8 @@ public:
                 unique_ptr<WithinHost::WHInterface>(new WHMock(UnittestUtil::ctx())) ));
         ETS_ASSERT( whm != 0 );
 
-        hd.reset( new CMHostData( *human, 21 /* any real age will do for most tests */,
-                                      Episode::NONE ) );
+        ageYears = 21;   // any real age will do for most tests
+        pgState = Episode::NONE;
 
         // could seed random-number-generator, but shouldn't affect outcomes
         UnittestUtil::PkPdSuiteSetup ();
@@ -74,12 +74,13 @@ public:
      * returns the proportion of these runs where the output was any treatment
      */
     double propTreatmentsNReps (int N, const scnXml::DecisionTree& dt) {
-        const CMDecisionTree& cmdt = CMDecisionTree::create( UnittestUtil::ctx(), dt, true );
+        const FlatTree& cmdt = compile_decision_tree( UnittestUtil::ctx(), dt, true );
         
 	whm->nTreatments = 0;
         int secondCounter = 0;
 	for (int i = 0; i < N; ++i) {
-	    secondCounter += (cmdt.exec( UnittestUtil::ctx(), *hd ).treated ? 1 : 0);
+	    DTExecCtx ec( UnittestUtil::ctx(), *human, ageYears, pgState );
+	    secondCounter += (exec_decision_tree( cmdt, ec ).treated ? 1 : 0);
 	}
 	TS_ASSERT_EQUALS( whm->nTreatments, secondCounter );
 	return double(whm->nTreatments) / double(N);
@@ -135,10 +136,10 @@ public:
         dt.setCaseType( ct );
 
         using Underlying = std::underlying_type_t<Pathogenesis::State>;
-        hd->pgState = static_cast<Episode::State>( static_cast<Underlying>(Pathogenesis::STATE_MALARIA) );
+        pgState = static_cast<Episode::State>( static_cast<Underlying>(Pathogenesis::STATE_MALARIA) );
         TS_ASSERT_EQUALS( propTreatmentsNReps( 1, dt ), 1 );
 
-        hd->pgState = static_cast<Episode::State>( static_cast<Underlying>(Pathogenesis::STATE_MALARIA) | Episode::SECOND_CASE );
+        pgState = static_cast<Episode::State>( static_cast<Underlying>(Pathogenesis::STATE_MALARIA) | Episode::SECOND_CASE );
 
         TS_ASSERT_EQUALS( propTreatmentsNReps( 1, dt ), 0 );
     }
@@ -162,7 +163,7 @@ public:
         scnXml::DecisionTree dt_rdt;
         dt_rdt.setDiagnostic( rdt );
         
-        hd->pgState = static_cast<Episode::State>( Pathogenesis::STATE_MALARIA );
+        pgState = static_cast<Episode::State>( Pathogenesis::STATE_MALARIA );
 	const int N = 20000;
 	const double LIM = .02;
 	
@@ -198,13 +199,13 @@ public:
         scnXml::DecisionTree dt;
         dt.setAge( ageSwitch );
         
-        hd->ageYears = 1;
+        ageYears = 1;
         TS_ASSERT_EQUALS( propTreatmentsNReps( 1, dt ), 1 );
-        hd->ageYears = 2.5;
+        ageYears = 2.5;
         TS_ASSERT_EQUALS( propTreatmentsNReps( 1, dt ), 0 );
-        hd->ageYears = 50;
+        ageYears = 50;
         TS_ASSERT_EQUALS( propTreatmentsNReps( 1, dt ), 1 );
-        hd->ageYears = 1e6;     // there is no upper bound, so this should work!
+        ageYears = 1e6;     // there is no upper bound, so this should work!
         TS_ASSERT_EQUALS( propTreatmentsNReps( 1, dt ), 1 );
     }
     
@@ -230,7 +231,7 @@ public:
     }
     
     double runAndGetMgPrescribed( scnXml::DecisionTree& dt, double age ){
-        hd->ageYears = age;
+        ageYears = age;
         UnittestUtil::clearMedicateQueue( whm->pkpd );
         TS_ASSERT_EQUALS( propTreatmentsNReps( 1, dt ), 1 );
         return UnittestUtil::getPrescribedMg( whm->pkpd );
@@ -247,9 +248,10 @@ public:
     /** Run the tree once; return (treated, screened) with treatment-marker
      * observation via WHMock simple-treat timestamps. */
     CMDTOut execOnce( const scnXml::DecisionTree& dt ) {
-        const CMDecisionTree& cmdt = CMDecisionTree::create( UnittestUtil::ctx(), dt, true );
+        const FlatTree& cmdt = compile_decision_tree( UnittestUtil::ctx(), dt, true );
         whm->lastTimeLiver = whm->lastTimeBlood = sim::never();
-        return cmdt.exec( UnittestUtil::ctx(), *hd );
+        DTExecCtx ec( UnittestUtil::ctx(), *human, ageYears, pgState );
+        return exec_decision_tree( cmdt, ec );
     }
     
     // treatSimple markers distinguish branch identity without RNG prediction:
@@ -275,10 +277,10 @@ public:
         const double ages[] = { 2.4, 2.5, 3.0, 50.0, 1e6 };
         const int golden[]  = { 1,   1,    1,   0,    0   };
         for( size_t i = 0; i < 5; ++i ){
-            hd->ageYears = ages[i];
+            ageYears = ages[i];
             TS_ASSERT_EQUALS( execOnce( dt ).treated, golden[i] != 0 );
         }
-        hd->ageYears = 21;
+        ageYears = 21;
     }
     
     void testRandomTieDrop(){
@@ -367,7 +369,7 @@ public:
         scnXml::DecisionTree multi;
         multi.setMultiple( m );
         
-        hd->pgState = static_cast<Episode::State>( Pathogenesis::STATE_MALARIA );
+        pgState = static_cast<Episode::State>( Pathogenesis::STATE_MALARIA );
         // Diagnostic alone: screened visible.
         CMDTOut out = execOnce( diagTree );
         TS_ASSERT_EQUALS( out.treated, true );
@@ -402,7 +404,8 @@ public:
 private:
     unique_ptr<Host::Human> human;
     WHMock* whm;
-    unique_ptr<CMHostData> hd;
+    double ageYears;
+    Episode::State pgState;
 };
 
 #endif

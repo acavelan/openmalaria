@@ -173,8 +173,7 @@ void ClinicalEventScheduler::doClinicalUpdate (RunContext& ctx, Human& human, do
             pgState = Episode::State (pgState | Episode::SECOND_CASE);
         }
 	
-	CMDTOut auxOut = ESCaseManagement::execute(ctx,
-	    CMHostData( human, ageYears, pgState ) );
+	CMDTOut auxOut = ESCaseManagement::execute(ctx, human, ageYears, pgState );
 	
         if( auxOut.treated ){	// I.E. some treatment was given
             timeLastTreatment = ctx.clock.ts0();
