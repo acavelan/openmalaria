@@ -50,15 +50,8 @@
 // file-global defined by ClinicalModel.cpp:45; no header declares it
 namespace OM { namespace Clinical { extern double oddsRatioThreshold; } }
 
-// getCommunityCFR is protected (ClinicalModel.h:118-173); reach it the same
-// way CM5DayCommon (Clinical/CM5DayCommon.h:39) does: derive.
-namespace {
-struct CFRProbe : public OM::Clinical::ClinicalModel {
-    void doClinicalUpdate (OM::RunContext&, OM::Host::Human&, double,
-                           OM::WithinHost::Pathogenesis::StatePair&) override {}
-    static double community (double cfr) { return getCommunityCFR(cfr); }
-};
-}
+// getCommunityCFR is a public static member since the hierarchy collapse
+// (phase 4b) — no probe needed.
 
 class PercentileCFRSuite : public CxxTest::TestSuite
 {
@@ -121,7 +114,7 @@ public:
             {1.0, 1.0},
         };
         for (const auto& row : TAB) {
-            double got = CFRProbe::community( row[0] );
+            double got = OM::Clinical::ClinicalModel::getCommunityCFR( row[0] );
             if (!(std::memcmp(&got, &row[1], sizeof(double)) == 0)) TS_FAIL("CFR mismatch");
         }
     }

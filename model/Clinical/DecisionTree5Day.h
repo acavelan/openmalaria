@@ -44,18 +44,18 @@ namespace Clinical {
  * probability tree, using the same logic for handling severe cases as has long
  * been used.
  */
-class DecisionTree5Day : public CM5DayCommon
+class DecisionTree5Day
 {
 public:
     /** Load health system data from initial data or an intervention's data (both from XML).
      * (Re)loads all data affected by this healthSystem element. */
     static void setHealthSystem (RunContext& ctx, const scnXml::HSDT5Day& hsDescription);
-    
-    DecisionTree5Day (RunContext& ctx, double tSF) : CM5DayCommon(ctx, tSF) {}
-    
-protected:
-    virtual void uncomplicatedEvent(RunContext& ctx, Human& human, Episode::State pgState);
 };
+
+/// Uncomplicated-case handling for the DecisionTree5Day kind (old
+/// DecisionTree5Day::uncomplicatedEvent).
+void treeUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx, Human& human,
+                             Episode::State pgState);
 
 }
 }

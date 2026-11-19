@@ -35,25 +35,16 @@ namespace Clinical {
 using Host::Human;
 
 /**
- * Common parts of 5-day case management models.
+ * Case-management CONFIG shared by the 5-day case management models
+ * (DecisionTree5Day and ImmediateOutcomes kinds). Non-polymorphic: static
+ * config only; per-human state lives on ClinicalModel, behaviour is the
+ * clinicalUpdate5Day free function below.
  */
-class CM5DayCommon : public ClinicalModel
+class CM5DayCommon
 {
 public:
     static void init();
-    
-    /** Construct an instance (per-human).
-     * 
-     * @param tSF Treatment-seeking factor. Normally 1 but allows simple heterogeneity.
-     */
-    CM5DayCommon (RunContext& ctx, double tSF);
-    
-    virtual bool isExistingCase () {
-        // If treated in the recent past:
-        return ctx.clock.now() > m_tLastTreatment && ctx.clock.now() <= m_tLastTreatment + healthSystemMemory;
-    }
-    
-protected:
+
     enum CaseType { FirstLine, SecondLine, NumCaseTypes };
     static mon::Measure measures[NumCaseTypes];
     static double accessUCAny[NumCaseTypes];
@@ -61,24 +52,19 @@ protected:
     static double accessSevere;
     static double cureRateSevere;
     static WithinHost::TreatmentId treatmentSevere;
-    
-    virtual void doClinicalUpdate (RunContext& ctx, Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg);
-
-    virtual void checkpoint (istream& stream);
-    virtual void checkpoint (ostream& stream);
-
-    /** Called when a non-severe/complicated malaria sickness occurs. */
-    virtual void uncomplicatedEvent(RunContext& ctx, Human& human, Episode::State pgState) =0;
-
-    //! treatment seeking for heterogeneity
-    double m_treatmentSeekingFactor;
-    
-private:
-    /** Called when a severe/complicated (with co-infection) malaria sickness occurs.
-     *
-     * Note: sets doomed = 4 if patient dies. */
-    void severeMalaria(Human& human, Episode::State pgState, double ageYears, int& doomed);
 };
+
+/** Common 5-day clinical update (old CM5DayCommon::doClinicalUpdate; the
+ * kind of cm selects the uncomplicatedEvent implementation, parity: the old
+ * virtual call). */
+void clinicalUpdate5Day (ClinicalModel& cm, RunContext& ctx, Human& human,
+                         double ageYears, WithinHost::Pathogenesis::StatePair &pg);
+
+/** Called when a severe/complicated (with co-infection) malaria sickness occurs.
+ *
+ * Note: sets doomed = 4 if patient dies. */
+void severeMalaria (ClinicalModel& cm, RunContext& ctx, Human& human,
+                 Episode::State pgState, double ageYears, int& doomed);
 
 }
 }

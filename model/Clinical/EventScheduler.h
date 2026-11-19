@@ -45,23 +45,16 @@ using util::AgeGroupInterpolator;
  * bout. It's possible that memory usage could be reduced by storing them
  * externally in a temporary object during episodes (but unlikely worth doing).
  */
-class ClinicalEventScheduler : public ClinicalModel
+class ClinicalEventScheduler
 {
 public:
     static void init (RunContext& ctx, const OM::Parameters& parameters, const scnXml::Clinical& clinical);
     static void setParameters (const SimClock& clock, const scnXml::HSEventScheduler& esData);
 
-    ClinicalEventScheduler (RunContext& ctx, double tSF);
-    
-    virtual bool isExistingCase();
-
-protected:
-    virtual void doClinicalUpdate (RunContext& ctx, Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg);
-
-    virtual void checkpoint (istream& stream);
-    virtual void checkpoint (ostream& stream);
-
 private:
+    friend void esClinicalUpdate (ClinicalModel&, RunContext&, Human&, double,
+                                  WithinHost::Pathogenesis::StatePair&);
+
     /// Maximum number of time steps (including first of case) an individual
     /// will remember they are sick before resetting.
     static SimTime maxUCSeekingMemory;
@@ -137,6 +130,13 @@ private:
     /// Total parasite density at last time step (used during a bout).
     double previousDensity;
 };
+
+
+/// Per-human update for the EventScheduler kind (old
+/// ClinicalEventScheduler::doClinicalUpdate); state lives on the ClinicalModel
+/// (es* fields).
+void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human,
+                       double ageYears, WithinHost::Pathogenesis::StatePair &pg);
 
 }
 }

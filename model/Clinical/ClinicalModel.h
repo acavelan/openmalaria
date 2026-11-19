@@ -32,6 +32,18 @@ namespace scnXml{
     class HealthSystem;
 }
 namespace OM { namespace Clinical {
+
+/// Positive values of doomed (codes). (parity: old ClinicalModel members)
+enum DoomedCause {
+        DOOMED_EXPIRED = -35,   // codes less than or equal to this mean "dead now"
+        DOOMED_NEXT_TS = -30,   // will expire on next time step
+        DOOMED_START_TIMER = -1,        // set on start of doomed timer
+        NOT_DOOMED = 0, // all codes greater than this mean "already dead"; codes less than this mean a count-down to death has started
+        DOOMED_TOO_OLD = 1,		///< died because reached age limit
+        DOOMED_COMPLICATED = 4,	///< died from severe malaria or malaria with a coinfection
+        DOOMED_NEONATAL = 6,	///< died due to mother's malaria infection
+        DOOMED_INDIRECT = 7,	///< died indirectly from malaria (after a delay)
+};
     using Host::Human;
 
 /** The clinical model models the effects of sickness dependant on malarial
@@ -45,13 +57,16 @@ namespace OM { namespace Clinical {
  * 
  * Reporting includes patient outcome and potentially drug usage and use of
  * RDTs (Rapid Diagnostic Tests) for costing purposes. */\
-class ClinicalModel
+class ClinicalModel final
 {
 protected:
     /// The run this clinical model belongs to (clock accessed as ctx.clock).
     RunContext& ctx;
 
 public:
+    /// Which case-management behaviour this instance runs (XML-selected).
+    enum class Kind { DecisionTree5Day, ImmediateOutcomes, EventScheduler };
+
     /// @brief Static functions
     //@{
     /// First stage of initialisation
@@ -69,7 +84,6 @@ public:
     //@}
     
     /// Destructor
-    virtual ~ClinicalModel ();
     
     /** Returns true if the human has been killed by some means.
      * 
@@ -90,7 +104,9 @@ public:
     
     /** Special option to allow reports not to be delivered for existing cases
      * (within health-system-memory and not new cases). */
-    virtual bool isExistingCase() =0;
+    /** Latest episode is treated (has been given treatment)?
+     * (some interventions check this to prevent multiple simultaneous treatments) */
+    bool isExistingCase();
     
     inline static SimTime hsMemory() {
         return healthSystemMemory;
@@ -119,36 +135,32 @@ public:
     /** Time of the last treatment (sim::never() if never treated). */
     SimTime m_tLastTreatment = sim::never();
     
+    /** Construct a per-human instance. Kind selects behaviour; the
+     * EventScheduler kind rejects treatment-seeking heterogeneity. */
+    ClinicalModel (RunContext& ctx, double tSF, Kind kind);
+
 protected:
-    /// Constructor.
-    explicit ClinicalModel (RunContext& ctx);
-    
-    /** Update for clinical model - new pathogenesis status, treatment, etc.
-     *
-     * @param withinHostModel WithinHostModel of human.
-     * @param hostTransmission per-host transmission data of human.
-     * @param ageYears Age of human.
-     * @param ageGroup Survey age group of human. */
-    virtual void doClinicalUpdate (RunContext& ctx, Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg) =0;
-    
-    virtual void checkpoint (istream& stream);
-    virtual void checkpoint (ostream& stream);
-    
+    void checkpoint (istream& stream);
+    void checkpoint (ostream& stream);
+
+public:
+    /// Per-human State (public: the kind's update free function
+    /// [clinicalUpdate5Day / esClinicalUpdate] reads/writes it directly).
+    Kind kind;
+    /// treatment seeking for heterogeneity (5-day kinds; ES kind: always 1)
+    double m_treatmentSeekingFactor;
     /** Last episode; report to survey pending a new episode or human's death. */
     Episode latestReport;
     Episode::State latestState;
 
-    /** @brief Positive values of _doomed variable (codes). */
-    enum {
-        DOOMED_EXPIRED = -35,   // codes less than or equal to this mean "dead now"
-        DOOMED_NEXT_TS = -30,   // will expire on next time step
-        DOOMED_START_TIMER = -1,        // set on start of doomed timer
-        NOT_DOOMED = 0, // all codes greater than this mean "already dead"; codes less than this mean a count-down to death has started
-        DOOMED_TOO_OLD = 1,		///< died because reached age limit
-        DOOMED_COMPLICATED = 4,	///< died from severe malaria or malaria with a coinfection
-        DOOMED_NEONATAL = 6,	///< died due to mother's malaria infection
-        DOOMED_INDIRECT = 7,	///< died indirectly from malaria (after a delay)
-    };
+    /** EventScheduler-kind state (parity: old ClinicalEventScheduler members;
+     * unused by the other kinds, never serialized there — bytes unchanged). */
+    Episode::State esPgState;                    ///< current sickness state
+    SimTime esCaseStartTime = sim::never();      ///< when a bout should start
+    SimTime esTimeOfRecovery = sim::never();     ///< recovers when ts0 >= this
+    SimTime esTimeLastTreatment = sim::never();  ///< last treatment (second-case)
+    double esPreviousDensity;                    ///< total density last time step
+
     
     /** Can indicate that the individual is dead or about to die.
      *

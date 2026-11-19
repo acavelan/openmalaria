@@ -34,9 +34,9 @@ namespace Clinical {
 using namespace ::OM::util;
 
 // These parameters are set by setHealthSystem() and do not need checkpointing.
-double ImmediateOutcomes::cureRateUCOfficial[ImmediateOutcomes::NumCaseTypes];
-double ImmediateOutcomes::cureRateUCSelfTreat[NumCaseTypes];
-WithinHost::TreatmentId ImmediateOutcomes::treatmentUC[NumCaseTypes];
+double ImmediateOutcomes::cureRateUCOfficial[CM5DayCommon::NumCaseTypes];
+double ImmediateOutcomes::cureRateUCSelfTreat[CM5DayCommon::NumCaseTypes];
+WithinHost::TreatmentId ImmediateOutcomes::treatmentUC[CM5DayCommon::NumCaseTypes];
 bool ImmediateOutcomes::useDiagnosticUC = false;
 
 
@@ -44,42 +44,42 @@ bool ImmediateOutcomes::useDiagnosticUC = false;
 
 // ———  per-human, update  ———
 
-void ImmediateOutcomes::uncomplicatedEvent (RunContext& ctx,
+void immOutUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx,
     Human& human,
     Episode::State pgState
 ) {
     // If last treatment prescribed was in recent memory, consider second line.
-    CaseType regimen = FirstLine;
-    if (m_tLastTreatment + healthSystemMemory > ctx.clock.ts0()){
+    CM5DayCommon::CaseType regimen = CM5DayCommon::FirstLine;
+    if (cm.m_tLastTreatment + ClinicalModel::healthSystemMemory > ctx.clock.ts0()){
         pgState = Episode::State (pgState | Episode::SECOND_CASE);
-        regimen = SecondLine;
+        regimen = CM5DayCommon::SecondLine;
     }
 
-    latestReport.update (ctx, human, Episode::State( pgState ) );
+    cm.latestReport.update (ctx, human, Episode::State( pgState ) );
 
     // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
     double x = human.rng.uniform_01();
-    if( x < accessUCAny[regimen] * m_treatmentSeekingFactor ){
+    if( x < CM5DayCommon::accessUCAny[regimen] * cm.m_treatmentSeekingFactor ){
         // UC1: official care OR self treatment
         // UC2: official care only
         
-        if( useDiagnosticUC ){
+        if( ImmediateOutcomes::useDiagnosticUC ){
             mon::recordEvent(mon::measure("nTreatDiagnostics"), human);
             auto diag = WithinHost::diagnostics::monitoringDiagnostic( ctx );
             if( !human.withinHostModel->diagnosticResult(human.rng, diag) )
                 return; // negative outcome: no treatment
         }
         
-        m_tLastTreatment = ctx.clock.ts0();
-        mon::recordEvent(measures[regimen], human);
+        cm.m_tLastTreatment = ctx.clock.ts0();
+        mon::recordEvent(CM5DayCommon::measures[regimen], human);
         
-        double p = ( x < accessUCSelfTreat[regimen] * m_treatmentSeekingFactor ) ?
-            cureRateUCSelfTreat[regimen] : cureRateUCOfficial[regimen];
+        double p = ( x < CM5DayCommon::accessUCSelfTreat[regimen] * cm.m_treatmentSeekingFactor ) ?
+            ImmediateOutcomes::cureRateUCSelfTreat[regimen] : ImmediateOutcomes::cureRateUCOfficial[regimen];
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
         if( human.rng.bernoulli(p) ){
-            // Could report Episode::RECOVERY to latestReport,
+            // Could report Episode::RECOVERY to cm.latestReport,
             // but we don't report out-of-hospital recoveries anyway.
-            human.withinHostModel->treatment( human, treatmentUC[regimen] );
+            human.withinHostModel->treatment( human, ImmediateOutcomes::treatmentUC[regimen] );
         } else {
             // No change in parasitological status: treated outside of hospital
         }

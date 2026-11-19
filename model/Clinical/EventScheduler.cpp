@@ -61,58 +61,35 @@ AgeGroupInterpolator ClinicalEventScheduler::MF_need_antibiotic;
 
 // -----  construction, destruction and checkpointing  -----
 
-ClinicalEventScheduler::ClinicalEventScheduler (RunContext& ctx, double tSF) :
-    ClinicalModel(ctx),
-        pgState (Episode::NONE),
-        caseStartTime (sim::never()),
-        timeOfRecovery (sim::never()),
-        timeLastTreatment (sim::never()),
-        previousDensity (numeric_limits<double>::quiet_NaN())
-{
-    if( tSF != 1.0 ){
-	// p(treatment seeking) is part of tree & handled generically, so we
-	// don't have a way of modifying it.
-	throw xml_scenario_error("treatment seeking heterogeneity not supported");
-    }
-}
-
-
-// -----  other methods  -----
-
-bool ClinicalEventScheduler::isExistingCase() {
-        // If treated in the recent past:
-        return ctx.clock.now() > timeLastTreatment && ctx.clock.now() <= timeLastTreatment + healthSystemMemory;
-}
-
-void ClinicalEventScheduler::doClinicalUpdate (RunContext& ctx, Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg){
+void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg){
     WHInterface& withinHostModel = *human.withinHostModel;
     Episode::State newState = static_cast<Episode::State>( pg.state );
-    util::streamValidate( (newState << 16) & pgState );
+    util::streamValidate( (newState << 16) & cm.esPgState );
     
-    if ( ctx.clock.ts0() == timeOfRecovery ) {
-	if( pgState & Episode::DIRECT_DEATH ){
+    if ( ctx.clock.ts0() == cm.esTimeOfRecovery ) {
+	if( cm.esPgState & Episode::DIRECT_DEATH ){
 	    // Human dies this time step (last day of risk of death)
-	    doomed = DOOMED_COMPLICATED;
+	    cm.doomed = DOOMED_COMPLICATED;
 	    
-	    latestReport.update (ctx, human, pgState);
+	    cm.latestReport.update (ctx, human, cm.esPgState);
         } else {
-	    if ( pgState & Episode::COMPLICATED ) {
-                const double pSequelae = pSequelaeInpatient.eval( ageYears );
+	    if ( cm.esPgState & Episode::COMPLICATED ) {
+                const double pSequelae = ClinicalModel::pSequelaeInpatient.eval( ageYears );
                 mon::recordStat(mon::measure("expectedSequelae"), human, pSequelae);
 		// parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
 		if( human.rng.uniform_01() < pSequelae ){
-		    pgState = Episode::State (pgState | Episode::SEQUELAE);
+		    cm.esPgState = Episode::State (cm.esPgState | Episode::SEQUELAE);
                 }else{
-		    pgState = Episode::State (pgState | Episode::RECOVERY);
+		    cm.esPgState = Episode::State (cm.esPgState | Episode::RECOVERY);
                 }
 	    } else {
-		pgState = Episode::State (pgState | Episode::RECOVERY);
+		cm.esPgState = Episode::State (cm.esPgState | Episode::RECOVERY);
             }
 	    // report bout, at conclusion of episode:
-	    latestReport.update (ctx, human, pgState);
+	    cm.latestReport.update (ctx, human, cm.esPgState);
 	    
 	    // Individual recovers (and is immediately susceptible to new cases)
-	    pgState = Episode::NONE;	// recovery (reset to healthy state)
+	    cm.esPgState = Episode::NONE;	// recovery (reset to healthy state)
 	    
 	    // And returns to transmission (if was removed)
 	    human.perHostTransmission.outsideTransmission = false;
@@ -121,66 +98,66 @@ void ClinicalEventScheduler::doClinicalUpdate (RunContext& ctx, Human& human, do
     
     // The bug fixed here is that indirectMortality was not set if no event occurred
     bool indirectMortality = false;
-    if( indirectMortBugfix ) indirectMortality = pg.indirectMortality;
+    if( ClinicalModel::indirectMortBugfix ) indirectMortality = pg.indirectMortality;
     
     if ( newState & Episode::SICK ){
         // we have some new case: is it severe/complicated?
         if ( newState & Episode::COMPLICATED ){
-            if ( pgState & Episode::COMPLICATED ) {
+            if ( cm.esPgState & Episode::COMPLICATED ) {
                 // previously severe: no events happen for course of medication
             } else {
                 // previously healthy or UC: progress to severe
-                pgState = Episode::State (pgState | newState | Episode::RUN_CM_TREE);
+                cm.esPgState = Episode::State (cm.esPgState | newState | Episode::RUN_CM_TREE);
                 indirectMortality = pg.indirectMortality;
-                caseStartTime = ctx.clock.ts0();
+                cm.esCaseStartTime = ctx.clock.ts0();
             }
         } else {
             // uncomplicated case (UC/UC2/NMF): is it new?
-            if (pgState & Episode::SICK) {
+            if (cm.esPgState & Episode::SICK) {
                 // previously UC; nothing to do
             }else{
-                if( caseStartTime < ctx.clock.ts0() ) {
+                if( cm.esCaseStartTime < ctx.clock.ts0() ) {
                     // new UC case
-                    pgState = Episode::State (pgState | newState | Episode::RUN_CM_TREE);
+                    cm.esPgState = Episode::State (cm.esPgState | newState | Episode::RUN_CM_TREE);
                     indirectMortality = pg.indirectMortality;
                     
                     // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
                     double uVariate = human.rng.uniform_01();
                     size_t i = 0;       // units: days
-                    for(; i < cumDailyPrImmUCTS.size(); ++i){
-                        if( uVariate < cumDailyPrImmUCTS[i] ){
+                    for(; i < ClinicalEventScheduler::cumDailyPrImmUCTS.size(); ++i){
+                        if( uVariate < ClinicalEventScheduler::cumDailyPrImmUCTS[i] ){
                             goto gotDelay;
                         }
                     }
-                    assert(false);      // should have uVariate < 1 = cumDailyPrImmUCTS[len-1]
+                    assert(false);      // should have uVariate < 1 = ClinicalEventScheduler::cumDailyPrImmUCTS[len-1]
                     gotDelay:
                     // set start time: current time plus length of delay (days)
-                    caseStartTime = ctx.clock.ts0() + sim::fromDays(i);
+                    cm.esCaseStartTime = ctx.clock.ts0() + sim::fromDays(i);
                 }
             }
         }
         
-        if (indirectMortality && doomed == NOT_DOOMED)
-            doomed = -ctx.clock.one_TS(); // start indirect mortality countdown
+        if (indirectMortality && cm.doomed == NOT_DOOMED)
+            cm.doomed = -ctx.clock.one_TS(); // start indirect mortality countdown
     }
     
-    if( caseStartTime == ctx.clock.ts0() && (pgState & Episode::RUN_CM_TREE) ){
+    if( cm.esCaseStartTime == ctx.clock.ts0() && (cm.esPgState & Episode::RUN_CM_TREE) ){
         // OK, we're about to run the CM tree
-        pgState = Episode::State (pgState & ~Episode::RUN_CM_TREE);
+        cm.esPgState = Episode::State (cm.esPgState & ~Episode::RUN_CM_TREE);
         
         // If last treatment prescribed was in recent memory, consider second line.
-        if( timeLastTreatment + healthSystemMemory > ctx.clock.ts0() ){
-            pgState = Episode::State (pgState | Episode::SECOND_CASE);
+        if( cm.esTimeLastTreatment + ClinicalModel::healthSystemMemory > ctx.clock.ts0() ){
+            cm.esPgState = Episode::State (cm.esPgState | Episode::SECOND_CASE);
         }
 	
-	CMDTOut auxOut = ESCaseManagement::execute(ctx, human, ageYears, pgState );
+	CMDTOut auxOut = ESCaseManagement::execute(ctx, human, ageYears, cm.esPgState );
 	
         if( auxOut.treated ){	// I.E. some treatment was given
-            timeLastTreatment = ctx.clock.ts0();
-            if( pgState & Episode::COMPLICATED ){
+            cm.esTimeLastTreatment = ctx.clock.ts0();
+            if( cm.esPgState & Episode::COMPLICATED ){
                 mon::recordEvent(mon::measure("nTreatments3"), human);
             }else{
-                if( pgState & Episode::SECOND_CASE ){
+                if( cm.esPgState & Episode::SECOND_CASE ){
                     mon::recordEvent(mon::measure("nTreatments2"), human);
                 }else{
                     mon::recordEvent(mon::measure("nTreatments1"), human);
@@ -192,44 +169,44 @@ void ClinicalEventScheduler::doClinicalUpdate (RunContext& ctx, Human& human, do
         }
 	
 	if ( true /*FIXME auxOut.hospitalisation != CMAuxOutput::NONE*/ ) {	// in hospital
-	    pgState = Episode::State (pgState | Episode::EVENT_IN_HOSPITAL);
+	    cm.esPgState = Episode::State (cm.esPgState | Episode::EVENT_IN_HOSPITAL);
 	    
 	    /*FIXME if( auxOut.hospitalisation == CMAuxOutput::DELAYED )
-		++caseStartTime;*/
+		++cm.esCaseStartTime;*/
 	}
 	
 	// Case fatality rate (first day of illness)
 	// P(death) is some fixed input scaled by age-specific CFR.
-	if( (pgState & Episode::COMPLICATED)
-	    && !(pgState & Episode::DIRECT_DEATH)
+	if( (cm.esPgState & Episode::COMPLICATED)
+	    && !(cm.esPgState & Episode::DIRECT_DEATH)
 	) {
             const bool inHospital = true /*FIXME auxOut.hospitalisation == CMAuxOutput::IMMEDIATE */;
-	    double pDeath = caseFatalityRate.eval( ageYears );
+	    double pDeath = ClinicalModel::caseFatalityRate.eval( ageYears );
 	    // community fatality rate when not in hospital or delayed hospital entry
             if( !inHospital )
-                pDeath = getCommunityCFR( pDeath );
+                pDeath = ClinicalModel::getCommunityCFR( pDeath );
             mon::recordStat(mon::measure("expectedDirectDeaths"), human, pDeath);
             if( inHospital )
                 mon::recordStat(mon::measure("expectedHospitalDeaths"), human, pDeath);
 	    // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
 	    if (human.rng.uniform_01() < pDeath) {
-		pgState = Episode::State (pgState | Episode::DIRECT_DEATH | Episode::EVENT_FIRST_DAY);
+		cm.esPgState = Episode::State (cm.esPgState | Episode::DIRECT_DEATH | Episode::EVENT_FIRST_DAY);
 		// Human is killed at end of time at risk
-		//timeOfRecovery += extraDaysAtRisk;	(no point updating; will be set later: ATORWD)
+		//cm.esTimeOfRecovery += ClinicalEventScheduler::extraDaysAtRisk;	(no point updating; will be set later: ATORWD)
 	    }
-	    previousDensity = withinHostModel.getTotalDensity();
+	    cm.esPreviousDensity = withinHostModel.getTotalDensity();
 	}
 	
 	if( opt_non_malaria_fevers ){
-            if( (pgState & Episode::SICK) && !(pgState & Episode::COMPLICATED) ){
+            if( (cm.esPgState & Episode::SICK) && !(cm.esPgState & Episode::COMPLICATED) ){
                 // Have a NMF or UC malaria case
                 
                 /** Given a non-malaria fever, return the probability of it requiring
                  * treatment. */
-                bool isMalarial = pgState & Episode::MALARIA;
+                bool isMalarial = cm.esPgState & Episode::MALARIA;
                 double pNeedTreat = isMalarial ?
-                        MF_need_antibiotic.eval( ageYears ) :
-                        NMF_need_antibiotic.eval( ageYears );
+                        ClinicalEventScheduler::MF_need_antibiotic.eval( ageYears ) :
+                        ClinicalEventScheduler::NMF_need_antibiotic.eval( ageYears );
                 // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
                 bool needTreat = human.rng.bernoulli(pNeedTreat);
                 
@@ -239,19 +216,19 @@ void ClinicalEventScheduler::doClinicalUpdate (RunContext& ctx, Human& human, do
                 if( auxOut.AB_provider != CMAuxOutput::NO_AB ){
                     // Treatment seeking; may be at a health facility or from
                     // the informal sector.
-                    double logOddsAb = logOddsAbBase - logOddsAbNeed * pNeedTreat;
+                    double logOddsAb = ClinicalEventScheduler::logOddsAbBase - ClinicalEventScheduler::logOddsAbNeed * pNeedTreat;
                     if( auxOut.AB_provider == CMAuxOutput::FACILITY ){
                         if( auxOut.diagnostic == CMAuxOutput::NEGATIVE ){
-                            logOddsAb += logOddsAbNegTest;
+                            logOddsAb += ClinicalEventScheduler::logOddsAbNegTest;
                         }else if( auxOut.diagnostic == CMAuxOutput::POSITIVE ){
-                            logOddsAb += logOddsAbPosTest;
+                            logOddsAb += ClinicalEventScheduler::logOddsAbPosTest;
                         }
                         if( needTreat ){
-                            logOddsAb += logOddsAbNeed;
+                            logOddsAb += ClinicalEventScheduler::logOddsAbNeed;
                         }
                     }else{
                         assert( auxOut.AB_provider == CMAuxOutput::INFORMAL );
-                        logOddsAb += logOddsAbInformal;
+                        logOddsAb += ClinicalEventScheduler::logOddsAbInformal;
                     }
                     
                     double oddsTreatment = exp( logOddsAb );
@@ -264,16 +241,16 @@ void ClinicalEventScheduler::doClinicalUpdate (RunContext& ctx, Human& human, do
                 if( human.rng.uniform_01() < pTreatment ){
                     /*FIXME: impossible due to above; NMF output removed
                     Survey::current().addInt( Report::MI_NMF_TREATMENTS, human, 1 );
-                    treatmentEffectMult = oneMinusEfficacyAb;
+                    treatmentEffectMult = ClinicalEventScheduler::oneMinusEfficacyAb;
                     */
                 }
                 
                 // In a severe NMF case (only when not malarial), there is a
                 // chance of death:
                 if( needTreat ){
-                    double pDeath = severeNmfMortality.eval( ageYears ) * treatmentEffectMult;
+                    double pDeath = ClinicalEventScheduler::severeNmfMortality.eval( ageYears ) * treatmentEffectMult;
                     if( human.rng.uniform_01() < pDeath ){
-                        pgState = Episode::State (pgState | Episode::DIRECT_DEATH);
+                        cm.esPgState = Episode::State (cm.esPgState | Episode::DIRECT_DEATH);
                     }
                 }
             }
@@ -282,10 +259,10 @@ void ClinicalEventScheduler::doClinicalUpdate (RunContext& ctx, Human& human, do
 	// No new event (haven't changed state this time step).
 	
 	// Case fatality rate (subsequent days)
-	// Complicated case & at risk of death (note: extraDaysAtRisk <= 0)
-	if( (pgState & Episode::COMPLICATED)
-	    && !(pgState & Episode::DIRECT_DEATH)
-	    && (ctx.clock.ts0() < timeOfRecovery + extraDaysAtRisk)
+	// Complicated case & at risk of death (note: ClinicalEventScheduler::extraDaysAtRisk <= 0)
+	if( (cm.esPgState & Episode::COMPLICATED)
+	    && !(cm.esPgState & Episode::DIRECT_DEATH)
+	    && (ctx.clock.ts0() < cm.esTimeOfRecovery + ClinicalEventScheduler::extraDaysAtRisk)
 	) {
 	    // In complicated episodes, S(t), the probability of survival on
 	    // subsequent days t, is described by log(S(t)) = -v(Y(t)/Y(t-1)),
@@ -293,75 +270,55 @@ void ClinicalEventScheduler::doClinicalUpdate (RunContext& ctx, Human& human, do
             // TODO: this model should be revisited, and if possible placed
             // within the WHFalciparum class (or a subclass).
 	    if( withinHostModel.getTotalDensity() > 0.0 ){	// avoid division by zero
-		double parasiteReductionEffect = withinHostModel.getTotalDensity() / previousDensity;
-		double pDeath = 1.0 - exp( neg_v * parasiteReductionEffect );
+		double parasiteReductionEffect = withinHostModel.getTotalDensity() / cm.esPreviousDensity;
+		double pDeath = 1.0 - exp( ClinicalEventScheduler::neg_v * parasiteReductionEffect );
 		// community fatality rate when not in hospital
-		if( !(pgState & Episode::EVENT_IN_HOSPITAL) )
-		    pDeath = getCommunityCFR( pDeath );
+		if( !(cm.esPgState & Episode::EVENT_IN_HOSPITAL) )
+		    pDeath = ClinicalModel::getCommunityCFR( pDeath );
                 mon::recordStat(mon::measure("expectedDirectDeaths"), human, pDeath);
-                if( pgState & Episode::EVENT_IN_HOSPITAL )
+                if( cm.esPgState & Episode::EVENT_IN_HOSPITAL )
                     mon::recordStat(mon::measure("expectedHospitalDeaths"), human, pDeath);
 		// parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
 		if (human.rng.uniform_01() < pDeath) {
-		    pgState = Episode::State (pgState | Episode::DIRECT_DEATH);
+		    cm.esPgState = Episode::State (cm.esPgState | Episode::DIRECT_DEATH);
 		    // Human is killed at end of time at risk
-		    timeOfRecovery = timeOfRecovery + extraDaysAtRisk;	// may be re-set later (see ATORWD)
+		    cm.esTimeOfRecovery = cm.esTimeOfRecovery + ClinicalEventScheduler::extraDaysAtRisk;	// may be re-set later (see ATORWD)
 		}
 	    }
-	    previousDensity = withinHostModel.getTotalDensity();
+	    cm.esPreviousDensity = withinHostModel.getTotalDensity();
 	}
     }
     
     // Start of case. Not necessarily start of sickness due to treatment-seeking
     // delays and travel time.
-    if( caseStartTime == ctx.clock.ts0() ){
+    if( cm.esCaseStartTime == ctx.clock.ts0() ){
 	// Patients in hospital are removed from the transmission cycle.
 	// This should have an effect from the start of the next time step.
 	// NOTE: This is not very accurate, but considered of little importance.
-	if (pgState & Episode::EVENT_IN_HOSPITAL)
+	if (cm.esPgState & Episode::EVENT_IN_HOSPITAL)
 	    human.perHostTransmission.outsideTransmission = true;
 	
-	if (pgState & Episode::COMPLICATED) {
-	    // complicatedCaseDuration should to some respects be associated
+	if (cm.esPgState & Episode::COMPLICATED) {
+	    // ClinicalEventScheduler::complicatedCaseDuration should to some respects be associated
 	    // with medication duration, however ongoing medications after
 	    // exiting hospital are OK and medications terminating before the
 	    // end of hospitalisation shouldn't matter too much if the person
 	    // can't recieve new infections due to zero transmission in hospital.
-	    timeOfRecovery = ctx.clock.ts0() + complicatedCaseDuration;
+	    cm.esTimeOfRecovery = ctx.clock.ts0() + ClinicalEventScheduler::complicatedCaseDuration;
 	    // Time should be adjusted to end of at-risk period when patient dies:
-	    if( pgState & Episode::DIRECT_DEATH )	// death may already have been determined
-		timeOfRecovery = timeOfRecovery + extraDaysAtRisk;	// ATORWD (search keyword)
+	    if( cm.esPgState & Episode::DIRECT_DEATH )	// death may already have been determined
+		cm.esTimeOfRecovery = cm.esTimeOfRecovery + ClinicalEventScheduler::extraDaysAtRisk;	// ATORWD (search keyword)
 	} else {
-	    timeOfRecovery = ctx.clock.ts0() + uncomplicatedCaseDuration;
+	    cm.esTimeOfRecovery = ctx.clock.ts0() + ClinicalEventScheduler::uncomplicatedCaseDuration;
 	}
     }
     
     // Remove on first models...
-    if( timeLastTreatment == ctx.clock.ts0() )
+    if( cm.esTimeLastTreatment == ctx.clock.ts0() )
         human.removeFirstEvent(interventions::SubPopRemove::ON_FIRST_TREATMENT);
     
-    if( pgState & Episode::SICK )
+    if( cm.esPgState & Episode::SICK )
         human.removeFirstEvent(interventions::SubPopRemove::ON_FIRST_BOUT);
-}
-
-
-void ClinicalEventScheduler::checkpoint (istream& stream) {
-    ClinicalModel::checkpoint (stream);
-    int s;
-    s & stream;
-    pgState = Episode::State(s);
-    caseStartTime & stream;
-    timeOfRecovery & stream;
-    timeLastTreatment & stream;
-    previousDensity & stream;
-}
-void ClinicalEventScheduler::checkpoint (ostream& stream) {
-    ClinicalModel::checkpoint (stream);
-    pgState & stream;
-    caseStartTime & stream;
-    timeOfRecovery & stream;
-    timeLastTreatment & stream;
-    previousDensity & stream;
 }
 
 } }

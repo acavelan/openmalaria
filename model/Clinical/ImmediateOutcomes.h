@@ -45,25 +45,23 @@ namespace Clinical {
  * 
  * NOTE: this provides a strict subset of the functionality of DecisionTree5Day.
  */
-class ImmediateOutcomes : public CM5DayCommon
+class ImmediateOutcomes
 {
 public:
     /** Load health system data from initial data or an intervention's data (both from XML).
      * (Re)loads all data affected by this healthSystem element. */
     static void setHealthSystem (RunContext& ctx, const scnXml::HSImmediateOutcomes& hsioData);
     
-    ImmediateOutcomes (RunContext& ctx, double tSF) : CM5DayCommon(ctx, tSF) {}
-    
-protected:
-    /** Called when a non-severe/complicated malaria sickness occurs. */
-    virtual void uncomplicatedEvent(RunContext& ctx, Human& human, Episode::State pgState);
-    
-private:
     static double cureRateUCOfficial[CM5DayCommon::NumCaseTypes];
     static double cureRateUCSelfTreat[CM5DayCommon::NumCaseTypes];
     static WithinHost::TreatmentId treatmentUC[CM5DayCommon::NumCaseTypes];
     static bool useDiagnosticUC;
 };
+
+/// Uncomplicated-case handling for the ImmediateOutcomes kind (old
+/// ImmediateOutcomes::uncomplicatedEvent).
+void immOutUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx, Human& human,
+                               Episode::State pgState);
 
 }
 }

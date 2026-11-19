@@ -22,6 +22,7 @@
 
 #include "core/RunContext.h"
 #include "Clinical/ClinicalModel.h"
+#include "Clinical/CM5DayCommon.h"
 
 #include "Clinical/EventScheduler.h"
 #include "Clinical/ImmediateOutcomes.h"
@@ -51,13 +52,9 @@ util::AgeGroupInterpolator ClinicalModel::pSequelaeInpatient;
 
 
 unique_ptr<ClinicalModel> ClinicalModel::createClinicalModel (RunContext& ctx, double tSF) {
-    if (opt_event_scheduler){
-        return unique_ptr<ClinicalModel>(new ClinicalEventScheduler (ctx, tSF));
-    }else if( opt_imm_outcomes ){
-        return unique_ptr<ClinicalModel>(new ImmediateOutcomes (ctx, tSF));
-    }else{
-        return unique_ptr<ClinicalModel>(new DecisionTree5Day( ctx, tSF ));
-    }
+    const Kind kind = opt_event_scheduler ? Kind::EventScheduler :
+        (opt_imm_outcomes ? Kind::ImmediateOutcomes : Kind::DecisionTree5Day);
+    return unique_ptr<ClinicalModel>(new ClinicalModel (ctx, tSF, kind));
 }
 
 double ClinicalModel::getCommunityCFR (double caseFatalityRatio){
@@ -69,13 +66,29 @@ double ClinicalModel::getCommunityCFR (double caseFatalityRatio){
 
 // -----  non-static construction, destruction and checkpointing  -----
 
-ClinicalModel::ClinicalModel (RunContext& ctx) :
+ClinicalModel::ClinicalModel (RunContext& ctx, double tSF, const Kind kind) :
+    kind(kind),
     ctx(ctx),
+    m_treatmentSeekingFactor (tSF),
     latestReport(ctx),
+    esPgState (Episode::NONE),
+    esCaseStartTime (sim::never()),
+    esTimeOfRecovery (sim::never()),
+    esTimeLastTreatment (sim::never()),
+    esPreviousDensity (numeric_limits<double>::quiet_NaN()),
     doomed(NOT_DOOMED)
-{}
-ClinicalModel::~ClinicalModel () {
-  // latestReport is reported, if any, by destructor
+{
+    if (kind == Kind::EventScheduler && tSF != 1.0) {
+        // p(treatment seeking) is part of tree & handled generically, so we
+        // don't have a way of modifying it. (parity: old ES ctor)
+        throw util::xml_scenario_error("treatment seeking heterogeneity not supported");
+    }
+}
+
+bool ClinicalModel::isExistingCase() {
+    // If treated in the recent past:
+    const SimTime t = kind == Kind::EventScheduler ? esTimeLastTreatment : m_tLastTreatment;
+    return ctx.clock.now() > t && ctx.clock.now() <= t + healthSystemMemory;
 }
 
 
@@ -110,7 +123,10 @@ void ClinicalModel::update (Human& human, double ageYears, bool newBorn) {
     WithinHost::Pathogenesis::StatePair pg = human.withinHostModel->determineMorbidity( human, ageYears, isDoomed );
     latestState = static_cast<Episode::State>(pg.state);
 
-    doClinicalUpdate (ctx, human, ageYears, pg);
+    if (kind == Kind::EventScheduler)
+        esClinicalUpdate (*this, ctx, human, ageYears, pg);
+    else
+        clinicalUpdate5Day (*this, ctx, human, ageYears, pg);
 }
 
 void ClinicalModel::updateInfantDeaths( SimTime age ){
@@ -131,10 +147,34 @@ void ClinicalModel::updateInfantDeaths( SimTime age ){
 void ClinicalModel::checkpoint (istream& stream) {
     latestReport & stream;
     doomed & stream;
+    if (kind == Kind::EventScheduler) {
+        // wire bytes parity: old ClinicalEventScheduler::checkpoint
+        int s;
+        s & stream;
+        esPgState = Episode::State(s);
+        esCaseStartTime & stream;
+        esTimeOfRecovery & stream;
+        esTimeLastTreatment & stream;
+        esPreviousDensity & stream;
+    } else {
+        // wire bytes parity: old CM5DayCommon::checkpoint
+        m_tLastTreatment & stream;
+        m_treatmentSeekingFactor & stream;
+    }
 }
 void ClinicalModel::checkpoint (ostream& stream) {
     latestReport & stream;
     doomed & stream;
+    if (kind == Kind::EventScheduler) {
+        esPgState & stream;
+        esCaseStartTime & stream;
+        esTimeOfRecovery & stream;
+        esTimeLastTreatment & stream;
+        esPreviousDensity & stream;
+    } else {
+        m_tLastTreatment & stream;
+        m_treatmentSeekingFactor & stream;
+    }
 }
 
 
