@@ -29,7 +29,7 @@ Crash-recovery file. Update EVERY green commit. Baseline p4b-green: model **18,5
    model/xml wiring layer, NOT interventions/ — phase-7 `ctx.ext` cleanup, documented here.
    Box tests: T2 conflict never materialized (checkpoint wire kept byte-compatible), so the
    sanctioned 49-scenario single-run re-bless was NOT needed; 12/12a keep real checkpoint coverage.
-5. [ ] FINAL GATE:: T1 a+b 63/63, ctest, unittest, bench p5-final, cloc, census statics
+4. [ ] FINAL GATE:: T1 a+b 63/63, ctest, unittest, bench p5-final, cloc, census statics
    refresh (nothing moved so far — no static changes), PERF.md row 5.
 
 ## Learned / traps (inherited + new)
@@ -54,4 +54,5 @@ ScenarioReader 143, ClinicalMethod 108, DecisionTreeNode 98, DecisionTree 83. Un
 ## Gates log
 - (step1 a3e1352a) ctest 52/52; unittest 91/91; T1 a 53/53; bench p5-after-infection-fix mean **12.48s mad .010** vs 12.77 → −2.3% KEEP (floor 1.0%); RSS 39.4→35.4MB. model LOC 18,614 (+15 payload decls).
 - (step2+3 8d517521) build clean; unittest 91/91; ctest 52/52; T1 a 53/53. model LOC 18,658.
-- (step3, this commit) build clean (also fixed stray-quote warning CM5DayCommon.cpp:25 from 4b); unittest 91/91; ctest 52/52; T1 a 53/53; T1 b seeds 1-4 4/4.
+- (step3-4 44947048) build clean
+- (FINAL GATE) T1 63/63; ctest 52/52; unittest 91/91; bench p5-final 12.51s mad .010 KEEP; LOC 18,657. (also fixed stray-quote warning CM5DayCommon.cpp:25 from 4b); unittest 91/91; ctest 52/52; T1 a 53/53; T1 b seeds 1-4 4/4.
