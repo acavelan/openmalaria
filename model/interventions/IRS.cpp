@@ -108,7 +108,7 @@ HumanIRS::HumanIRS( RunContext& ctx, LocalRng& rng, const IRSComponent& params )
 
 void HumanIRS::redeploy( LocalRng& rng, const OM::Transmission::HumanVectorInterventionComponent& params ) {
     deployTime = ctx.clock.nowOrTs1();
-    const IRSComponent* irsParams = dynamic_cast<const IRSComponent*>(&params);
+    const IRSComponent* irsParams = params.asIRSComponent();  // declared seam (was dynamic_cast)
     assert( irsParams != 0 );   // code error if this fails
     initialInsecticide = irsParams->sampleInitialInsecticide(rng);
 }

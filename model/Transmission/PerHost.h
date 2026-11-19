@@ -25,9 +25,9 @@
 
 #include "Global.h"
 #include "core/RunContext.h"
-#include "interventions/Interfaces.h"
+#include "interventions/ComponentId.h"  // leaf: Component::Type + ComponentId only
 #include "util/AgeGroupInterpolation.h"
-#include "util/DecayFunction.h"
+#include "util/sampler.h"
 #include "util/checkpoint_containers.h"
 
 #include "util/random.h"
@@ -38,10 +38,10 @@ namespace OM {
 namespace Transmission {
 
 using util::AgeGroupInterpolator;
-using util::DecayFunction;
 using util::LocalRng;
 
 class HumanVectorInterventionComponent;
+class PerHostInterventionData;
 
 /** Stores vector model data applicable between a category of host and a
  * mosquito species: intervention descriptions and model parameters.
@@ -109,86 +109,6 @@ public:
 
 };
 
-/**
- * A base class for interventions affecting human-vector interaction.
- * 
- * The constructor should initialise the data to represent an intervention
- * deployed at this time (ctx.clock.now()).
- * 
- * redeploy() should reset the intervention to a freshly deployed state. If
- * necessary, PerHost::deployComponent can be updated to make it create a new
- * instance instead of calling redeploy.
- */
-class PerHostInterventionData {
-public:
-    /// The run this data belongs to (clock accessed as ctx.clock).
-    RunContext& ctx;
-
-    virtual ~PerHostInterventionData() {}
-    
-    /** Deploy an intervention. */
-    virtual void redeploy( LocalRng& rng, const HumanVectorInterventionComponent& params ) =0;
-    
-    /** Per time step update. Used by ITNs to update hole decay. */
-    virtual void update(Host::Human& human) =0;
-    
-    /** Get effect of deterrencies of interventions, as an attractiveness multiplier.
-     * 
-     * @return a value describing effect on attractiveness. Must not be
-     * negative. 0 means mosquitoes are fully deterred, 1 that the intervention
-     * has no effect, 2 that the intervention attracts twice as many mosquitoes
-     * as would otherwise come. */
-    virtual double relativeAttractiveness(size_t species) const =0;
-    /** Get the killing effect on mosquitoes before they've eaten as a survival
-     * multiplier. */
-    virtual double preprandialSurvivalFactor(size_t species) const =0;
-    /** Get the killing effect on mosquitoes after they've eaten as a survival
-     * multiplier. */
-    virtual double postprandialSurvivalFactor(size_t species) const =0;
-    /// Get the mosquito fecundity multiplier (1 for no effect).
-    virtual double relFecundity(size_t species) const =0;
-    
-    /// Index of effect describing the intervention
-    inline interventions::ComponentId id() const { return m_id; }
-    
-    /// Return true if this component is deployed (i.e. currently active)
-    inline bool isDeployed() const{ return deployTime != sim::never(); }
-    
-    /// Checkpointing (write only)
-    void operator& (ostream& stream) {
-        m_id & stream; // must be first; read externally so that the correct
-                // makeHumanPart function can be found
-        checkpoint( stream );
-    }
-    
-protected:
-    /// Set the component id
-    explicit PerHostInterventionData( RunContext& ctx, interventions::ComponentId id ) :
-            ctx(ctx),
-            deployTime( this->ctx.clock.now() ),
-            m_id(id) {}
-    
-    /// Checkpointing: write
-    virtual void checkpoint( ostream& stream ) =0;
-    
-    SimTime deployTime = sim::never();        // time of deployment or sim::never()
-    interventions::ComponentId m_id;       // component id; don't change
-};
-
-/** A base class for human vector intervention parameters. */
-class HumanVectorInterventionComponent : public interventions::HumanInterventionComponent {
-public:
-    virtual ~HumanVectorInterventionComponent() {}
-    
-    /** Create a new object to store human-specific details of deployment. */
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(RunContext& ctx, LocalRng&) const =0;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( RunContext& ctx, istream& stream,
-            interventions::ComponentId id ) const =0;
-protected:
-    explicit HumanVectorInterventionComponent(interventions::ComponentId id) :
-            HumanInterventionComponent(id) {}
-};
-
 /** Contains TransmissionModel parameters which need to be stored per host.
  *
  * Currently many members are public and directly accessed. */
@@ -205,6 +125,13 @@ public:
     //@{
 RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoint restore
     PerHost ();
+    /// Out-of-line: unique_ptr<PerHostInterventionData> with an incomplete
+    /// pointee (the intervention bases now live in VectorIntervention.h).
+    /// These are also why the move ops are spelled out (user-declared
+    /// destructor would otherwise suppress them; Population.cpp moves Humans).
+    ~PerHost ();
+    PerHost (PerHost&&);
+    PerHost& operator= (PerHost&&);
     void initialise (RunContext& ctx, LocalRng& rng, double availabilityFactor);
     //@}
     

@@ -1,57 +1,58 @@
-# Phase 4b HANDOFF — Config/State de-polymorph (branch `p4b-configstate` off `p4a-green`)
+# Phase 5 HANDOFF — cycle breaks + Infection perf fix (branch `p5-cycles` off `p4b-green`)
 
-Crash-recovery file. Update EVERY green commit. Baseline p4a-green: model **19,160** / unittest **3,760**; A0 12.33s.
+Crash-recovery file. Update EVERY green commit. Baseline p4b-green: model **18,599** / unittest 3,760; A0 bench 12.33s; p4b bench 12.80s (session re-measure `p5-before` = **12.77s** mad 0.000). Full phase-4b handoff: `git show p4b-green:HANDOFF.md`.
 
 ## Environment
-- Build: `build-p4b/` = Release `-ffp-contract=off` `-DOM_BOXTEST_BINARY=ON` (configured).
-- unittest MUST run from `build-p4b/unittest/` (csv resources there) → `./unittest` (91 tests).
-- ctest: `cd build-p4b && ctest -j16` (52 tests, ~9.3s).
-- T1 tier-a: `python3 util/parity.py --old /tmp/opencode/om-ref/A0/openMalaria --new build-p4b/openMalaria --recipe /tmp/opencode/om-ref/A0/recipe.json --tiers a -j16` (53). Tier-b: `--tiers b --seeds 1-10` (10).
-- bench: `sh /tmp/opencode/om-bench/bench.sh build-p4b/openMalaria p4b` (A0-class build, vs A0 12.33).
+- Build: `build-p5/` = Release `-ffp-contract=off` `-DOM_BOXTEST_BINARY=ON`.
+- unittest MUST run from `build-p5/unittest/` → `./unittest` (91 tests). ctest: `cd build-p5 && ctest -j16` (52).
+- T1 tier-a: `python3 util/parity.py --old /tmp/opencode/om-ref/A0/openMalaria --new build-p5/openMalaria --recipe /tmp/opencode/om-ref/A0/recipe.json --tiers a -j16` (53). Tier-b: `--tiers b --seeds 1-10` (10).
+- bench: `sh /tmp/opencode/om-bench/bench.sh /home/razlock/git/fork/build-p5/openMalaria TAG` (ABSOLUTE path!).
+- perf: hardware events BLOCKED (perf_event_paranoid=2) — `perf record -e task-clock -F 3997` only (no -g). p4b profile: /tmp/opencode/p5-perf/p5-sw.data. Hot: dgemm 18% (CalcNvO GSL — phase-8 flip kills), getPEpisode 7.6%, probTransmissionToMosquito_falciparum 6.5%, update_descriptive+determineDensities+decayInfection ~9% (Infection loop).
 
-## Done (per-hierarchy LOC deltas)
-- **DecayFunction** (9 subclasses + factory in xml/util.cpp → 1 enum-tagged value type): Δ **−101** model LOC. Gates: ctest 52/52, unittest 91/91, T1 tier-a 53/53. 4 virtuals + 9 vtables gone; factory keeps error order verbatim (Emax child built BETWEEN present-checks and range-checks — preserved); RTL arg-order of old `max(f1->sAOD, f2->sAOD)` mirrored explicitly (f2 draws first) — T1-invisible in corpus (no operator/emax decays) but pinned. Checkpoint bytes: bool+double unchanged. No suite changes (API kept: makeObject/hetSample/eval/sampleAgeOfDecay/checkpointSample).
+## Steps
+1. [x] Infection payload — commit a3e1352a.
+2. [x] Cycle break + dynamic_cast removal — commit 8d517521.
+   `model/Transmission/VectorIntervention.h` (TransmissionModel + VectorControlIntervention
+   bases moved verbatim + `asVectorIntervention`/`asITNComponent`/`asIRSComponent` virtuals),
+   `model/interventions/ComponentId.h` (`Component::Type`+`ComponentId`, leaf: Global.h+limits).
+   PerHost.h pulls ONLY the leaf (verified `g++ -H`). `DeployedVectorIntervention(const void*)`
+   → `asVectorIntervention()`. Also fixed: `~PerHost()` + move ops declared OUT-OF-LINE in
+   PerHost.cpp (user-declared dtor suppressed implicit moves — move was silently copying all
+   per-host vectors! caught by -Wall on `std::move(humans.begin(), ...)` in Population.cpp);
+   unused DecayFunction include (cycle member) in PerHost.h → sampler.h; dup include
+   TransmissionModel.h in Deployments.h dropped.
+3. [x] Clinical seam: only clinical→interventions call = `t.deploys[aux].deploy(...)` in
+   Clinical/CMDecisionTree.cpp on a concrete owned value (`FlatTree::deploys`) — legal leaf
+   use, documented with seam comment. Removed unused `Clinical/ClinicalModel.h` include from
+   interventions/Deployments.h. interventions→clinical runtime edges (DecisionTreeComponent
+   running `Clinical::exec_decision_tree`; changeHS → `ClinicalModel::setHS` statics) live in
+   model/xml wiring layer, NOT interventions/ — phase-7 `ctx.ext` cleanup, documented here.
+   Box tests: T2 conflict never materialized (checkpoint wire kept byte-compatible), so the
+   sanctioned 49-scenario single-run re-bless was NOT needed; 12/12a keep real checkpoint coverage.
+4. [ ] FINAL GATE:: T1 a+b 63/63, ctest, unittest, bench p5-final, cloc, census statics
+   refresh (nothing moved so far — no static changes), PERF.md row 5.
 
-
-- **AgeGroupInterpolation** (base + PiecewiseConstant/InterpolationPoints/PiecewiseLinear/Dummy → final `AgeGroupInterpolator` {Kind, map}): Δ **−76** (cum. −177). Gates: ctest 52/52, unittest 91/91, T1 tier-a 53/53. 13 virtuals + 5 vtables gone; hot `eval` now inlined switch (was virtual); std::map<double,double> KEPT (numeric key order load-bearing); build code verbatim in `set()` (error texts differ between kinds — preserved); **AgeGroupDummy::singleton static KILLED** (phase-3 "legal survivor" #2 — census statics refresh at end covers it).
-
-- **InfectionIncidenceModel** (4→1: subclasses Default/HetWorkaround/NegBinom/LogNormal → Kind enum, per the file's own TODO): Δ **−21** (cum. −198). Gates: ctest 52/52, unittest 91/91, T1 tier-a 53/53 + **tier-b seeds 1–4 bit-identical** (3-hierarchy early-warning). 3 virtuals + 3 vtables gone; per-human unique_ptr kept (Human state, checkpoint bytes unchanged: kind is option-derived, not serialized). File-statics in that .cpp are census-tagged init-only (phase-3 legal), untouched.
-
-- **PathogenesisModel** (Mueller/Pyrogen/Predet + Submodels.{h,cpp} deleted → final class, Kind switch in getPEpisode): Δ **−64** (cum. −262). Gates: ctest 52/52, unittest 91/91, T1 tier-a 53/53 (incl. checkpoint-stop box tests → per-kind checkpoint bytes proven: Mueller writes comorb only; Pyrogen/Predet +pyrogenThres). 13 virtuals + 3 vtables gone; initMueller/initPyrogen statics on the class (xml init calls them); py_* file-statics unchanged (census init-tagged).
-
-- **ClinicalModel** (base + CM5DayCommon + DecisionTree5Day + ImmediateOutcomes + ClinicalEventScheduler → ONE final class, `enum class Kind`; behaviours became free fns clinicalUpdate5Day/treeUncomplicatedEvent/immOutUncomplicatedEvent/esClinicalUpdate): Δ **−22** (cum. −284), unittest −7. Gates: ctest 52/52, unittest 91/91 (PercentileCFRSuite probe deleted — getCommunityCFR now public), T1 tier-a 53/53. ES per-human fields merged as es* (unused by 5-day kinds, never serialized there); checkpoint dispatches per kind, bytes frozen; ctor keeps ES tSF!=1 throw. Old classes survive ONLY as static config holders (xml/healthSystem.cpp setHS API byte-identical). es* fields left uninit-cleared: ctor inits all (esPreviousDensity=NaN like old ES).
-
-## Queue (risk order, small first)
-1–10 DONE (DecayFunction, AgeGroupInterp, Incidence, Pathogenesis, ClinicalModel, EmergenceRateEstimator, LSTMDrug, AnophelesModel, Sampler, TransmissionModel)
-7. LSTMDrug: Δ **−177** LOC (base + OneComp/ThreeComp/Conversion → one final class, Kind tag; per-kind .cpp kept as member-def files drugFactor_X/updateConcentration_X/checkpoint_X; ctor keeps per-kind RNG order — **fixed sign bug: nkM_sample must be -metabolite.sample_elim_rate**; 3 subclass headers deleted; factory picks Kind from conversion_rate/k12; checkpoint wire frozen per kind). Gates: 52/52, 91/91, tier-a 53/53.
-8. AnophelesModel/SimpleMPD: Δ **−117** LOC (subclass → nested SimpleMPDState behind unique_ptr; 5 guarded hooks, getResRequirements = base dropped; wire order kept; trap: base init2 mutates sigma_dff param — reuse its local tsP_dff, don't recompute from incremented sigma_dff). Gates: 52/52, 91/91, tier-a 53/53.
-9. Sampler: Δ **−153** LOC (base+Lognormal+Gamma → final util::Sampler, Kind tag; factories take Kind; createSampler template → Kind param; ~10 caller files retyped unique_ptr<LognormalSampler>→<Sampler>; RNG/GSL parity comments kept). Gates: 52/52, 91/91, tier-a 53/53 + **tier-b seeds 1–4 4/4** (9-hierarchy cadence ✓ — next tier-b due after 12th).
-10. TransmissionModel: Δ **−141** LOC (Vector+NonVector → one final class, Kind {Vector,NonVector}; vector bodies kept as *_vector member defs in TransmissionModel.cpp (git-mv'd from VectorModel.cpp); NonVector bodies inlined into header dispatchers, NonVector ctor + changeEIRIntervention_nonVector in xml/entomology.cpp; dynamic_cast<VectorModel*> → isVector() checks; subclass headers deleted; wire = common then per-kind appends, frozen). **Trap: Xoshiro256P(R&) seeds via 4×gen_u64 from its source — always-building m_rng(ctx.master_RNG) shifted master ChaCha for NonVector runs → every --checkpoint-stop ctest diverged. Fix: m_rng(0,0) init + vector kind re-seeds in merged ctor body (exact old draw point).** Debug method: build HEAD control, gunzip checkpoint0.gz, byte-diff. Gates: 52/52, 91/91, tier-a 53/53.
-11. Infection: Δ **−192** LOC (`e79df8da`; Infection+CommonInfection+{Descriptive,Dummy,Empirical,Molineaux,Penny} → one final class Infection{Kind}; per-kind .cpp kept as member-def TUs: ctorBody_X/updateDensity_X/read_X/checkpoint_X; statics moved to Infection:: scope in own TUs; Descriptive duration draw stays kind-conditional in ctor init list; factories keep names returning Infection*, ext fn-ptr slots unchanged, Kind NOT serialized (scenario-derived via init fn-ptrs); PkPd CommonInfection*→Infection* (Kn/getDensity unchanged); DescriptiveWithinHost list retyped; dead code deleted: samplePatentValue, overrideInflationFactors, IPTattenuateAsexualDensity, Molineaux getVariantSpecificSummation decl). 14 virtuals + 7 vtables gone. Gates: 52/52, unittest OK, tier-a 53/53.
-12. WHInterface merge — DESIGN MAP (mapping done 2026-11-19, nothing implemented):
-   Files (LOC): WHInterface.h 226/cpp 78; WHFalciparum.h 155/cpp 316; CommonWithinHost.h 97/cpp 390; DescriptiveWithinHost.h 80/cpp 354; WHVivax.h 269/cpp 552 (+xml/vivax.cpp WHVivax::init/setHSParameters, xml/healthSystem.cpp:787,822 calls it, xml/scenario.cpp:93 WHVivax::init).
-   Merge: ONE `class WHInterface final` Kind {Vivax, Common, Descriptive} (Common = today's CommonWithinHost used by Dummy/Empirical/Molineaux/Penny infections; Descriptive = DescriptiveWithinHostModel). createWithinHostModel factory already picks by opt_vivax_simple/opt_common_whm (WHInterface.cpp) — kind is option-derived, NOT serialized (checkpoint read ctor reads numInfs then per-kind appends exactly like the ctors do today: base numInfs → WHFalciparum immunity block → leaf block).
-   Members into merged class (per-kind member-def TUs kept: WHFalciparum.cpp=shared immunity defs, CommonWithinHost.cpp, DescriptiveWithinHost.cpp, WHVivax.cpp): ctx+numInfs; WHFalciparum state (_innateImmSurvFact,m_cumulative_h/_Y/_Y_lag,totalDensity,hrp2Density,timeStepMaxDensity,m_y_lag_i/_l,pathogenesisModel,treatExpiryLiver/Blood; statics sigma_i…y_lag_len) — Vivax kind must NOT touch these (Vivax never constructed WHFalciparum today: ctor must stay kind-conditional for any RNG-drawing / y_lag sizing — CHECK both ctors for RNG draws before merging; Common ctor draws? rng is passed in). Common state (hetMassMultiplier,pkpdModel,list<Infection*>,opt_vaccine_genotype); Descriptive state (same names + opt_vaccine_genotype — one list suffices? NO: keep ONE list<Infection*> + ONE opt_vaccine_genotype shared by Common/Descriptive, both were WHFalciparum siblings with identical members; checkpoint order: keep per-kind chains Common: numInfs→WHFalciparum fields→hetMassMultiplier→pkpd→infections(→opt_vaccine? verify exact chains in both .cpp checkpoint fns); Descriptive: numInfs→WHFalciparum fields→infections; Vivax: its own chain, starts at numInfs — verify).
-   Vivax state: everything in WHVivax.h (statics defined in xml/vivax.cpp TU + file statics); class statics move to WHInterface:: scope, definitions stay in their TUs (qualify names — inherited-scope lookup trap).
-   WHFalciparum statics init chain (scenario.cpp:99 WHFalciparum::init) → static WHInterface::initFalciparum? keep names: initFalciparum(WHFalciparum::init body, only called for falc kinds), initVivax (WHVivax::init), CommonWithinHost::init→initCommon, initDescriptive exists (DescriptiveWithinHostModel::initDescriptive). Keep init(SimTime)? that's WHInterface::init(ctx, params, scenario) top-level — name initModel or keep init.
-   **WHMock PROBLEM (the one non-mechanical decision):** unittest/WHMock.h is `class WHMock : public WHInterface` overriding ALL virtuals; CMDecisionTreeSuite.h:56 injects it via UnittestUtil::setHumanWH(*human, unique_ptr<WHInterface>(new WHMock)) and reads whm->nTreatments/lastTimeLiver/lastTimeBlood/pkpd + totalDensity. Final class kills this. CHOSEN DESIGN: add Kind::Mock to WHInterface; Mock-kind dispatch methods call through a `struct WHMockHooks` function-pointer table exposed on RunExtensions (ctx.ext, null in production, Kind::Mock unreachable there — same idiom as createInfection). WHMock.cpp becomes: ctor sets kind=Mock + installs hooks (hooks defined in WHMock.cpp TU assigning WHInterface Mock-branch outputs into a WHMock-state struct that the suite reads). UnittestUtil::setHumanWH unchanged signature (unique_ptr<WHInterface>). Alternative if hooks get too gnarly: give Human an overridable WH… NO — keep hooks, they are the repo idiom.
-   Also: unittest UnittestUtil friend of WHInterface (keep) + InfectionImmunitySuite friend of WHFalciparum (keep as friend of WHInterface); WHVivax references: TransmissionModel.h/.cpp (friend? check), ImportedInfections.h, InfectionIncidenceModel.cpp, NeonatalMortality, Population.cpp, run.cpp, Clinical/* (treatment paths via Human wrappers — retypes should be rare since everything routes through Human::withinHostModel unique_ptr and static calls WHVivax::setHSParameters→Infection…→WHInterface::setHSParameters_vivax? name it setHSParameters_vivax static on merged class, keep healthSystem.cpp:787/822 + vivax.cpp TU).
-   Human.h keeps unique_ptr<WithinHost::WHInterface> (now final class) — zero retypes outside WithinHost dir except static-call renames.
-   GATES after merge: build, ctest 52/52, unittest OK, tier-a 53/53, **tier-b seeds 1–4 (DUE)**, commit+HANDOFF. Then FINAL GATE (NEXT below).
-
-- **WHInterface merge (hierarchy 12, LAST of 4b)** (`cf798d13`): WHInterface+WHFalciparum+CommonWithinHost+DescriptiveWithinHostModel+WHVivax (5 classes, 19 virtuals) → ONE `class WHInterface final` {Kind Vivax/Common/Descriptive/Mock}; subclass headers deleted (git rm), per-kind .cpp kept as member-def TUs (WHFalciparum.cpp = shared immunity defs + still defines `Infection::s_latentP` + `y_lag_len`). Kind option-derived, never serialized; ctor = switch to ctorVivax/ctorCommon/ctorDescriptive (ctorFalciparum draws innate-immunity gauss + builds pathogenesis BEFORE per-kind body — draw order frozen; Vivax draws only noPQ bernoulli and only if pHetNoPQ>0). Public API names unchanged (dispatchers in WHInterface.cpp); per-kind impls suffixed `_falciparum/_common/_descriptive/_vivax`; deduped: Vivax treatment == falc (shares treatment_falciparum), Common/Descriptive clearInfections+clearImmunity identical (one impl each); dead `addProphylacticEffects` deleted. Vivax members renamed to avoid collisions: `infections`→`vivaxInfections`, treatExpiry→`treatExpiryLiverVivax/BloodVivax`; VivaxBrood host param → WHInterface*; statics renamed initFalciparum/initVivax/initCommon (+initDescriptive kept) / setHSParametersVivax (callers xml/scenario.cpp, xml/vivax.cpp, xml/healthSystem.cpp×2). TreatmentId MOVED to Treatments.h (broke the Treatments↔WHInterface include cycle; Treatments.h no longer includes WHInterface.h). Checkpoint: top-level writes/reads numInfs+range-check then kind chain (falc block → hetMassMultiplier+pkpd+infs | falc block → infs | vivax chain) — byte-frozen, tier-b proves it. **WHMock**: final class killed the subclass → Kind::Mock + `RunExtensions::WHMockHooks` fn-ptr table (treatment/treatSimple/treatPkPd/getTotalDensity/diagnosticResult only — the other old mock methods just threw; throws hardcoded in Mock dispatch branches). unittest/WHMock.h = WHMockState{totalDensity,nTreatments,lastTimeLiver/Blood,pkpd} + makeWHMock(ctx) installer (static state, refetched via ctx.ext->whMock->state); UnittestUtil::setHumanWH signature unchanged; CMDecisionTreeSuite dynamic_cast replaced; InfectionImmunitySuite builds WHInterface{Kind::Descriptive} (friend kept). Move-assign deleted (ctx ref member), move-ctor out-of-line defaulted (PathogenesisModel incomplete in header). Gates: build clean, ctest 52/52, unittest 91/91, tier-a 53/53 (incl. vivax scenario), **tier-b seeds 1–4: 4/4 bit-identical**. Model LOC (ledger cmd): 18,599 (was 19,160 at p4a-green → Σ−561 whole-model; per-hierarchy Δ table in final report).
-
-## Learned / traps
-- DecayFunction: checkpointSample writes bool+double only (hetFactor); restore = config-clone with factor set at EVERY node (Operator/Emax children share it). sampleAgeOfDecay ignores hetFactor (all kinds).
-- Not mine: HumanInterventionComponent descendants (phase 7), TimedDeployment (7), PerHostInterventionData (5→7), base_exception.
-- ext lifetime only after ensure_extensions; no header-inline deref of ctx.ext; gcc ctor-arg right-to-left eval was real (4a).
-- Checkpoint bytes frozen: classes serializing via &stream keep field order.
-- TwoRunsSuite = statics tripwire; rerun if file-statics move. Census refresh at end: ./util/census/statics.sh build-p4b + statics_tag.py.
-- Hierarchy collapse hits INHERITED-SCOPE name lookup: base-class statics resolved unqualified inside every member definition body (update fns AND xml/healthSystem.cpp setHealthSystem/setParameters bodies). Qualify per body (CM5DayCommon::/ClinicalModel::…) or the error only appears post-edit. Convert via scripted pass from `git show HEAD:file` (fresh anchors + asserts), never from a possibly-stale working copy.
-
-## CRASH-CHECKPOINT (2026-11-19, FINAL GATE DONE — PHASE 4b COMPLETE)
-- HEAD: this commit. All gates green: **T1 a+b seeds 1–10 = 63/63 bit-identical**, ctest 52/52, unittest 91/91 (TwoRunsSuite green with ext hook table), bench ONE run p4b = **12.80s median (mad .010)** vs A0 12.33 = **+3.8 %**, above floor → bisected: regression ≈ −0.42s in **hierarchy 11 (Infection merge)**, RSS +12 % ⇒ merged-object (kind-union members) cache pressure; h10 +0.05s; h12 neutral. PERF.md 4b row carries the full table + deviation. Census refreshed (statics 293 rows retagged; hierarchies.csv 12× DONE-p4b).
-- **PHASE-5 HANDOFF NOTES**: (1) perf lever: split Infection hot/cold members or per-kind side struct, re-bench (target ≤12.4); (2) ESCaseManagementSuite.h + AnophelesModelSuite.h remain excluded+stale (pre-existing); (3) deferred: setHS-overwritten clinical statics → ctx.ext; (4) TwoRunsSuite = ext tripwire, keep rerunning whenever RunExtensions changes; (5) bench.sh needs ABSOLUTE binary path (cds to outdir).
-- TRAP (RNG): LocalRng seeding from master CONSUMES master draws. Merged ctors may only construct/draw where old code did.
-- TRAP: TreatmentId now lives in Treatments.h; include-cycle Treatments↔WHInterface gone (Treatments.h self-contained).
+## Learned / traps (inherited + new)
+- m_rng(ctx.master_RNG) CONSTRUCTS-BY-DRAWING — only where old code did (4b h10 trap).
+- ext lifetime only after ensure_extensions; no header-inline deref of ctx.ext; TwoRunsSuite = ext tripwire, rerun whenever RunExtensions changes.
+- INHERITED-SCOPE lookup: qualify statics per body after merges; convert from `git show HEAD:file` anchors.
+- Error strings byte-identical; `// parity:` comments travel with code.
+- `grep -v LSTMDrug` hides `inf->Kn` uses in LSTMDrugType.cpp/LSTMDrugConversion.cpp — check ALL of model/ before deleting "dead" members (Kn kept, lazy unique_ptr).
+- Checkpoint payload classes behind unique_ptr: keep read_X/write_X byte ORDER identical — wire stays compatible, no golden re-bless (this phase's alternative to box-test conversion).
+- New per-host payload classes: if the class has a user-declared destructor, declare move ctor/assignment explicitly (= default in .cpp) or std::move silently deep-copies.
+- ESCaseManagementSuite.h + AnophelesModelSuite.h remain excluded+stale (pre-existing); deferred: setHS-overwritten clinical statics → ctx.ext (phase 7); Human.h still includes interventions/HumanComponents.h (phase-7 territory, not the PerHost cycle).
 - Untracked PROMPT.md/email = user files, leave.
+
+## Model-only census statics (refresh if statics moved)
+293 rows: ConstValue 23, TimeSpec 21, TrialVariant 20, ScenarioReader 16, DecisionTreeNode 16,
+DecisionTree 16, GeneticMutation 15, GeneticMutationType 12, ClinicalDeploy 11, Time_evolution 11,
+EnumMapping 10, GenericTime 10, PkPdD 10, SimpleTime 10, GammaVal 9, HumanMarking 9,
+AntimalarialModel 8, ClinicalMethod 8, Vaccine 8, GenericMarking 7 (+ long tail). Top-4:
+ScenarioReader 143, ClinicalMethod 108, DecisionTreeNode 98, DecisionTree 83. Unchanged since
+4b-final (no statics moved in 5 yet).
+
+## Gates log
+- (step1 a3e1352a) ctest 52/52; unittest 91/91; T1 a 53/53; bench p5-after-infection-fix mean **12.48s mad .010** vs 12.77 → −2.3% KEEP (floor 1.0%); RSS 39.4→35.4MB. model LOC 18,614 (+15 payload decls).
+- (step2+3 8d517521) build clean; unittest 91/91; ctest 52/52; T1 a 53/53. model LOC 18,658.
+- (step3-4 44947048) build clean
+- (FINAL GATE) T1 63/63; ctest 52/52; unittest 91/91; bench p5-final 12.51s mad .010 KEEP; LOC 18,657. (also fixed stray-quote warning CM5DayCommon.cpp:25 from 4b); unittest 91/91; ctest 52/52; T1 a 53/53; T1 b seeds 1-4 4/4.

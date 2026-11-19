@@ -194,7 +194,7 @@ HumanITN::HumanITN( RunContext& ctx, LocalRng& rng, const ITNComponent& params )
 }
 
 void HumanITN::redeploy(LocalRng& rng, const OM::Transmission::HumanVectorInterventionComponent& params0) {
-    const ITNComponent& params = *dynamic_cast<const ITNComponent*>(&params0);
+    const ITNComponent& params = *params0.asITNComponent();  // declared seam (was dynamic_cast)
     
     deployTime = ctx.clock.nowOrTs1();
     disposalTime = ctx.clock.nowOrTs1() + params.attritionOfNets->sampleAgeOfDecay(rng);

@@ -122,6 +122,7 @@ public:
     virtual void print_details( std::ostream& out )const{
         out << "ChangeHS";
     }
+    bool replayedOnRestore() const override { return true; }
     
 private:
     scnXml::HealthSystem *newHS;
@@ -141,6 +142,7 @@ public:
     virtual void print_details( std::ostream& out )const{
         out << "ChangeEIR";
     }
+    bool replayedOnRestore() const override { return true; }
     
 private:
     scnXml::NonVector *newEIR;
@@ -1625,7 +1627,7 @@ void InterventionManager::loadFromCheckpoint(RunContext& ctx, vector<Host::Human
     while (ctx.ext->timed[ctx.ext->nextTimed]->date < date)
     {
         TimedDeployment *deployment = &*ctx.ext->timed[ctx.ext->nextTimed];
-        if (dynamic_cast<TimedChangeHSDeployment *>(deployment) != 0 || dynamic_cast<TimedChangeEIRDeployment *>(deployment) != 0)
+        if (deployment->replayedOnRestore())   // declared seam (was dynamic_cast)
         {
             // Note: neither changeHS nor changeEIR interventions care what the
             // current time step is when they are deployed, so we don't need to

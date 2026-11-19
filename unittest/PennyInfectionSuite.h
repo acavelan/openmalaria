@@ -54,9 +54,9 @@ public:
 //         cout << setprecision(8) << infection->threshold_N
 //             << '\t' << infection->threshold_C
 //             << '\t' << infection->threshold_V << endl;
-        TS_ASSERT_APPROX( infection->threshold_N, 30939.0831 );
-        TS_ASSERT_APPROX( infection->threshold_C, 350.53964 );
-        TS_ASSERT_APPROX( infection->threshold_V, 315.21947 );
+        TS_ASSERT_APPROX( infection->penny->threshold_N, 30939.0831 );
+        TS_ASSERT_APPROX( infection->penny->threshold_C, 350.53964 );
+        TS_ASSERT_APPROX( infection->penny->threshold_V, 315.21947 );
     }
     
     static void readVector(std::vector<double>& vec, const char* file){
