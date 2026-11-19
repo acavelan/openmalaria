@@ -26,7 +26,10 @@
 #include "Global.h"
 #include "util/random.h"
 #include <iostream>
+#include <map>
 #include <set>
+
+namespace scnXml { class Scenario; }
 
 namespace OM { namespace WithinHost {
 
@@ -50,14 +53,10 @@ public:
     };
     
     /** Initialise with a single genotype. */
-    static void initSingle();
-    
-    /** Initialise from XML data. Call this before other static methods are
-     * used (from PK/PD code). */
-    static void init( const scnXml::Scenario& scenario );
+    void initSingle();
     
     /** Switch to whichever mode has been enabled for the main simulation. */
-    static void preMainSimInit();
+    void preMainSimInit();
     
     /** Map a locus name and allele name to an allele code.
      * 
@@ -65,10 +64,10 @@ public:
      * codes.
      * 
      * Returns max value when no match is found. */
-    static uint32_t findAlleleCode( const string& locus, const string& allele );
+    uint32_t findAlleleCode( const string& locus, const string& allele ) const;
     
     /** Get a reference to the list of all genotypes. */
-    static const vector<Genotype>& getGenotypes();
+    const vector<Genotype>& getGenotypes() const { return genotypes; }
     
     /** Sample the genotype using the configured approach.
      * 
@@ -76,20 +75,38 @@ public:
      *  weights of each genotype for use in sampling. Total need not be one.
      *  Also, passing a zero-length vector is a signal to use initial
      *  frequencies in sampling. */
-    static uint32_t sampleGenotype( LocalRng& rng, std::vector<double>& genotype_weights );
+    uint32_t sampleGenotype( LocalRng& rng, std::vector<double>& genotype_weights );
     
     /** Get the number of genotypes. Functions like sampleGenotype use values
      * from 0 to one less than this. */
-    inline static size_t N(){ return N_genotypes; }
+    size_t N() const { return N_genotypes; }
     
     /** Get the initial frequency of some genotype. */
-    static double initialFreq( size_t genotype );
+    double initialFreq( size_t genotype ) const;
     
-    static void staticCheckpoint( std::ostream& stream );
-    static void staticCheckpoint( std::istream& stream );
+    /** Initialise from XML data (defined in model/xml/scenario.cpp); call on
+     * a fresh Genotypes before any other use. */
+    static void init( Genotypes& state, const scnXml::Scenario& scenario );
     
-private:
-    static size_t N_genotypes;
+    static void staticCheckpoint( Genotypes& state, std::ostream& stream );
+    static void staticCheckpoint( Genotypes& state, std::istream& stream );
+    
+    /// Sample mode: which genotype-sampling strategy is active.
+    enum SampleMode{
+        SAMPLE_FIRST,      // always choose first genotype (essentially the off switch)
+        SAMPLE_INITIAL,    // sample from initial probabilities
+        SAMPLE_TRACKING    // sample from tracked success at genotype level (no recombination)
+    };
+    
+    // keys are cumulative probabilities; last entry should equal 1; values are genotype codes
+    map<double,uint32_t> cum_initial_freqs;
+    /// we give each allele of each loci a unique code
+    map<string, map<string, uint32_t> > alleleCodes;
+    uint32_t nextAlleleCode = 0;
+    vector<Genotype> genotypes;
+    /// Mode to use now (until switched) and from the start of the intervention period.
+    SampleMode current_mode = SAMPLE_FIRST, interv_mode = SAMPLE_FIRST;
+    size_t N_genotypes = 1;
 };
 
 }

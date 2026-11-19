@@ -21,6 +21,8 @@
  */
 
 #include "Global.h"
+#include "core/RunExtensions.h"
+#include "core/RunContext.h"
 #include "interventions/GVI.h"
 #include "Host/Human.h"
 #include "util/SpeciesIndexChecker.h"
@@ -30,10 +32,9 @@
 
 namespace OM { namespace interventions {
 
-vector<GVIComponent*> GVIComponent::componentsByIndex;
 
-void GVIComponent::deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
-    human.perHostTransmission.deployComponent(human.rng, *this);
+void GVIComponent::deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
+    human.perHostTransmission.deployComponent(ctx, human.rng, *this);
     mon::recordDeploy(mon::measure("nMassGVI"), mon::measure("nCtsGVI"), human, method);
 }
 
@@ -43,17 +44,17 @@ void GVIComponent::print_details( std::ostream& out )const{
     out << id().id << "\tGVI";
 }
 
-unique_ptr<PerHostInterventionData> GVIComponent::makeHumanPart(LocalRng& rng) const{
-    return unique_ptr<PerHostInterventionData>(new HumanGVI( rng, *this ));
+unique_ptr<PerHostInterventionData> GVIComponent::makeHumanPart(RunContext& ctx, LocalRng& rng) const{
+    return unique_ptr<PerHostInterventionData>(new HumanGVI( ctx, rng, *this ));
 }
-unique_ptr<PerHostInterventionData> GVIComponent::makeHumanPart( istream& stream, ComponentId id ) const{
-    return unique_ptr<PerHostInterventionData>(new HumanGVI( stream, id ));
+unique_ptr<PerHostInterventionData> GVIComponent::makeHumanPart( RunContext& ctx, istream& stream, ComponentId id ) const{
+    return unique_ptr<PerHostInterventionData>(new HumanGVI( ctx, stream, id ));
 }
 
 
 // ———  per-human data  ———
-HumanGVI::HumanGVI ( LocalRng& rng, const GVIComponent& params ) :
-    PerHostInterventionData( params.id() )
+HumanGVI::HumanGVI ( RunContext& ctx, LocalRng& rng, const GVIComponent& params ) :
+    PerHostInterventionData( ctx, params.id() )
 {
     // Varience factor of decay is sampled once per human: human is assumed
     // to account for most variance.
@@ -61,34 +62,34 @@ HumanGVI::HumanGVI ( LocalRng& rng, const GVIComponent& params ) :
 }
 
 void HumanGVI::redeploy(LocalRng& rng, const Transmission::HumanVectorInterventionComponent&) {
-    deployTime = sim::nowOrTs1();
+    deployTime = ctx.clock.nowOrTs1();
 }
 
 void HumanGVI::update(Host::Human& human){
 }
 
 double HumanGVI::relativeAttractiveness(size_t speciesIndex) const{
-    const GVIComponent& params = *GVIComponent::componentsByIndex[m_id.id];
+    const GVIComponent& params = *ctx.ext->gviComponents[m_id.id];
     const GVIComponent::GVIAnopheles& anoph = params.species[speciesIndex];
     double effect = (1.0 - anoph.deterrency * getEffectSurvival(params));
     return anoph.byProtection( effect );
 }
 
 double HumanGVI::preprandialSurvivalFactor(size_t speciesIndex) const{
-    const GVIComponent& params = *GVIComponent::componentsByIndex[m_id.id];
+    const GVIComponent& params = *ctx.ext->gviComponents[m_id.id];
     const GVIComponent::GVIAnopheles& anoph = params.species[speciesIndex];
     double effect = (1.0 - anoph.preprandialKilling * getEffectSurvival(params));
     return anoph.byProtection( effect );
 }
 
 double HumanGVI::postprandialSurvivalFactor(size_t speciesIndex) const{
-    const GVIComponent& params = *GVIComponent::componentsByIndex[m_id.id];
+    const GVIComponent& params = *ctx.ext->gviComponents[m_id.id];
     const GVIComponent::GVIAnopheles& anoph = params.species[speciesIndex];
     double effect = (1.0 - anoph.postprandialKilling * getEffectSurvival(params));
     return anoph.byProtection( effect );
 }
 double HumanGVI::relFecundity(size_t speciesIndex) const{
-    const GVIComponent& params = *GVIComponent::componentsByIndex[m_id.id];
+    const GVIComponent& params = *ctx.ext->gviComponents[m_id.id];
     const GVIComponent::GVIAnopheles& anoph = params.species[speciesIndex];
     double effect = (1.0 - anoph.fecundityReduction * getEffectSurvival(params));
     return anoph.byProtection( effect );
@@ -96,12 +97,12 @@ double HumanGVI::relFecundity(size_t speciesIndex) const{
 
 void HumanGVI::checkpoint( ostream& stream ){
     deployTime & stream;
-    GVIComponent::componentsByIndex[m_id.id]->decay->checkpointSample(decayHet, stream);
+    ctx.ext->gviComponents[m_id.id]->decay->checkpointSample(decayHet, stream);
 }
-HumanGVI::HumanGVI( istream& stream, ComponentId id ) : PerHostInterventionData( id )
+HumanGVI::HumanGVI( RunContext& ctx, istream& stream, ComponentId id ) : PerHostInterventionData( ctx, id )
 {
     deployTime & stream;
-    GVIComponent::componentsByIndex[m_id.id]->decay->checkpointSample(decayHet, stream);
+    ctx.ext->gviComponents[m_id.id]->decay->checkpointSample(decayHet, stream);
 }
 
 } }

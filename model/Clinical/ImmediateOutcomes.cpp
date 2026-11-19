@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunExtensions.h"
+#include "core/RunContext.h"
 #include "Clinical/ImmediateOutcomes.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/WHVivax.h"
@@ -42,18 +44,18 @@ bool ImmediateOutcomes::useDiagnosticUC = false;
 
 // ———  per-human, update  ———
 
-void ImmediateOutcomes::uncomplicatedEvent (
+void ImmediateOutcomes::uncomplicatedEvent (RunContext& ctx,
     Human& human,
     Episode::State pgState
 ) {
     // If last treatment prescribed was in recent memory, consider second line.
     CaseType regimen = FirstLine;
-    if (m_tLastTreatment + healthSystemMemory > sim::ts0()){
+    if (m_tLastTreatment + healthSystemMemory > ctx.clock.ts0()){
         pgState = Episode::State (pgState | Episode::SECOND_CASE);
         regimen = SecondLine;
     }
 
-    latestReport.update (human, Episode::State( pgState ) );
+    latestReport.update (ctx, human, Episode::State( pgState ) );
 
     // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
     double x = human.rng.uniform_01();
@@ -63,12 +65,12 @@ void ImmediateOutcomes::uncomplicatedEvent (
         
         if( useDiagnosticUC ){
             mon::recordEvent(mon::measure("nTreatDiagnostics"), human);
-            auto diag = WithinHost::diagnostics::monitoringDiagnostic();
+            auto diag = WithinHost::diagnostics::monitoringDiagnostic( ctx );
             if( !human.withinHostModel->diagnosticResult(human.rng, diag) )
                 return; // negative outcome: no treatment
         }
         
-        m_tLastTreatment = sim::ts0();
+        m_tLastTreatment = ctx.clock.ts0();
         mon::recordEvent(measures[regimen], human);
         
         double p = ( x < accessUCSelfTreat[regimen] * m_treatmentSeekingFactor ) ?

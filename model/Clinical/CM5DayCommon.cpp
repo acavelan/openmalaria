@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include "Clinical/DecisionTree5Day.h"
 #include "Clinical/CMDecisionTree.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -54,14 +55,15 @@ void CM5DayCommon::init(){
 
 // ———  per-human, construction and destruction  ———
 
-CM5DayCommon::CM5DayCommon (double tSF) :
+CM5DayCommon::CM5DayCommon (RunContext& ctx, double tSF) :
+    ClinicalModel(ctx),
         m_treatmentSeekingFactor (tSF)
 {}
 
 
 // ———  per-human, update  ———
 
-void CM5DayCommon::doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg) {
+void CM5DayCommon::doClinicalUpdate (RunContext& ctx, Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg) {
     Episode::State pgState = static_cast<Episode::State>( pg.state );
 
     if (pgState & Episode::MALARIA) {
@@ -71,16 +73,16 @@ void CM5DayCommon::doClinicalUpdate (Human& human, double ageYears, WithinHost::
             // NOTE: the "not indirect mortality" bit is a historical accident.
             // Validity is debatable, but there's no point changing now.
             // (This does affect tests.)
-            uncomplicatedEvent (human, pgState);
+            uncomplicatedEvent (ctx, human, pgState);
         }
     } else if (pgState & Episode::SICK) { // sick but not from malaria
-        uncomplicatedEvent (human, pgState);
+        uncomplicatedEvent (ctx, human, pgState);
     }
     
     if (pg.indirectMortality && doomed == NOT_DOOMED)
-        doomed = -sim::oneTS();
+        doomed = -ctx.clock.one_TS();
     
-    if( m_tLastTreatment == sim::ts0() )
+    if( m_tLastTreatment == ctx.clock.ts0() )
         human.removeFirstEvent(interventions::SubPopRemove::ON_FIRST_TREATMENT);
     
     if( pgState & Episode::SICK )
@@ -149,7 +151,7 @@ void CM5DayCommon::severeMalaria (
     
     //NOTE: we do not model diagnostics in this case
     if( prandom >= q[2] ){      // treated in hospital
-        m_tLastTreatment = sim::ts0();
+        m_tLastTreatment = ctx.clock.ts0();
         mon::recordEvent(mon::measure("nTreatments3"), human);
         Episode::State stateTreated = Episode::State (pgState | Episode::EVENT_IN_HOSPITAL);
         
@@ -158,35 +160,35 @@ void CM5DayCommon::severeMalaria (
             human.withinHostModel->treatment( human, treatmentSevere );
             
             if( prandom < q[6] ){       // death (despite success in clearing parasites)
-                latestReport.update (human, Episode::State (stateTreated | Episode::DIRECT_DEATH));
+                latestReport.update (ctx, human, Episode::State (stateTreated | Episode::DIRECT_DEATH));
                 doomed  = DOOMED_COMPLICATED;
             }else if( prandom < q[7] ){ // Patient recovers, but with sequelae (don't report full recovery)
-                latestReport.update (human, Episode::State (stateTreated | Episode::SEQUELAE));
+                latestReport.update (ctx, human, Episode::State (stateTreated | Episode::SEQUELAE));
             }else /*prandom < q[8]*/{   // patient recovers fully
-                latestReport.update (human, Episode::State (stateTreated | Episode::RECOVERY));
+                latestReport.update (ctx, human, Episode::State (stateTreated | Episode::RECOVERY));
             }
         }else /*prandom < q[5]*/{  // Treated but parasites not cleared (in hospital)
             // No change in parasitological status among in-hospital patients
             
             if( prandom < q[3] ){       // death
-                latestReport.update (human, Episode::State (stateTreated | Episode::DIRECT_DEATH));
+                latestReport.update (ctx, human, Episode::State (stateTreated | Episode::DIRECT_DEATH));
                 doomed  = DOOMED_COMPLICATED;
             }else if( prandom < q[4] ){ // sequelae without parasite clearance
-                latestReport.update (human, Episode::State (stateTreated | Episode::SEQUELAE));
+                latestReport.update (ctx, human, Episode::State (stateTreated | Episode::SEQUELAE));
             }else /*prandom < q[5]*/{   // full recovery from episode
-                latestReport.update (human, pgState);
+                latestReport.update (ctx, human, pgState);
             }
         }
     }else /*prandom < q[2]*/{
         // Not treated, thus no change in parasitological status
         
         if( prandom < q[0] ){   // outcome 0: death in community
-            latestReport.update (human, Episode::State (pgState | Episode::DIRECT_DEATH));
+            latestReport.update (ctx, human, Episode::State (pgState | Episode::DIRECT_DEATH));
             doomed  = DOOMED_COMPLICATED;
         }else if( prandom < q[1] ){     // outcome 1: sequelae in community
-            latestReport.update (human, Episode::State (pgState | Episode::SEQUELAE));
+            latestReport.update (ctx, human, Episode::State (pgState | Episode::SEQUELAE));
         }else /*prandom < q[2]*/{       // outcome 2: full recovery from episode in community
-            latestReport.update (human, pgState);
+            latestReport.update (ctx, human, pgState);
         }
     }
 }

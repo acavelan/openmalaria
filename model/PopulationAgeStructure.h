@@ -29,71 +29,54 @@
 namespace scnXml{ class Demography; }
 namespace OM
 {
+class RunContext;
+
+    /** Per-run demography state (was: AgeStructure statics; lives in
+     * RunContext::age). */
+    struct AgeStructureState {
+        /*! Field-data age groups: ageGroupBounds[i] is the lower bound of
+        group i (bounds has ngroups+1 entries), ageGroupPercent[i] the
+        percentage of the population in group i. Set by
+        estimateRemovalRates(), used by setDemoParameters(). */
+        std::vector<double> ageGroupBounds, ageGroupPercent;
+        /// Parameters defining the smooth target age-distribution curve.
+        double mu0 = 0.0, mu1 = 0.0, alpha0 = 0.0, alpha1 = 0.0;
+        /// rho is growth rate of human population.
+        static constexpr double rho = 0.0;
+        /** Target cumulative percentage of population by age, from oldest
+        age to youngest: cumAgeProp[size()+1-i] is the proportion of people
+        aged i time steps or older. Set by init()/calcCumAgeProp(). */
+        std::vector<double> cumAgeProp;
+    };
+
     /** Encapsulates code just setting up the age structure (i.e.  cumAgeProp). */
     class AgeStructure
     {
     public:
         /** Set up cumAgeProp from XML data. */
-        static void init( const scnXml::Demography& demography );
+        static void init( RunContext& ctx, const scnXml::Demography& demography );
         
         /** Return maximum individual lifetime in intervals that AgeStructure can handle. */
-        static inline size_t getMaxTStepsPerLife(){
-            return cumAgeProp.size();
-        }
+        static size_t getMaxTStepsPerLife( const RunContext& ctx );
         
         /** Return the expected population size of individuals aged ageTSteps or
         * older, based on a total population size of targetPop. */
-        static int targetCumPop( size_t ageTSteps, int targetPop );
+        static int targetCumPop( RunContext& ctx, size_t ageTSteps, int targetPop );
+
+        /** For input values for alpha1 and mu1, the fit to field data
+        * (residualSS) is calculated and returned. Called back by the GSL
+        * minimiser during estimateRemovalRates (via wCalcRSS's void*
+        * params); not for general use. */
+        static double setDemoParameters (RunContext& ctx, double param1, double param2);
     
     private:
-        /*! Estimates demography parameters to define a smooth curve for the target
-        population age-distribution (age in years) */
-        static void estimateRemovalRates( const scnXml::Demography& demography );
+        static void estimateRemovalRates( RunContext& ctx, const scnXml::Demography& demography );
 	
-        /** For input values for alpha1 and mu1, the fit to field data (residualSS)
-        * is calculated and returned function called iteratively by
-        * estimateRemovalRates. */
-        static double setDemoParameters (double param1, double param2);
 
         /** Takes the best-fitting demography parameters estimated by
         * estimateRemovalRates and calculates the age structure (cumAgeProp). */
-	static void calcCumAgeProp ();
+	static void calcCumAgeProp (RunContext& ctx);
         
-	//BEGIN static parameters only used by estimateRemovalRates(), setDemoParameters() and calcCumAgeProp()
-	/** The bounds for each age group and percentage of population in this age
-        * group for the field data demography age groups.
-        *
-        * ageGroupBounds[i] is the lower-bound for group i, ageGroupBounds[i+1] is
-        * the group's upper bound. ageGroupPercent[i] is the percentage of the
-        * population in age group i.
-        *
-        * Set by estimateRemovalRates() and used internally (by
-        * setDemoParameters()). */
-        //@{
-        static vector<double> ageGroupBounds;
-        static vector<double> ageGroupPercent;
-        //@}
-        /** Parameters defining smooth curve of target age-distribution.
-        *
-        * Set by estimateRemovalRates() (via setDemoParameters()) and used by
-        * setupPyramid(). */
-        //@{
-        static double mu0;
-        static double mu1;
-        static double alpha0;
-        static double alpha1;
-        // rho is growth rate of human population.
-        constexpr static double rho = 0.0;
-        //@}
-	//END
-	
-	//BEGIN static parameters set by init() or calcCumAgeProp()
-        /** Target cumulative percentage of population by age, from oldest age to youngest.
-	*
-	* cumAgeProp[size()+1-i] gives the proportion of people aged i time steps or older.
-	*/
-	static std::vector<double> cumAgeProp;
-	//END
     };
 }
 

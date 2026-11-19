@@ -27,6 +27,7 @@
 // WHVivax.cpp (extern re-declared below).
 
 #include "Global.h"
+#include "core/RunContext.h"
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
 #include "Host/WithinHost/WHVivax.h"
 #include "util/CommandLine.h"
@@ -62,9 +63,9 @@ extern map<double,int> nHypnozoitesProbMap;
 extern bool ignoreNoPQ;
 extern double pHetNoPQ, pReceivePQ, effectivenessPQ;
 
-std::unique_ptr<HypnozoiteReleaseDistribution> createHypnozoiteReleaseDistribution(const scnXml::HypnozoiteReleaseDistribution& elt)
+std::unique_ptr<HypnozoiteReleaseDistribution> createHypnozoiteReleaseDistribution(RunContext& ctx, const scnXml::HypnozoiteReleaseDistribution& elt)
 {
-    return std::make_unique<HypnozoiteReleaseDistribution>(createSampler(elt),  elt.getLatentRelapse());
+    return std::make_unique<HypnozoiteReleaseDistribution>(ctx, createSampler(elt),  elt.getLatentRelapse());
 }
 
 void initNHypnozoites(){
@@ -81,15 +82,15 @@ void initNHypnozoites(){
     }
 }
 
-void WHVivax::init( const OM::Parameters& parameters, const scnXml::Model& model ){
+void WHVivax::init( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model ){
 
     // Default value to use if no <parameters> element is present in XML.
-    latentP = UnitParse::readShortDuration("15d", UnitParse::DAYS);
+    latentP = UnitParse::readShortDuration(ctx.clock, "15d", UnitParse::DAYS);
     try
     {
         if (model.getParameters().present())
         {
-            latentP = UnitParse::readShortDuration(
+            latentP = UnitParse::readShortDuration(ctx.clock, 
                 model.getParameters().get().getLatentp(), UnitParse::NONE);
         }
     }
@@ -105,13 +106,13 @@ void WHVivax::init( const OM::Parameters& parameters, const scnXml::Model& model
     maxNumberHypnozoites = elt.getHypnozoiteRelease().getNumberHypnozoites().getMax();
     baseNumberHypnozoites = elt.getHypnozoiteRelease().getNumberHypnozoites().getBase();
     const scnXml::HypnozoiteRelease& hr = elt.getHypnozoiteRelease();
-    latentRelapse1st = createHypnozoiteReleaseDistribution(hr.getFirstReleaseDays());
+    latentRelapse1st = createHypnozoiteReleaseDistribution(ctx, hr.getFirstReleaseDays());
     if(hr.getSecondReleaseDays().present()){
-        latentRelapse2nd = createHypnozoiteReleaseDistribution(hr.getSecondReleaseDays().get());
+        latentRelapse2nd = createHypnozoiteReleaseDistribution(ctx, hr.getSecondReleaseDays().get());
         pSecondRelease = hr.getPSecondRelease();
         assert( pSecondRelease >= 0 && pSecondRelease <= 1 );
     } // else pSecondRelease is NaN and other values don't get used
-    bloodStageProtectionLatency = sim::roundToTSFromDays( elt.getBloodStageProtectionLatency().getValue() );
+    bloodStageProtectionLatency = ctx.clock.roundToTSFromDays( elt.getBloodStageProtectionLatency().getValue() );
     bloodStageLength.setParams(elt.getBloodStageLengthDays());
     
     const scnXml::ClinicalEvents& ce = elt.getClinicalEvents();
@@ -134,7 +135,7 @@ void WHVivax::init( const OM::Parameters& parameters, const scnXml::Model& model
     }
 		
     initNHypnozoites();
-    Pathogenesis::PathogenesisModel::init( parameters, model.getClinical(), true );
+    Pathogenesis::PathogenesisModel::init( ctx, parameters, model.getClinical(), true );
 }
 
 void WHVivax::setHSParameters(const scnXml::LiverStageDrug* elt){

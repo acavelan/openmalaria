@@ -24,6 +24,7 @@
 #define Hmod_WithinHost_Immunity
 
 #include "Global.h"
+#include "core/RunContext.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Treatments.h"
 #include "util/vectors.h"
@@ -49,12 +50,12 @@ public:
     /// @brief Static methods
     //@{
     /// Initialise static parameters
-    static void init( const OM::Parameters& parameters, const scnXml::Model& model );
+    static void init( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model );
     //@}
 
     /// @brief Constructors, destructors and checkpointing functions
     //@{
-    WHFalciparum( LocalRng& rng, double comorbidityFactor );
+    WHFalciparum( RunContext& ctx, LocalRng& rng, double comorbidityFactor );
     virtual ~WHFalciparum();
     //@}
     
@@ -128,7 +129,7 @@ protected:
     /** Total asexual blood stage density over last 20 days (uses samples from
     * 10, 15 and 20 days ago).
     *
-    * m_y_lag[sim::ts0().moduloSteps(y_lag_len)] corresponds to the density
+    * m_y_lag[ctx.clock.ts0().moduloSteps(y_lag_len)] corresponds to the density
     * from the previous time step (once updateInfection has been called). */
     std::vector<double> m_y_lag_i, m_y_lag_l;
     

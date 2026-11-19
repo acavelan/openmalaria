@@ -25,7 +25,6 @@
 
 #include "Global.h"
 #include "interventions/Interfaces.h"
-#include "Host/ImportedInfections.h"
 #include "Transmission/TransmissionModel.h"
 namespace scnXml { class Interventions; }
 
@@ -37,30 +36,24 @@ namespace OM {
 
 namespace interventions {
 
-class ContinuousHumanDeployment;
-class TimedDeployment;
-
 /** Management of interventions deployed on a per-time-step basis. */
 class InterventionManager {
 public:
     /** Read XML descriptions. */
-    static void init (const scnXml::Interventions& intervElt, const Population &population, Transmission::TransmissionModel& transmission);
+    static void init (RunContext& ctx, const scnXml::Interventions& intervElt, const Population &population, Transmission::TransmissionModel& transmission);
     
-    /// Checkpointing
-    template<class S>
-    static void checkpoint (S& stream) {
-        using namespace OM::util::checkpoint;
-        // most members are only set from XML,
-        // nextTimed varies but is re-set by loadFromCheckpoint
-        importedInfections & stream;
-    }
+    /// Checkpointing: most members are only set from XML,
+    /// nextTimed varies but is re-set by loadFromCheckpoint; only
+    /// imported infections need serialising.
+    static void checkpoint (RunContext& ctx, std::istream& stream);
+    static void checkpoint (RunContext& ctx, std::ostream& stream);
 
     /** Call after loading a checkpoint, passing the intervention-period time.
      * 
      * Serves to replace health-system and EIR where changeHS/changeEIR
      * interventions have been used. */
     static void loadFromCheckpoint(
-                vector<Host::Human> &population,
+                RunContext& ctx, vector<Host::Human> &population,
                 Transmission::TransmissionModel& transmission);
     
     /** @brief Deploy interventions
@@ -69,37 +62,17 @@ public:
      * 
      * Continuous interventions are deployed as humans reach the target ages.
      * Unlike with vaccines, missing one schedule doesn't preclude the next. */
-    static void deploy(vector<Host::Human> &population, Transmission::TransmissionModel& transmission);
+    static void deploy(RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission);
     
     /** Get a constant reference to a component class with a certain index.
      * 
      * @throws util::base_exception if the index is out-of-range */
-    inline static const HumanInterventionComponent& getComponent( ComponentId id ){
-        if( id.id >= humanComponents.size() )
-            throw util::base_exception( "invalid component id" );
-        return *humanComponents[id.id];
-    }
+    static const HumanInterventionComponent& getComponent( RunContext& ctx, ComponentId id );
     
     /** Get a numeric ComponentId from the textual identifier used in the XML.
      * 
      * If textId is unknown, an xml_scenario_error is thrown. */
-    static ComponentId getComponentId( const std::string textId );
-    
-private:
-    // Map of textual identifiers to numeric identifiers for components
-    static std::map<std::string,ComponentId> identifierMap;
-    // All human intervention components, indexed by a number. This list is used
-    // during initialisation and thereafter only for memory management.
-    static vector<unique_ptr<HumanInterventionComponent>> humanComponents;
-    // Continuous interventions, sorted by deployment age (weakly increasing)
-    static vector<ContinuousHumanDeployment> continuous;
-    // List of all timed interventions. Should be sorted (time weakly increasing).
-    static vector<unique_ptr<TimedDeployment>> timed;
-    static uint32_t nextTimed;  // not chcekpointed (see loadFromCheckpoint)
-    
-    // imported infections are not really interventions, and handled by a separate class
-    // (but are grouped here for convenience and due toassociation in schema)
-    static OM::Host::ImportedInfections importedInfections;
+    static ComponentId getComponentId( RunContext& ctx, const std::string textId );
 };
 
 } }

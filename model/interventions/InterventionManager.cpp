@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
+#include "core/RunExtensions.h"
 #include "interventions/InterventionManager.h"
 #include "Population.h"
 #include "util/CommandLine.h"
@@ -32,25 +34,27 @@ namespace interventions
 
 // ———  InterventionManager  ———
 
-// static memory:
-
-std::map<std::string, ComponentId> InterventionManager::identifierMap;
-vector<unique_ptr<HumanInterventionComponent>> InterventionManager::humanComponents;
-vector<ContinuousHumanDeployment> InterventionManager::continuous;
-vector<unique_ptr<TimedDeployment>> InterventionManager::timed;
-uint32_t InterventionManager::nextTimed;
-OM::Host::ImportedInfections InterventionManager::importedInfections;
-
-// declared in HumanComponents.h:
-vector<ComponentId> removeAtIds[SubPopRemove::NUM];
-
 // static functions:
 
+void InterventionManager::checkpoint (RunContext& ctx, std::istream& stream) {
+    using namespace OM::util::checkpoint;
+    ctx.ext->importedInfections & stream;
+}
+void InterventionManager::checkpoint (RunContext& ctx, std::ostream& stream) {
+    using namespace OM::util::checkpoint;
+    ctx.ext->importedInfections & stream;
+}
 
-ComponentId InterventionManager::getComponentId(const string textId)
+const HumanInterventionComponent& InterventionManager::getComponent( RunContext& ctx, ComponentId id ){
+    if( id.id >= ctx.ext->humanComponents.size() )
+        throw util::base_exception( "invalid component id" );
+    return *ctx.ext->humanComponents[id.id];
+}
+
+ComponentId InterventionManager::getComponentId(RunContext& ctx, const string textId)
 {
-    auto it = identifierMap.find(textId);
-    if (it == identifierMap.end())
+    auto it = ctx.ext->identifierMap.find(textId);
+    if (it == ctx.ext->identifierMap.end())
     {
         ostringstream msg;
         msg << "unable to find an intervention component with id \"" << textId
@@ -61,26 +65,26 @@ ComponentId InterventionManager::getComponentId(const string textId)
 }
 
 
-void InterventionManager::deploy(vector<Host::Human> &population, Transmission::TransmissionModel &transmission)
+void InterventionManager::deploy(RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel &transmission)
 {
-    if (sim::intervTime() < sim::zero()) return;
+    if (ctx.clock.interv < sim::zero()) return;
 
     // deploy imported infections (not strictly speaking an intervention)
-    importedInfections.import(population);
+    ctx.ext->importedInfections.import(ctx, population);
 
     // deploy timed interventions
-    SimTime now = sim::intervDate();
-    while (timed[nextTimed]->date <= now)
+    SimTime now = ctx.clock.interv_date();
+    while (ctx.ext->timed[ctx.ext->nextTimed]->date <= now)
     {
         if (util::CommandLine::option(util::CommandLine::VERBOSE))
         {
             cout << "deploy::" << now << "::Timed";
-            timed[nextTimed]->print_details(cout);
+            ctx.ext->timed[ctx.ext->nextTimed]->print_details(cout);
             cout << endl;
         }
 
-        timed[nextTimed]->deploy(population, transmission);
-        nextTimed += 1;
+        ctx.ext->timed[ctx.ext->nextTimed]->deploy(ctx, population, transmission);
+        ctx.ext->nextTimed += 1;
     }
 
     // deploy continuous interventions
@@ -88,15 +92,15 @@ void InterventionManager::deploy(vector<Host::Human> &population, Transmission::
     {
         uint32_t nextCtsDist = human.nextCtsDist;
         // deploy continuous interventions
-        while (nextCtsDist < continuous.size())
+        while (nextCtsDist < ctx.ext->continuous.size())
         {
             if (util::CommandLine::option(util::CommandLine::VERBOSE))
             {
                 cout << "deploy::" << now << "::Continuous";
-                continuous[nextCtsDist].print_details(cout);
+                ctx.ext->continuous[nextCtsDist].print_details(cout);
                 cout << endl;
             }
-            if (!continuous[nextCtsDist].filterAndDeploy(human)) break; // deployment (and all remaining) happens in the future
+            if (!ctx.ext->continuous[nextCtsDist].filterAndDeploy(ctx, human)) break; // deployment (and all remaining) happens in the future
             nextCtsDist = ++human.nextCtsDist;
         }
     }

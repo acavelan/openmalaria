@@ -24,6 +24,7 @@
 #define Hmod_Infection
 
 #include "Global.h"
+#include "core/RunContext.h"
 #include "Parameters.h"
 #include "Host/WithinHost/Genotypes.h"
 
@@ -45,18 +46,23 @@ enum InfectionOrigin
 
 class Infection {
 public:
+    /// The run this infection belongs to (clock accessed as ctx.clock).
+    RunContext& ctx;
+
     inline static void init( SimTime latentP ){
         s_latentP = latentP;
     }
     
-    Infection (uint32_t genotype, int origin) :
-        m_startDate(sim::nowOrTs0()),
+    Infection (RunContext& ctx, uint32_t genotype, int origin) :
+        ctx(ctx),
+        m_startDate(this->ctx.clock.nowOrTs0()),
         m_density(0.0),
         m_cumulativeExposureJ(0.0),
         m_genotype(genotype),
         m_origin(origin)
     {}
-    Infection (istream& stream) :
+    Infection (RunContext& ctx, istream& stream) :
+        ctx(ctx),
         m_startDate(sim::never())
     {
         m_startDate & stream;
@@ -86,7 +92,7 @@ public:
      * first update (though due to the latent period densities will still be
      * low). */
     inline bool bloodStage() const{
-        return sim::latestTs0() - m_startDate > sim::fromDays(5);
+        return ctx.clock.latestTs0() - m_startDate > sim::fromDays(5);
     }
     
     /// Get the density of the infection as of the last update
@@ -101,7 +107,7 @@ public:
     
     /// Get whether the infection is HRP2-deficient
     bool isHrp2Deficient() const {
-        return Genotypes::getGenotypes()[m_genotype].hrp2_deficient;
+        return ctx.genotypes.getGenotypes()[m_genotype].hrp2_deficient;
     }
     
     /** Get the infection's genotype. */

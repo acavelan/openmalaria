@@ -23,6 +23,7 @@
 #ifndef Hmod_CommonInfection
 #define Hmod_CommonInfection
 
+#include "core/RunContext.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/random.h"
 
@@ -36,19 +37,19 @@ using util::LocalRng;
  * conversion when the main simulation uses a 5 day time step by updating
  * infections and the PK-PD model multiple times.
  * 
- * Note therefore that sim::ts0(), ts1(), etc. may not always be accurate since
+ * Note therefore that ctx.clock.ts0(), ts1(), etc. may not always be accurate since
  * it is only updated once per main time step. */
 class CommonInfection : public Infection {
 public:
     /// @brief Construction and destruction
     //@{
     /// For checkpointing (don't use for anything else)
-    CommonInfection(istream& stream) :
-        Infection(stream)
+    CommonInfection(RunContext& ctx, istream& stream) :
+        Infection(ctx, stream)
     {}
     /// Per instance initialisation; create new inf.
-    CommonInfection(uint32_t genotype, int origin) :
-	Infection(genotype, origin)
+    CommonInfection(RunContext& ctx, uint32_t genotype, int origin) :
+	Infection(ctx, genotype, origin)
     {}
     virtual ~CommonInfection();
     //@}
@@ -57,7 +58,7 @@ public:
     /** Update: calculate new density. Call this once per day.
      * 
      * @param survivalFactor Density multiplier to introduce drug & vaccine effects
-     * @param now The simulation time. Use this instead of sim::ts1().
+     * @param now The simulation time. Use this instead of ctx.clock.ts1().
      * @param body_mass Body mass of host in kg
      * @returns True when the infection goes extinct. */
     inline bool update( LocalRng& rng, double survivalFactor, SimTime now, double body_mass ){

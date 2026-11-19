@@ -33,6 +33,7 @@
 namespace scnXml { class DecayFunction; }
 
 namespace OM {
+class SimClock;
 namespace util {
 
 /** An interface for a few types of decay function (some of which may also be
@@ -51,7 +52,8 @@ public:
         increasing(other.increasing),
         initialEfficacy(other.initialEfficacy),
         het(other.het ? other.het->clone() : nullptr),
-        hetFactor(other.hetFactor) {}
+        hetFactor(other.hetFactor),
+        simClock(other.simClock) {}
 
     virtual ~DecayFunction() {}
 
@@ -61,7 +63,7 @@ public:
      * @param eltName Name of XML element (for reasonable error reporting)
      */
     static unique_ptr<DecayFunction> makeObject(
-        const scnXml::DecayFunction& elt, const char* eltName
+        const SimClock& clock, const scnXml::DecayFunction& elt, const char* eltName
     );
 
     /** Sample a DecayFunction value (should be stored per individual).
@@ -116,6 +118,8 @@ private:
 protected:
     virtual unique_ptr<DecayFunction> makeHetSample(double factor) const = 0;
     double hetFactor = 0.0;
+    /// Set by makeObject; needed by sampleAgeOfDecay (round-to-time-step).
+    const SimClock* simClock = nullptr;
 };
 
 } }

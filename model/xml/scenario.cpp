@@ -28,7 +28,9 @@
 // below). Declarations for the moved entry points stay in the original
 // headers (scnXml forward-declared).
 
+#include "core/RunExtensions.h"
 #include "Global.h"
+#include "core/RunContext.h"
 #include "Parameters.h"
 #include "Host/WithinHost/CommonWithinHost.h"
 #include "Host/WithinHost/DescriptiveWithinHost.h"
@@ -85,44 +87,44 @@ extern bool reportInfectedOrPatentInfected;
 // State defined in Diagnostic.cpp (external linkage):
 extern map<string, Diagnostic> diagnostic_set;
 
-void WHInterface::init( const OM::Parameters& parameters, const scnXml::Scenario& scenario ) {
-    reportInfectionsByGenotype = mon::isUsed(mon::measure("nInfectByGenotype")) ||
-        mon::isUsed(mon::measure("nPatentByGenotype")) ||
-        mon::isUsed(mon::measure("logDensByGenotype"));
+void WHInterface::init( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario ) {
+    reportInfectionsByGenotype = mon::isUsed(ctx, mon::measure("nInfectByGenotype")) ||
+        mon::isUsed(ctx, mon::measure("nPatentByGenotype")) ||
+        mon::isUsed(ctx, mon::measure("logDensByGenotype"));
     
     if( util::ModelOptions::option( util::VIVAX_SIMPLE_MODEL ) ){
         opt_vivax_simple = true;
-        WHVivax::init( parameters, scenario.getModel() );
+        WHVivax::init( ctx, parameters, scenario.getModel() );
     }else{
-        WHFalciparum::init( parameters, scenario.getModel() );
+        WHFalciparum::init( ctx, parameters, scenario.getModel() );
         
         if (util::ModelOptions::option (util::DUMMY_WITHIN_HOST_MODEL)) {
             opt_dummy_whm = true;
-            DummyInfection::init ();
+            DummyInfection::init (ctx);
         } else if (util::ModelOptions::option (util::EMPIRICAL_WITHIN_HOST_MODEL)) {
             opt_empirical_whm = true;
-            EmpiricalInfection::init();    // 1-day time step check
+            EmpiricalInfection::init(ctx);    // 1-day time step check
         } else if (util::ModelOptions::option (util::MOLINEAUX_WITHIN_HOST_MODEL)) {
             opt_molineaux_whm = true;
-            MolineauxInfection::init( parameters );
+            MolineauxInfection::init( ctx, parameters );
         } else if (util::ModelOptions::option (util::PENNY_WITHIN_HOST_MODEL)) {
             opt_penny_whm = true;
-            PennyInfection::init();
+            PennyInfection::init(ctx);
         } else {
-            DescriptiveInfection::init( parameters );      // 5-day time step check
+            DescriptiveInfection::init( ctx, parameters );      // 5-day time step check
         }
         opt_common_whm = opt_dummy_whm || opt_empirical_whm
                 || opt_molineaux_whm || opt_penny_whm;
         
         if( opt_common_whm ){
-            CommonWithinHost::init( scenario );
+            CommonWithinHost::init( ctx, scenario );
         }else{
-            DescriptiveWithinHostModel::initDescriptive();
+            DescriptiveWithinHostModel::initDescriptive(ctx);
         }
     }
 }
 
-void WHFalciparum::init( const OM::Parameters& parameters, const scnXml::Model& model ) {
+void WHFalciparum::init( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model ) {
     sigma_i=sqrt(parameters[Parameter::SIGMA_I_SQ]);
     immPenalty_22=1-exp(parameters[Parameter::IMMUNITY_PENALTY]);
     immEffectorRemain=exp(-parameters[Parameter::IMMUNE_EFFECTOR_DECAY]);
@@ -134,18 +136,18 @@ void WHFalciparum::init( const OM::Parameters& parameters, const scnXml::Model& 
     alpha_m = 1.0 - exp(-parameters[Parameter::NEG_LOG_ONE_MINUS_ALPHA_M]);
     decayM = parameters[Parameter::DECAY_M];
     
-    y_lag_len = sim::inSteps(sim::fromDays(20)) + 1;
+    y_lag_len = ctx.clock.inSteps(sim::fromDays(20)) + 1;
     
     //NOTE: should also call cleanup() on the PathogenesisModel, but it only frees memory which the OS does anyway
-    Pathogenesis::PathogenesisModel::init( parameters, model.getClinical(), false );
+    Pathogenesis::PathogenesisModel::init( ctx, parameters, model.getClinical(), false );
     
     // Default value to use if no <parameters> element is present in XML.
-    SimTime latentP = UnitParse::readShortDuration("15d", UnitParse::DAYS);
+    SimTime latentP = UnitParse::readShortDuration(ctx.clock, "15d", UnitParse::DAYS);
     try
     {
         if (model.getParameters().present())
         {
-            latentP = UnitParse::readShortDuration(
+            latentP = UnitParse::readShortDuration(ctx.clock, 
                 model.getParameters().get().getLatentp(), UnitParse::NONE);
         }
     }
@@ -157,50 +159,35 @@ void WHFalciparum::init( const OM::Parameters& parameters, const scnXml::Model& 
     Infection::init( latentP );
 }
 
-void CommonWithinHost::init( const scnXml::Scenario& scenario ){
+void CommonWithinHost::init( RunContext& ctx, const scnXml::Scenario& scenario ){
     const scnXml::Human human = scenario.getModel().getHuman();
     if( !human.getWeight().present() ){
         // Technically this is needed by the PK/PD and Molineaux models
         throw util::xml_scenario_error( "model->human->weight element required by certain models" );
     }
-    massByAge.set( human.getWeight().get(), "weight" );
+    massByAge.set( ctx.clock, human.getWeight().get(), "weight" );
     hetMassMultStdDev = human.getWeight().get().getMultStdDev();
     // hetWeightMult must be large enough that birth weight is at least 0.5 kg:
     minHetMassMult = 0.5 / massByAge.eval( 0.0 );
     
-    reportInfectedOrPatentInfected = mon::isUsed(mon::measure("totalInfs")) ||
-        mon::isUsed(mon::measure("totalPatentInf"));
+    reportInfectedOrPatentInfected = mon::isUsed(ctx, mon::measure("totalInfs")) ||
+        mon::isUsed(ctx, mon::measure("totalPatentInf"));
     
-    PkPd::LSTMModel::init( scenario );
+    PkPd::LSTMModel::init( ctx, scenario );
 }
 
 // ———  parasite genetics  ———
 
 namespace GT /*for genotype impl details*/{
-// State defined in Genotypes.cpp (external linkage):
-extern map<double,uint32_t> cum_initial_freqs;
-extern map<string, map<string, uint32_t> > alleleCodes;
-extern uint32_t nextAlleleCode;
-extern vector<Genotypes::Genotype> genotypes;
-
-// NOTE: duplicated from Genotypes.cpp (identical definition; ODR-safe) —
-// needed by Genotypes::init below.
-enum SampleMode{
-    SAMPLE_FIRST,      // always choose first genotype (essentially the off switch)
-    SAMPLE_INITIAL,    // sample from initial probabilities
-    SAMPLE_TRACKING    // sample from tracked success at genotype level (no recombination)
-};
-extern SampleMode current_mode, interv_mode;
-
 // Represent a set of loci: all possible combinations of alleles
 // This is actually just machinery to calculate the list of all genotypes
 struct LocusSet{
-    LocusSet( const scnXml::ParasiteLocus& elt_l ){
+    LocusSet( Genotypes& state, const scnXml::ParasiteLocus& elt_l ) : st(state) {
         alleles.reserve( elt_l.getAllele().size() );
         double cum_p = 0.0;
         for( const scnXml::ParasiteAllele& elt_a : elt_l.getAllele() ){
-            uint32_t alleleCode = (nextAlleleCode++);
-            alleleCodes[elt_l.getName()][elt_a.getName()] = alleleCode;
+            uint32_t alleleCode = (st.nextAlleleCode++);
+            st.alleleCodes[elt_l.getName()][elt_a.getName()] = alleleCode;
             cum_p += elt_a.getInitialFrequency();
             alleles.push_back( Genotypes::Genotype( alleleCode, elt_a.getInitialFrequency(), elt_a.getFitness(), elt_a.getHrp2_deletion() ) );
         }
@@ -223,6 +210,7 @@ struct LocusSet{
     }
     
     vector<Genotypes::Genotype> alleles;
+    Genotypes& st;
 };
 
 }
@@ -236,16 +224,16 @@ bool contains(const vector<T>& vec, const T& x){
     return false;
 }
 
-void Genotypes::init( const scnXml::Scenario& scenario ){
+void Genotypes::init( Genotypes& state, const scnXml::Scenario& scenario ){
     if( scenario.getParasiteGenetics().present() ){
         const scnXml::ParasiteGenetics& genetics =
             scenario.getParasiteGenetics().get();
         
-        GT::current_mode = GT::SAMPLE_INITIAL;      // turn on sampling
+        state.current_mode = Genotypes::SAMPLE_INITIAL;      // turn on sampling
         if( genetics.getSamplingMode() == "initial" ){
-            GT::interv_mode = GT::SAMPLE_INITIAL;
+            state.interv_mode = Genotypes::SAMPLE_INITIAL;
         }else if( genetics.getSamplingMode() == "tracking" ){
-            GT::interv_mode = GT::SAMPLE_TRACKING;
+            state.interv_mode = Genotypes::SAMPLE_TRACKING;
             if( !scenario.getEntomology().getVector().present() ){
                 throw util::xml_scenario_error( "incompatibility; either use "
                     "entomology/vector (not nonVector) or set "
@@ -261,20 +249,20 @@ void Genotypes::init( const scnXml::Scenario& scenario ){
         }
         
         // Build the list of all allele combinations by iterating over loci (plural of locus):
-        GT::LocusSet loci( genetics.getLocus()[0] );
+        GT::LocusSet loci( state, genetics.getLocus()[0] );
         for( size_t i = 1; i < genetics.getLocus().size(); i += 1 ){
-            GT::LocusSet newLocus(genetics.getLocus()[i]);
+            GT::LocusSet newLocus(state, genetics.getLocus()[i]);
             loci.include( newLocus );
         }
-        GT::genotypes.swap( loci.alleles );
-        N_genotypes = GT::genotypes.size();
+        state.genotypes.swap( loci.alleles );
+        state.N_genotypes = state.genotypes.size();
         
         double cum_p = 0.0;
-        for( size_t i = 0; i < GT::genotypes.size(); ++i ){
-            cum_p += GT::genotypes[i].init_freq;
+        for( size_t i = 0; i < state.genotypes.size(); ++i ){
+            cum_p += state.genotypes[i].init_freq;
             uint32_t genotype_id = static_cast<uint32_t>(i);
             assert( genotype_id == i );
-            GT::cum_initial_freqs.insert( make_pair(cum_p, genotype_id) );
+            state.cum_initial_freqs.insert( make_pair(cum_p, genotype_id) );
         }
         
         // Test cum_p is approx. 1.0 in case the input tree is wrong.
@@ -282,16 +270,16 @@ void Genotypes::init( const scnXml::Scenario& scenario ){
             throw util::xml_scenario_error ("decision tree (random node): expected probability sum to be 1.0 but found " + to_string(cum_p));
 
         // last cum_p might be slightless less than 1 due to arithmetic errors; add a failsafe:
-        GT::cum_initial_freqs[1.0] = GT::genotypes.size() - 1;
+        state.cum_initial_freqs[1.0] = state.genotypes.size() - 1;
     }else{
-        initSingle();
-        GT::cum_initial_freqs[1.0] = GT::genotypes.size() - 1;
+        state.initSingle();
+        state.cum_initial_freqs[1.0] = state.genotypes.size() - 1;
     }
     
     if( util::CommandLine::option( util::CommandLine::PRINT_GENOTYPES ) ){
-        // reorganise GT::alleleCodes so that we can look up codes, not names
-        vector<pair<string,string> > allele_codes( GT::cum_initial_freqs.size() );
-        for( auto i = GT::alleleCodes.begin(), iend = GT::alleleCodes.end(); i != iend; ++i ) {
+        // reorganise state.alleleCodes so that we can look up codes, not names
+        vector<pair<string,string> > allele_codes( state.cum_initial_freqs.size() );
+        for( auto i = state.alleleCodes.begin(), iend = state.alleleCodes.end(); i != iend; ++i ) {
             const string locus = i->first;
             for( auto j = i->second.begin(),
                 jend = i->second.end(); j != jend; ++j )
@@ -305,8 +293,8 @@ void Genotypes::init( const scnXml::Scenario& scenario ){
         
         // determine our columns
         map<string,uint32_t> longest;      // longest name in column; key is locus
-        for( auto i = GT::genotypes.begin(),
-            iend = GT::genotypes.end(); i != iend; ++i )
+        for( auto i = state.genotypes.begin(),
+            iend = state.genotypes.end(); i != iend; ++i )
         {
             if( longest.size() == 0 ){
                 for( auto j = i->alleles.begin();
@@ -363,8 +351,8 @@ void Genotypes::init( const scnXml::Scenario& scenario ){
         cout << "|" << std::setw(9) << "---------" << "|" << std::setw(7) << "-------" << "|" << endl;
 
         cout << std::fixed << setprecision(3);
-        for( size_t i = 0; i < GT::genotypes.size(); ++i ){
-            const Genotype& genotype = GT::genotypes[i];
+        for( size_t i = 0; i < state.genotypes.size(); ++i ){
+            const Genotype& genotype = state.genotypes[i];
             map<string,string> locus_allele;    // to find allele for each locus
             for( auto a = genotype.alleles.begin(); a != genotype.alleles.end(); ++a ){
                 assert( *a < allele_codes.size() );
@@ -445,7 +433,8 @@ Diagnostic::Diagnostic( const Parameters& parameters, const scnXml::Diagnostic& 
     uses_hrp2 = elt.getMechanism() == "HRP2";
 }
 
-void diagnostics::init( const Parameters& parameters, const scnXml::Scenario& scenario ){
+void diagnostics::init( RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario ){
+    auto& diagnostic_set = ctx.ext->diagnostic_set;
     diagnostic_set.clear(); // compatibility with unit tests
     
     if(scenario.getDiagnostics().present()){
@@ -462,7 +451,7 @@ void diagnostics::init( const Parameters& parameters, const scnXml::Scenario& sc
     if( util::ModelOptions::option( util::VIVAX_SIMPLE_MODEL ) ){
         // So far the implemented Vivax code does not produce parasite
         // densities, thus this diagnostic model cannot be used.
-        diagnostics::monitoring_diagnostic = &diagnostics::make_deterministic( numeric_limits<double>::quiet_NaN() );
+        ctx.ext->monitoring_diagnostic = &make_deterministic(ctx, numeric_limits<double>::quiet_NaN() );
     }else if( surveys.getDetectionLimit().present() ){
         if( surveys.getDiagnostic().present() ){
             throw util::xml_scenario_error( "monitoring/surveys: do not "
@@ -490,7 +479,7 @@ void diagnostics::init( const Parameters& parameters, const scnXml::Scenario& sc
             densitybias = parameters[Parameter::DENSITY_BIAS_NON_GARKI];
         }
         double detectionLimit = surveys.getDetectionLimit().get() * densitybias;
-        diagnostics::monitoring_diagnostic = &diagnostics::make_deterministic( detectionLimit );
+        ctx.ext->monitoring_diagnostic = &make_deterministic(ctx, detectionLimit );
     }else{
         if( !surveys.getDiagnostic().present() ){
             throw util::xml_scenario_error( "monitoring/surveys: require "
@@ -500,10 +489,10 @@ void diagnostics::init( const Parameters& parameters, const scnXml::Scenario& sc
             throw util::xml_scenario_error( "Use of GARKI_DENSITY_BIAS is not "
                 "appropriate when monitoring/surveys/diagnostic is used." );
         }
-        diagnostics::monitoring_diagnostic = &diagnostics::get( surveys.getDiagnostic().get() );
+        ctx.ext->monitoring_diagnostic = &get(ctx, surveys.getDiagnostic().get() );
     }
     
-    if( diagnostics::monitoring_diagnostic->uses_hrp2 ){
+    if( ctx.ext->monitoring_diagnostic->uses_hrp2 ){
         throw util::xml_scenario_error( "the diagnostic used for "
             "monitoring may not use HRP2 as its mechanism" );
     }
@@ -511,35 +500,35 @@ void diagnostics::init( const Parameters& parameters, const scnXml::Scenario& sc
 }
 }
 
-// ———  sim::init, ModelNameProvider: scenario-level reading  ———
+// ———  SimClock::init: scenario-level reading  ———
 
 namespace OM {
 
-void sim::init( const scnXml::Scenario& scenario, util::ModelNameProvider mnp ){
+void SimClock::init( RunContext& ctx, const scnXml::Scenario& scenario, util::ModelNameProvider mnp ){
     initInterval(scenario, mnp);
-    SimData::steps_per_year = sim::inSteps(sim::oneYear());
-    SimData::years_per_step = 1.0 / SimData::steps_per_year;
-    sim::s_max_human_age = sim::fromYearsD( scenario.getDemography().getMaximumAgeYrs() );
-    
-    sim::s_start = sim::origin();
+    steps_per_year = inSteps(sim::oneYear());
+    years_per_step = 1.0 / steps_per_year;
+    max_human_age = from_years_d( scenario.getDemography().getMaximumAgeYrs() );
+
+    start_date = sim::origin();
     auto mon = scenario.getMonitoring();
     if( mon.getStartDate().present() ){
         try{
             // on failure, this throws or returns sim::never()
-            sim::s_start = UnitParse::parseDate( mon.getStartDate().get() );
-            if( sim::s_start == sim::never() ){
+            start_date = UnitParse::parseDate(*this, mon.getStartDate().get() );
+            if( start_date == sim::never() ){
                 throw util::format_error( "invalid format (expected YYYY-MM-DD)" );
             }
         }catch( const util::format_error& e ){
             throw util::xml_scenario_error( string("monitoring/startDate: ").append(e.message()) );
         }
     }
-    
-    sim::s_interv = sim::never(); // large negative number
-    sim::s_end = mon::readSurveyDates( mon );
+
+    interv = sim::never(); // large negative number
+    end_date = mon::readSurveyDates(ctx, mon );
 }
 
-void sim::initInterval(const scnXml::Scenario& scenario, util::ModelNameProvider mnp)
+void SimClock::initInterval(const scnXml::Scenario& scenario, util::ModelNameProvider mnp)
 {
     // If scenario states to use a named model, set the relevant time step duration for
     // that named model here.  It may possibly get overwritten later in this method if
@@ -553,7 +542,7 @@ void sim::initInterval(const scnXml::Scenario& scenario, util::ModelNameProvider
         {
             // This is where we define the length of the default time step, in days,
             // for the base model.
-            SimData::interval = 5;
+            interval = 5;
         }
         else
         {
@@ -568,7 +557,7 @@ void sim::initInterval(const scnXml::Scenario& scenario, util::ModelNameProvider
     {
         // Schema dictates that interval attribute is required if parameter element exists.
         // So no need to check for existsence of interval attribute in this case.
-        SimData::interval = scenario.getModel().getParameters().get().getInterval();
+        interval = scenario.getModel().getParameters().get().getInterval();
     }
 }
 

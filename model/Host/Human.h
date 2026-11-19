@@ -23,6 +23,7 @@
 #ifndef Hmod_human
 #define Hmod_human
 #include "Global.h"
+#include "core/RunContext.h"
 #include "Transmission/PerHost.h"
 #include "InfectionIncidenceModel.h"
 #include "interventions/HumanComponents.h"
@@ -47,10 +48,14 @@ namespace Host {
  * Still contains some data, but most is now contained in sub-models. */
 class Human {
 public:
+    /// The run this human belongs to (clock: ctx->clock). Set at
+    /// construction; a pointer so Human stays move-assignable.
+    RunContext* ctx;
+
     /** Initialise all variables of a human datatype.
     * 
     * @param dateOfBirth date of birth (usually start of next time step) */
-    Human(SimTime dateOfBirth);
+    Human(RunContext& ctx, SimTime dateOfBirth);
 
     /// Allow move construction
     Human(Human&&) = default;
@@ -135,8 +140,8 @@ private:
     * expiry time.
     * 
     * Definition: a human is in sub-population p if subPopExp.contains(p) and,
-    * for t=subPopExp[p], t > sim::now() (at the time of intervention
-    * deployment) or t > sim::ts0() (equiv t >= sim::ts1()) during human update.
+    * for t=subPopExp[p], t > ctx.clock.now() (at the time of intervention
+    * deployment) or t > ctx.clock.ts0() (equiv t >= ctx.clock.ts1()) during human update.
     * 
     * NOTE: this discrepancy is because intervention deployment effectively
     * happens at the end of a time step and we want a duration of 1 time step to
@@ -147,9 +152,9 @@ private:
     std::map<interventions::ComponentId,SimTime> subPopExp;
 };
 
-void summarize(Human &human, bool surveyOnlyNewEp);
+void summarize(RunContext& ctx, Human &human, bool surveyOnlyNewEp);
 
-void update(Human &human, Transmission::TransmissionModel& transmission);
+void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& transmission);
 
 inline SimTime Human::age( SimTime time ) const { 
     return time - dateOfBirth; 
@@ -158,7 +163,7 @@ inline SimTime Human::age( SimTime time ) const {
 inline bool Human::isInSubPop( interventions::ComponentId id ) const {
     auto it = subPopExp.find( id );
     if( it == subPopExp.end() ) return false;   // no history of membership
-    else return it->second >= sim::nowOrTs0();   // added: has expired?
+    else return it->second >= ctx->clock.nowOrTs0();   // added: has expired?
 }
 
 inline uint32_t Human::getCohortSet() const { 

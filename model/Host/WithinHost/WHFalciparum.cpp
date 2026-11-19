@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunExtensions.h"
+#include "core/RunContext.h"
 #include "Host/WithinHost/WHFalciparum.h"
 #include "Host/WithinHost/DescriptiveWithinHost.h"
 #include "Host/WithinHost/CommonWithinHost.h"
@@ -95,8 +97,8 @@ void WHFalciparum::setParams(double cumYStar, double cumHStar, double aM, double
 
 // -----  Non-static  -----
 
-WHFalciparum::WHFalciparum( LocalRng& rng, double comorbidityFactor ):
-    WHInterface(),
+WHFalciparum::WHFalciparum( RunContext& ctx, LocalRng& rng, double comorbidityFactor ):
+    WHInterface(ctx),
     m_cumulative_h(0.0), m_cumulative_Y(0.0), m_cumulative_Y_lag(0.0),
     totalDensity(0.0), hrp2Density(0.0), timeStepMaxDensity(0.0),
     pathogenesisModel( Pathogenesis::PathogenesisModel::createPathogenesisModel( comorbidityFactor ) ),
@@ -109,8 +111,8 @@ WHFalciparum::WHFalciparum( LocalRng& rng, double comorbidityFactor ):
     // parity: order — local RNG stream: draw call order fixes stream state
     _innateImmSurvFact = exp(-rng.gauss(0.0, sigma_i));
     
-    m_y_lag_i.resize(y_lag_len * Genotypes::N());
-    m_y_lag_l.resize(y_lag_len * Genotypes::N());
+    m_y_lag_i.resize(y_lag_len * ctx.genotypes.N());
+    m_y_lag_l.resize(y_lag_len * ctx.genotypes.N());
 }
 
 WHFalciparum::~WHFalciparum()
@@ -148,15 +150,15 @@ const double PTM_tau= 0.066;
 const double PTM_tau_prime = 1.0 / sqrt(1.0 / PTM_tau);
 const double PTM_mu= -8.1;
 
-inline double compute_y_lag(const vector<double> &y_lag, int y_lag_len, vector<double> &y_lag_g)
+inline double compute_y_lag(const SimClock& clock, const Genotypes& genotypes, const vector<double> &y_lag, int y_lag_len, vector<double> &y_lag_g)
 {
-    const size_t n = Genotypes::N();
+    const size_t n = genotypes.N();
 
     // Take weighted sum of total asexual blood stage density 10, 15 and 20 days
     // before. Add y_lag_len to index to ensure positive.
-    size_t d10 = mod_nn(y_lag_len + sim::inSteps(sim::ts1() - sim::fromDays(10)), y_lag_len);
-    size_t d15 = mod_nn(y_lag_len + sim::inSteps(sim::ts1() - sim::fromDays(15)), y_lag_len);
-    size_t d20 = mod_nn(y_lag_len + sim::inSteps(sim::ts1() - sim::fromDays(20)), y_lag_len);
+    size_t d10 = mod_nn(y_lag_len + clock.inSteps(clock.ts1() - sim::fromDays(10)), y_lag_len);
+    size_t d15 = mod_nn(y_lag_len + clock.inSteps(clock.ts1() - sim::fromDays(15)), y_lag_len);
+    size_t d20 = mod_nn(y_lag_len + clock.inSteps(clock.ts1() - sim::fromDays(20)), y_lag_len);
 
     double y10_sum = 0.0, y15_sum = 0.0, y20_sum = 0.0;
     for( size_t g = 0; g < n; ++g ){
@@ -180,12 +182,12 @@ double WHFalciparum::probTransmissionToMosquito(vector<double> &probTransGenotyp
     // model. Description: AJTMH pp.32-33 and p9.
     
     // Note: we don't allow for gametocydal treatments (e.g. Primaquine).
-    const size_t n = Genotypes::N();
+    const size_t n = ctx.genotypes.N();
 
     // Sum lagged densities across genotypes:
     vector<double> y_lag_g_i(n), y_lag_g_l(n);
-    const double y_lag_sum_i = compute_y_lag(m_y_lag_i, y_lag_len, y_lag_g_i);
-    const double y_lag_sum_l = compute_y_lag(m_y_lag_l, y_lag_len, y_lag_g_l);
+    const double y_lag_sum_i = compute_y_lag(ctx.clock, ctx.genotypes, m_y_lag_i, y_lag_len, y_lag_g_i);
+    const double y_lag_sum_l = compute_y_lag(ctx.clock, ctx.genotypes, m_y_lag_l, y_lag_len, y_lag_g_l);
     const double y_lag_sum = y_lag_sum_i + y_lag_sum_l;
 
     if( y_lag_sum < 0.001 ) return 0.0; // cut off for uninfectious humans
@@ -219,11 +221,11 @@ bool WHFalciparum::diagnosticResult( LocalRng& rng, const Diagnostic& diagnostic
 }
 
 void WHFalciparum::treatment( Host::Human& human, TreatmentId treatId ){
-    const Treatments& treat = Treatments::select( treatId );
+    const Treatments& treat = Treatments::select( ctx, treatId );
     treatSimple( human, treat.liverEffect(), treat.bloodEffect() );
     
     // triggered intervention deployments:
-    treat.deploy( human,
+    treat.deploy( ctx, human,
                   mon::Deploy::TREAT,
                   interventions::VaccineLimits(/*default initialise: no limits*/) );
 }
@@ -232,14 +234,14 @@ bool WHFalciparum::treatSimple( Host::Human& human, SimTime timeLiver, SimTime t
         if( timeLiver < sim::zero() )
             clearInfections( Treatments::LIVER );
         else
-            treatExpiryLiver = max( int(treatExpiryLiver), int(sim::nowOrTs1()) + timeLiver );
+            treatExpiryLiver = max( int(treatExpiryLiver), int(ctx.clock.nowOrTs1()) + timeLiver );
         mon::recordEvent(mon::measure("nLiverStageTreatments"), human);
     }
     if( timeBlood != sim::zero() ){
         if( timeBlood < sim::zero() )
             clearInfections( Treatments::BLOOD );
         else
-            treatExpiryBlood = max( int(treatExpiryBlood), int(sim::nowOrTs1()) + timeBlood );
+            treatExpiryBlood = max( int(treatExpiryBlood), int(ctx.clock.nowOrTs1()) + timeBlood );
         return true;    // blood stage treatment
     }
     return false;    // no blood stage treatment

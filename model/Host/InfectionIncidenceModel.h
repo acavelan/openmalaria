@@ -47,13 +47,17 @@ using util::LocalRng;
  * of these (see susceptibility()). */
 class InfectionIncidenceModel
 {
+protected:
+    /// The run this model belongs to (clock accessed as ctx.clock).
+    RunContext& ctx;
+
 public:
   ///@brief Static initialisation & constructors
   //@{
   /// Read in/initialise parameters
-  static void init(const Parameters& parameters);
+  static void init(RunContext& ctx, const Parameters& parameters);
   /// Create a new instance
-  static InfectionIncidenceModel* createModel ();
+  static InfectionIncidenceModel* createModel (RunContext& ctx);
   
   /// Reset summary outputs at beginning of main simulation
   static inline void preMainSimInit() {
@@ -76,7 +80,7 @@ public:
   
 protected:
   /// Create a new model
-  InfectionIncidenceModel ();
+  explicit InfectionIncidenceModel (RunContext& ctx);
 public:
   virtual ~InfectionIncidenceModel() {}
   
@@ -158,14 +162,14 @@ protected:
  */
 class HeterogeneityWorkaroundII : public InfectionIncidenceModel {
 public:
-  HeterogeneityWorkaroundII () {}
+  explicit HeterogeneityWorkaroundII (RunContext& ctx) : InfectionIncidenceModel(ctx) {}
   virtual ~HeterogeneityWorkaroundII() {}
 protected:
   double getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost& phTrans);
 };
 class NegBinomMAII : public InfectionIncidenceModel {
 public:
-  NegBinomMAII () {}
+  explicit NegBinomMAII (RunContext& ctx) : InfectionIncidenceModel(ctx) {}
   virtual ~NegBinomMAII() {}
   virtual double getAvailabilityFactor(LocalRng& rng, double baseAvailability = 1.0);
 protected:
@@ -173,7 +177,7 @@ protected:
 };
 class LogNormalMAII : public InfectionIncidenceModel {
 public:
-  LogNormalMAII () {}
+  explicit LogNormalMAII (RunContext& ctx) : InfectionIncidenceModel(ctx) {}
   virtual ~LogNormalMAII() {}
   virtual double getAvailabilityFactor(LocalRng& rng, double baseAvailability = 1.0);
 protected:

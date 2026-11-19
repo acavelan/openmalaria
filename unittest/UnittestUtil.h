@@ -28,6 +28,7 @@
 #include "Global.h"
 #include "util/ModelOptions.h"
 
+#include "core/RunExtensions.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
 #include "PkPd/LSTMModel.h"
@@ -252,7 +253,12 @@ namespace dummyXML{
 
 class UnittestUtil {
 public:
+    // Shared clock fixture for all suites (one process, many suites).
+    static RunContext& ctx() { static RunContext c; return c; }
+    static const SimClock& clock() { return ctx().clock; }
+
     static void initTime(int daysPerStep){
+        ensure_extensions( ctx() );
         dummyXML::model.setModelOptions(dummyXML::modelOpts);
         dummyXML::modelParams.setInterval( daysPerStep );
         dummyXML::model.setParameters(dummyXML::modelParams);
@@ -263,19 +269,19 @@ public:
         dummyXML::monitoring.setSurveys( dummyXML::surveys );
         dummyXML::scenario.setMonitoring( dummyXML::monitoring );
         util::ModelNameProvider modelNameProvider(dummyXML::scenario.getModel());
-        sim::init( dummyXML::scenario, modelNameProvider );
+        ctx().clock.init( ctx(), dummyXML::scenario, modelNameProvider );
         
         // we could just use zero, but we may spot more errors by using some weird number
-        sim::s_t0 = sim::fromYearsN(83.2591);
-        sim::s_t1 = sim::s_t0;
+        ctx().clock.t0 = ctx().clock.from_years_n(83.2591);
+        ctx().clock.t1 = ctx().clock.t0;
 #ifndef NDEBUG
-        sim::in_update = true;  // may not always be correct but we're more interested in getting around this check than using it in unit tests
+        ctx().clock.in_update = true;  // may not always be correct but we're more interested in getting around this check than using it in unit tests
 #endif
     }
     static void incrTime(SimTime incr){
-        //NOTE: for unit tests, we do not differentiate between s_t0 and s_t1
-        sim::s_t0 = sim::s_t0 + incr;
-        sim::s_t1 = sim::s_t0;
+        //NOTE: for unit tests, we do not differentiate between t0 and t1
+        ctx().clock.t0 = ctx().clock.t0 + incr;
+        ctx().clock.t1 = ctx().clock.t0;
     }
     
     static const scnXml::Parameters& prepareParameters(){
@@ -309,12 +315,12 @@ public:
         dummyXML::surveys.setDetectionLimit(numeric_limits<double>::quiet_NaN());
         dummyXML::monitoring.setSurveys(dummyXML::surveys);
         dummyXML::scenario.setMonitoring(dummyXML::monitoring);
-        diagnostics::init( parameters, dummyXML::scenario );
+        diagnostics::init( ctx(), parameters, dummyXML::scenario );
     }
     
     static void PkPdSuiteSetup () {
         ModelOptions::reset();
-        WithinHost::Genotypes::initSingle();
+        ctx().genotypes.initSingle();
 
         //Note: we fudge this call since it's not so easy to falsely initialize scenario element.
         //PkPdModel::init ();
@@ -382,7 +388,7 @@ public:
                      0.9027777777777778 /*k13*/, 0.07948639559767655 /*k31*/),
                 PD(3.45 /* vmax */, 0.020831339 /* IC50 */, 6.0 /* slope */ )));
         
-        PkPd::LSTMDrugType::init (drugs);
+        PkPd::LSTMDrugType::init (ctx(), drugs);
         
         // Treatments
         scnXml::PKPDSchedule sched1("sched1");
@@ -405,7 +411,7 @@ public:
         treatments.getSchedule().push_back(sched1);
         treatments.getSchedule().push_back(sched2);
         treatments.getDosages().push_back(dosage1);
-        PkPd::LSTMTreatments::init(treatments);
+        PkPd::LSTMTreatments::init(ctx(), treatments);
     }
     
     // For when infection parameters shouldn't be used; enforce by setting to NaNs.
@@ -450,7 +456,7 @@ public:
         Parameters parameters( dummyXML::model.getParameters(), util::ModelNameProvider(dummyXML::model) );
         
         // This sets up the model based on parameters and options
-        WithinHost::MolineauxInfection::init(parameters);
+        WithinHost::MolineauxInfection::init(ctx(), parameters);
     }
     
     static void MosqLifeCycle_init() {
@@ -468,7 +474,7 @@ public:
     
     static void medicate(LocalRng& rng, PkPd::LSTMModel& pkpd, size_t typeIndex, double qty,
                          double time){
-        pkpd.medicateDrug(rng, typeIndex, qty, time);
+        pkpd.medicateDrug(ctx(), rng, typeIndex, qty, time);
     }
     
     static void clearMedicateQueue( PkPd::LSTMModel& pkpd ){
@@ -476,7 +482,7 @@ public:
     }
     
     static unique_ptr<Host::Human> createHuman(SimTime dateOfBirth){
-        return unique_ptr<Host::Human>( new Host::Human(dateOfBirth) );
+        return unique_ptr<Host::Human>( new Host::Human(ctx(), dateOfBirth) );
     }
     // Set the WithinHost model used by the human, and return a pointer to it. Do not delete this!
     static WithinHost::WHInterface* setHumanWH(Host::Human& human, unique_ptr<WithinHost::WHInterface> wh){

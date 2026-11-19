@@ -21,6 +21,7 @@
  */
 
 #include "Host/WithinHost/Infection/DummyInfection.h"
+#include "core/RunExtensions.h"
 #include "Host/WithinHost/CommonWithinHost.h"
 #include "util/ModelOptions.h"
 
@@ -30,20 +31,20 @@
 
 namespace OM { namespace WithinHost {
     
-CommonInfection* createDummyInfection (LocalRng& rng, uint32_t protID, int origin) {
-    return new DummyInfection (rng, protID, origin);
+CommonInfection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+    return new DummyInfection (ctx, rng, protID, origin);
 }
-CommonInfection* checkpointedDummyInfection (istream& stream) {
-    return new DummyInfection (stream);
-}
-
-void DummyInfection::init () {
-    CommonWithinHost::createInfection = &createDummyInfection;
-    CommonWithinHost::checkpointedInfection = &checkpointedDummyInfection;
+CommonInfection* checkpointedDummyInfection (RunContext& ctx, istream& stream) {
+    return new DummyInfection (ctx, stream);
 }
 
-DummyInfection::DummyInfection (LocalRng& rng, uint32_t protID, int origin) :
-    CommonInfection(protID, origin)
+void DummyInfection::init (RunContext& ctx) {
+    ctx.ext->createInfection = &createDummyInfection;
+    ctx.ext->checkpointedInfection = &checkpointedDummyInfection;
+}
+
+DummyInfection::DummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) :
+    CommonInfection(ctx, protID, origin)
 {
     m_density=16;	// increased by DH to avoid zeros in initialKappa
 }
@@ -63,8 +64,8 @@ bool DummyInfection::updateDensity( LocalRng& rng, double survivalFactor, SimTim
 }
 
 
-DummyInfection::DummyInfection (istream& stream) :
-    CommonInfection (stream)
+DummyInfection::DummyInfection (RunContext& ctx, istream& stream) :
+    CommonInfection (ctx, stream)
 {}
 
 } }

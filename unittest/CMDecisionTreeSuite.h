@@ -50,11 +50,11 @@ public:
 
         UnittestUtil::EmpiricalWHM_setup();
 
-        human.reset( UnittestUtil::createHuman(sim::nowOrTs0()).release() );
+        human.reset( UnittestUtil::createHuman(UnittestUtil::clock().nowOrTs0()).release() );
 
         ETS_ASSERT( human.get() != 0 );
         whm = dynamic_cast<WHMock*>(UnittestUtil::setHumanWH( *human,
-                unique_ptr<WithinHost::WHInterface>(new WHMock()) ));
+                unique_ptr<WithinHost::WHInterface>(new WHMock(UnittestUtil::ctx())) ));
         ETS_ASSERT( whm != 0 );
 
         hd.reset( new CMHostData( *human, 21 /* any real age will do for most tests */,
@@ -66,20 +66,20 @@ public:
     void tearDown () {
         human.reset();
         whm = nullptr;
-        PkPd::LSTMDrugType::clear();
-        PkPd::LSTMTreatments::clear();
+        UnittestUtil::ctx().drugs.clear();
+        UnittestUtil::ctx().treatments.clear();
     }
     
     /* Runs the decision tree N times
      * returns the proportion of these runs where the output was any treatment
      */
     double propTreatmentsNReps (int N, const scnXml::DecisionTree& dt) {
-        const CMDecisionTree& cmdt = CMDecisionTree::create( dt, true );
+        const CMDecisionTree& cmdt = CMDecisionTree::create( UnittestUtil::ctx(), dt, true );
         
 	whm->nTreatments = 0;
         int secondCounter = 0;
 	for (int i = 0; i < N; ++i) {
-	    secondCounter += (cmdt.exec( *hd ).treated ? 1 : 0);
+	    secondCounter += (cmdt.exec( UnittestUtil::ctx(), *hd ).treated ? 1 : 0);
 	}
 	TS_ASSERT_EQUALS( whm->nTreatments, secondCounter );
 	return double(whm->nTreatments) / double(N);

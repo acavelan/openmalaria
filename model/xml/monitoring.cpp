@@ -26,6 +26,7 @@
 // mon/Continuous.cpp (Continuous::init). Declarations stay in the mon headers.
 
 #include "Global.h"
+#include "core/RunExtensions.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "interventions/InterventionManager.h"
 #include "mon/Continuous.h"
@@ -61,19 +62,18 @@ namespace OM {
 namespace mon {
 
 using internal::SurveyDate;
-using internal::runtime;
 
 
 
 using internal::SurveyDate;
-using internal::runtime;
 
 namespace {
 
 constexpr uint32_t maxCohortNumber = uint32_t{1} << 21;
 
-void initAgeGroups(const scnXml::Monitoring& monitoring)
+static void initAgeGroups(RunContext& ctx, const scnXml::Monitoring& monitoring)
 {
+    auto& runtime = ctx.ext->monitoring;
     const scnXml::MonAgeGroup::GroupSequence& groups = monitoring.getAgeGroup().getGroup();
     if (!(monitoring.getAgeGroup().getLowerbound() <= 0.0)) {
         throw util::xml_scenario_error("Expected survey age-group lowerbound of 0");
@@ -81,15 +81,16 @@ void initAgeGroups(const scnXml::Monitoring& monitoring)
 
     runtime.ageGroupUpperBound.resize(groups.size() + 1);
     for (size_t i = 0; i < groups.size(); ++i) {
-        runtime.ageGroupUpperBound[i] = sim::fromYearsD(groups[i].getUpperbound());
+        runtime.ageGroupUpperBound[i] = ctx.clock.from_years_d(groups[i].getUpperbound());
     }
     runtime.ageGroupUpperBound[groups.size()] = sim::future();
 }
 
 } // namespace
 
-void initReporting(const scnXml::Scenario& scenario)
+void initReporting(RunContext& ctx, const scnXml::Scenario& scenario)
 {
+    auto& runtime = ctx.ext->monitoring;
     runtime.reportIMR = -1;
     const scnXml::MonitoringOptions& optsElt = scenario.getMonitoring().getSurveyOptions();
     std::vector<OutMeasure> reportedMeasures;
@@ -107,7 +108,7 @@ void initReporting(const scnXml::Scenario& scenario)
             throw util::xml_scenario_error("unrecognised survey option: " + std::string(optElt.getName()));
         }
         if ((om.measure == measure("sumlogDens") || om.measure == measure("logDensByGenotype")) &&
-            WithinHost::diagnostics::monitoringDiagnostic().allowsFalsePositives())
+            WithinHost::diagnostics::monitoringDiagnostic( ctx ).allowsFalsePositives())
         {
             throw util::xml_scenario_error("measure " + std::string(optElt.getName()) + " may not be used when monitoring diagnostic sensitivity < 1");
         }
@@ -144,11 +145,13 @@ void initReporting(const scnXml::Scenario& scenario)
         ? scenario.getEntomology().getVector().get().getAnopheles().size() : 1;
     const size_t nDrugs = scenario.getPharmacology().present()
         ? scenario.getPharmacology().get().getDrugs().getDrug().size() : 1;
-    internal::initStores(reportedMeasures, nSpecies, nDrugs);
+    internal::initStores(ctx, reportedMeasures, nSpecies, nDrugs);
 }
 
-SimTime readSurveyDates(const scnXml::Monitoring& monitoring)
+SimTime readSurveyDates(RunContext& ctx, const scnXml::Monitoring& monitoring)
 {
+    const SimClock& clock = ctx.clock;
+    auto& runtime = ctx.ext->monitoring;
     const scnXml::Surveys::SurveyTimeSequence& survs = monitoring.getSurveys().getSurveyTime();
     std::map<SimTime, bool> surveys;
 
@@ -167,17 +170,17 @@ SimTime readSurveyDates(const scnXml::Monitoring& monitoring)
             s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
                 return !std::isspace(ch);
             }).base(), s.end());
-            SimTime cur = UnitParse::readDate(s, UnitParse::STEPS);
+            SimTime cur = UnitParse::readDate(clock, s, UnitParse::STEPS);
             const bool reporting = surv.getReported();
             if (surv.getRepeatStep().present() != surv.getRepeatEnd().present()) {
                 throw util::xml_scenario_error("surveyTime: use of repeatStep or repeatEnd without other");
             }
             if (surv.getRepeatStep().present()) {
-                const SimTime step = UnitParse::readDuration(surv.getRepeatStep().get(), UnitParse::NONE);
-                if (step < sim::oneTS()) {
+                const SimTime step = UnitParse::readDuration(clock, surv.getRepeatStep().get(), UnitParse::NONE);
+                if (step < clock.one_TS()) {
                     throw util::xml_scenario_error("surveyTime: repeatStep must be >= 1");
                 }
-                const SimTime end = UnitParse::readDate(surv.getRepeatEnd().get(), UnitParse::NONE);
+                const SimTime end = UnitParse::readDate(clock, surv.getRepeatEnd().get(), UnitParse::NONE);
                 while (cur < end) {
                     addSurvey(cur, reporting);
                     cur = cur + step;
@@ -210,7 +213,7 @@ SimTime readSurveyDates(const scnXml::Monitoring& monitoring)
             if (!surveyDate.isReported()) continue;
             std::cout
                 << (surveyDate.num + 1) << '\t'
-                << sim::inSteps(surveyDate.date - sim::startDate()) << '\t'
+                << clock.inSteps(surveyDate.date - clock.start_date) << '\t'
                 << surveyDate.date << std::endl;
         }
     }
@@ -219,12 +222,13 @@ SimTime readSurveyDates(const scnXml::Monitoring& monitoring)
     if (monitoring.getCohorts().present()) {
         runtime.nCohorts = static_cast<uint32_t>(1) << monitoring.getCohorts().get().getSubPop().size();
     }
-    initAgeGroups(monitoring);
+    initAgeGroups(ctx, monitoring);
     return runtime.surveyDates.back().date;
 }
 
-void initCohorts(const scnXml::Monitoring& monitoring)
+void initCohorts(RunContext& ctx, const scnXml::Monitoring& monitoring)
 {
+    auto& runtime = ctx.ext->monitoring;
     runtime.cohortSubPopNumbers.clear();
     runtime.cohortSubPopIds.clear();
     if (!monitoring.getCohorts().present()) return;
@@ -232,7 +236,7 @@ void initCohorts(const scnXml::Monitoring& monitoring)
     const scnXml::Cohorts monCohorts = monitoring.getCohorts().get();
     uint32_t nextId = 0;
     for (auto it = monCohorts.getSubPop().begin(), end = monCohorts.getSubPop().end(); it != end; ++it) {
-        const interventions::ComponentId compId = interventions::InterventionManager::getComponentId(it->getId());
+        const interventions::ComponentId compId = interventions::InterventionManager::getComponentId(ctx, it->getId());
         const bool inserted = runtime.cohortSubPopIds.insert(std::make_pair(compId, nextId)).second;
         if (!inserted) {
             throw util::xml_scenario_error(
@@ -257,7 +261,13 @@ using util::xml_scenario_error;
 
         /* Initialise: enable outputs registered and requested in XML.
          * Search for Continuous::registerCallback to see outputs available. */
-        void init (const scnXml::Monitoring& monitoring, bool isCheckpoint) {
+        void init (RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint) {
+            auto& ctsOStream = ctx.ext->ctsOStream;
+            auto& registered = ctx.ext->ctsRegistered;
+            auto& toReport = ctx.ext->ctsToReport;
+            SimTime& ctsPeriod = ctx.ext->ctsPeriod;
+            bool& duringInit = ctx.ext->ctsDuringInit;
+            auto& streamOffset = ctx.ext->ctsStreamOffset;
             const scnXml::Monitoring::ContinuousOptional& ctsOpt = monitoring.getContinuous();
             if( !ctsOpt.present() ) {
                 ctsPeriod = sim::zero();
@@ -266,8 +276,8 @@ using util::xml_scenario_error;
             const auto& options = ctsOpt.get();
             try{
                 //NOTE: if changing XSD, this should not have a default unit:
-                ctsPeriod = UnitParse::readShortDuration( options.getPeriod(), UnitParse::STEPS );
-                if( ctsPeriod < sim::oneTS() )
+                ctsPeriod = UnitParse::readShortDuration( ctx.clock, options.getPeriod(), UnitParse::STEPS );
+                if( ctsPeriod < ctx.clock.one_TS() )
                     throw util::format_error("must be >= 1 time step");
             }catch( const util::format_error& e ){
                 throw xml_scenario_error( string("monitoring/continuous/period: ").append(e.message()) );

@@ -34,7 +34,7 @@
 #include <variant>
 #include <vector>
 
-namespace OM {
+namespace OM { class RunContext;
 namespace Host {
 class Human;
 }
@@ -89,51 +89,41 @@ struct RuntimeState {
     std::vector<std::vector<size_t>> storesByMeasure;
 };
 
-extern RuntimeState runtime;
-void initStores(const std::vector<OutMeasure>& enabledMeasures, size_t nSpecies, size_t nDrugs);
+void initStores(RunContext& ctx, const std::vector<OutMeasure>& enabledMeasures, size_t nSpecies, size_t nDrugs);
 
 } // namespace internal
 
-// ----- info API -----
+// ----- info API (per-run state: ctx.ext->monitoring) -----
 
-inline size_t eventSurveyNumber() { return internal::runtime.survNumEvent; }
-inline size_t statSurveyNumber() {
-    const auto& r = internal::runtime;
-    return r.isInit && r.surveyIndex < r.surveyDates.size() ? r.surveyDates[r.surveyIndex].num : NOT_USED;
-}
-inline bool isReported() { return !internal::runtime.isInit || statSurveyNumber() != NOT_USED; }
-inline SimTime nextSurveyDate() {
-    const auto& r = internal::runtime;
-    return r.isInit && r.surveyIndex < r.surveyDates.size() ? r.surveyDates[r.surveyIndex].date : sim::future();
-}
-size_t setupCondition(const std::string& measureName, double minValue, double maxValue, bool initialState);
-bool checkCondition(size_t conditionKey);
-uint32_t updateCohortSet(uint32_t old, interventions::ComponentId subPop, bool isMember);
+size_t eventSurveyNumber(RunContext& ctx);
+size_t statSurveyNumber(RunContext& ctx);
+bool isReported(RunContext& ctx);
+SimTime nextSurveyDate(RunContext& ctx);
+size_t setupCondition(RunContext& ctx, const std::string& measureName, double minValue, double maxValue, bool initialState);
+bool checkCondition(RunContext& ctx, size_t conditionKey);
+uint32_t updateCohortSet(RunContext& ctx, uint32_t old, interventions::ComponentId subPop, bool isMember);
 
 // ----- management API -----
 
-void updateAgeGroup(size_t& index, SimTime age);
-void initMainSim();
-void concludeSurvey();
-void writeSurveyData();
+void updateAgeGroup(RunContext& ctx, size_t& index, SimTime age);
+void initMainSim(RunContext& ctx);
+void concludeSurvey(RunContext& ctx);
+void writeSurveyData(RunContext& ctx);
 
 template <typename Stream>
-void checkpoint(Stream& stream);
-extern template void checkpoint<std::ostream>(std::ostream& stream);
-extern template void checkpoint<std::istream>(std::istream& stream);
+void checkpoint(RunContext& ctx, Stream& stream);
+extern template void checkpoint<std::ostream>(RunContext&, std::ostream& stream);
+extern template void checkpoint<std::istream>(RunContext&, std::istream& stream);
 
 // ----- direct recording API -----
 
-void recordStat(Measure measure, double val, size_t species = 0, size_t genotype = 0);
+void recordStat(RunContext& ctx, Measure measure, double val, size_t species = 0, size_t genotype = 0);
+/// The human overloads find the run through human.ctx.
 void recordStat(Measure measure, const Host::Human& human, double val = 1.0, size_t species = 0, size_t genotype = 0, size_t drug = 0);
-void recordEvent(Measure measure, size_t survey, size_t age, uint32_t cohort);
+void recordEvent(RunContext& ctx, Measure measure, size_t survey, size_t age, uint32_t cohort);
 void recordEvent(Measure measure, const Host::Human& human, double val = 1.0, int outId = 0);
 void recordDeploy(Measure timedMeasure, Measure ctsMeasure, const Host::Human& human, Deploy::Method method, double val = 1.0);
-inline bool isUsed(Measure measure)
-{
-    assert(measure < MeasureCount);
-    return !internal::runtime.storesByMeasure[measure].empty();
-}
+bool isUsed(RunContext& ctx, Measure measure);
 
 } // namespace mon
 } // namespace OM

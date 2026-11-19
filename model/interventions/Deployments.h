@@ -20,11 +20,16 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-// Note: this file is included by exactly one source (InterventionManager.cpp)
-// and contains definitions as well as declarations.
+// Note: this file is included by several sources (InterventionManager.cpp,
+// xml/interventions.cpp and core/RunExtensions.h). All definitions here must
+// stay inline/template or header-only.
 
 // The includes here are more for documentation than required.
+#ifndef OM_INTERVENTIONS_DEPLOYMENTS_H
+#define OM_INTERVENTIONS_DEPLOYMENTS_H
+
 #include "Global.h"
+#include "core/RunContext.h"
 #include "util/errors.h"
 #include "Clinical/ClinicalModel.h"
 #include "Population.h"
@@ -55,19 +60,19 @@ struct ByDeployTime;    // forward decl for friend
 class TimedDeployment {
 public:
     /// Create, passing time of deployment
-    explicit TimedDeployment(SimTime deployDate) :
+    explicit TimedDeployment(RunContext& ctx, SimTime deployDate) :
             date( deployDate )
     {
-        if( deployDate < sim::startDate() ){
+        if( deployDate < ctx.clock.start_date ){
             throw util::xml_scenario_error("timed intervention deployment: may not be negative");
-        }else if( deployDate >= sim::endDate() ){
+        }else if( deployDate >= ctx.clock.end_date ){
             cerr << "Warning: timed intervention deployment at date "<< deployDate;
             cerr << " happens after last survey" << endl;
         }
     }
     virtual ~TimedDeployment() {}
     
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) =0;
+    virtual void deploy (RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission) =0;
     
     virtual void print_details( std::ostream& out )const =0;
     
@@ -77,8 +82,8 @@ public:
 
 class DummyTimedDeployment : public TimedDeployment {
 public:
-    DummyTimedDeployment() :
-        TimedDeployment( sim::startDate() /* hack */ )
+    DummyTimedDeployment(RunContext& ctx) :
+        TimedDeployment( ctx, ctx.clock.start_date /* hack */ )
     {
         // TimedDeployment's ctor checks that the deployment time-step is
         // within the intervention period. We want this time to be after the
@@ -86,7 +91,7 @@ public:
         // check has been done (hacky).
         date = sim::future();
     }
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {}
+    virtual void deploy (RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission) {}
     virtual void print_details( std::ostream& out )const{
         out << "Dummy";
     }
@@ -94,10 +99,10 @@ public:
 
 class TimedUninfectVectorsDeployment : public TimedDeployment {
 public:
-    TimedUninfectVectorsDeployment( SimTime date ) :
-        TimedDeployment( date )
+    TimedUninfectVectorsDeployment( RunContext& ctx, SimTime date ) :
+        TimedDeployment( ctx, date )
     {}
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {
+    virtual void deploy (RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission) {
         transmission.uninfectVectors();
     }
     virtual void print_details( std::ostream& out )const{
@@ -107,6 +112,8 @@ public:
 
 class HumanDeploymentBase {
 protected:
+    RunContext* ctx;  /**< owning deployment ctor supplied; pointer so the class stays copyable */
+
     /**
      * @param deploy XML element describing deployment
      * @param intervention The intervention to deploy (list of components)
@@ -114,12 +121,12 @@ protected:
      * @param complement Whether to take the complement of the sub-population
      *  to which deployment will be restricted
      */
-    HumanDeploymentBase( const scnXml::DeploymentBase& deploy,
+    HumanDeploymentBase( RunContext& ctx, const scnXml::DeploymentBase& deploy,
                          shared_ptr<const HumanIntervention> intervention,
                          ComponentId subPop, bool complement );
     
     inline void deployToHuman( Host::Human& human, mon::Deploy::Method method ) const{
-        intervention->deploy( human, method, vaccLimits );
+        intervention->deploy( *ctx, human, method, vaccLimits );
     }
     
     bool copula = false;
@@ -142,17 +149,17 @@ public:
      * @param intervention The HumanIntervention to deploy.
      * @param subPop Either ComponentId::wholePop() or a sub-population to which deployment is restricted
      */
-    TimedHumanDeployment( SimTime date,
+    TimedHumanDeployment( RunContext& ctx, SimTime date,
                            const scnXml::MassDeployment& mass,
                            shared_ptr<const HumanIntervention> intervention,
                            ComponentId subPop, bool complement );
     
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {
+    virtual void deploy (RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission) {
         for(Human& human : population) {
-            const SimTime age = human.age(sim::now());
+            const SimTime age = human.age(ctx.clock.now());
             if( age >= minAge && age < maxAge ){
                 double availability = 0.0;
-                for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(); ++i)
+                for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(ctx); ++i)
                     availability += human.perHostTransmission.anophEntoAvailability[i];
 
                 double probability = coverage;
@@ -167,10 +174,10 @@ public:
                         const double alpha = ((1.0 - beta_mean) / beta_var - 1.0 / beta_mean) * (beta_mean * beta_mean);
                         const double beta = alpha * (1.0 / beta_mean - 1.0);
 
-                        if(Transmission::PerHostAnophParams::numSpecies() > 1)
+                        if(Transmission::PerHostAnophParams::numSpecies(ctx) > 1)
                             throw std::runtime_error("only supports one mosquito species");
 
-                        const double ux = Transmission::PerHostAnophParams::get(0).entoAvailability->cdf(human.perHostTransmission.anophEntoAvailabilityRaw[0]);
+                        const double ux = Transmission::PerHostAnophParams::get(ctx, 0).entoAvailability->cdf(human.perHostTransmission.anophEntoAvailabilityRaw[0]);
                         if(ux < 1)
                         {
                             // parity: a — per-human heterogeneity lognormal/beta draws (gsl_cdf pure quantiles, no stream cost) then bernoulli-last; per-candidate draw order/count frozen (plan §3a)
@@ -214,7 +221,7 @@ public:
                     }
                 }
 
-                if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(maxAvailability) ) {
+                if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, maxAvailability) ) {
                     if( subPop == ComponentId::wholePop() || (human.isInSubPop( subPop ) != complement) ){
                         // parity: a — deploy short-circuit: RNG draw is the LAST test of the deploy condition; filter/age/cohort checks must precede it (plan §3a)
                         if( human.rng.bernoulli( probability ) ){
@@ -252,27 +259,27 @@ public:
      * @param subPop Either ComponentId::wholePop() or a sub-population to which deployment is restricted
      * @param cumCuvId Id of component to test coverage for
      */
-    TimedCumulativeHumanDeployment( SimTime date,
+    TimedCumulativeHumanDeployment( RunContext& ctx, SimTime date,
                            const scnXml::MassDeployment& mass,
                            shared_ptr<const HumanIntervention> intervention,
                            ComponentId subPop, bool complement,
                            ComponentId cumCuvId ) :
-        TimedHumanDeployment( date, mass, intervention, subPop, complement ),
+        TimedHumanDeployment( ctx, date, mass, intervention, subPop, complement ),
         cumCovInd( cumCuvId )
     {
     }
     
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {
+    virtual void deploy (RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission) {
         // Cumulative case: bring target group's coverage up to target coverage
         vector<Host::Human*> unprotected;
         size_t total = 0;       // number of humans within age bound and optionally subPop
         for(Host::Human &human : population) {
-            SimTime age = human.age(sim::now());
+            SimTime age = human.age(ctx.clock.now());
             if( age >= minAge && age < maxAge ){
                 double availability = 0.0;
-                for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(); ++i)
+                for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(ctx); ++i)
                     availability += human.perHostTransmission.anophEntoAvailability[i];
-                if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(maxAvailability) ) {
+                if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, maxAvailability) ) {
                     if( subPop == ComponentId::wholePop() || (human.isInSubPop( subPop ) != complement) ){
                         total+=1;
                         if( !human.isInSubPop(cumCovInd) )
@@ -305,11 +312,11 @@ protected:
 
 class TimedVectorDeployment : public TimedDeployment {
 public:
-    TimedVectorDeployment( SimTime date, size_t instance ) :
-        TimedDeployment( date ),
+    TimedVectorDeployment( RunContext& ctx, SimTime date, size_t instance ) :
+        TimedDeployment( ctx, date ),
         inst(instance)
     {}
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {
+    virtual void deploy (RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission) {
         Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
         if(vectorModel)
             vectorModel->deployVectorPopInterv(inst);
@@ -324,10 +331,10 @@ private:
 
 class TimedTrapDeployment : public TimedDeployment {
 public:
-    TimedTrapDeployment( SimTime date, size_t instance, double ratio, SimTime lifespan ) :
-        TimedDeployment(date), inst(instance), ratio(ratio), lifespan(lifespan)
+    TimedTrapDeployment( RunContext& ctx, SimTime date, size_t instance, double ratio, SimTime lifespan ) :
+        TimedDeployment( ctx, date ), inst(instance), ratio(ratio), lifespan(lifespan)
     {}
-    virtual void deploy (vector<Host::Human> &population, Transmission::TransmissionModel& transmission) {
+    virtual void deploy (RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission) {
         Transmission::VectorModel *vectorModel = dynamic_cast<Transmission::VectorModel *>(&transmission);
         if(vectorModel)
         {
@@ -352,7 +359,7 @@ private:
 class ContinuousHumanDeployment : protected HumanDeploymentBase {
 public:
     /// Create, passing deployment age
-    ContinuousHumanDeployment( SimTime begin, SimTime end,
+    ContinuousHumanDeployment( RunContext& ctx, SimTime begin, SimTime end,
                                  const ::scnXml::ContinuousDeployment& elt,
                                  shared_ptr<const HumanIntervention> intervention,
                                  ComponentId subPop, bool complement );
@@ -361,20 +368,20 @@ public:
      * 
      * @returns false iff this deployment (and thus all later ones in the
      *  ordered list) happens in the future. */
-    bool filterAndDeploy( Host::Human& human ) const{
-        SimTime age = human.age(sim::now());
+    bool filterAndDeploy( RunContext& ctx, Host::Human& human ) const{
+        SimTime age = human.age(ctx.clock.now());
         if( deployAge > age ){
             // stop processing continuous deployments for this
             // human for now because remaining ones happen in the future
             return false;
         }else if( deployAge == age ){
             double availability = 0.0;
-            for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(); ++i)
+            for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(ctx); ++i)
                 availability += human.perHostTransmission.anophEntoAvailabilityRaw[i];
 
-            if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(maxAvailability) )
+            if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, maxAvailability) )
             {
-                auto now = sim::intervDate();
+                auto now = ctx.clock.interv_date();
                 if( begin <= now && now < end &&
                     ( subPop == ComponentId::wholePop() ||
                         (human.isInSubPop( subPop ) != complement)
@@ -422,3 +429,5 @@ struct ByDeployTime {
 inline const ByDeployTime byDeployTime{};
 
 } }
+
+#endif

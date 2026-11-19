@@ -23,6 +23,7 @@
 #ifndef OM_INTERVENTIONS_ITN
 #define OM_INTERVENTIONS_ITN
 
+#include "core/RunContext.h"
 #include "util/DecayFunction.h"
 #include "Transmission/PerHost.h"
 #include "util/sampler.h"
@@ -156,17 +157,17 @@ namespace factors {
 
 class ITNComponent : public Transmission::HumanVectorInterventionComponent {
 public:
-    ITNComponent( ComponentId id, const scnXml::ITNDescription& elt,
+    ITNComponent( RunContext& ctx, ComponentId id, const scnXml::ITNDescription& elt,
                const map< string, size_t >& species_name_map );
     
-    virtual void deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits )const;
+    virtual void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const;
     
     virtual Component::Type componentType() const;
     
     virtual void print_details( std::ostream& out )const;
     
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng& rng) const;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream, ComponentId id ) const;
+    virtual unique_ptr<PerHostInterventionData> makeHumanPart(RunContext& ctx, LocalRng& rng) const;
+    virtual unique_ptr<PerHostInterventionData> makeHumanPart( RunContext& ctx, istream& stream, ComponentId id ) const;
     
 private:
     /** Per mosquito-species parameters for extended ITN model. */
@@ -226,7 +227,6 @@ private:
     
     // This is sparse vector: only indexes corresponding to ITN components are
     // used. No memory management.
-    static vector<ITNComponent*> componentsByIndex;
     
     friend class HumanITN;
 };
@@ -237,8 +237,8 @@ private:
  */
 class HumanITN : public PerHostInterventionData {
 public:
-    HumanITN( LocalRng& rng, const ITNComponent& params );
-    HumanITN( istream& stream, ComponentId id );
+    HumanITN( RunContext& ctx, LocalRng& rng, const ITNComponent& params );
+    HumanITN( RunContext& ctx, istream& stream, ComponentId id );
     
     virtual void redeploy(LocalRng& rng, const Transmission::HumanVectorInterventionComponent& params);
     
@@ -246,7 +246,7 @@ public:
         return holeIndex;
     }
     inline double getInsecticideContent(const ITNComponent& params)const{
-            SimTime age = sim::nowOrTs1() - deployTime;  // implies age 1 TS on first use
+            SimTime age = ctx.clock.nowOrTs1() - deployTime;  // implies age 1 TS on first use
         double effectSurvival = insecticideDecayHet->eval( age );
         return initialInsecticide * effectSurvival;
     }

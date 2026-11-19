@@ -21,6 +21,7 @@
  */
 
 #include "Host/WithinHost/Infection/MolineauxInfection.h"
+#include "core/RunExtensions.h"
 #include "Host/WithinHost/CommonWithinHost.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -151,17 +152,17 @@ const double case_specific_data[] = {
 
 // ———  static (non-class-member) code  ———
 
-CommonInfection* createMolineauxInfection (LocalRng& rng, uint32_t protID, int origin) {
-    return new MolineauxInfection (rng, protID, origin);
+CommonInfection* createMolineauxInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+    return new MolineauxInfection (ctx, rng, protID, origin);
 }
 
-CommonInfection* checkpointedMolineauxInfection (istream& stream) {
-    return new MolineauxInfection (stream);
+CommonInfection* checkpointedMolineauxInfection (RunContext& ctx, istream& stream) {
+    return new MolineauxInfection (ctx, stream);
 }
 
-void MolineauxInfection::init( const Parameters& parameters ){
-    CommonWithinHost::createInfection = &createMolineauxInfection;
-    CommonWithinHost::checkpointedInfection = &checkpointedMolineauxInfection;
+void MolineauxInfection::init( RunContext& ctx, const Parameters& parameters ){
+    ctx.ext->createInfection = &createMolineauxInfection;
+    ctx.ext->checkpointedInfection = &checkpointedMolineauxInfection;
     
     multi_factor_gamma = util::ModelOptions::option( util::PARASITE_REPLICATION_GAMMA );
     
@@ -202,8 +203,8 @@ void MolineauxInfection::init( const Parameters& parameters ){
 
 // ———  MolineauxInfection: initialisation  ———
 
-MolineauxInfection::MolineauxInfection(LocalRng& rng, uint32_t genotype, int origin):
-        CommonInfection(genotype, origin)
+MolineauxInfection::MolineauxInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin):
+        CommonInfection(ctx, genotype, origin)
 {
     for( size_t i = 0; i < v; i++ ){
         // Molineaux paper, equation 11
@@ -392,8 +393,8 @@ bool MolineauxInfection::updateDensity( LocalRng&, double survival_factor, SimTi
 
 // ———  MolineauxInfection: checkpointing  ———
 
-MolineauxInfection::MolineauxInfection (istream& stream) :
-        CommonInfection(stream)
+MolineauxInfection::MolineauxInfection (RunContext& ctx, istream& stream) :
+        CommonInfection(ctx, stream)
 {
     Sm_summation & stream;
     for(size_t i=0;i<v;i++) {

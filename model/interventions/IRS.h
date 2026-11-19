@@ -23,6 +23,7 @@
 #ifndef OM_INTERVENTIONS_IRS
 #define OM_INTERVENTIONS_IRS
 
+#include "core/RunContext.h"
 #include "util/DecayFunction.h"
 #include "Transmission/PerHost.h"
 namespace scnXml
@@ -43,17 +44,17 @@ namespace interventions {
 
 class IRSComponent : public Transmission::HumanVectorInterventionComponent {
 public:
-    IRSComponent( ComponentId id, const scnXml::IRSDescription& elt,
+    IRSComponent( RunContext& ctx, ComponentId id, const scnXml::IRSDescription& elt,
         const map<string,size_t>& species_name_map );
     
-    virtual void deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits )const;
+    virtual void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const;
     
     virtual Component::Type componentType() const;
     
     virtual void print_details( std::ostream& out )const;
     
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng& rng) const;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream, ComponentId ) const;
+    virtual unique_ptr<PerHostInterventionData> makeHumanPart(RunContext& ctx, LocalRng& rng) const;
+    virtual unique_ptr<PerHostInterventionData> makeHumanPart( RunContext& ctx, istream& stream, ComponentId ) const;
     
 private:
     /** Per mosquito-species parameters for extended IRS model. */
@@ -154,7 +155,6 @@ private:
     
     // This is sparse vector: only indexes corresponding to a IRS component are used
     // No memory management
-    static vector<IRSComponent*> componentsByIndex;
     
     friend class HumanIRS;
 };
@@ -165,14 +165,14 @@ private:
  */
 class HumanIRS : public PerHostInterventionData {
 public:
-    HumanIRS( LocalRng& rng, const IRSComponent& params );
-    HumanIRS( istream& stream, ComponentId id );
+    HumanIRS( RunContext& ctx, LocalRng& rng, const IRSComponent& params );
+    HumanIRS( RunContext& ctx, istream& stream, ComponentId id );
     
     virtual void redeploy(LocalRng& rng, const Transmission::HumanVectorInterventionComponent& params);
     
     /// Get remaining insecticide content based on initial amount and decay.
     inline double getInsecticideContent(const IRSComponent& params)const{
-        SimTime age = sim::nowOrTs1() - deployTime;  // implies age 1 TS on first use
+        SimTime age = ctx.clock.nowOrTs1() - deployTime;  // implies age 1 TS on first use
         double effectSurvival = insecticideDecayHet->eval( age );
         return initialInsecticide * effectSurvival;
     }

@@ -54,7 +54,7 @@ namespace OM { namespace Clinical { extern double oddsRatioThreshold; } }
 // way CM5DayCommon (Clinical/CM5DayCommon.h:39) does: derive.
 namespace {
 struct CFRProbe : public OM::Clinical::ClinicalModel {
-    void doClinicalUpdate (OM::Host::Human&, double,
+    void doClinicalUpdate (OM::RunContext&, OM::Host::Human&, double,
                            OM::WithinHost::Pathogenesis::StatePair&) override {}
     static double community (double cfr) { return getCommunityCFR(cfr); }
 };
@@ -66,7 +66,7 @@ public:
     void testEntoAvailabilityPercentiles () {
         UnittestUtil::initTime( 5 );
         UnittestUtil::DescriptiveInfection_init();  // = ModelOptions::reset() (friend-only private)
-        if (Transmission::PerHostAnophParams::numSpecies() == 0) {
+        if (Transmission::PerHostAnophParams::numSpecies(UnittestUtil::ctx()) == 0) {
             // minimal in-memory scnXml::Mosq (schema classes are constructible
             // programmatically — pattern used by UnittestUtil for PKPD types)
             scnXml::IntValue rest(3), eip(10);
@@ -78,10 +78,10 @@ public:
             scnXml::DoubleValue oviposit(0.0), bloodIndex(0.9);
             scnXml::Mosq mosq(rest, eip, laidEggs, seeking, survFeed, avail,
                               biting, restSite, resting, oviposit, bloodIndex);
-            Transmission::PerHostAnophParams::init(mosq);
-            Transmission::PerHostAnophParams::setEntoAvailabilityFactor(0, 1.0);
+            Transmission::PerHostAnophParams::init(UnittestUtil::ctx(), mosq);
+            Transmission::PerHostAnophParams::setEntoAvailabilityFactor(UnittestUtil::ctx(), 0, 1.0);
         }
-        Transmission::PerHostAnophParams::calcAvailabilityPercentiles();
+        Transmission::PerHostAnophParams::calcAvailabilityPercentiles(UnittestUtil::ctx());
         
         // blessed 2026-11-19: MasterRng(0,0) seed, gamma CV=0.3, factor 1.0,
         // 100k samples (GCC 16.2.1, GSL 2.8, -O3 -ffp-contract=off)
@@ -98,13 +98,13 @@ public:
             1.3975358792579338, 1.4195050438190029, 1.4445177393128859, 1.4720539546419755, 1.5033293220923645, 1.5380241756892483, 1.5808360459617221, 1.6340908655830597, 1.7063221886130431, 1.8280769186712187,
         };
         for (int p = 0; p < 100; ++p) {
-            double v = Transmission::PerHostAnophParams::getEntoAvailabilityPercentile( p );
+            double v = Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(UnittestUtil::ctx(),  p );
             if (!(std::memcmp(&v, &GOLDEN[p], sizeof(double)) == 0)) TS_FAIL("percentile mismatch");
         }
-        TS_ASSERT_EQUALS( Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(100),
+        TS_ASSERT_EQUALS( Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(UnittestUtil::ctx(), 100),
                           std::numeric_limits<double>::max() );
-        TS_ASSERT_THROWS_ANYTHING( Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(-1) );
-        TS_ASSERT_THROWS_ANYTHING( Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(101) );
+        TS_ASSERT_THROWS_ANYTHING( Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(UnittestUtil::ctx(), -1) );
+        TS_ASSERT_THROWS_ANYTHING( Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(UnittestUtil::ctx(), 101) );
     }
     
     void testCommunityCFR () {

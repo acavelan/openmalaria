@@ -52,6 +52,7 @@ set (OM_CXXTEST_HEADERS
   RngGoldenSuite.h
   SamplerBatterySuite.h
   PercentileCFRSuite.h
+  TwoRunsSuite.h
 )
 
 add_custom_command (OUTPUT tests.cpp

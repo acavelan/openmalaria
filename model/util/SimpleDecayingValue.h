@@ -44,8 +44,8 @@ public:
             deploy_t(sim::never()) {}
     
     /** Configure from an XML element. */
-    inline void set (double initial_value, const scnXml::DecayFunction& elt, const char* name){
-        decay = DecayFunction::makeObject(elt, name);
+    inline void set (const SimClock& clock, double initial_value, const scnXml::DecayFunction& elt, const char* name){
+        decay = DecayFunction::makeObject(clock, elt, name);
         initial = initial_value;
     }
 

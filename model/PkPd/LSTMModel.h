@@ -25,10 +25,11 @@
 
 #include "PkPd/Drug/LSTMDrug.h"
 
+class UnittestUtil;
 namespace scnXml{
     class PKPDMedication;
 }
-namespace OM {
+namespace OM { class RunContext;
 namespace Host{
     class Human;
 }
@@ -36,6 +37,8 @@ namespace WithinHost {
     class CommonInfection;
 }
 namespace PkPd {
+
+struct DrugRegistry;
 
 struct MedicateData {
     MedicateData () :
@@ -45,7 +48,7 @@ struct MedicateData {
     {}
     
     /// Set from an XML element (defined in model/xml/pharmacology.cpp).
-    void load( const scnXml::PKPDMedication& med );
+    void load( DrugRegistry& drugs, const scnXml::PKPDMedication& med );
     
     /// Checkpointing
     template<class S>
@@ -87,13 +90,11 @@ private:
 class LSTMModel {
 public:
     /// Static initialisation
-    static void init ( const scnXml::Scenario& scenario );
+    static void init ( RunContext& ctx, const scnXml::Scenario& scenario );
     
-    /// Checkpointing
-    template<class S>
-    void operator& (S& stream) {
-        checkpoint (stream);
-    }
+    /// Checkpointing (called by the owning within-host model)
+    void checkpoint (RunContext& ctx, istream& stream);
+    void checkpoint (ostream& stream);
     
     /** Prescribe a patient a course of drugs, via the Pk/Pd model
      * 
@@ -106,7 +107,7 @@ public:
      * @param body_mass Mass of human in kg
      * @param delay_d Delay of treatment in days
      */
-    void prescribe(size_t schedule, size_t dosages, double age, double body_mass, double delay_d);
+    void prescribe(RunContext& ctx, size_t schedule, size_t dosages, double age, double body_mass, double delay_d);
     
     /** Medicate drugs: human takes prescribed drugs which are to be taken this
      * day.
@@ -114,7 +115,7 @@ public:
      * Note: poor adherence on the part of the patient is not modeled here; to
      * model, prescribe with a "poor adherence" schedule.
      */
-    void medicate(LocalRng& rng);
+    void medicate(RunContext& ctx, LocalRng& rng);
     
     /** Get concentration of the drug at the beginning of the day.
      * 
@@ -135,7 +136,7 @@ public:
     void decayDrugs (double body_mass);
     
     /** Make summaries of drug concentration data. */
-    void summarize( const Host::Human& human ) const;
+    void summarize( RunContext& ctx, const Host::Human& human ) const;
     
 private:
     /** Medicate drugs to an individual, which act on infections the following
@@ -152,10 +153,7 @@ private:
      * new infection densities) happens first; hence medicate() will always be
      * called after getDrugFactor in a time step, and a time of zero means the
      * dose has effect from the start of the following time step. */
-    void medicateDrug(LocalRng& rng, size_t typeIndex, double qty, double time);
-  
-    void checkpoint (istream& stream);
-    void checkpoint (ostream& stream);
+    void medicateDrug(RunContext& ctx, LocalRng& rng, size_t typeIndex, double qty, double time);
     
     /// Drugs with non-zero blood concentrations:
     vector<unique_ptr<LSTMDrug>> m_drugs;

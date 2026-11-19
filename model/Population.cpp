@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunExtensions.h"
+#include "core/RunContext.h"
 #include "Population.h"
 #include "mon/Continuous.h"
 
@@ -49,7 +51,7 @@ const vector<double> ctsDemogAgeGroups = { 1.0, 5.0, 10.0, 15.0, 25.0 };
 
 // -----  non-static methods: creation/destruction, checkpointing  -----
 
-Population::Population(size_t size) : size (size) {}
+Population::Population(RunContext& ctx, size_t size) : ctx(ctx), size (size) {}
 
 void Population::createInitialHumans()
 {
@@ -59,21 +61,21 @@ void Population::createInitialHumans()
     until vector init, which saves computation and memory (no infections). */
     
     int cumulativePop = 0;
-    for(size_t iage_prev = AgeStructure::getMaxTStepsPerLife(), iage = iage_prev - 1;
+    for(size_t iage_prev = AgeStructure::getMaxTStepsPerLife(ctx), iage = iage_prev - 1;
          iage_prev > 0; iage_prev = iage, iage -= 1 )
     {
-        int targetPop = AgeStructure::targetCumPop( iage, size );
+        int targetPop = AgeStructure::targetCumPop(ctx, iage, size );
         while (cumulativePop < targetPop) {
-            SimTime dob = sim::zero() - sim::fromTS(iage);
+            SimTime dob = sim::zero() - ctx.clock.fromTS(iage);
             util::streamValidate( dob );
-            humans.push_back( Host::Human (dob) );
+            humans.push_back( Host::Human (ctx, dob) );
             ++cumulativePop;
         }
     }
     
     // Vector setup dependant on human population structure (we *want* to
     // include all humans, whether they'll survive to vector init phase or not).
-    assert( sim::now() == sim::zero() );      // assumed below
+    assert( ctx.clock.now() == sim::zero() );      // assumed below
 }
 
 void Population::update()
@@ -87,9 +89,9 @@ void Population::update()
 
         // if (Actual number of people so far > target population size for this age)
         // "outmigrate" some to maintain population shape
-        //NOTE: better to use age(sim::ts0())? Possibly, but the difference will not be very significant.
+        //NOTE: better to use age(ctx.clock.ts0())? Possibly, but the difference will not be very significant.
         // Also see targetPop = ... comment above
-        bool outmigrate = cumPop >= AgeStructure::targetCumPop(sim::inSteps(it->age(sim::ts1())), size);
+        bool outmigrate = cumPop >= AgeStructure::targetCumPop(ctx, ctx.clock.inSteps(it->age(ctx.clock.ts1())), size);
         
         if( isDead || outmigrate ){
             it = humans.erase (it);
@@ -103,7 +105,7 @@ void Population::update()
     recentBirths += (size - cumPop);
     while (cumPop < (int)size) {
         // humans born at end of this time step = beginning of next, hence ts1
-        humans.push_back( Host::Human (sim::ts1()) );
+        humans.push_back( Host::Human (ctx, ctx.clock.ts1()) );
         ++cumPop;
     }
 }
@@ -114,7 +116,7 @@ void Population::checkpoint(istream& stream)
     recentBirths & stream;
 
     for(size_t i = 0; i < size && !stream.eof(); ++i) {
-        humans.push_back( Host::Human (sim::zero()) );
+        humans.push_back( Host::Human (ctx, sim::zero()) );
         humans.back().checkpoint(stream);
     }
     if (humans.size() != size)
@@ -129,23 +131,23 @@ void Population::checkpoint(ostream& stream)
         human.checkpoint(stream);
 }
 
-void registerContinousPopulationCallbacks()
+void registerContinousPopulationCallbacks(RunContext& ctx)
 {
     ostringstream ctsDemogTitle;
     for( double ubound : ctsDemogAgeGroups )
         ctsDemogTitle << "\thost % ≤ " << ubound;
 
-    mon::Continuous::registerCallback( "hosts", "\thosts", &ctsHosts );
-    mon::Continuous::registerCallback( "host demography", ctsDemogTitle.str(), &ctsHostDemography);
-    mon::Continuous::registerCallback( "recent births", "\trecent births", &ctsRecentBirths);
-    mon::Continuous::registerCallback( "patent hosts", "\tpatent hosts", &ctsPatentHosts);
-    mon::Continuous::registerCallback( "immunity h", "\timmunity h", &ctsImmunityh);
-    mon::Continuous::registerCallback( "immunity Y", "\timmunity Y", &ctsImmunityY);
-    mon::Continuous::registerCallback( "median immunity Y", "\tmedian immunity Y", &ctsMedianImmunityY);
-    mon::Continuous::registerCallback( "human age availability", "\thuman age availability", &ctsMeanAgeAvailEffect);
-    mon::Continuous::registerCallback( "ITN coverage", "\tITN coverage", &ctsITNCoverage);
-    mon::Continuous::registerCallback( "IRS coverage", "\tIRS coverage", &ctsIRSCoverage);
-    mon::Continuous::registerCallback( "GVI coverage", "\tGVI coverage", &ctsGVICoverage);
+    mon::Continuous::registerCallback(ctx,  "hosts", "\thosts", &ctsHosts );
+    mon::Continuous::registerCallback(ctx,  "host demography", ctsDemogTitle.str(), [&ctx](Population &pop, ostream& s){ ctsHostDemography(ctx, pop, s); });
+    mon::Continuous::registerCallback(ctx,  "recent births", "\trecent births", &ctsRecentBirths);
+    mon::Continuous::registerCallback(ctx,  "patent hosts", "\tpatent hosts", [&ctx](Population &pop, ostream& s){ ctsPatentHosts(ctx, pop, s); });
+    mon::Continuous::registerCallback(ctx,  "immunity h", "\timmunity h", &ctsImmunityh);
+    mon::Continuous::registerCallback(ctx,  "immunity Y", "\timmunity Y", &ctsImmunityY);
+    mon::Continuous::registerCallback(ctx,  "median immunity Y", "\tmedian immunity Y", &ctsMedianImmunityY);
+    mon::Continuous::registerCallback(ctx,  "human age availability", "\thuman age availability", [&ctx](Population &pop, ostream& s){ ctsMeanAgeAvailEffect(ctx, pop, s); });
+    mon::Continuous::registerCallback(ctx,  "ITN coverage", "\tITN coverage", &ctsITNCoverage);
+    mon::Continuous::registerCallback(ctx,  "IRS coverage", "\tIRS coverage", &ctsIRSCoverage);
+    mon::Continuous::registerCallback(ctx,  "GVI coverage", "\tGVI coverage", &ctsGVICoverage);
 }
 
 void ctsHosts (Population &population, ostream& stream){
@@ -153,11 +155,11 @@ void ctsHosts (Population &population, ostream& stream){
     stream << '\t' << population.getSize();
 }
 
-void ctsHostDemography (Population &population, ostream& stream){
+void ctsHostDemography (RunContext& ctx, Population &population, ostream& stream){
     auto iter = population.humans.crbegin();
     int cumCount = 0;
     for( double ubound : ctsDemogAgeGroups ){
-        while( iter != population.humans.crend() && sim::inYears(iter->age(sim::now())) < ubound ){
+        while( iter != population.humans.crend() && sim::inYears(iter->age(ctx.clock.now())) < ubound ){
             ++cumCount;
             ++iter;
         }
@@ -170,10 +172,10 @@ void ctsRecentBirths (Population &population, ostream& stream){
     population.resetRecentBirths();
 }
 
-void ctsPatentHosts (Population &population, ostream& stream){
+void ctsPatentHosts (RunContext& ctx, Population &population, ostream& stream){
     int patent = 0;
     for(Host::Human &human : population.humans) {
-        auto diag = WithinHost::diagnostics::monitoringDiagnostic();
+        auto diag = WithinHost::diagnostics::monitoringDiagnostic( ctx );
         if( human.withinHostModel->diagnosticResult(human.rng, diag) )
             ++patent;
     }
@@ -215,13 +217,13 @@ void ctsMedianImmunityY (Population &population, ostream& stream){
     stream << '\t' << x;
 }
 
-void ctsMeanAgeAvailEffect (Population &population, ostream& stream){
+void ctsMeanAgeAvailEffect (RunContext& ctx, Population &population, ostream& stream){
     int nHumans = 0;
     double avail = 0.0;
     for(Host::Human &human : population.humans) {
         if( !human.perHostTransmission.outsideTransmission ){
             ++nHumans;
-            avail += human.perHostTransmission.relativeAvailabilityAge(sim::inYears(human.age(sim::now())));
+            avail += human.perHostTransmission.relativeAvailabilityAge(sim::inYears(human.age(ctx.clock.now())));
         }
     }
     stream << '\t' << avail/nHumans;

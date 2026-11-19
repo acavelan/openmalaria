@@ -270,7 +270,7 @@ typedef RNG<ChaCha<8>> MasterRng;
 
 /// The master RNG, used only for seeding local RNGs
 // parity: order — single extern master stream declaration
-extern MasterRng master_RNG;
+
 
 } }
 #endif

@@ -52,13 +52,13 @@ public:
         UnittestUtil::initTime(1);
 	UnittestUtil::PkPdSuiteSetup();
 	proxy = new LSTMModel ();
-        inf = createDummyInfection(m_rng, 0, InfectionOrigin::Indigenous);
-        MQ_index = LSTMDrugType::findDrug( "MQ" );
+        inf = createDummyInfection(UnittestUtil::ctx(), m_rng, 0, InfectionOrigin::Indigenous);
+        MQ_index = UnittestUtil::ctx().drugs.findDrug( "MQ" );
     }
     void tearDown () {
         delete inf;
 	delete proxy;
-        LSTMDrugType::clear();
+        UnittestUtil::ctx().drugs.clear();
     }
     
     void testNone () {

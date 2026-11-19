@@ -22,6 +22,7 @@
 
 #include "PopulationAgeStructure.h"
 #include "Global.h"
+#include "core/RunContext.h"
 #include "util/errors.h"
 
 #include <cmath>
@@ -32,39 +33,35 @@
 namespace OM {
     using namespace OM::util;
 
-vector<double> AgeStructure::ageGroupBounds;
-vector<double> AgeStructure::ageGroupPercent;
-
-double AgeStructure::mu0;
-double AgeStructure::mu1;
-double AgeStructure::alpha0;
-double AgeStructure::alpha1;
-
-vector<double> AgeStructure::cumAgeProp;
 
 
-void AgeStructure::init( const scnXml::Demography& demography ){
-    // this number of cells are needed:
-    cumAgeProp.resize( sim::inSteps(sim::maxHumanAge()) + 1 );
-    
-    estimateRemovalRates( demography );
-    calcCumAgeProp();
+size_t AgeStructure::getMaxTStepsPerLife( const RunContext& ctx ){
+    return ctx.age.cumAgeProp.size();
 }
 
-int AgeStructure::targetCumPop( size_t ageTSteps, int targetPop ){
+void AgeStructure::init( RunContext& ctx, const scnXml::Demography& demography ){
+    auto& cumAgeProp = ctx.age.cumAgeProp;
+    // this number of cells are needed:
+    cumAgeProp.resize( ctx.clock.inSteps(ctx.clock.max_human_age) + 1 );
+    
+    estimateRemovalRates( ctx, demography );
+    calcCumAgeProp(ctx);
+}
+
+int AgeStructure::targetCumPop( RunContext& ctx, size_t ageTSteps, int targetPop ){
+    const auto& cumAgeProp = ctx.age.cumAgeProp;
     size_t index = cumAgeProp.size() - 1 - ageTSteps;
     return (int) floor (cumAgeProp[index] * targetPop + 0.5);
 }
 
 
-// function pointer for wCalcRSS's func
-double (*wCalcRSSFunc) (double param1, double param2);
 double wCalcRSS(const gsl_vector *v, void* params){
   double x, y;  
   x = gsl_vector_get(v, 0);
   y = gsl_vector_get(v, 1);
 
-  return (*wCalcRSSFunc)(x,y); 
+  // params: the run (see minimizeCalc_rss)
+  return AgeStructure::setDemoParameters(*static_cast<RunContext*>(params), x, y);
 }
 /** Presumably from AR. Searches iteratively for a minimum to function func.
  *
@@ -72,9 +69,7 @@ double wCalcRSS(const gsl_vector *v, void* params){
  * @param param1 Initial guess of first param taken by func
  * @param param2 Initial guess of second
  */
-void minimizeCalc_rss(double (*func) (double,double), double param1,double param2){
-    wCalcRSSFunc = func;
-    
+void minimizeCalc_rss(RunContext& ctx, double param1, double param2){
     gsl_vector *stepSize = gsl_vector_alloc (2);
     gsl_vector_set_all (stepSize, 0.1);
     
@@ -84,7 +79,7 @@ void minimizeCalc_rss(double (*func) (double,double), double param1,double param
     
     gsl_multimin_function minex_func;
     minex_func.f = &wCalcRSS;
-    minex_func.params = nullptr;
+    minex_func.params = &ctx;
     minex_func.n = 2;
     
     const gsl_multimin_fminimizer_type *T =gsl_multimin_fminimizer_nmsimplex;
@@ -101,7 +96,7 @@ void minimizeCalc_rss(double (*func) (double,double), double param1,double param
             break;
     }
     // Call again to set final value.
-    wCalcRSS (minimizer->x, nullptr);
+    wCalcRSS (minimizer->x, &ctx);
     
     gsl_vector_free(initialValues);
     gsl_vector_free(stepSize);
@@ -109,8 +104,15 @@ void minimizeCalc_rss(double (*func) (double,double), double param1,double param
 }
 
 // Static method used by estimateRemovalRates
-double AgeStructure::setDemoParameters (double param1, double param2)
+double AgeStructure::setDemoParameters (RunContext& ctx, double param1, double param2)
 {
+    auto& ageGroupBounds = ctx.age.ageGroupBounds;
+    auto& ageGroupPercent = ctx.age.ageGroupPercent;
+    double& mu0 = ctx.age.mu0;
+    double& mu1 = ctx.age.mu1;
+    double& alpha0 = ctx.age.alpha0;
+    double& alpha1 = ctx.age.alpha1;
+    constexpr double rho = AgeStructureState::rho;
     const double IMR = 0.1;
     double M_inf = -log (1 - IMR);
     
@@ -152,17 +154,21 @@ double AgeStructure::setDemoParameters (double param1, double param2)
     return result;
 }
 
-void AgeStructure::calcCumAgeProp ()
+void AgeStructure::calcCumAgeProp (RunContext& ctx)
 {
+    auto& cumAgeProp = ctx.age.cumAgeProp;
+    const double mu0 = ctx.age.mu0, mu1 = ctx.age.mu1;
+    const double alpha0 = ctx.age.alpha0, alpha1 = ctx.age.alpha1;
+    constexpr double rho = AgeStructureState::rho;
     cumAgeProp[0] = 0.0;
     for(size_t j=1;j < cumAgeProp.size(); ++j) {
-	SimTime age = sim::fromTS( cumAgeProp.size() - j - 1 );
+	SimTime age = ctx.clock.fromTS( cumAgeProp.size() - j - 1 );
 	double ageYears = sim::inYears(age);
 	double M1s = (mu0 * (1.0 - exp (-alpha0 * ageYears)) / alpha0);
 	double M2s = (mu1 * (exp (alpha1 * ageYears) - 1.0) / alpha1);
 	double Ms = M1s + M2s;
 	double predperc = exp (-rho * ageYears - Ms);
-	if (age >= sim::maxHumanAge()) {
+	if (age >= ctx.clock.max_human_age) {
 	    predperc = 0.0;
 	}
 	cumAgeProp[j] = cumAgeProp[j-1] + predperc;

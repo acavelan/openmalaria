@@ -23,6 +23,7 @@
 #ifndef Hmod_SimpleMPDAnophelesModel
 #define Hmod_SimpleMPDAnophelesModel
 
+#include "core/RunContext.h"
 #include "Transmission/Anopheles/AnophelesModel.h"
 
 namespace OM
@@ -37,8 +38,9 @@ class SimpleMPDAnophelesModel : public AnophelesModel
 public:
     ///@brief Initialisation and destruction
     //@{
-    SimpleMPDAnophelesModel(SimTime developmentDuration, double probPreadultSurvival, double fEggsLaidByOviposit)
-        : developmentDuration(developmentDuration)
+    SimpleMPDAnophelesModel(RunContext& ctx, SimTime developmentDuration, double probPreadultSurvival, double fEggsLaidByOviposit)
+        : AnophelesModel(ctx)
+        , developmentDuration(developmentDuration)
         , probPreadultSurvival(probPreadultSurvival)
         , fEggsLaidByOviposit(fEggsLaidByOviposit)
     {
@@ -140,7 +142,7 @@ public:
         nOvipositingDelayed[util::mod_nn(d1, developmentDuration)] = nOvipositing;
         quinquennialOvipositing[util::mod_nn(d1, sim::fromYearsI(5))] = nOvipositing;
         
-        if (sim::intervTime() > 0 && emergence < 0)
+        if (ctx.clock.interv > 0 && emergence < 0)
         {
             std::ostringstream oss;
             oss << "Error: SimpleMPD model: negative emergence at t=" << d0 << ": " << emergence << ". ";
@@ -157,14 +159,14 @@ public:
     {
         // TODO: why offset by one time step? This is effectively getting the resources available on the last time step
         // TODO: only have to add one year because of offset
-        SimTime start = sim::now() - sim::oneTS() + sim::oneYear();
+        SimTime start = ctx.clock.now() - ctx.clock.one_TS() + sim::oneYear();
         double total = 0;
-        for (SimTime i = start, end = start + sim::oneTS(); i < end; i = i + sim::oneDay())
+        for (SimTime i = start, end = start + ctx.clock.one_TS(); i < end; i = i + sim::oneDay())
         {
             SimTime dYear1 = mod_nn(i, sim::oneYear());
             total += 1.0 / invLarvalResources[dYear1];
         }
-        return total / sim::oneTS();
+        return total / ctx.clock.one_TS();
     }
 
     virtual double getResRequirements() const { return numeric_limits<double>::quiet_NaN(); }

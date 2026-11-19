@@ -50,17 +50,17 @@ bool opt_vivax_simple = false,
 // -----  static functions  -----
 
 
-TreatmentId WHInterface::addTreatment(const scnXml::TreatmentOption& desc){
-    return Treatments::addTreatment( desc );
+TreatmentId WHInterface::addTreatment(RunContext& ctx, const scnXml::TreatmentOption& desc){
+    return Treatments::addTreatment( ctx, desc );
 }
 
-unique_ptr<WHInterface> WHInterface::createWithinHostModel(LocalRng& rng, double comorbidityFactor) {
+unique_ptr<WHInterface> WHInterface::createWithinHostModel(RunContext& ctx, LocalRng& rng, double comorbidityFactor) {
     if( opt_vivax_simple ) {
-        return unique_ptr<WHInterface>(new WHVivax( rng, comorbidityFactor ));
+        return unique_ptr<WHInterface>(new WHVivax( ctx, rng, comorbidityFactor ));
     } else if( opt_common_whm ) {
-        return unique_ptr<WHInterface>(new CommonWithinHost( rng, comorbidityFactor ));
+        return unique_ptr<WHInterface>(new CommonWithinHost( ctx, rng, comorbidityFactor ));
     } else {
-        return unique_ptr<WHInterface>(new DescriptiveWithinHostModel( rng, comorbidityFactor ));
+        return unique_ptr<WHInterface>(new DescriptiveWithinHostModel( ctx, rng, comorbidityFactor ));
     }
 }
 

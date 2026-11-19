@@ -24,6 +24,7 @@
 #define Hmod_WithinHost_Interface
 
 #include "Global.h"
+#include "core/RunContext.h"
 #include "util/random.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Pathogenesis/State.h"
@@ -76,22 +77,25 @@ private:
  */
 class WHInterface {
 public:
+    /// The run this model belongs to (clock accessed as ctx.clock).
+    RunContext& ctx;
+
     /// @brief Static methods
     //@{
     /// Initialise static parameters
-    static void init(const OM::Parameters& parameters, const scnXml::Scenario& scenario);
+    static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario);
     
     /** Configure a new treatment option, and return the code used to select
      * that option later. */
-    static TreatmentId addTreatment( const scnXml::TreatmentOption& desc );
+    static TreatmentId addTreatment( RunContext& ctx, const scnXml::TreatmentOption& desc );
 
     /// Create an instance using the appropriate model
-    static unique_ptr<WHInterface> createWithinHostModel( LocalRng& rng, double comorbidityFactor );
+    static unique_ptr<WHInterface> createWithinHostModel( RunContext& ctx, LocalRng& rng, double comorbidityFactor );
     //@}
 
     /// @brief Constructors, destructors and checkpointing functions
     //@{
-    WHInterface(): numInfs(0) {}
+    explicit WHInterface(RunContext& ctx): ctx(ctx), numInfs(0) {}
     virtual ~WHInterface() = default;
     
     WHInterface(WHInterface&&) = default;
@@ -129,7 +133,7 @@ public:
      * This is equivalent to calling treatSimple, then deploying any included interventions.
      * 
      * This may be used by intervention deployment, thus should use time 
-     * sim::nowOrTs1(). */
+     * ctx.clock.nowOrTs1(). */
     virtual void treatment( Host::Human& human, TreatmentId treatId ) =0;
     
     /// Conditionally gives Primaquine as a treatment. Reports as appropriate.
@@ -155,7 +159,7 @@ public:
      *
      * @param nNewInfs Number of inoculations this time-step
      * @param genotype_weights For use in selecting infection genotypes. See
-     *  documentation of Genotypes::sampleGenotype().
+     *  documentation of ctx.genotypes.sampleGenotype().
      * @param ageInYears Age of human
      * @param bsvFactor Parasite survival factor for blood-stage vaccines
      */

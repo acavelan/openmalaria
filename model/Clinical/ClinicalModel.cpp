@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include "Clinical/ClinicalModel.h"
 
 #include "Clinical/EventScheduler.h"
@@ -49,13 +50,13 @@ util::AgeGroupInterpolator ClinicalModel::pSequelaeInpatient;
 // -----  static methods  -----
 
 
-unique_ptr<ClinicalModel> ClinicalModel::createClinicalModel (double tSF) {
+unique_ptr<ClinicalModel> ClinicalModel::createClinicalModel (RunContext& ctx, double tSF) {
     if (opt_event_scheduler){
-        return unique_ptr<ClinicalModel>(new ClinicalEventScheduler (tSF));
+        return unique_ptr<ClinicalModel>(new ClinicalEventScheduler (ctx, tSF));
     }else if( opt_imm_outcomes ){
-        return unique_ptr<ClinicalModel>(new ImmediateOutcomes (tSF));
+        return unique_ptr<ClinicalModel>(new ImmediateOutcomes (ctx, tSF));
     }else{
-        return unique_ptr<ClinicalModel>(new DecisionTree5Day( tSF ));
+        return unique_ptr<ClinicalModel>(new DecisionTree5Day( ctx, tSF ));
     }
 }
 
@@ -68,7 +69,9 @@ double ClinicalModel::getCommunityCFR (double caseFatalityRatio){
 
 // -----  non-static construction, destruction and checkpointing  -----
 
-ClinicalModel::ClinicalModel () :
+ClinicalModel::ClinicalModel (RunContext& ctx) :
+    ctx(ctx),
+    latestReport(ctx),
     doomed(NOT_DOOMED)
 {}
 ClinicalModel::~ClinicalModel () {
@@ -79,14 +82,14 @@ ClinicalModel::~ClinicalModel () {
 // -----  other non-static methods  -----
 
 bool ClinicalModel::isDead( SimTime age ){
-    if( age >= sim::maxHumanAge())       // too old (reached age limit)
+    if( age >= ctx.clock.max_human_age)       // too old (reached age limit)
         doomed = DOOMED_TOO_OLD;
     return doomed > NOT_DOOMED;	// killed by some means
 }
 
 void ClinicalModel::update (Human& human, double ageYears, bool newBorn) {
     if (doomed < NOT_DOOMED)	// Countdown to indirect mortality
-        doomed -= sim::oneTS();
+        doomed -= ctx.clock.one_TS();
     
     //indirect death: if this human's about to die, don't worry about further episodes:
     if (doomed <= DOOMED_EXPIRED) {	//clinical bout 6 intervals before
@@ -107,13 +110,13 @@ void ClinicalModel::update (Human& human, double ageYears, bool newBorn) {
     WithinHost::Pathogenesis::StatePair pg = human.withinHostModel->determineMorbidity( human, ageYears, isDoomed );
     latestState = static_cast<Episode::State>(pg.state);
 
-    doClinicalUpdate (human, ageYears, pg);
+    doClinicalUpdate (ctx, human, ageYears, pg);
 }
 
 void ClinicalModel::updateInfantDeaths( SimTime age ){
     // update array for the infant death rates
     if (age < sim::oneYear()){
-        size_t index = age / sim::oneTS();
+        size_t index = age / ctx.clock.one_TS();
         
         // Testing doomed == DOOMED_NEXT_TS gives very slightly different results than
         // testing doomed == DOOMED_INDIRECT (due to above if(..))
@@ -146,9 +149,9 @@ vector<int> infantIntervalsAtRisk;
 /// Set by init ()
 double nonMalariaMortality;
 
-void InfantMortality::init( const OM::Parameters& parameters ){
-    infantDeaths.resize(sim::stepsPerYear());
-    infantIntervalsAtRisk.resize(sim::stepsPerYear());
+void InfantMortality::init( RunContext& ctx, const OM::Parameters& parameters ){
+    infantDeaths.resize(ctx.clock.steps_per_year);
+    infantIntervalsAtRisk.resize(ctx.clock.steps_per_year);
     nonMalariaMortality=parameters[Parameter::NON_MALARIA_INFANT_MORTALITY];
 }
 
@@ -174,7 +177,7 @@ void InfantMortality::reportRisk(size_t index, bool isDoomed) {
 
 double InfantMortality::allCause(){
     double infantPropSurviving=1.0;       // use to calculate proportion surviving
-    for( size_t i = 0; i < sim::stepsPerYear(); i += 1 ){
+    for( size_t i = 0; i < infantIntervalsAtRisk.size(); i += 1 ){
         // multiply by proportion of infants surviving at each interval
         infantPropSurviving *= double(infantIntervalsAtRisk[i] - infantDeaths[i])
             / double(infantIntervalsAtRisk[i]);

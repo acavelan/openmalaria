@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include "Host/WithinHost/WHVivax.h"
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
@@ -114,7 +115,8 @@ SimTime sampleReleaseDelay(LocalRng& rng){
 
 // ———  per-brood code  ———
 
-VivaxBrood::VivaxBrood( LocalRng& rng, int origin, WHVivax *host ) :
+VivaxBrood::VivaxBrood( RunContext& ctx, LocalRng& rng, int origin, WHVivax *host ) :
+        ctx(ctx),
         primaryHasStarted( false ),
         relapseHasStarted( false ),
 		relapsebHasStarted( false),
@@ -125,12 +127,12 @@ VivaxBrood::VivaxBrood( LocalRng& rng, int origin, WHVivax *host ) :
     set<SimTime> releases;     // used to initialise releaseDates; a set is better to use now but a vector later
     
     // primary blood stage plus hypnozoites (relapses)
-    releases.insert( sim::nowOrTs0() + latentP );
+    releases.insert( ctx.clock.nowOrTs0() + latentP );
     int numberHypnozoites = sampleNHypnozoites(rng);
     
     for( int i = 0; i < numberHypnozoites; ){
         SimTime randomReleaseDelay = sampleReleaseDelay(rng);
-        SimTime timeToRelease = sim::nowOrTs0() + latentP + randomReleaseDelay;
+        SimTime timeToRelease = ctx.clock.nowOrTs0() + latentP + randomReleaseDelay;
         bool inserted = releases.insert( timeToRelease ).second;
         if( inserted ) ++i;     // successful
         // else: sample clash with an existing release date, so resample
@@ -168,7 +170,8 @@ void VivaxBrood::checkpoint( ostream& stream ){
     hadRelapse & stream;
 	origin & stream;
 }
-VivaxBrood::VivaxBrood( istream& stream ){
+VivaxBrood::VivaxBrood( RunContext& ctx, istream& stream ) : ctx(ctx) {
+    (void)ctx;
     releaseDates & stream;
     bloodStageClearDate & stream;
     primaryHasStarted & stream;
@@ -181,19 +184,19 @@ VivaxBrood::VivaxBrood( istream& stream ){
 
 
 VivaxBrood::UpdResult VivaxBrood::update(LocalRng& rng){
-    if( bloodStageClearDate == sim::ts0() ){
+    if( bloodStageClearDate == ctx.clock.ts0() ){
         //NOTE: this effectively means that both asexual and sexual stage
         // parasites self-terminate. It also means the immune system can
         // protect against new blood-stage infections for a short time.
     }
     
     UpdResult result;
-    while( releaseDates.size() > 0 && releaseDates.back() == sim::ts0() ){
+    while( releaseDates.size() > 0 && releaseDates.back() == ctx.clock.ts0() ){
         releaseDates.pop_back();
         
 #ifdef WHVivaxSamples
         if( sampleBrood == this ){
-            cout << "Time\t" << sim::ts0();
+            cout << "Time\t" << ctx.clock.ts0();
             for( auto it = releaseDates.begin(); it != releaseDates.end(); ++it )
                 cout << '\t' << *it;
             cout << endl;
@@ -202,7 +205,7 @@ VivaxBrood::UpdResult VivaxBrood::update(LocalRng& rng){
         
         // an existing or recently terminated blood stage from the same brood
         // protects against a newly released hypnozoite for relapse classification B 
-        if( (vivaxClinOption=="B1j" || vivaxClinOption=="B2j") && (bloodStageClearDate + bloodStageProtectionLatency >= sim::ts0()) ) continue;
+        if( (vivaxClinOption=="B1j" || vivaxClinOption=="B2j") && (bloodStageClearDate + bloodStageProtectionLatency >= ctx.clock.ts0()) ) continue;
         		
         if( !relapsebHasStarted && relapseHasStarted ){
             relapsebHasStarted = true;
@@ -219,7 +222,7 @@ VivaxBrood::UpdResult VivaxBrood::update(LocalRng& rng){
         result.newBS = true;
         
         double lengthDays = bloodStageLength.sample(rng);
-        bloodStageClearDate = sim::ts0() + sim::roundToTSFromDays( lengthDays );
+        bloodStageClearDate = ctx.clock.ts0() + ctx.clock.roundToTSFromDays( lengthDays );
         // Assume gametocytes emerge at the same time (they mature quickly and
         // we have little data, thus assume coincedence of start)
     }
@@ -254,7 +257,8 @@ void VivaxBrood::treatmentLS(){
 
 // ———  per-host code  ———
 
-WHVivax::WHVivax( LocalRng& rng, double comorbidityFactor ) :
+WHVivax::WHVivax( RunContext& ctx, LocalRng& rng, double comorbidityFactor ) :
+    WHInterface(ctx),
     cumPrimInf(0),
 	treatExpiryLiver(0), treatExpiryBlood(0),
     pEvent( numeric_limits<double>::quiet_NaN() ),
@@ -286,7 +290,7 @@ WHVivax::~WHVivax(){
 
 
 double WHVivax::probTransmissionToMosquito(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l)const{
-    assert( WithinHost::Genotypes::N() == 1 );
+    assert( ctx.genotypes.N() == 1 );
     for(auto inf = infections.begin();
          inf != infections.end(); ++inf)
     {
@@ -318,7 +322,7 @@ bool WHVivax::summarize(Host::Human& human) const{
 
 void WHVivax::importInfection(LocalRng& rng){
     // this means one new liver stage infection, which can result in multiple blood stages
-    infections.push_back( VivaxBrood( rng, WithinHost::InfectionOrigin::Imported, this ) );
+    infections.push_back( VivaxBrood( ctx, rng, WithinHost::InfectionOrigin::Imported, this ) );
 }
 
 void WHVivax::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
@@ -328,10 +332,10 @@ void WHVivax::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nN
     
     // create new infections, letting the constructor do the initialisation work:
     for( int i = 0; i < nNewInfs_i; ++i )
-        infections.push_back( VivaxBrood( rng, InfectionOrigin::Introduced, this ) );
+        infections.push_back( VivaxBrood( ctx, rng, InfectionOrigin::Introduced, this ) );
 
     for( int i = 0; i < nNewInfs_l; ++i )
-        infections.push_back( VivaxBrood( rng, InfectionOrigin::Indigenous, this ) );
+        infections.push_back( VivaxBrood( ctx, rng, InfectionOrigin::Indigenous, this ) );
 
 	
     
@@ -339,8 +343,8 @@ void WHVivax::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nN
     // NOTE: currently no BSV model
     morbidity = Pathogenesis::NONE;
     uint32_t oldCumInf = cumPrimInf;
-    bool treatmentLiver = treatExpiryLiver > sim::ts0();
-    bool treatmentBlood = treatExpiryBlood > sim::ts0();
+    bool treatmentLiver = treatExpiryLiver > ctx.clock.ts0();
+    bool treatmentBlood = treatExpiryBlood > ctx.clock.ts0();
     double matImmClin = 1 - (0.90 * exp(-2.53*ageInYears));
     //double matImmClin = 1 - (1 * exp(-(0.639*8*ageInYears)/2.53));
     auto inf = infections.begin();
@@ -438,11 +442,11 @@ void WHVivax::clearImmunity(){
 }
 
 void WHVivax::treatment( Host::Human& human, TreatmentId treatId ){
-    const Treatments& treat = Treatments::select( treatId );
+    const Treatments& treat = Treatments::select( ctx, treatId );
     treatSimple( human, treat.liverEffect(), treat.bloodEffect() );
     
     // triggered intervention deployments:
-    treat.deploy( human,
+    treat.deploy( ctx, human,
                   mon::Deploy::TREAT,
                   interventions::VaccineLimits(/*default initialise: no limits*/) );
 }
@@ -476,7 +480,7 @@ bool WHVivax::treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBl
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
         if( (ignoreNoPQ || !noPQ) && (effectivenessPQ == 1.0 || human.rng.bernoulli(effectivenessPQ)) ){
             if( timeLiver >= sim::zero() ){
-                treatExpiryLiver = max( int(treatExpiryLiver), sim::nowOrTs1() + timeLiver );
+                treatExpiryLiver = max( int(treatExpiryLiver), ctx.clock.nowOrTs1() + timeLiver );
             }else{
                 for( auto it = infections.begin(); it != infections.end(); ++it ){
                     it->treatmentLS();
@@ -494,7 +498,7 @@ bool WHVivax::treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBl
                 it->treatmentBS();
             }
         }else{
-            treatExpiryBlood = max( int(treatExpiryBlood), sim::nowOrTs1() + timeBlood );
+            treatExpiryBlood = max( int(treatExpiryBlood), ctx.clock.nowOrTs1() + timeBlood );
         }
         return true;    // blood stage treatment
     }
@@ -509,7 +513,7 @@ void WHVivax::checkpoint(istream& stream){
     size_t len;
     len & stream;
     for( size_t i = 0; i < len; ++i ){
-        infections.push_back( VivaxBrood( stream ) );
+        infections.push_back( VivaxBrood( ctx, stream ) );
     }
     noPQ & stream;
     int morbidity_i;

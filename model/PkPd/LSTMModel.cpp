@@ -25,6 +25,7 @@
 #include "PkPd/LSTMModel.h"
 #include "PkPd/LSTMMedicate.h"
 #include "PkPd/LSTMTreatments.h"
+#include "core/RunContext.h"
 #include "mon/Monitoring.h"
 #include "util/checkpoint_containers.h"
 #include "util/errors.h"
@@ -37,7 +38,7 @@ namespace OM { namespace PkPd {
 
 // ———  non-static set up / tear down functions  ———
 
-void LSTMModel::checkpoint (istream& stream) {
+void LSTMModel::checkpoint (RunContext& ctx, istream& stream) {
     // We need an RNG to call createInstance, but override the values later
     // anyway. Hacky solution: create a local RNG.
     LocalRng rng(0, 0);
@@ -48,7 +49,7 @@ void LSTMModel::checkpoint (istream& stream) {
     for(size_t i=0; i<numDrugs; ++i) {
         size_t index;
         index & stream;
-        m_drugs.push_back( LSTMDrugType::createInstance(rng, index) );
+        m_drugs.push_back( ctx.drugs.createInstance(rng, index) );
         m_drugs.back() & stream;
     }
     medicateQueue & stream;
@@ -66,18 +67,18 @@ void LSTMModel::checkpoint (ostream& stream) {
 
 // ———  non-static simulation time functions  ———
 
-void LSTMModel::prescribe(size_t schedule, size_t dosage, double age, double body_mass, double delay_d){
-    DosageTable& table = dosages[dosage];
+void LSTMModel::prescribe(RunContext& ctx, size_t schedule, size_t dosage, double age, double body_mass, double delay_d){
+    DosageTable& table = ctx.treatments.dosages[dosage];
     double key = table.useMass ? body_mass : age;
     double doseMult = table.getMultiplier( key );
-    for( MedicateData& medicateData : schedules[schedule].medications ){
+    for( MedicateData& medicateData : ctx.treatments.schedules[schedule].medications ){
         MedicateData data = medicateData.multiplied(doseMult);
         data.time += delay_d;
         medicateQueue.push_back( std::move(data) );
     }
 }
 
-void LSTMModel::medicate(LocalRng& rng){
+void LSTMModel::medicate(RunContext& ctx, LocalRng& rng){
     if( medicateQueue.empty() ) return;
     
     // Process pending medications (in interal queue) and apply/update:
@@ -85,7 +86,7 @@ void LSTMModel::medicate(LocalRng& rng){
     while( iter != medicateQueue.end() ){
         if( iter->time < 1.0 ){   // Medicate medications to be prescribed starting at the next time-step
             // This function could be inlined, except for uses in testing:
-            medicateDrug (rng, iter->drug, iter->qty, iter->time);
+            medicateDrug (ctx, rng, iter->drug, iter->qty, iter->time);
             iter = medicateQueue.erase (iter);
         }else{  // and decrement treatment seeking delay for the rest
             iter->time -= 1.0;
@@ -94,7 +95,7 @@ void LSTMModel::medicate(LocalRng& rng){
     }
 }
 
-void LSTMModel::medicateDrug(LocalRng& rng, size_t typeIndex, double qty, double time) {
+void LSTMModel::medicateDrug(RunContext& ctx, LocalRng& rng, size_t typeIndex, double qty, double time) {
     //TODO: might be a little faster if m_drugs was pre-allocated with a slot for each drug type, using a null pointer
     for( auto& drug : m_drugs ){
         if (drug->getIndex() == typeIndex){
@@ -103,7 +104,7 @@ void LSTMModel::medicateDrug(LocalRng& rng, size_t typeIndex, double qty, double
         }
     }
     // No match, so insert one:
-    m_drugs.push_back( LSTMDrugType::createInstance(rng, typeIndex) );
+    m_drugs.push_back( ctx.drugs.createInstance(rng, typeIndex) );
     (*m_drugs.back()).medicate (time, qty);
 }
 
@@ -142,8 +143,8 @@ void LSTMModel::decayDrugs (double body_mass) {
     }
 }
 
-void LSTMModel::summarize(const Host::Human& human) const{
-    const vector<size_t> &drugsInUse( LSTMDrugType::getDrugsInUse() );
+void LSTMModel::summarize(RunContext& ctx, const Host::Human& human) const{
+    const vector<size_t> &drugsInUse( ctx.drugs.getDrugsInUse() );
     for( size_t index : drugsInUse ){
         for( auto& drug : m_drugs ){
             double conc = drug->getConcentration(index);

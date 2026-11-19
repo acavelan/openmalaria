@@ -28,6 +28,8 @@
 
 using namespace std;
 
+namespace OM { class RunContext; }
+
 namespace OM { namespace WithinHost { namespace Pathogenesis {
 
 /// Müller presentation model.
@@ -40,7 +42,7 @@ public:
     virtual double getPEpisode(double timeStepMaxDensity, double totalDensity);
 
     /// Read parameters
-    static void init( const Parameters& parameters );
+    static void init( RunContext& ctx, const Parameters& parameters );
 };
 
 /// Pyrogenic threshold presentation model.
@@ -58,7 +60,7 @@ public:
     virtual double getPEpisode(double timeStepMaxDensity, double totalDensity);
     
     /// Read parameters from XML
-    static void init( const OM::Parameters& parameters );
+    static void init( RunContext& ctx, const OM::Parameters& parameters );
     
 protected:
     

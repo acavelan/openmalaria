@@ -41,13 +41,6 @@ using WithinHost::Genotypes;
 
 // -----  Static variables and functions  -----
 
-// The list of drugTypes drugs. Not checkpointed.
-vector<LSTMDrugType> drugTypes;
-map<string,size_t> drugTypeNames;
-// List of all indices of drugs being used
-vector<size_t> drugsInUse;
-
-
 double LSTMDrugPD::calcFactor( double Kn, double neg_elim_rate, double* conc, double duration ) const{
     const double C0 = *conc;
     const double C1 = C0 * exp(neg_elim_rate * duration);
@@ -75,24 +68,24 @@ double LSTMDrugPD::IC50_pow_slope(LocalRng& rng, size_t index, WithinHost::Commo
 }
 
 
-void LSTMDrugType::clear()
+void DrugRegistry::clear()
 {
     drugTypes.clear();
     drugTypeNames.clear();
 }
 
-size_t LSTMDrugType::numDrugTypes(){
+size_t DrugRegistry::numDrugTypes() const {
     return drugTypes.size();
 }
 
 // Add index to drugsInUse if not already present. Not fast but doesn't need to be.
-void drugIsUsed(size_t index){
+static void drugIsUsed(vector<size_t>& drugsInUse, size_t index){
     for( size_t i : drugsInUse ){
         if( i == index ) return;        // already in list
     }
     drugsInUse.push_back(index);
 }
-size_t LSTMDrugType::findDrug(string _abbreviation) {
+size_t DrugRegistry::findDrug(string _abbreviation) {
     auto iter = drugTypeNames.find (_abbreviation);
     if (iter == drugTypeNames.end())
         throw util::xml_scenario_error (string ("attempt to use drug without description: ").append(_abbreviation));
@@ -100,23 +93,23 @@ size_t LSTMDrugType::findDrug(string _abbreviation) {
     
     // We assume that drugs are used when and only when findDrug returns their
     // index or they are a metabolite of a drug returned here.
-    drugIsUsed(index);
+    drugIsUsed(drugsInUse, index);
     if( drugTypes[index].conversion_rate /*conversion model used*/ ){
-        drugIsUsed(drugTypes[index].metabolite);
+        drugIsUsed(drugsInUse, drugTypes[index].metabolite);
     }
     
     return index;
 }
 
-LSTMDrugType& LSTMDrugType::get(size_t index) { //static
+LSTMDrugType& DrugRegistry::get(size_t index) {
     return drugTypes.at(index);
 }
 
-const vector< size_t >& LSTMDrugType::getDrugsInUse(){
+const vector< size_t >& DrugRegistry::getDrugsInUse() const {
     return drugsInUse;
 }
 
-unique_ptr<LSTMDrug> LSTMDrugType::createInstance(LocalRng& rng, size_t index) {
+unique_ptr<LSTMDrug> DrugRegistry::createInstance(LocalRng& rng, size_t index) {
     LSTMDrugType& typeData = drugTypes[index];
     if( typeData.conversion_rate ){
         LSTMDrugType& metaboliteData = drugTypes[typeData.metabolite];

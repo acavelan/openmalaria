@@ -45,13 +45,10 @@ public:
     //@{
     /** Configure a new treatment option, and return the code used to select
      * that option later. */
-    static TreatmentId addTreatment( const scnXml::TreatmentOption& desc );
+    static TreatmentId addTreatment( RunContext& ctx, const scnXml::TreatmentOption& desc );
     
     /** Return the corresponding treatment description. */
-    static inline const Treatments& select( TreatmentId treatId ){
-        assert( treatId.id < treatments.size() );
-        return treatments[treatId.id];
-    }
+    static const Treatments& select( RunContext& ctx, TreatmentId treatId );
     //@}
     
     /// @brief Types used by the non-static methods
@@ -80,11 +77,8 @@ public:
     //@}
     
 private:
-    // static:
-    static vector<Treatments> treatments;
-    
     // non-static:
-    Treatments( const scnXml::TreatmentOption& elt );
+    Treatments( RunContext& ctx, const scnXml::TreatmentOption& elt );
     
     SimTime timeLiver, timeBlood;
     

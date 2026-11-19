@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
+#include "core/RunExtensions.h"
 #include "interventions/Vaccine.h"
 #include "interventions/HumanComponents.h"
 #include "Host/Human.h"
@@ -36,13 +38,17 @@ namespace OM {
 namespace interventions {
 using namespace OM::util;
 
-vector<VaccineComponent*> VaccineComponent::params;
-ComponentId VaccineComponent::reportComponent = ComponentId::wholePop();
 
-void VaccineComponent::deploy(Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const
+const VaccineComponent& VaccineComponent::getParams( RunContext& ctx, ComponentId component ){
+    auto& params = ctx.ext->vaccineComponents;
+    assert( component.id < params.size() && params[component.id] != 0 );
+    return *params[component.id];
+}
+
+void VaccineComponent::deploy(RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const
 {
     bool administered = human.vaccine.possiblyVaccinate( human, id(), vaccLimits );
-    if( administered && VaccineComponent::reportComponent == id() ){
+    if( administered && ctx.ext->vaccineReportComponent == id() ){
         mon::recordDeploy(mon::measure("nMassVaccinations"), mon::measure("nEPIVaccinations"), human, method);
     }
     assert(type == Vaccine::PEV || type == Vaccine::BSV || type == Vaccine::TBV);
@@ -114,19 +120,19 @@ PerEffectPerHumanVaccine::PerEffectPerHumanVaccine( LocalRng& rng, ComponentId i
     hetSample = params.decayFunc->hetSample(rng);
 }
 
-void PerEffectPerHumanVaccine::checkpointHet(ostream& stream) {
-    VaccineComponent::getParams(component).decayFunc->checkpointSample(hetSample, stream);
+void PerEffectPerHumanVaccine::checkpointHet( RunContext& ctx, ostream& stream) {
+    VaccineComponent::getParams(ctx, component).decayFunc->checkpointSample(hetSample, stream);
 }
 
-void PerEffectPerHumanVaccine::checkpointHet(istream& stream) {
-    VaccineComponent::getParams(component).decayFunc->checkpointSample(hetSample, stream);
+void PerEffectPerHumanVaccine::checkpointHet( RunContext& ctx, istream& stream) {
+    VaccineComponent::getParams(ctx, component).decayFunc->checkpointSample(hetSample, stream);
 }
 
 double PerHumanVaccine::getFactor( Vaccine::Types type, uint32_t genotype) const {
     double factor = 1.0;
     for( EffectList::const_iterator effect = effects.begin(); effect != effects.end(); ++effect ){
-        if( VaccineComponent::getParams(effect->component).type == type ){
-            SimTime age = sim::ts1() - effect->timeLastDeployment;  // implies age 1 TS on first use
+        if( VaccineComponent::getParams(*ctx, effect->component).type == type ){
+            SimTime age = ctx->clock.ts1() - effect->timeLastDeployment;  // implies age 1 TS on first use
             double decayFactor = effect->hetSample->eval( age );
             factor *= 1.0 - effect->perGenotypeInitialEfficacy[genotype] * decayFactor;
         }
@@ -150,14 +156,14 @@ bool PerHumanVaccine::possiblyVaccinate( Host::Human& human,
         numDosesAdministered >= vaccLimits.maxCumDoses )
         return false;   // no vaccination (this replaces the old schedule for continuous doses)
     
-    const VaccineComponent& params = VaccineComponent::getParams( componentId );
+    const VaccineComponent& params = VaccineComponent::getParams( *ctx, componentId );
     
     if( effect == 0 ){
         effects.push_back( PerEffectPerHumanVaccine( human.rng, componentId, params ) );
         effect = &effects.back();
     }
     
-    effect->perGenotypeInitialEfficacy.resize(WithinHost::Genotypes::N());
+    effect->perGenotypeInitialEfficacy.resize(ctx->genotypes.N());
 
     for(size_t g=0; g<params.perGenotypeInitialMeanEfficacy.size(); g++)
         effect->perGenotypeInitialEfficacy[g] = params.getInitialEfficacy(human.rng, numDosesAdministered, g);
@@ -165,7 +171,7 @@ bool PerHumanVaccine::possiblyVaccinate( Host::Human& human,
     util::streamValidate(effect->perGenotypeInitialEfficacy);
     
     effect->numDosesAdministered = numDosesAdministered + 1;
-    effect->timeLastDeployment = sim::nowOrTs1();
+    effect->timeLastDeployment = ctx->clock.nowOrTs1();
     
     return true;
 }

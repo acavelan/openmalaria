@@ -24,6 +24,7 @@
 #define OM_INTERVENTIONS_INTERFACES
 
 #include "Global.h"
+#include "core/RunContext.h"
 #include "mon/Monitoring.h"
 #include <limits>
 
@@ -106,12 +107,12 @@ public:
     /** Deploy the component to a pre-selected human.
      * 
      * This may be called between updates (usual intervention deployment time)
-     * or from case management. It should use time sim::nowOrTs1().
+     * or from case management. It should use time ctx.clock.nowOrTs1().
      * 
      * @param human Individual receiving the intervention
      * @param method Channel of deployment (mass, continuous)
      */
-    virtual void deploy( Host::Human& human, mon::Deploy::Method method,
+    virtual void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method,
         VaccineLimits vaccLimits ) const =0;
     
     /** Get the component identifier. */
@@ -161,19 +162,22 @@ public:
     /** Create from a list of XML elements: list of intervention components
      * with unconditional deployment (for triggered deployments). **/
     explicit HumanIntervention(
+        RunContext& ctx,
         const xsd::cxx::tree::sequence<scnXml::Component, false>& componentList );
     /** Create from a list of XML elements: list of intervention components
      * and list of conditions of deployment. **/
     explicit HumanIntervention(
+        RunContext& ctx,
         const xsd::cxx::tree::sequence<scnXml::Component, false>& componentList,
         const xsd::cxx::tree::sequence<scnXml::Condition, false>& conditionList );
     /** Create from a list of XML elements: list of intervention components
      * with unconditional deployment (for triggered deployments). **/
     explicit HumanIntervention(
+        RunContext& ctx,
         const xsd::cxx::tree::sequence<scnXml::DTDeploy, false>& componentList );
     
     /** Deploy all components to a pre-selected human. */
-    void deploy( Host::Human& human, mon::Deploy::Method method,
+    void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method,
         VaccineLimits vaccLimits ) const;
     
     void print_details( std::ostream& out )const;
@@ -189,16 +193,16 @@ protected:
 // could just store ComponentId instead of inheriting HumanIntervention)
 class TriggeredDeployments {
 public:
-    TriggeredDeployments( const scnXml::TriggeredDeployments& elt );
+    TriggeredDeployments( RunContext& ctx, const scnXml::TriggeredDeployments& elt );
     
-    void deploy( Host::Human& human, mon::Deploy::Method method,
+    void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method,
             VaccineLimits vaccLimits )const;
     
 private:
     struct SubList : protected HumanIntervention{
-        SubList( const scnXml::Deploy& elt );
+        SubList( RunContext& ctx, const scnXml::Deploy& elt );
         
-        void deploy( Host::Human& human, mon::Deploy::Method method,
+        void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method,
             VaccineLimits vaccLimits )const;
         
         // Deployment restrictions:

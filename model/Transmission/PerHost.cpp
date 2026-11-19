@@ -21,6 +21,7 @@
  */
 
 #include "Transmission/PerHost.h"
+#include "core/RunExtensions.h"
 #include "Transmission/VectorModel.h"
 #include "interventions/InterventionManager.h"
 #include "util/errors.h"
@@ -33,8 +34,6 @@ using namespace OM::util;
 // -----  PerHost static  -----
 
 AgeGroupInterpolator PerHost::relAvailAge;
-vector<PerHostAnophParams> PerHostAnophParams::params;
-vector<double> PerHostAnophParams::entoAvailabilityPercentiles;
 
 
 // -----  PerHost non-static -----
@@ -45,15 +44,15 @@ PerHost::PerHost () :
 {
 }
 
-void PerHost::initialise (LocalRng& rng, double availabilityFactor) {
+void PerHost::initialise (RunContext& ctx, LocalRng& rng, double availabilityFactor) {
     relativeAvailabilityHet = availabilityFactor;
-    anophEntoAvailabilityRaw.resize(PerHostAnophParams::numSpecies());
-    anophEntoAvailability.resize(PerHostAnophParams::numSpecies());
-    anophProbMosqBiting.resize(PerHostAnophParams::numSpecies());
-    anophProbMosqResting.resize(PerHostAnophParams::numSpecies());
+    anophEntoAvailabilityRaw.resize(PerHostAnophParams::numSpecies(ctx));
+    anophEntoAvailability.resize(PerHostAnophParams::numSpecies(ctx));
+    anophProbMosqBiting.resize(PerHostAnophParams::numSpecies(ctx));
+    anophProbMosqResting.resize(PerHostAnophParams::numSpecies(ctx));
 
-    for(size_t i = 0; i < PerHostAnophParams::numSpecies(); ++i) {
-        const PerHostAnophParams& base = PerHostAnophParams::get(i);
+    for(size_t i = 0; i < PerHostAnophParams::numSpecies(ctx); ++i) {
+        const PerHostAnophParams& base = PerHostAnophParams::get(ctx, i);
         anophEntoAvailabilityRaw[i] = base.entoAvailability->sample(rng);
         anophEntoAvailability[i] = base.entoAvailabilityFactor * anophEntoAvailabilityRaw[i] * availabilityFactor;
         anophProbMosqBiting[i] = base.probMosqBiting.sample(rng);
@@ -69,7 +68,7 @@ void PerHost::update(Host::Human& human){
     }
 }
 
-void PerHost::deployComponent( LocalRng& rng, const HumanVectorInterventionComponent& params ){
+void PerHost::deployComponent( RunContext& ctx, LocalRng& rng, const HumanVectorInterventionComponent& params ){
     // This adds per-host per-intervention details to the host's data set.
     // This data is never removed since it can contain per-host heterogeneity samples.
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
@@ -80,7 +79,7 @@ void PerHost::deployComponent( LocalRng& rng, const HumanVectorInterventionCompo
         }
     }
     // no deployment for that description: must make a new one
-    activeComponents.push_back( params.makeHumanPart(rng) );
+    activeComponents.push_back( params.makeHumanPart(ctx, rng) );
 }
 
 // Note: in the case an intervention is not present, we can use the approximation
@@ -122,7 +121,7 @@ double PerHost::relMosqFecundity (size_t species) const {
 bool PerHost::hasActiveInterv(interventions::Component::Type type) const{
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
         if( (*iter)->isDeployed() ){
-            if( interventions::InterventionManager::getComponent( (*iter)->id() ).componentType() == type )
+            if( interventions::InterventionManager::getComponent( *ctx, (*iter)->id() ).componentType() == type )
                 return true;
         }
     }
@@ -144,12 +143,12 @@ void PerHost::checkpointIntervs( istream& stream ){
         interventions::ComponentId id( stream );
         try{
             const interventions::HumanInterventionComponent& gen_params =
-                interventions::InterventionManager::getComponent( id );   // may throw
+                interventions::InterventionManager::getComponent( *ctx, id );   // may throw
             const HumanVectorInterventionComponent *params =
                 dynamic_cast<const HumanVectorInterventionComponent*>( &gen_params );
             if( params == 0 )
                 throw util::base_exception( "" );       // see catch block below
-            activeComponents.push_back( params->makeHumanPart( stream, id ) );
+            activeComponents.push_back( params->makeHumanPart( *ctx, stream, id ) );
         }catch( util::base_exception& e ){
             // two causes, both boil down to index being wrong
             throw util::checkpoint_error( "bad value in checkpoint file" );
@@ -159,3 +158,68 @@ void PerHost::checkpointIntervs( istream& stream ){
 
 }
 }
+
+// ———  PerHostAnophParams registry (ctx.ext->anophParams)  ———
+
+namespace OM { namespace Transmission {
+
+void PerHostAnophParams::init (RunContext& ctx, const scnXml::Mosq& mosq) {
+    ctx.ext->anophParams.emplace_back(mosq);
+}
+
+size_t PerHostAnophParams::numSpecies (RunContext& ctx) {
+    return ctx.ext->anophParams.size();
+}
+
+const PerHostAnophParams& PerHostAnophParams::get (RunContext& ctx, size_t species) {
+    return ctx.ext->anophParams[species];
+}
+
+void PerHostAnophParams::setEntoAvailabilityFactor(RunContext& ctx, size_t species, double entoAvailability){
+    ctx.ext->anophParams[species].entoAvailabilityFactor = entoAvailability;
+}
+
+void PerHostAnophParams::calcAvailabilityPercentiles(RunContext& ctx){
+    auto& params = ctx.ext->anophParams;
+    auto& entoAvailabilityPercentiles = ctx.ext->entoAvailabilityPercentiles;
+    int nSamples = 100000;
+    vector<double> samples(nSamples, 0.0);
+
+    // Using a different seed to make sure old results will not change
+    // Does it really matter?
+    // parity: order — MasterRng(0,0) availability-percentile seed is load-bearing for goldens — do not “clean up”
+    util::MasterRng seed(0, 0);
+    seed.seed(0, 0);
+
+    util::LocalRng rng(seed);
+
+    // Sample
+    for(int i=0; i<nSamples; i++)
+    {
+        double avail = 0.0;
+        for(size_t s = 0; s < params.size(); ++s)
+            avail += params[s].entoAvailabilityFactor * params[s].entoAvailability->sample(rng);
+        samples[i] = avail;
+    }
+
+    // Sort samples
+    sort(samples.begin(), samples.end());
+
+    entoAvailabilityPercentiles.resize(100);
+
+    // Calc percetiles threshold values
+    for(int i=0; i<100; i++)
+        entoAvailabilityPercentiles[i] = samples[int(i*nSamples/100)];
+    entoAvailabilityPercentiles[0] = 0.0;
+}
+
+double PerHostAnophParams::getEntoAvailabilityPercentile(RunContext& ctx, int p){
+    auto& entoAvailabilityPercentiles = ctx.ext->entoAvailabilityPercentiles;
+    if(p >= 0 && p < 100)
+        return entoAvailabilityPercentiles[p];
+    else if(p == 100)
+        return std::numeric_limits<double>::max();
+    else throw util::xml_scenario_error("Availability percentiles in intervention specifications can only be in [0 and 100]");
+}
+
+} }

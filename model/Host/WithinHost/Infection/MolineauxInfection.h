@@ -41,7 +41,7 @@ class MolineauxInfection : public CommonInfection {
 public:
     ///@brief Static class members
     //@{
-    static void init(const OM::Parameters& parameters);
+    static void init(RunContext& ctx, const OM::Parameters& parameters);
     
     // Constants:
     // v: number of variants per clone (one infection = one new clone); 50 in paper
@@ -53,9 +53,9 @@ public:
     //@}
     
     // Initialise. Samples several parameters.
-    MolineauxInfection(LocalRng& rng, uint32_t protID, int origin);
+    MolineauxInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin);
     // Load from a checkpoint:
-    MolineauxInfection (istream& stream);
+    MolineauxInfection (RunContext& ctx, istream& stream);
     virtual ~MolineauxInfection () {};
     
     virtual bool updateDensity( LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass );

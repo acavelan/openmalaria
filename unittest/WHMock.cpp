@@ -29,7 +29,8 @@ using namespace std;
 namespace OM {
 namespace UnitTest {
 
-WHMock::WHMock() :
+WHMock::WHMock(RunContext& ctx) :
+    WHInterface(ctx),
     totalDensity(numeric_limits<double>::quiet_NaN()),
     nTreatments(0),
     lastTimeLiver(sim::never()), lastTimeBlood(sim::never())
@@ -61,7 +62,7 @@ bool WHMock::treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlo
 
 void WHMock::treatPkPd(size_t schedule, size_t dosages, double age, double delay_d){
     nTreatments += 1;
-    pkpd.prescribe( schedule, dosages, age, numeric_limits<double>::quiet_NaN(), delay_d );
+    pkpd.prescribe( ctx, schedule, dosages, age, numeric_limits<double>::quiet_NaN(), delay_d );
 }
 
 void WHMock::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears) {

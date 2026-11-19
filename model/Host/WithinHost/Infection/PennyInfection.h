@@ -35,12 +35,12 @@ namespace OM { namespace WithinHost {
 class PennyInfection : public CommonInfection {
 public:
     /// Static initialization (happens once)
-    static void init();
+    static void init(RunContext& ctx);
     
     /// Constructor
-    PennyInfection(LocalRng& rng, uint32_t protID, int origin);
+    PennyInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin);
     /// Resume from a checkpoint
-    PennyInfection (istream& stream);
+    PennyInfection (RunContext& ctx, istream& stream);
     /// Destructor
     virtual ~PennyInfection () {};
     

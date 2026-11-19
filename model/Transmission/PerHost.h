@@ -24,6 +24,7 @@
 #define Hmod_PerHost
 
 #include "Global.h"
+#include "core/RunContext.h"
 #include "interventions/Interfaces.h"
 #include "util/AgeGroupInterpolation.h"
 #include "util/DecayFunction.h"
@@ -56,19 +57,14 @@ public:
     PerHostAnophParams(const PerHostAnophParams&) = delete;
     PerHostAnophParams& operator=(const PerHostAnophParams&) = delete;
 
-    static inline void init (const scnXml::Mosq& mosq) {
-        params.emplace_back(mosq);
-    }
+    /// Register one species' parameters (registry: ctx.ext->anophParams).
+    static void init (RunContext& ctx, const scnXml::Mosq& mosq);
     
     /// Get the number of vector species
-    static inline size_t numSpecies() {
-        return params.size();
-    }
+    static size_t numSpecies (RunContext& ctx);
     
     /// Get parameters for the given vector species
-    static inline const PerHostAnophParams& get(size_t species) {
-        return params[species];
-    }
+    static const PerHostAnophParams& get (RunContext& ctx, size_t species);
     
     /** entoAvailability is calculated externally, then set after other
      * parameters have been initialised.
@@ -77,49 +73,13 @@ public:
      * 
      * It should be called exactly once.
       */
-    inline static void setEntoAvailabilityFactor(size_t species, double entoAvailability){
-        params[species].entoAvailabilityFactor = entoAvailability;
-    }
+    static void setEntoAvailabilityFactor(RunContext& ctx, size_t species, double entoAvailability);
 
-    inline static void calcAvailabilityPercentiles(){
-        int nSamples = 100000;
-        vector<double> samples(nSamples, 0.0);
+    /** Sample the population availability distribution and store its
+     * percentiles in ctx.ext->entoAvailabilityPercentiles. */
+    static void calcAvailabilityPercentiles(RunContext& ctx);
 
-        // Using a different seed to make sure old results will not change
-        // Does it really matter? 
-        // parity: order — MasterRng(0,0) availability-percentile seed is load-bearing for goldens — do not “clean up” (PerHost.h:86-89)
-        util::MasterRng seed(0, 0);
-        seed.seed(0, 0);
-        
-        util::LocalRng rng(seed);
-
-        // Sample
-        for(int i=0; i<nSamples; i++)
-        {
-            double avail = 0.0;
-            for(size_t s = 0; s < Transmission::PerHostAnophParams::numSpecies(); ++s)
-                avail += Transmission::PerHostAnophParams::get(s).entoAvailabilityFactor * Transmission::PerHostAnophParams::get(s).entoAvailability->sample(rng);
-            samples[i] = avail;
-        }
-
-        // Sort samples
-        sort(samples.begin(), samples.end());
-
-        entoAvailabilityPercentiles.resize(100);
-
-        // Calc percetiles threshold values
-        for(int i=0; i<100; i++)
-            entoAvailabilityPercentiles[i] = samples[int(i*nSamples/100)];
-        entoAvailabilityPercentiles[0] = 0.0;
-    }
-
-    inline static double getEntoAvailabilityPercentile(int p){
-        if(p >= 0 && p < 100)
-            return entoAvailabilityPercentiles[p];
-        else if(p == 100)
-            return std::numeric_limits<double>::max();
-        else throw util::xml_scenario_error("Availability percentiles in intervention specifications can only be in [0 and 100]");
-    }
+    static double getEntoAvailabilityPercentile(RunContext& ctx, int p);
 
     /** @brief Probabilities of finding a host and surviving a feeding cycle
      * 
@@ -145,9 +105,7 @@ public:
     util::BetaSampler probMosqSurvivalResting;
     //@}
     
-private:
-    static vector<PerHostAnophParams> params;
-    static vector<double> entoAvailabilityPercentiles;
+    // (no per-type data here: the registry lives in RunExtensions)
 
 };
 
@@ -155,7 +113,7 @@ private:
  * A base class for interventions affecting human-vector interaction.
  * 
  * The constructor should initialise the data to represent an intervention
- * deployed at this time (sim::now()).
+ * deployed at this time (ctx.clock.now()).
  * 
  * redeploy() should reset the intervention to a freshly deployed state. If
  * necessary, PerHost::deployComponent can be updated to make it create a new
@@ -163,6 +121,9 @@ private:
  */
 class PerHostInterventionData {
 public:
+    /// The run this data belongs to (clock accessed as ctx.clock).
+    RunContext& ctx;
+
     virtual ~PerHostInterventionData() {}
     
     /** Deploy an intervention. */
@@ -202,8 +163,9 @@ public:
     
 protected:
     /// Set the component id
-    explicit PerHostInterventionData( interventions::ComponentId id ) :
-            deployTime( sim::now() ),
+    explicit PerHostInterventionData( RunContext& ctx, interventions::ComponentId id ) :
+            ctx(ctx),
+            deployTime( this->ctx.clock.now() ),
             m_id(id) {}
     
     /// Checkpointing: write
@@ -219,8 +181,8 @@ public:
     virtual ~HumanVectorInterventionComponent() {}
     
     /** Create a new object to store human-specific details of deployment. */
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng&) const =0;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream,
+    virtual unique_ptr<PerHostInterventionData> makeHumanPart(RunContext& ctx, LocalRng&) const =0;
+    virtual unique_ptr<PerHostInterventionData> makeHumanPart( RunContext& ctx, istream& stream,
             interventions::ComponentId id ) const =0;
 protected:
     explicit HumanVectorInterventionComponent(interventions::ComponentId id) :
@@ -236,20 +198,21 @@ public:
     /// @brief Static member functions
     //@{
     /** Static initialisation. */
-    static void init (const scnXml::AgeGroupValues& availabilityToMosquitoes);
+    static void init (RunContext& ctx, const scnXml::AgeGroupValues& availabilityToMosquitoes);
     //@}
     
     ///@brief Initialisation / checkpionting
     //@{
+RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoint restore
     PerHost ();
-    void initialise (LocalRng& rng, double availabilityFactor);
+    void initialise (RunContext& ctx, LocalRng& rng, double availabilityFactor);
     //@}
     
     /// Call once per time step. Updates net holes.
     void update(Host::Human& human);
   
     /// Deploy some intervention component
-    void deployComponent( LocalRng& rng, const HumanVectorInterventionComponent& params );
+    void deployComponent( RunContext& ctx, LocalRng& rng, const HumanVectorInterventionComponent& params );
     //@}
     
     /** Calculates the adjustment for body size in exposure to mosquitoes,
@@ -327,8 +290,8 @@ public:
     //@{
     /** Get the age at which individuals are considered adults (i.e. where
      * availability to mosquitoes reaches its maximum). */
-    static inline SimTime adultAge() {
-        return sim::fromYearsD( relAvailAge.firstGlobalMaximum() );
+    static inline SimTime adultAge( const SimClock& clock ) {
+        return clock.from_years_d( relAvailAge.firstGlobalMaximum() );
     }
     
     /** Get whether the user has any active deployments of interventions of
