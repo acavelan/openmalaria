@@ -15,9 +15,10 @@ Crash-recovery file. Update EVERY green commit. Baseline p4a-green: model **19,1
 
 - **AgeGroupInterpolation** (base + PiecewiseConstant/InterpolationPoints/PiecewiseLinear/Dummy → final `AgeGroupInterpolator` {Kind, map}): Δ **−76** (cum. −177). Gates: ctest 52/52, unittest 91/91, T1 tier-a 53/53. 13 virtuals + 5 vtables gone; hot `eval` now inlined switch (was virtual); std::map<double,double> KEPT (numeric key order load-bearing); build code verbatim in `set()` (error texts differ between kinds — preserved); **AgeGroupDummy::singleton static KILLED** (phase-3 "legal survivor" #2 — census statics refresh at end covers it).
 
+- **InfectionIncidenceModel** (4→1: subclasses Default/HetWorkaround/NegBinom/LogNormal → Kind enum, per the file's own TODO): Δ **−21** (cum. −198). Gates: ctest 52/52, unittest 91/91, T1 tier-a 53/53 + **tier-b seeds 1–4 bit-identical** (3-hierarchy early-warning). 3 virtuals + 3 vtables gone; per-human unique_ptr kept (Human state, checkpoint bytes unchanged: kind is option-derived, not serialized). File-statics in that .cpp are census-tagged init-only (phase-3 legal), untouched.
+
 ## Queue (risk order, small first)
-1. ~~DecayFunction~~ DONE · 2. ~~AgeGroupInterpolation~~ DONE
-3. InfectionIncidenceModel (4→1 merged config — §5 canonical) — NEXT
+1–3 DONE · 4. Sampler (gamma/lognormal enum) — NEXT
 4. Sampler (gamma/lognormal enum)
 5. EmergenceRateEstimator (solver-vs-fitter tag)
 6. PathogenesisModel + Submodels
