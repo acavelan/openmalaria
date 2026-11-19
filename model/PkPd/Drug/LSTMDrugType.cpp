@@ -56,11 +56,11 @@ double LSTMDrugPD::calcFactor( double Kn, double neg_elim_rate, double* conc, do
 
 double LSTMDrugPD::IC50_pow_slope(LocalRng& rng, size_t index, WithinHost::Infection *inf) const{
     double Kn;  // gets sampled once per infection
-    if (inf->Kn.count(index) != 0) {
-        Kn = inf->Kn.at(index);
+    if (inf->Kn().count(index) != 0) {
+        Kn = inf->Kn().at(index);
     } else {
         Kn = pow(IC50->sample(rng), n);
-        inf->Kn[index] = Kn;
+        inf->Kn()[index] = Kn;
     }
     return Kn;
 }

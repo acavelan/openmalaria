@@ -140,29 +140,26 @@ void Infection::initEmpirical(RunContext& ctx){
 /* Initialises a new infection by assigning the densities for the last 3 prepatent days
 */
 void Infection::ctorBody_Empirical(LocalRng& rng, double growthRateMultiplier) {
+    empirical = std::make_unique<EmpiricalData>();
   //sample the parasite densities for the last 3 prepatent days
   //note that the lag decreases with time
-  _laggedLogDensities[0]=sampleSubPatentValue(rng, _alpha1,_mu1,log(_subPatentLimit));  
-  _laggedLogDensities[1]=sampleSubPatentValue(rng, _alpha2,_mu2,log(_subPatentLimit)); 
-  _laggedLogDensities[2]=sampleSubPatentValue(rng, _alpha3,_mu3,log(_subPatentLimit));  
+  empirical->_laggedLogDensities[0]=sampleSubPatentValue(rng, _alpha1,_mu1,log(_subPatentLimit));  
+  empirical->_laggedLogDensities[1]=sampleSubPatentValue(rng, _alpha2,_mu2,log(_subPatentLimit)); 
+  empirical->_laggedLogDensities[2]=sampleSubPatentValue(rng, _alpha3,_mu3,log(_subPatentLimit));  
   //only the immediately preceding value is modified by the growth rate multiplier
-  _laggedLogDensities[0] += log(growthRateMultiplier); 
-  _patentGrowthRateMultiplier = growthRateMultiplier;
+  empirical->_laggedLogDensities[0] += log(growthRateMultiplier); 
+  empirical->_patentGrowthRateMultiplier = growthRateMultiplier;
 }
 
 
 // -----  non-static class members (other functions)  -----
-
-void Infection::setPatentGrowthRateMultiplier(double multiplier) {
-  _patentGrowthRateMultiplier = multiplier;
-}
 
 
 // NOTE: TS never provided a lot of documentation for this code.
 const int EI_MAX_SAMPLES = 10;
 bool Infection::updateDensity_Empirical( LocalRng& rng, double survivalFactor, SimTime bsAge, double ){
   //to avoid the formula for the linear predictor being excessively long we introduce L for the lagged densities
-  # define L _laggedLogDensities
+  # define L empirical->_laggedLogDensities
   
   if (bsAge >= _maximumDurationInDays || !(L[0] > -999999.9))	// Note: second test is extremely unlikely to fail
     return true;	// cut-off point
@@ -186,7 +183,7 @@ bool Infection::updateDensity_Empirical( LocalRng& rng, double survivalFactor, S
       //include sampling error
       logDensity=rng.gauss(expectedlogDensity,sigma_noise(ageDays));
       //include drug and immunity effects via growthRateMultiplier 
-      logDensity += log(_patentGrowthRateMultiplier);
+      logDensity += log(empirical->_patentGrowthRateMultiplier);
       
       if (logDensity <= upperLimitoflogDensity)	//got an acceptable density, we're done
 	break;	// most of the time this should happen first try
@@ -210,9 +207,9 @@ bool Infection::updateDensity_Empirical( LocalRng& rng, double survivalFactor, S
   if (!(localDensity >= 0.0 && amplificationPerCycle <= _maximumPermittedAmplificationPerCycle))	// in case the above tries fail
     localDensity = _maximumPermittedAmplificationPerCycle*exp(L[1]);
   
-  _laggedLogDensities[2]=_laggedLogDensities[1];
-  _laggedLogDensities[1]=_laggedLogDensities[0];
-  _laggedLogDensities[0]=log(localDensity);
+  empirical->_laggedLogDensities[2]=empirical->_laggedLogDensities[1];
+  empirical->_laggedLogDensities[1]=empirical->_laggedLogDensities[0];
+  empirical->_laggedLogDensities[0]=log(localDensity);
   
   m_density = localDensity;
   m_cumulativeExposureJ += m_density;
@@ -253,16 +250,17 @@ double Infection::getInflatedDensity(LocalRng& rng, double nonInflatedDensity){
 // -----  checkpointing  -----
 
 void Infection::read_Empirical (istream& stream) {
-    _laggedLogDensities[0] & stream;
-    _laggedLogDensities[1] & stream;
-    _laggedLogDensities[2] & stream;
-    _patentGrowthRateMultiplier & stream;
+    empirical = std::make_unique<EmpiricalData>();
+    empirical->_laggedLogDensities[0] & stream;
+    empirical->_laggedLogDensities[1] & stream;
+    empirical->_laggedLogDensities[2] & stream;
+    empirical->_patentGrowthRateMultiplier & stream;
 }
 void Infection::checkpoint_Empirical (ostream& stream) {
-    _laggedLogDensities[0] & stream;
-    _laggedLogDensities[1] & stream;
-    _laggedLogDensities[2] & stream;
-    _patentGrowthRateMultiplier & stream;
+    empirical->_laggedLogDensities[0] & stream;
+    empirical->_laggedLogDensities[1] & stream;
+    empirical->_laggedLogDensities[2] & stream;
+    empirical->_patentGrowthRateMultiplier & stream;
 }
 
 } }

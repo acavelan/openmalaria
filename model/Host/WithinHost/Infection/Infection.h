@@ -147,13 +147,10 @@ public:
      */
     static SimTime infectionDuration(RunContext& ctx, LocalRng& rng);
 
-    /// Set patent growth rate multiplier (Empirical).
-    void setPatentGrowthRateMultiplier(double multiplier);
-
     /** Get the density of sequestered parasites (Penny). */
     inline double seqDensity(int ageDays){
         size_t todayV = mod_nn(ageDays, delta_V);
-        return seqDensities[todayV];
+        return penny->seqDensities[todayV];
     }
 
     /** Return true if infection is blood stage.
@@ -210,7 +207,12 @@ public:
         checkpoint (stream);
     }
 
-    map<size_t, double> Kn; // IC50^slope per drug type, if sampled (PkPd)
+    /// IC50^slope per drug type, if sampled (PkPd cache). Never serialised;
+    /// lazily allocated (phase-5 perf fix — only the PkPd path touches it).
+    std::map<size_t, double>& Kn() {
+        if (!kn) kn = std::make_unique<std::map<size_t, double>>();
+        return *kn;
+    }
 
     // Molineaux constants:
     // v: number of variants per clone (one infection = one new clone); 50 in paper
@@ -277,9 +279,7 @@ private:
 
     // ——— Dummy state: none ———
 
-    // ——— Empirical state ———
-    double _laggedLogDensities[3];
-    double _patentGrowthRateMultiplier;
+    // ——— Empirical state: in EmpiricalData payload ———
 
     double getInflatedDensity(LocalRng& rng, double nonInflatedDensity);
     double sigma_noise(int ageDays);
@@ -311,20 +311,7 @@ private:
     static double _overallMultiplier;
     //@}
 
-    // ——— Molineaux state ———
-    // Note: we also have inherited parameters:
-    // m_startDate is used to give the age here
-    // m_density is equivalent to Pc in paper
-    // m_cumulativeExposureJ is cumulative parasite density (used by external immunity function)
-    float mi[v];        // base multiplication factor per two-day cycle of variant i
-    float Sm_summation; // sum in eqn 7
-    // index: we use ((bsAge/2) mod 4) for τ = t - δ_v respectively τ = t
-    float lagged_Pc[taus];       // Pc(τ) for τ ∈ {t - δ_v, ..., t - 2}
-    /* Pc_star, Pm_star: two host-specific critical densities.
-     * These two values depend on the first local maximum or the difference
-     * between the last positive day and the first positive day. */
-    float Pc_star, Pm_star;
-
+    // ——— Molineaux: variant row type (payload below) ———
     struct Variant {
         // Initialise all variables to 0
         Variant ();
@@ -338,10 +325,8 @@ private:
         // index: we use ((bsAge/2) mod 4) for τ = t - δ_v respectively τ = t
         float lagged_Pi[taus];   // Pi(τ) for τ ∈ {t - δ_v, ..., t - 2}
     };
-    // variant-specific data; variants[i-1] corresponds to variant i in the paper
-    vector<Variant> variants;
 
-    // ——— Penny state ———
+    // ——— Penny statics ———
     // delta_C := delay to clonal antibody response (days) (value 7.2038 round to 7)
     static const int delta_C=7;
     // delta_V := delay to variant specific antibody response in R_V^x (days) (value 6.3572 round to 6)
@@ -350,26 +335,53 @@ private:
     static bool immune_threshold_gamma;
     static bool update_density_gamma;
 
-    // Circulating densities, 1 to delta_C days ago.
-    // index (age mod delta_C) corresponds to delta_C days ago.
-    double cirDensities[delta_C];
-    // as above, but length delta_V
-    double seqDensities[delta_V];
-
-    // threshold_N is critical threshold for innate immunity (for sigmoidal immune function)
-    double threshold_N;
-    // threshold_V is critical threshold for variant specific immunity (for sigmoidal immune function)
-    double threshold_V;
-    // threshold_C is critical threshold for clonal immunity (for sigmoidal immune function)
-    double threshold_C;
-
-    // tracked summation of densities with decay for variant specific immunity (sigmoidal function)
-    double variantSpecificSummation;
-    // tracked summation of densities with decay for clonal immunity (sigmoidal function)
-    double clonalSummation;
-
     double getClonalSummation(int ageDays);
     double getVariantSpecificSummation(LocalRng& rng, int ageDays);
+
+    // ——— Per-kind cold state, one heap payload per kind (phase-5 perf fix) ———
+    // The profiled hot loop (Descriptive determineDensities/update_descriptive,
+    // example@2000) only touches the common fields above; carrying every kind's
+    // state inline cost ~4x the cache footprint of the Descriptive hot object
+    // (RSS +12% after the 4b merge). Each payload is allocated in the ctor body
+    // or the checkpoint reader for its kind only (no RNG draws involved), so
+    // the m_rng stream and wire semantics are unchanged.
+    struct EmpiricalData {
+        double _laggedLogDensities[3];
+        double _patentGrowthRateMultiplier;
+    };
+    struct MolineauxData {
+        // m_startDate gives the age; m_density is Pc; m_cumulativeExposureJ is
+        // the cumulative density (paper notes in the Molineaux TU)
+        float mi[v];        // base multiplication factor per two-day cycle of variant i
+        float Sm_summation; // sum in eqn 7
+        // index: we use ((bsAge/2) mod 4) for τ = t - δ_v respectively τ = t
+        float lagged_Pc[taus];       // Pc(τ) for τ ∈ {t - δ_v, ..., t - 2}
+        /* Pc_star, Pm_star: two host-specific critical densities.
+         * These two values depend on the first local maximum or the difference
+         * between the last positive day and the first positive day. */
+        float Pc_star, Pm_star;
+        // variant-specific data; variants[i-1] corresponds to variant i in the paper
+        vector<Variant> variants;
+    };
+    struct PennyData {
+        // Circulating densities, 1 to delta_C days ago.
+        // index (age mod delta_C) corresponds to delta_C days ago.
+        double cirDensities[delta_C];
+        // as above, but length delta_V
+        double seqDensities[delta_V];
+        // threshold_*: critical thresholds of the sigmoidal immune functions
+        // (N innate, V variant specific, C clonal)
+        double threshold_N;
+        double threshold_V;
+        double threshold_C;
+        // tracked summations of densities with decay (sigmoidal functions)
+        double variantSpecificSummation;
+        double clonalSummation;
+    };
+    std::unique_ptr<EmpiricalData> empirical;      // set by Kind::Empirical
+    std::unique_ptr<MolineauxData> molineaux;      // set by Kind::Molineaux
+    std::unique_ptr<PennyData> penny;              // set by Kind::Penny
+    std::unique_ptr<std::map<size_t, double>> kn;  // PkPd cache, see Kn()
 };
 
 /// Create a dummy infection (used directly by unit test).
