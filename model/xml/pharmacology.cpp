@@ -87,7 +87,7 @@ LSTMDrugType::LSTMDrugType (RunContext& ctx, size_t index, const scnXml::PKPDDru
         if( pk.getK().present() || pk.getM_exponent().present() ){
             throw util::xml_scenario_error( "PK data must specify one of half_life or (k, m_exponent); it specifies both" );
         }
-        elimination_rate = LognormalSampler::fromMeanCV( log(2.0) / pk.getHalf_life().get(), 0.0 );
+        elimination_rate = Sampler::fromMeanCV(Sampler::Kind::Lognormal,  log(2.0) / pk.getHalf_life().get(), 0.0 );
         neg_m_exp = 0.0; // no dependence on body mass
     }else{
         if( !(pk.getK().present() && pk.getM_exponent().present()) ){
@@ -105,9 +105,9 @@ LSTMDrugType::LSTMDrugType (RunContext& ctx, size_t index, const scnXml::PKPDDru
             k31 = util::createSampler( pk.getCompartment3().get().getK31() );
         }else{
             // 2-compartment model: use 3-compartment code with these parameters set to zero
-            // LognormalSampler supports 0,0 as a special case
-            k13 = LognormalSampler::fromMeanCV(0.0, 0.0);
-            k31 = LognormalSampler::fromMeanCV(0.0, 0.0);
+            // lognormal Sampler supports 0,0 as a special case
+            k13 = Sampler::fromMeanCV(Sampler::Kind::Lognormal, 0.0, 0.0);
+            k31 = Sampler::fromMeanCV(Sampler::Kind::Lognormal, 0.0, 0.0);
         }
     }else if( pk.getCompartment3().present() ){
         throw util::xml_scenario_error( "PK model specifies parameters for "
