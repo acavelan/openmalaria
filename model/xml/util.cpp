@@ -145,7 +145,10 @@ void WeibullSampler::setParams( const scnXml::WeibullSample& elt ){
     setScaleShape( elt.getScale(), elt.getShape() );
 }
 
-// ---- DecayFunction subclasses + factory (origin: util/DecayFunction.cpp) ----
+// ---- DecayFunction factory (origin: util/DecayFunction.cpp subclasses) ----
+// Config construction only: Kind + parameters into the plain value type; the
+// formulas live in util/DecayFunction.cpp. Error messages and their check
+// order travel verbatim from the old subclass constructors.
 
 inline double readLToDays( const SimClock& clock, const scnXml::DecayFunction& elt ){
     if( !elt.getL().present() ){
@@ -154,238 +157,61 @@ inline double readLToDays( const SimClock& clock, const scnXml::DecayFunction& e
     return UnitParse::durationToDays(clock, elt.getL().get(), UnitParse::YEARS);
 }
 
-class ConstantDecayFunction : public DecayFunction {
-public:
-    ConstantDecayFunction( const SimClock& clock, const scnXml::DecayFunction& elt ) :
-        DecayFunction(elt.getIncreasing(), elt.getInitialEfficacy(), elt.getCV())
-    {}
-    
-    double compute(double effectiveAge) const {
-        // Note: we now require all decay functions to return 0 when time > 0
-        // and the DecayFunction is default-constructed. So const *after deployment*.
-        if( effectiveAge * hetFactor == numeric_limits<double>::infinity() )
-            return 0.0;
-        return 1.0;
-    }
-    SimTime sampleAgeOfDecay (LocalRng& rng) const {
-        return sim::future();        // decay occurs "in the future" (don't use sim::never() because that is interpreted as being in the past)
-    }
+unique_ptr<DecayFunction> DecayFunction::makeObject(
+    const SimClock& clock, const scnXml::DecayFunction& elt, const char* eltName
+){
+    // Type mostly equivalent to a std::string:
+    const scnXml::Function& func = elt.getFunction();
+    Kind kind;
+    // parity: old factory dispatch order (error priority for unknown names)
+    if( func == "constant" ) kind = Kind::Constant;
+    else if( func == "step" ) kind = Kind::Step;
+    else if( func == "linear" ) kind = Kind::Linear;
+    else if( func == "exponential" ) kind = Kind::Exponential;
+    else if( func == "weibull" ) kind = Kind::Weibull;
+    else if( func == "hill" ) kind = Kind::Hill;
+    else if( func == "smooth-compact" ) kind = Kind::SmoothCompact;
+    else if( func == "plus" ) kind = Kind::Plus;
+    else if( func == "minus" ) kind = Kind::Minus;
+    else if( func == "divides" ) kind = Kind::Divides;
+    else if( func == "multiplies" ) kind = Kind::Multiplies;
+    else if( func == "emax" ) kind = Kind::Emax;
+    else
+        throw xml_scenario_error("decay function " + string(eltName) + " of type " + string(func) + " unrecognized");
 
-    unique_ptr<DecayFunction> makeHetSample(double) const {
-        unique_ptr<ConstantDecayFunction> copy = std::make_unique<ConstantDecayFunction>(*this);
-        return std::move(copy);
-    }
-};
-
-class StepDecayFunction : public DecayFunction {
-public:
-    StepDecayFunction( const SimClock& clock, const scnXml::DecayFunction& elt ) :
-        DecayFunction(elt.getIncreasing(), elt.getInitialEfficacy(), elt.getCV()),
-        invL( 1.0 / readLToDays(clock, elt) )
-    {}
-    
-    double compute(double effectiveAge) const{
-        if( effectiveAge * invL * hetFactor < 1.0 ){
-            return 1.0;
-        }else{
-            return 0.0;
-        }
-    }
-    
-    SimTime sampleAgeOfDecay (LocalRng& rng) const{
-        return simClock->roundToTSFromDays( 1.0 / invL );
-    }
-
-    unique_ptr<DecayFunction> makeHetSample(double) const {
-        unique_ptr<StepDecayFunction> copy = make_unique<StepDecayFunction>(*this);
-        return std::move(copy);
-    }
-    
-private:
-    double invL;
-};
-
-class LinearDecayFunction : public DecayFunction {
-public:
-    LinearDecayFunction( const SimClock& clock, const scnXml::DecayFunction& elt ) :
-        DecayFunction(elt.getIncreasing(), elt.getInitialEfficacy(), elt.getCV()),
-        invL( 1.0 / readLToDays(clock, elt) )
-    {}
-    
-    double compute(double effectiveAge) const{
-        if( effectiveAge * invL * hetFactor < 1.0 )
-            return 1.0 - effectiveAge * invL * hetFactor;
-        else
-            return 0.0;
-    }
-    
-    SimTime sampleAgeOfDecay (LocalRng& rng) const{
-        // Note: rounds to nearest. Object may decay instantly or at time L.
-        // parity: order — local RNG stream: draw call order fixes stream state
-        return simClock->roundToTSFromDays(rng.uniform_01() / invL);
-    }
-
-    unique_ptr<DecayFunction> makeHetSample(double) const {
-        unique_ptr<LinearDecayFunction> copy = make_unique<LinearDecayFunction>(*this);
-        return std::move(copy);
-    }
-    
-private:
-    double invL;
-};
-
-class ExponentialDecayFunction : public DecayFunction {
-public:
-    ExponentialDecayFunction( const SimClock& clock, const scnXml::DecayFunction& elt ) :
-        DecayFunction(elt.getIncreasing(), elt.getInitialEfficacy(), elt.getCV()),
-        invL( log(2.0) / readLToDays(clock, elt) )
-    {}
-    
-    double compute(double effectiveAge) const{
-        return exp( -effectiveAge * invL * hetFactor);
-    }
-    
-    SimTime sampleAgeOfDecay (LocalRng& rng) const{
-        // parity: order — local RNG stream: draw call order fixes stream state
-        return simClock->roundToTSFromDays( -log(rng.uniform_01()) / invL );
-    }
-
-    unique_ptr<DecayFunction> makeHetSample(double) const {
-        unique_ptr<ExponentialDecayFunction> copy = make_unique<ExponentialDecayFunction>(*this);
-        return std::move(copy);
-    }
-    
-private:
-    double invL;
-};
-
-class WeibullDecayFunction : public DecayFunction {
-public:
-    WeibullDecayFunction( const SimClock& clock, const scnXml::DecayFunction& elt ) :
-        DecayFunction(elt.getIncreasing(), elt.getInitialEfficacy(), elt.getCV()),
-        constOverLambda( pow(log(2.0),1.0/elt.getK()) / readLToDays(clock, elt) ),
-        k( elt.getK() )
-    {}
-    
-    double compute(double effectiveAge) const{
-        double p = -pow(effectiveAge * constOverLambda * hetFactor, k);
-        if(p < -700.0)
-            return 0.0;
-        else
-            return exp(p);
-    }
-    
-    SimTime sampleAgeOfDecay (LocalRng& rng) const{
-        // parity: order — local RNG stream: draw call order fixes stream state
-        return simClock->roundToTSFromDays( pow( -log(rng.uniform_01()), 1.0/k ) / constOverLambda );
-    }
-
-    unique_ptr<DecayFunction> makeHetSample(double) const {
-        unique_ptr<WeibullDecayFunction> copy = make_unique<WeibullDecayFunction>(*this);
-        return std::move(copy);
-    }
-    
-private:
-    double constOverLambda, k;
-};
-
-class HillDecayFunction : public DecayFunction {
-public:
-    HillDecayFunction( const SimClock& clock, const scnXml::DecayFunction& elt ) :
-        DecayFunction(elt.getIncreasing(), elt.getInitialEfficacy(), elt.getCV()),
-        invL( 1.0 / readLToDays(clock, elt) ),
-        k( elt.getK() )
-    {}
-    
-    double compute(double effectiveAge) const{
-        return 1.0 / (1.0 + pow(effectiveAge * invL * hetFactor, k));
-    }
-    
-    SimTime sampleAgeOfDecay (LocalRng& rng) const{
-        // parity: order — local RNG stream: draw call order fixes stream state
-        return simClock->roundToTSFromDays( pow( 1.0 / rng.uniform_01() - 1.0, 1.0/k ) / invL );
-    }
-
-    unique_ptr<DecayFunction> makeHetSample(double) const {
-        unique_ptr<HillDecayFunction> copy = make_unique<HillDecayFunction>(*this);
-        return std::move(copy);
-    }
-    
-private:
-    double invL, k;
-};
-
-class SmoothCompactDecayFunction : public DecayFunction {
-public:
-    SmoothCompactDecayFunction( const SimClock& clock, const scnXml::DecayFunction& elt ) :
-        DecayFunction(elt.getIncreasing(), elt.getInitialEfficacy(), elt.getCV()),
-        invL( 1.0 / readLToDays(clock, elt) ),
-        k( elt.getK() )
-    {}
-
-    double compute(double effectiveAge) const{
-        if( effectiveAge * invL * hetFactor < 1.0 )
-            return exp( k - k / (1.0 - pow(effectiveAge * invL * hetFactor, 2.0)) );
-        else
-            return 0.0;
-    }
-    
-    SimTime sampleAgeOfDecay (LocalRng& rng) const{
-        // parity: order — local RNG stream: draw call order fixes stream state
-        return simClock->roundToTSFromDays( sqrt( 1.0 - k / (k - log( rng.uniform_01() )) ) / invL );
-    }
-
-    unique_ptr<DecayFunction> makeHetSample(double) const {
-        unique_ptr<SmoothCompactDecayFunction> copy = make_unique<SmoothCompactDecayFunction>(*this);
-        return std::move(copy);
-    }
-    
-private:
-    double invL, k;
-};
-
-template<class T>
-class OperatorDecayFunction : public DecayFunction {
-public:
-    OperatorDecayFunction( const SimClock& clock, const scnXml::DecayFunction& elt ) : 
-        DecayFunction(elt.getIncreasing(), elt.getInitialEfficacy(), elt.getCV()) {
-        const scnXml::DecayFunction::DecaySequence &decaySequence = elt.getDecay();
+    // base ctor first (het lognormal built for every kind; parity: old base
+    // ctor ran before any subclass member init / body):
+    auto o = make_unique<DecayFunction>(kind, elt.getIncreasing(),
+                                        elt.getInitialEfficacy(), elt.getCV());
+    o->simClock = &clock;
+    switch(kind) {
+    case Kind::Constant:
+        break;
+    case Kind::Step: case Kind::Linear:
+        o->invL = 1.0 / readLToDays(clock, elt);
+        break;
+    case Kind::Exponential:
+        o->invL = log(2.0) / readLToDays(clock, elt);
+        break;
+    case Kind::Weibull:
+        o->k = elt.getK();
+        o->invL = pow(log(2.0), 1.0 / elt.getK()) / readLToDays(clock, elt);
+        break;
+    case Kind::Hill: case Kind::SmoothCompact:
+        o->invL = 1.0 / readLToDays(clock, elt);
+        o->k = elt.getK();
+        break;
+    case Kind::Plus: case Kind::Minus: case Kind::Divides: case Kind::Multiplies: {
+        const scnXml::DecayFunction::DecaySequence& decaySequence = elt.getDecay();
         if(decaySequence.size() != 2)
             throw xml_scenario_error("Operator decay function expects two decay functions, " + to_string(decaySequence.size()) +"  were given.");
-
-        f1 = DecayFunction::makeObject(clock, decaySequence[0], "Operator::f1");
-        f2 = DecayFunction::makeObject(clock, decaySequence[1], "Operator::f2");
+        o->f1 = makeObject(clock, decaySequence[0], "Operator::f1");
+        o->f2 = makeObject(clock, decaySequence[1], "Operator::f2");
+        break;
     }
-
-    OperatorDecayFunction(const OperatorDecayFunction &copy, unique_ptr<DecayFunction> f1, unique_ptr<DecayFunction> f2) : 
-        DecayFunction(copy),
-        f1(std::move(f1)), f2(std::move(f2)) {}
-
-    double compute(double effectiveAge) const {
-        return max(min(op(f1->eval(effectiveAge), f2->eval(effectiveAge)), 1.0), 0.0);
-    }
-    
-    SimTime sampleAgeOfDecay (LocalRng& rng) const {
-        return simClock->roundToTSFromDays( max(f1->sampleAgeOfDecay(rng), f2->sampleAgeOfDecay(rng)) );
-    }
-
-    unique_ptr<DecayFunction> makeHetSample(double hetFactor) const {
-        unique_ptr<DecayFunction> f1hetSample = f1->hetSample(hetFactor);
-        unique_ptr<DecayFunction> f2hetSample = f2->hetSample(hetFactor);
-        unique_ptr<OperatorDecayFunction> copy = make_unique<OperatorDecayFunction>(*this, std::move(f1hetSample), std::move(f2hetSample));
-        return std::move(copy);
-    }
-
-private:
-    unique_ptr<DecayFunction> f1, f2;
-    T op;
-};
-
-class EmaxFunction : public DecayFunction {
-public:
-    EmaxFunction( const SimClock& clock, const scnXml::DecayFunction& elt ) : 
-        DecayFunction(elt.getIncreasing(), elt.getInitialEfficacy(), elt.getCV()) {
-        const scnXml::DecayFunction::DecaySequence &decaySequence = elt.getDecay();
+    case Kind::Emax: {
+        // check order verbatim from the old EmaxFunction ctor (error priority):
+        const scnXml::DecayFunction::DecaySequence& decaySequence = elt.getDecay();
         if(decaySequence.size() != 1)
             throw util::xml_scenario_error("The Emax function expects exactly one user function, but " + to_string(decaySequence.size()) +"  were given.");
         if(!elt.getEmax().present())
@@ -396,101 +222,33 @@ public:
             throw util::xml_scenario_error("Emax function: the Slope parameter is not declared");
         if(!elt.getInitialConcentration().present())
             throw util::xml_scenario_error("Emax function: the InitialConcentration parameter is not declared");
-        
-        f = makeObject(clock, decaySequence[0], "Emax::f");
-
-        Emax = elt.getEmax().get();
+        o->f1 = makeObject(clock, decaySequence[0], "Emax::f");
+        o->Emax = elt.getEmax().get();
         const double rawIC50 = elt.getIC50().get();
-        slope = elt.getSlope().get();
-        initialConcentration = elt.getInitialConcentration().get();
-
-        if (Emax < 0.0 || Emax > 1.0) {
+        o->slope = elt.getSlope().get();
+        o->initialConcentration = elt.getInitialConcentration().get();
+        if (o->Emax < 0.0 || o->Emax > 1.0) {
             throw util::xml_scenario_error(
-                "Emax function: Emax must be in [0, 1], got " + std::to_string(Emax));
+                "Emax function: Emax must be in [0, 1], got " + std::to_string(o->Emax));
         }
-
         if (rawIC50 <= 0.0) {
             throw util::xml_scenario_error(
                 "Emax function: IC50 must be > 0, got " + std::to_string(rawIC50));
         }
-
-        if (slope <= 0.0) {
+        if (o->slope <= 0.0) {
             throw util::xml_scenario_error(
-                "Emax function: Slope must be > 0, got " + std::to_string(slope));
+                "Emax function: Slope must be > 0, got " + std::to_string(o->slope));
         }
-
-        if (initialConcentration < 0.0) {
+        if (o->initialConcentration < 0.0) {
             throw util::xml_scenario_error(
-                "Emax function: InitialConcentration must be >= 0, got " + std::to_string(initialConcentration));
+                "Emax function: InitialConcentration must be >= 0, got " + std::to_string(o->initialConcentration));
         }
-
         // Store IC50^slope once since compute() evaluates this repeatedly.
-        IC50 = std::pow(rawIC50, slope);
+        o->IC50 = std::pow(rawIC50, o->slope);
+        break;
     }
-
-    EmaxFunction(const EmaxFunction &copy, std::unique_ptr<DecayFunction> f) :
-        DecayFunction(copy),
-        f(std::move(f)),
-        Emax(copy.Emax),
-        IC50(copy.IC50),
-        slope(copy.slope),
-        initialConcentration(copy.initialConcentration) {}
-
-    double compute(double effectiveAge) const {
-        // Emax model: E(C)=Emax*C^slope/(C^slope + IC50^slope), C=C0*f(t).
-        const double concentrationPow =
-            std::pow(initialConcentration * f->eval(effectiveAge), slope);
-        const double efficacy = Emax * concentrationPow / (concentrationPow + IC50);
-        return std::max(std::min(efficacy, 1.0), 0.0);
     }
-    
-    SimTime sampleAgeOfDecay (LocalRng& rng) const {
-        return simClock->roundToTSFromDays( f->sampleAgeOfDecay(rng) );
-    }
-
-    std::unique_ptr<DecayFunction> makeHetSample(double hetFactor) const {
-        std::unique_ptr<DecayFunction> fhetSample = f->hetSample(hetFactor);
-        std::unique_ptr<EmaxFunction> copy =
-            std::make_unique<EmaxFunction>(*this, std::move(fhetSample));
-        return std::move(copy);
-    }
-
-private:
-    std::unique_ptr<DecayFunction> f;
-    double Emax, IC50, slope, initialConcentration;
-};
-
-unique_ptr<DecayFunction> DecayFunction::makeObject(
-    const SimClock& clock, const scnXml::DecayFunction& elt, const char* eltName
-){
-    // Type mostly equivalent to a std::string:
-    const scnXml::Function& func = elt.getFunction();
-    if( func == "constant" )
-        { auto o = make_unique<ConstantDecayFunction>( clock, elt ); o->simClock = &clock; return o; }
-    else if( func == "step" )
-        { auto o = make_unique<StepDecayFunction>( clock, elt ); o->simClock = &clock; return o; }
-    else if( func == "linear" )
-        { auto o = make_unique<LinearDecayFunction>( clock, elt ); o->simClock = &clock; return o; }
-    else if( func == "exponential" )
-        { auto o = make_unique<ExponentialDecayFunction>( clock, elt ); o->simClock = &clock; return o; }
-    else if( func == "weibull" )
-        { auto o = make_unique<WeibullDecayFunction>( clock, elt ); o->simClock = &clock; return o; }
-    else if( func == "hill" )
-        { auto o = make_unique<HillDecayFunction>( clock, elt ); o->simClock = &clock; return o; }
-    else if( func == "smooth-compact" )
-        { auto o = make_unique<SmoothCompactDecayFunction>( clock, elt ); o->simClock = &clock; return o; }
-    else if( func == "plus" )
-        { auto o = make_unique<OperatorDecayFunction<std::plus<double>>>( clock, elt ); o->simClock = &clock; return o; }
-    else if( func == "minus" )
-        { auto o = make_unique<OperatorDecayFunction<std::minus<double>>>( clock, elt ); o->simClock = &clock; return o; }
-    else if( func == "divides" )
-        { auto o = make_unique<OperatorDecayFunction<std::divides<double>>>( clock, elt ); o->simClock = &clock; return o; }
-    else if( func == "multiplies" )
-        { auto o = make_unique<OperatorDecayFunction<std::multiplies<double>>>( clock, elt ); o->simClock = &clock; return o; }
-    else if( func == "emax" )
-        { auto o = make_unique<EmaxFunction>( clock, elt ); o->simClock = &clock; return o; }
-    else
-        throw xml_scenario_error("decay function " + string(eltName) + " of type " + string(func) + " unrecognized");
+    return o;
 }
 
 // ---- AgeGroup interpolation factories (origin: util/AgeGroupInterpolation.cpp) ----
