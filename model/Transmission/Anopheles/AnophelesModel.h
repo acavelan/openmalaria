@@ -33,6 +33,13 @@
 #include <vector>
 #include <limits>
 
+namespace scnXml
+{
+    class VectorSpeciesIntervention;
+    class Description1;
+    class NonVector;
+}
+
 namespace OM {
 namespace Transmission {
 namespace Anopheles {
