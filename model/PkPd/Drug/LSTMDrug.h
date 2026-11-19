@@ -29,7 +29,7 @@
 
 namespace OM {
 namespace WithinHost {
-    class CommonInfection;
+    class Infection;
 }
 namespace PkPd {
 
@@ -86,7 +86,7 @@ public:
      * @param inf A pointer to the infection of interest
      * @param body_mass Weight of patient in kg
      */
-    double calculateDrugFactor(LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const;
+    double calculateDrugFactor(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const;
     
     /** Updates concentration variable and clears day's doses.
      * 
@@ -105,7 +105,7 @@ private:
     void checkpoint (ostream& stream);
 
     // ---- OneComp kind (behaviour defined in LSTMDrugOneComp.cpp) ----
-    double drugFactor_oneComp(LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const;
+    double drugFactor_oneComp(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const;
     void updateConcentration_oneComp(double body_mass);
     void checkpoint_oneComp(istream& stream);
     void checkpoint_oneComp(ostream& stream);
@@ -116,7 +116,7 @@ private:
     }
     void updateCached(double bm) const;         // update cache; bm: body mass (kg)
     double calculateFactor_fC(const Params_fC& p, double duration) const;
-    double drugFactor_threeComp(LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const;
+    double drugFactor_threeComp(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const;
     void updateConcentration_threeComp(double body_mass);
     void checkpoint_threeComp(istream& stream);
     void checkpoint_threeComp(ostream& stream);
@@ -127,8 +127,8 @@ private:
     double getMetaboliteConcentration() const;
     double calculateFactor_conv(const Params_convFactor& p, double duration) const;
     void setConversionParameters(Params_convFactor& p, double body_mass) const;
-    void setKillingParameters(LocalRng& rng, Params_convFactor& p, WithinHost::CommonInfection *inf) const;
-    double drugFactor_conversion(LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const;
+    void setKillingParameters(LocalRng& rng, Params_convFactor& p, WithinHost::Infection *inf) const;
+    double drugFactor_conversion(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const;
     void updateConcentration_conversion(double body_mass);
     void checkpoint_conversion(istream& stream);
     void checkpoint_conversion(ostream& stream);

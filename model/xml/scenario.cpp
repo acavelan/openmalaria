@@ -36,11 +36,7 @@
 #include "Host/WithinHost/DescriptiveWithinHost.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Genotypes.h"
-#include "Host/WithinHost/Infection/DummyInfection.h"
-#include "Host/WithinHost/Infection/EmpiricalInfection.h"
 #include "Host/WithinHost/Infection/Infection.h"
-#include "Host/WithinHost/Infection/MolineauxInfection.h"
-#include "Host/WithinHost/Infection/PennyInfection.h"
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
 #include "Host/WithinHost/WHFalciparum.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -100,18 +96,18 @@ void WHInterface::init( RunContext& ctx, const OM::Parameters& parameters, const
         
         if (util::ModelOptions::option (util::DUMMY_WITHIN_HOST_MODEL)) {
             opt_dummy_whm = true;
-            DummyInfection::init (ctx);
+            Infection::initDummy (ctx);
         } else if (util::ModelOptions::option (util::EMPIRICAL_WITHIN_HOST_MODEL)) {
             opt_empirical_whm = true;
-            EmpiricalInfection::init(ctx);    // 1-day time step check
+            Infection::initEmpirical(ctx);    // 1-day time step check
         } else if (util::ModelOptions::option (util::MOLINEAUX_WITHIN_HOST_MODEL)) {
             opt_molineaux_whm = true;
-            MolineauxInfection::init( ctx, parameters );
+            Infection::initMolineaux( ctx, parameters );
         } else if (util::ModelOptions::option (util::PENNY_WITHIN_HOST_MODEL)) {
             opt_penny_whm = true;
-            PennyInfection::init(ctx);
+            Infection::initPenny(ctx);
         } else {
-            DescriptiveInfection::init( ctx, parameters );      // 5-day time step check
+            Infection::initDescriptive( ctx, parameters );      // 5-day time step check
         }
         opt_common_whm = opt_dummy_whm || opt_empirical_whm
                 || opt_molineaux_whm || opt_penny_whm;

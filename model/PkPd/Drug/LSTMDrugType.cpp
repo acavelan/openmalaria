@@ -22,7 +22,7 @@
 
 #include "PkPd/Drug/LSTMDrugType.h"
 #include "Host/WithinHost/Genotypes.h"
-#include "Host/WithinHost/Infection/CommonInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "util/errors.h"
 #include "util/CommandLine.h"
 #include "PkPd/Drug/LSTMDrug.h"
@@ -54,7 +54,7 @@ double LSTMDrugPD::calcFactor( double Kn, double neg_elim_rate, double* conc, do
     return pow( numerator / denominator, power );       // unitless
 }
 
-double LSTMDrugPD::IC50_pow_slope(LocalRng& rng, size_t index, WithinHost::CommonInfection *inf) const{
+double LSTMDrugPD::IC50_pow_slope(LocalRng& rng, size_t index, WithinHost::Infection *inf) const{
     double Kn;  // gets sampled once per infection
     if (inf->Kn.count(index) != 0) {
         Kn = inf->Kn.at(index);

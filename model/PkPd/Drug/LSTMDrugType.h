@@ -43,7 +43,7 @@ namespace scnXml{
 }
 namespace OM { class RunContext;
 namespace WithinHost {
-    class CommonInfection;
+    class Infection;
 }
 namespace PkPd {
 using util::Sampler;
@@ -80,7 +80,7 @@ public:
     double calcFactor( double Kn, double neg_elim_rate, double* C0, double duration ) const;
     
     inline double slope() const{ return n; }
-    double IC50_pow_slope(LocalRng& rng, size_t index, WithinHost::CommonInfection *inf) const;
+    double IC50_pow_slope(LocalRng& rng, size_t index, WithinHost::Infection *inf) const;
     inline double IC50_pow_slope(NormalSample normal) const {
         return pow(IC50->sample(normal), n);
     }

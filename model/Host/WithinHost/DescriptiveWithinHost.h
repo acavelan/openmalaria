@@ -24,7 +24,7 @@
 #define Hmod_WithinHost_Descriptive
 
 #include "Host/WithinHost/WHFalciparum.h"
-#include "Host/WithinHost/Infection/DescriptiveInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 
 using namespace std;
 
@@ -71,7 +71,7 @@ protected:
      * 
      * Since infection models and within host models are very much intertwined,
      * the idea is that each WithinHostModel has its own list of infections. */
-     std::list<DescriptiveInfection*> infections;
+     std::list<Infection*> infections;
 
      bool opt_vaccine_genotype = false;
 };

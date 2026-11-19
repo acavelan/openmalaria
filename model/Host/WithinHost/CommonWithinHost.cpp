@@ -273,9 +273,9 @@ InfectionOrigin CommonWithinHost::getInfectionOrigin()const
 // -----  Summarize  -----
 
 // Used in summarizeInfs.
-vector<CommonInfection*> sortedInfs;
+vector<Infection*> sortedInfs;
 struct InfGenotypeSorter {
-    bool operator() (CommonInfection* i, CommonInfection* j){
+    bool operator() (Infection* i, Infection* j){
         return i->genotype() < j->genotype();
     }
 } infGenotypeSorter;

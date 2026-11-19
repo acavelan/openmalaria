@@ -21,7 +21,7 @@
  */
 
 #include "core/RunContext.h"
-#include "Host/WithinHost/Infection/DescriptiveInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "util/random.h"
 #include "util/CommandLine.h"
 #include "util/ModelOptions.h"
@@ -38,16 +38,16 @@ namespace WithinHost {
 using namespace util;
 
 // static class variables (see description in header file):
-double DescriptiveInfection::meanLogParasiteCount[numDurations][numDurations];
-double DescriptiveInfection::sigma0sq;
-double DescriptiveInfection::xNuStar;
+double Infection::meanLogParasiteCount[numDurations][numDurations];
+double Infection::sigma0sq;
+double Infection::xNuStar;
 
 bool bugfix_max_dens = true, bugfix_innate_max_dens = true;
 
 
 // ———  static init/clear ———
 
-void DescriptiveInfection::init (RunContext& ctx, const Parameters& parameters) {
+void Infection::initDescriptive (RunContext& ctx, const Parameters& parameters) {
     // Error checks
     if( ctx.clock.one_TS() != 5 ){
         // To support non-5-day time-step models, either different data would
@@ -116,17 +116,9 @@ void DescriptiveInfection::init (RunContext& ctx, const Parameters& parameters) 
 }
 
 
-// ———  non-static init/destruction  ———
+// ———  non-static init  ———
 
-DescriptiveInfection::DescriptiveInfection (RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin) :
-	Infection(ctx, genotype, origin),
-        m_duration(infectionDuration(ctx, rng)),
-        notPrintedMDWarning(true)
-{
-    assert( ctx.clock.one_TS() == 5 );
-}
-
-SimTime DescriptiveInfection::infectionDuration(RunContext& ctx, LocalRng& rng) {
+SimTime Infection::infectionDuration(RunContext& ctx, LocalRng& rng) {
     // Forgive the excess precision; it just avoids having to update all expected results
     double dur_mean = 5.1300001144409179688;
     double dur_sigma = 0.80000001192092895508;
@@ -144,7 +136,7 @@ SimTime DescriptiveInfection::infectionDuration(RunContext& ctx, LocalRng& rng) 
 
 
 // ———  time-step updates  ———
-void DescriptiveInfection::determineDensities(
+void Infection::determineDensities(
         LocalRng& rng,
         double cumulativeh,
         double &timeStepMaxDensity,
@@ -214,14 +206,11 @@ void DescriptiveInfection::determineDensities(
 
 // ———  checkpointing  ———
 
-DescriptiveInfection::DescriptiveInfection (RunContext& ctx, istream& stream) :
-        Infection(ctx, stream), m_duration(sim::never())
-{
+void Infection::read_Descriptive (istream& stream) {
     m_duration & stream;
     notPrintedMDWarning & stream;
 }
-void DescriptiveInfection::checkpoint (ostream& stream) {
-    Infection::checkpoint (stream);
+void Infection::checkpoint_Descriptive (ostream& stream) {
     m_duration & stream;
     notPrintedMDWarning & stream;
 }

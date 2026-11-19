@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Host/WithinHost/Infection/DummyInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "core/RunExtensions.h"
 #include "Host/WithinHost/CommonWithinHost.h"
 #include "util/ModelOptions.h"
@@ -31,25 +31,19 @@
 
 namespace OM { namespace WithinHost {
     
-CommonInfection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
-    return new DummyInfection (ctx, rng, protID, origin);
+Infection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+    return new Infection (ctx, rng, protID, origin, Infection::Kind::Dummy);
 }
-CommonInfection* checkpointedDummyInfection (RunContext& ctx, istream& stream) {
-    return new DummyInfection (ctx, stream);
+Infection* checkpointedDummyInfection (RunContext& ctx, istream& stream) {
+    return new Infection (ctx, stream, Infection::Kind::Dummy);
 }
 
-void DummyInfection::init (RunContext& ctx) {
+void Infection::initDummy (RunContext& ctx) {
     ctx.ext->createInfection = &createDummyInfection;
     ctx.ext->checkpointedInfection = &checkpointedDummyInfection;
 }
 
-DummyInfection::DummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) :
-    CommonInfection(ctx, protID, origin)
-{
-    m_density=16;	// increased by DH to avoid zeros in initialKappa
-}
-
-bool DummyInfection::updateDensity( LocalRng& rng, double survivalFactor, SimTime, double ){
+bool Infection::updateDensity_Dummy( LocalRng& rng, double survivalFactor, SimTime, double ){
     const double GROWTH_RATE = 8.0;
     const double PARASITE_THRESHOLD = 1;
     
@@ -62,10 +56,5 @@ bool DummyInfection::updateDensity( LocalRng& rng, double survivalFactor, SimTim
         return false;
     }
 }
-
-
-DummyInfection::DummyInfection (RunContext& ctx, istream& stream) :
-    CommonInfection (ctx, stream)
-{}
 
 } }

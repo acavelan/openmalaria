@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Host/WithinHost/Infection/MolineauxInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "core/RunExtensions.h"
 #include "Host/WithinHost/CommonWithinHost.h"
 #include "util/random.h"
@@ -62,7 +62,7 @@ static bool pairwise_P_star_sample = false;
 // q^(i+1) array
 // All the values of q^1... q^v are stored in this array.
 // This avoids the recalculation of those values every second time step. */
-static double qPow[MolineauxInfection::v];
+static double qPow[Infection::v];
 
 // ———  hard-coded model constants  ———
 
@@ -152,15 +152,15 @@ const double case_specific_data[] = {
 
 // ———  static (non-class-member) code  ———
 
-CommonInfection* createMolineauxInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
-    return new MolineauxInfection (ctx, rng, protID, origin);
+Infection* createMolineauxInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+    return new Infection (ctx, rng, protID, origin, Infection::Kind::Molineaux);
 }
 
-CommonInfection* checkpointedMolineauxInfection (RunContext& ctx, istream& stream) {
-    return new MolineauxInfection (ctx, stream);
+Infection* checkpointedMolineauxInfection (RunContext& ctx, istream& stream) {
+    return new Infection (ctx, stream, Infection::Kind::Molineaux);
 }
 
-void MolineauxInfection::init( RunContext& ctx, const Parameters& parameters ){
+void Infection::initMolineaux( RunContext& ctx, const Parameters& parameters ){
     ctx.ext->createInfection = &createMolineauxInfection;
     ctx.ext->checkpointedInfection = &checkpointedMolineauxInfection;
     
@@ -201,11 +201,9 @@ void MolineauxInfection::init( RunContext& ctx, const Parameters& parameters ){
    }
 }
 
-// ———  MolineauxInfection: initialisation  ———
+// ———  Molineaux: initialisation  ———
 
-MolineauxInfection::MolineauxInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin):
-        CommonInfection(ctx, genotype, origin)
-{
+void Infection::ctorBody_Molineaux(LocalRng& rng) {
     for( size_t i = 0; i < v; i++ ){
         // Molineaux paper, equation 11
         if( multi_factor_gamma ){
@@ -251,7 +249,7 @@ MolineauxInfection::MolineauxInfection(RunContext& ctx, LocalRng& rng, uint32_t 
     }
 }
 
-MolineauxInfection::Variant::Variant () :
+Infection::Variant::Variant () :
         Pi1(0.0), Pi2(0.0), Si_summation(0.0)
 {
     for(size_t tau=0; tau<taus; tau++){
@@ -259,9 +257,9 @@ MolineauxInfection::Variant::Variant () :
     }
 }
 
-// ———  MolineauxInfection: density updates  ———
+// ———  Molineaux: density updates  ———
 
-bool MolineauxInfection::updateDensity( LocalRng&, double survival_factor, SimTime age_BS, double body_mass ){
+bool Infection::updateDensity_Molineaux( LocalRng&, double survival_factor, SimTime age_BS, double body_mass ){
     // bsAge : age of blood stage; 0 implies initial density (0.1; time t=0 in
     // paper, t=1 in MP's Matlab code), age 2 days is after first update step
     // survivalFactor : probabilty of merozoites surviving drugs, inter-infection immunity and vaccines
@@ -391,11 +389,9 @@ bool MolineauxInfection::updateDensity( LocalRng&, double survival_factor, SimTi
     return false;       // end of update, not extinct
 }
 
-// ———  MolineauxInfection: checkpointing  ———
+// ———  Molineaux: checkpointing  ———
 
-MolineauxInfection::MolineauxInfection (RunContext& ctx, istream& stream) :
-        CommonInfection(ctx, stream)
-{
+void Infection::read_Molineaux (istream& stream) {
     Sm_summation & stream;
     for(size_t i=0;i<v;i++) {
         mi[i] & stream;
@@ -408,9 +404,7 @@ MolineauxInfection::MolineauxInfection (RunContext& ctx, istream& stream) :
     Pm_star & stream;
 }
 
-void MolineauxInfection::checkpoint (ostream& stream) {
-    CommonInfection::checkpoint (stream);
-
+void Infection::checkpoint_Molineaux (ostream& stream) {
     Sm_summation & stream;
     for(size_t i=0;i<v;i++) {
         mi[i] & stream;
@@ -423,7 +417,7 @@ void MolineauxInfection::checkpoint (ostream& stream) {
     Pm_star & stream;
 }
 
-void MolineauxInfection::Variant::operator& (istream& stream) {
+void Infection::Variant::operator& (istream& stream) {
     bool nonZero;
     nonZero & stream;
     if( nonZero ){
@@ -437,7 +431,7 @@ void MolineauxInfection::Variant::operator& (istream& stream) {
     // else: all members are zero-initialised by the constructor, so don't do anything
 }
 
-void MolineauxInfection::Variant::operator& (ostream& stream) {
+void Infection::Variant::operator& (ostream& stream) {
     bool nonZero =
             Pi1 != 0.0 ||
             Pi2 != 0.0 ||

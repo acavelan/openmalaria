@@ -39,7 +39,7 @@
  */
 
 #include <cxxtest/TestSuite.h>
-#include "Host/WithinHost/Infection/DescriptiveInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "util/random.h"
 #include "UnittestUtil.h"
 #include <sstream>
@@ -80,7 +80,7 @@ public:
         
         LocalRng rng(3, 4);  // Xoshiro256P(3, 4, default, default) — util/xoshiro.h:38
         for (size_t i = 0; i < sizeof(GOLDEN)/sizeof(GOLDEN[0]); ++i) {
-            SimTime dur = DescriptiveInfection::infectionDuration( UnittestUtil::ctx(), rng );
+            SimTime dur = Infection::infectionDuration( UnittestUtil::ctx(), rng );
             TS_ASSERT_EQUALS( dur, sim::fromDays(GOLDEN[i].days) - UnittestUtil::clock().one_TS() );
             
             // state words after this draw, via the model's own checkpoint API

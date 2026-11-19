@@ -25,7 +25,7 @@
 
 #include "Global.h"
 #include "Host/WithinHost/WHFalciparum.h"
-#include "Host/WithinHost/Infection/CommonInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "PkPd/LSTMModel.h"
 
 using namespace std;
@@ -88,7 +88,7 @@ private:
      * Since infection models and within host models are very much intertwined,
      * the idea is that each WithinHostModel has its own list of infections. */
     //TODO: better to template class over infection type than use dynamic type?
-    std::list<CommonInfection*> infections;
+    std::list<Infection*> infections;
 
     bool opt_vaccine_genotype = false;
 };

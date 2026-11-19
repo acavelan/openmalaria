@@ -70,7 +70,7 @@ DescriptiveWithinHostModel::~DescriptiveWithinHostModel() {
 // -----  Simple infection adders/removers  -----
 
 void DescriptiveWithinHostModel::loadInfection(istream& stream) {
-    infections.push_back(new DescriptiveInfection(ctx, stream));
+    infections.push_back(new Infection(ctx, stream, Infection::Kind::Descriptive));
 }
 
 void DescriptiveWithinHostModel::clearInfections( Treatments::Stages stage ){
@@ -106,7 +106,7 @@ void DescriptiveWithinHostModel::importInfection(LocalRng& rng){
         // should use initial frequencies to select genotypes.
         vector<double> weights( 0 );        // zero length: signal to use initial frequencies
         uint32_t genotype = ctx.genotypes.sampleGenotype(rng, weights);
-        infections.push_back(new DescriptiveInfection(ctx, rng, genotype, WithinHost::InfectionOrigin::Imported));
+        infections.push_back(new Infection(ctx, rng, genotype, InfectionOrigin::Imported, Infection::Kind::Descriptive));
     }
     assert( numInfs == static_cast<int>(infections.size()) );
 }
@@ -136,10 +136,10 @@ void DescriptiveWithinHostModel::update(Host::Human &human, LocalRng& rng, int &
             double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
             // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
-                infections.push_back(new DescriptiveInfection (ctx, rng, genotype, InfectionOrigin::Introduced));
+                infections.push_back(new Infection (ctx, rng, genotype, InfectionOrigin::Introduced, Infection::Kind::Descriptive));
         }
         else if (opt_vaccine_genotype == false)
-            infections.push_back(new DescriptiveInfection (ctx, rng, genotype, InfectionOrigin::Introduced));
+            infections.push_back(new Infection (ctx, rng, genotype, InfectionOrigin::Introduced, Infection::Kind::Descriptive));
     }
     assert( numInfs == static_cast<int>(infections.size()) );
 
@@ -154,10 +154,10 @@ void DescriptiveWithinHostModel::update(Host::Human &human, LocalRng& rng, int &
             double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
             // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
-                infections.push_back(new DescriptiveInfection (ctx, rng, genotype, InfectionOrigin::Indigenous));
+                infections.push_back(new Infection (ctx, rng, genotype, InfectionOrigin::Indigenous, Infection::Kind::Descriptive));
         }
         else if (opt_vaccine_genotype == false)
-            infections.push_back(new DescriptiveInfection (ctx, rng, genotype, InfectionOrigin::Indigenous));
+            infections.push_back(new Infection (ctx, rng, genotype, InfectionOrigin::Indigenous, Infection::Kind::Descriptive));
     }
     assert( numInfs == static_cast<int>(infections.size()) );
 
@@ -342,7 +342,7 @@ void DescriptiveWithinHostModel::checkpoint (istream& stream) {
 }
 void DescriptiveWithinHostModel::checkpoint (ostream& stream) {
     WHFalciparum::checkpoint (stream);
-    for(DescriptiveInfection* inf : infections)
+    for(Infection* inf : infections)
         *inf & stream;
 }
 

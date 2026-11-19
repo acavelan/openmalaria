@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Host/WithinHost/Infection/PennyInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "core/RunExtensions.h"
 #include "Host/WithinHost/CommonWithinHost.h"
 #include "util/random.h"
@@ -104,8 +104,8 @@ const double lambda_V=4.2119;
 const double prob_lambda_V = 1.0 / lambda_V;
 
 /* distribution model paramters */
-bool PennyInfection::immune_threshold_gamma = false;
-bool PennyInfection::update_density_gamma = false;
+bool Infection::immune_threshold_gamma = false;
+bool Infection::update_density_gamma = false;
 
 /* Parameters to assign infection dependent parameters */
 const double mu_Y=3.9700;
@@ -140,15 +140,15 @@ const double Omega=0.00025;
 
 //@}
 
-CommonInfection* createPennyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
-    return new PennyInfection (ctx, rng, protID, origin);
+Infection* createPennyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+    return new Infection (ctx, rng, protID, origin, Infection::Kind::Penny);
 }
 
-CommonInfection* checkpointedPennyInfection (RunContext& ctx, istream& stream) {
-    return new PennyInfection (ctx, stream);
+Infection* checkpointedPennyInfection (RunContext& ctx, istream& stream) {
+    return new Infection (ctx, stream, Infection::Kind::Penny);
 }
 
-void PennyInfection::init(RunContext& ctx) {
+void Infection::initPenny(RunContext& ctx) {
     ctx.ext->createInfection = &createPennyInfection;
     ctx.ext->checkpointedInfection = &checkpointedPennyInfection;
 
@@ -165,11 +165,9 @@ void PennyInfection::init(RunContext& ctx) {
     }
 }
 
-PennyInfection::PennyInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin):
-        CommonInfection(ctx, protID, origin),
-        variantSpecificSummation(0),
-        clonalSummation(0)
-{
+void Infection::ctorBody_Penny(LocalRng& rng) {
+    variantSpecificSummation = 0;
+    clonalSummation = 0;
     // assign infection dependent immune thresholds
     if( immune_threshold_gamma )/* using gamma distribution */{
         do {
@@ -195,7 +193,7 @@ PennyInfection::PennyInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, 
 }
 
 
-bool PennyInfection::updateDensity( LocalRng& rng, double survivalFactor, SimTime bsAge, double ){
+bool Infection::updateDensity_Penny( LocalRng& rng, double survivalFactor, SimTime bsAge, double ){
     int ageDays = bsAge;       // lazy
     if( bsAge == sim::zero() ){
         // assign initial densities (Y circulating, X sequestered)
@@ -297,7 +295,7 @@ bool PennyInfection::updateDensity( LocalRng& rng, double survivalFactor, SimTim
     return false;
 }
 
-double PennyInfection::getVariantSpecificSummation(LocalRng& rng, int ageDays) {
+double Infection::getVariantSpecificSummation(LocalRng& rng, int ageDays) {
     // check if new dominant variant has arrived
     // parity: order — local RNG stream: draw call order fixes stream state
     bool newVarDominant = rng.bernoulli(prob_lambda_V);
@@ -316,7 +314,7 @@ double PennyInfection::getVariantSpecificSummation(LocalRng& rng, int ageDays) {
     return variantSpecificSummation;
 }
 
-double PennyInfection::getClonalSummation(int ageDays) {
+double Infection::getClonalSummation(int ageDays) {
     //The effective exposure is computed by adding in the delta_C-day lagged parasite density 
     //and decaying the previous value for the effective exposure with decay parameter rho_C
     size_t index = mod_nn(ageDays, delta_C);
@@ -326,9 +324,7 @@ double PennyInfection::getClonalSummation(int ageDays) {
 }
 
 
-PennyInfection::PennyInfection (RunContext& ctx, istream& stream) :
-        CommonInfection(ctx, stream)
-{
+void Infection::read_Penny (istream& stream) {
     for(int i=0; i<delta_C; ++i){
         cirDensities[i] & stream;
     }
@@ -342,8 +338,7 @@ PennyInfection::PennyInfection (RunContext& ctx, istream& stream) :
     clonalSummation & stream;
 }
 
-void PennyInfection::checkpoint (ostream& stream) {
-    CommonInfection::checkpoint(stream);
+void Infection::checkpoint_Penny (ostream& stream) {
     for(int i=0; i<delta_C; ++i){
         cirDensities[i] & stream;
     }

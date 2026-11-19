@@ -26,7 +26,7 @@
 #include <cxxtest/TestSuite.h>
 #include "UnittestUtil.h"
 #include "ExtraAsserts.h"
-#include "Host/WithinHost/Infection/DummyInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "Host/WithinHost/CommonWithinHost.h"
 #include <limits>
 
@@ -41,7 +41,7 @@ public:
         m_rng.seed(0, 721347520444481703);
         UnittestUtil::initTime(1);
         UnittestUtil::Infection_init_latentP_and_NaN ();
-        DummyInfection::init(UnittestUtil::ctx());
+        Infection::initDummy(UnittestUtil::ctx());
         // pkpdID (1st value) isn't important since we're not using drug model here:
         infection = UnittestUtil::ctx().ext->createInfection( UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous);
         for( SimTime d = UnittestUtil::clock().ts1(), end = UnittestUtil::clock().ts1() + sim::fromDays(15); d < end; d = d + sim::oneDay() ){
@@ -89,7 +89,7 @@ public:
     }
     
 private:
-    CommonInfection* infection;
+    Infection* infection;
     LocalRng m_rng;
 };
 

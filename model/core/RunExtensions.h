@@ -32,7 +32,7 @@
 #include "mon/Monitoring.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
-#include "Host/WithinHost/Infection/CommonInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "Host/ImportedInfections.h"
 #include "interventions/Deployments.h"
 #include "interventions/GVI.h"
@@ -56,9 +56,9 @@ struct RunExtensions {
     /// WithinHost::Treatments option registry (built while reading XML).
     std::vector<WithinHost::Treatments> whTreatments;
     /// Within-host infection factory, set by the active model's init.
-    WithinHost::CommonInfection* (*createInfection)
+    WithinHost::Infection* (*createInfection)
         (RunContext&, util::LocalRng&, uint32_t, int) = nullptr;
-    WithinHost::CommonInfection* (*checkpointedInfection)
+    WithinHost::Infection* (*checkpointedInfection)
         (RunContext&, std::istream&) = nullptr;
     /// Diagnostics registry (built while reading XML / from defaults).
     std::map<std::string, WithinHost::Diagnostic> diagnostic_set;

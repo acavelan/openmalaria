@@ -26,7 +26,7 @@
 #include <cxxtest/TestSuite.h>
 #include "UnittestUtil.h"
 #include "ExtraAsserts.h"
-#include "Host/WithinHost/Infection/PennyInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "util/random.h"
 #include <limits>
 #include <fstream>
@@ -43,8 +43,8 @@ public:
         m_rng.seed(1095, 721347520444481703);
         UnittestUtil::initTime(1);
         UnittestUtil::Infection_init_latentP_and_NaN ();
-        PennyInfection::init(UnittestUtil::ctx());
-        infection = new PennyInfection (UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous);    // pkpdID (value) isn't important since we're not using drug model here
+        Infection::initPenny(UnittestUtil::ctx());
+        infection = new Infection (UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous, Infection::Kind::Penny);    // pkpdID (value) isn't important since we're not using drug model here
     }
     void tearDown () {
         delete infection;
@@ -98,7 +98,7 @@ public:
     }
     
 private:
-    PennyInfection* infection;
+    Infection* infection;
     LocalRng m_rng;
 };
 

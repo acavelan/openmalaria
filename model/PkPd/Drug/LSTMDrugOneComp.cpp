@@ -23,7 +23,7 @@
 // LSTMDrug OneComp kind (was LSTMDrugOneComp; hierarchy collapsed phase 4b)
 #include "PkPd/Drug/LSTMDrug.h"
 #include "PkPd/Drug/LSTMDrugType.h"
-#include "Host/WithinHost/Infection/CommonInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "util/errors.h"
 #include "util/StreamValidator.h"
 #include "util/vectors.h"
@@ -34,7 +34,7 @@ namespace OM { namespace PkPd {
 
 // TODO: in high transmission, is this going to get called more often than updateConcentration?
 // When does it make sense to try to optimise (avoid doing decay calcuations here)?
-double LSTMDrug::drugFactor_oneComp(LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const {
+double LSTMDrug::drugFactor_oneComp(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const {
     if( concentration == 0.0 && doses.size() == 0 ) return 1.0; // nothing to do
     
     /* Survival factor of the parasite (this multiplies the parasite density).
