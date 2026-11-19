@@ -49,8 +49,15 @@ Crash-recovery file. Update EVERY green commit. Baseline p5-green: model **18,65
    ComponentId(stream). death column never()⇔alive, NOT on wire (old `dead`
    wasn't either). mon field size_t→u16 shrinks the wire (legal: write/read
    symmetric; cp files not byte-frozen vs p5).
-   immunity (falc: m_cumulative_h/_Y/_Y_lag; vivax: cumPrimInf) → clinical
-   (m_tLastTreatment + es 3×SimTime + esPreviousDensity f64) → transmission
+   [x] cluster c (immunity): columns imm_h/imm_Y/imm_Y_lag (f64) + cum_prim_inf
+   (u32); old WHInterface members DELETED; WHInterface gained public
+   `bind_columns(HumanColumns&, size_t)` + const-callable ref accessors
+   imm_h_ref()/imm_Y_ref()/imm_Y_lag_ref()/cum_prim_inf_ref() (keep
+   read/write syntax; wire goes through the refs, same bytes). Human ctor
+   binds right after createWithinHostModel; Human::set_row RE-BINDS the
+   submodel (see Traps: stale mirror). Standalone WHInterface in tests must
+   bind a mini-column (InfectionImmunitySuite, SlotAllocatorSuite do).
+   clinical (m_tLastTreatment + es 3×SimTime + esPreviousDensity f64) → transmission
    (anophEntoAvailabilityRaw/anophEntoAvailability/anophProbMosqBiting/
    anophProbMosqResting per species + relativeAvailabilityHet + outsideTransmission).
    Each cluster: DELETE old member, fix call sites (compiler = checker), tier-a,
@@ -76,6 +83,12 @@ Crash-recovery file. Update EVERY green commit. Baseline p5-green: model **18,65
 - Compaction read-by-position: inside Population::update's erase loop,
   Human::row is STALE after any erase (renumber runs after the loop) — read
   cols[i]/cols.death[i] by POSITION there, never via Human accessors.
+- Submodel row mirrors go stale: any submodel caching (cols,row) via
+  bind_columns MUST be re-bound inside Human::set_row. WHInterface missed it →
+  after the first death + renumber, immunity refs read/write the WRONG host:
+  51/52 ctest failed with small statistical diffs (tier-a still passed — few
+  deaths in those runs). Every future cluster binding (clinical, transmission)
+  adds its rebind to set_row; a death-heavy ctest case is the canary.
 - vector erase() invalidates the end() sentinel (std::map loops didn't): the
   old `it = v.erase(it)` + cached-end pattern reads past the NEW end →
   erase(end()) = UB memmove that tramples the heap (root cause of the 6.2b
@@ -94,6 +107,23 @@ Crash-recovery file. Update EVERY green commit. Baseline p5-green: model **18,65
 - Untracked PROMPT.md/email = user files, leave.
 
 ## Gates log
+- PATH CONFUSION (6.2c, resolved): I rebuilt a throwaway /tmp/opencode/build-p6
+  (plain Release, no -ffp-contract=off) after the dir "vanished" — the CANONICAL
+  build is IN-TREE `/home/razlock/git/fork/build-p6` (cache:
+  `-DCMAKE_CXX_FLAGS=-ffp-contract=off`, Release — same A0-class recipe as
+  build-p5). It was never deleted. All gates below run against the in-tree
+  build. If a /tmp build dir is ever needed: same flags + `ln -sf
+  ../../schema/scenario_50.xsd <builddir>/test/scenario_current.xsd`.
+- (6.2c, this commit) immunity cluster: imm_h/imm_Y/imm_Y_lag f64 +
+  cum_prim_inf u32 columns; WHInterface bind_columns + ref accessors; Human
+  ctor bind + set_row rebind (see Traps). build clean; unittest 94/94;
+  ctest 52/52; T1 63/63 (a 53 + b seeds1-10 10). bench 12.66s initially
+  (+1.2%, past 1% floor = per-infection cols-deref chain); FIXED in this
+  commit by hoisting row refs to locals in immunitySurvivalFactor +
+  updateImmuneStatus (bit-identical, 63/63 re-proven) → **12.59s mad .020**
+  (+0.6%, under floor; still 6.2b level, recovery toward ≤12.33 owed by 6.4
+  HostView batching). Model LOC 18,813 (+16 vs 6.2b; p5-green base 18,692).
+  Per-cluster Δ: 6.1 +16, 6.2a +27, 6.2b +62, 6.2c +16 → phase total +121.
 - (6.1, this commit) build clean; unittest 94/94; ctest 52/52; T1 a 53/53; T1 b seeds1-4 4/4. Model LOC 18,673 (+16 vs p5: SlotAllocator struct; WHInterface constant removed). unittest LOC 3,787 (+27: new suite + 3 helpers).
 - (6.2a) rng column; same gates green (see git log e2c87de0).
 - (6.2b, this commit) dob/death/cohort_set+cohorts/mon_age_group/next_cts_dist columns; old members deleted; compaction read-by-position fix; updateCohortSet index-loop fix (see Traps). build clean; unittest 94/94 (run from build-p6/unittest/); ctest 52/52; T1 a 53/53; T1 b seeds1-4 4/4. bench 12.59s mad .010 (+0.08s vs p5 — under 1% gate, recover in 6.3/6.4). Model LOC 18,797. Debug tooling built during the hunt (throwaway): /tmp/opencode/p5dbg (p5 twin w/ prints), /tmp/opencode/build-p6-rwdi (RelWithDebInfo twin), /tmp/opencode/build-p6-asan — p5dbg worktree REMOVED after use; if a hunt recurs: gdb-disable-ASLR + python watchpoint scripts in /tmp/opencode/irs/watch*.py worked where ASan's quarantine lied.

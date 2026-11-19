@@ -181,13 +181,13 @@ void WHInterface::clearImmunity(){
 double WHInterface::getCumulative_h() const{
     if( m_kind == Kind::Vivax ) return getCumulative_h_vivax();
     if( m_kind == Kind::Mock ) throw util::unimplemented_exception( "not needed in unit test" );
-    return m_cumulative_h;
+    return imm_h_ref();
 }
 
 double WHInterface::getCumulative_Y() const{
     if( m_kind == Kind::Vivax ) return getCumulative_Y_vivax();
     if( m_kind == Kind::Mock ) throw util::unimplemented_exception( "not needed in unit test" );
-    return m_cumulative_Y;
+    return imm_Y_ref();
 }
 
 InfectionOrigin WHInterface::getInfectionOrigin() const{

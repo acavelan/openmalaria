@@ -60,6 +60,10 @@ struct HumanColumns {
     std::vector<uint16_t> mon_age_group;
     /// Next continuous-distribution index (old Human::nextCtsDist).
     std::vector<uint32_t> next_cts_dist;
+    /// Immunity accumulators (old WHInterface m_cumulative_h/_Y/_Y_lag, f64).
+    std::vector<double> imm_h, imm_Y, imm_Y_lag;
+    /// Primary blood-stage infection count (old WHInterface cumPrimInf, u32).
+    std::vector<uint32_t> cum_prim_inf;
 
     /** Add a row for a newly constructed Human, at the exact moment of its old
      * member inits: rng is copy-seeded from `master` HERE (RNG RULE); dob set;
@@ -72,6 +76,10 @@ struct HumanColumns {
         cohorts.emplace_back();
         mon_age_group.push_back( 0u );
         next_cts_dist.push_back( 0u );
+        imm_h.push_back( 0.0 );
+        imm_Y.push_back( 0.0 );
+        imm_Y_lag.push_back( 0.0 );
+        cum_prim_inf.push_back( 0u );
         return rng.size() - 1;
     }
 
@@ -84,6 +92,10 @@ struct HumanColumns {
         cohorts.erase( cohorts.begin() + r );
         mon_age_group.erase( mon_age_group.begin() + r );
         next_cts_dist.erase( next_cts_dist.begin() + r );
+        imm_h.erase( imm_h.begin() + r );
+        imm_Y.erase( imm_Y.begin() + r );
+        imm_Y_lag.erase( imm_Y_lag.begin() + r );
+        cum_prim_inf.erase( cum_prim_inf.begin() + r );
     }
 };
 

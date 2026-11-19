@@ -130,6 +130,7 @@ Human::Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns) :
 
     HumanHet het = hetSample(rng());
     withinHostModel = WithinHost::WHInterface::createWithinHostModel( ctx, rng(), het.comorbidityFactor );
+    withinHostModel->bind_columns( columns, row );
     double iiFactor = infIncidence->getAvailabilityFactor(rng(), 1.0);
     perHostTransmission.ctx = &ctx;
     vaccine.ctx = &ctx;
@@ -139,6 +140,9 @@ Human::Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns) :
 
 void Human::set_row( size_t r ) {
     row = r;
+    // Keep the WHInterface's immunity-column row mirror in sync (it caches
+    // cols+row; a stale row reads/writes another host after compaction).
+    if( withinHostModel ) withinHostModel->bind_columns( *cols, r );
 }
 
 namespace {
