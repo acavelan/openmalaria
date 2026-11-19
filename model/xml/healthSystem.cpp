@@ -273,6 +273,8 @@ uint32_t compile_deploy( CompileCtx&, const scnXml::DecisionTree::DeploySequence
  * cannot skip or duplicate a consumed draw. */
 void add_branch_table( CompileCtx& c, uint32_t n, vector<DTBranch>&& b )
 {
+// parity: d — map<double> numeric key order == stable_sort by operator< with
+// XSD-first tie-drop (see file comment; plan §3d):
     std::stable_sort( b.begin(), b.end(),
         []( const DTBranch& x, const DTBranch& y ){ return x.key < y.key; } );
     // drop tied keys (keep first inserted, == map::insert behaviour):

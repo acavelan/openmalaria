@@ -1,7 +1,7 @@
 root,derived_count,members,virtuals,vtable_heavy,total_code_LOC,depth,planned_phase,config_state_note,files
 AgeGroupInterpolation,4,5,13,yes,208,3,4b,"linear/none only (cspline dead, F6) -> enum + free fn; virtual eval is a per-human-day cost (phase 6/8 scratch cols)",model/util/AgeGroupInterpolation.cpp;model/util/AgeGroupInterpolation.h
 AnophelesModel,1,2,16,yes,348,2,4b,SimpleMPD -> optional member + 4 guarded hooks (§5); solver flip at phase 8,model/Transmission/Anopheles/AnophelesModel.h;model/Transmission/Anopheles/SimpleMPDAnophelesModel.h
-CMDecisionTree,15,16,33,yes,651,2,4a,compiled decision tree + flat node-array interpreter (§5); child order = XSD sequence (contract d),model/Clinical/CMDecisionTree.cpp;model/Clinical/CMDecisionTree.h
+DONE-p4a,0,0,0,no,0,0,4a-done,resolved in phase-4a: compiled decision tree + flat node-array interpreter (§5); child order = XSD sequence (contract d); 15 classes deleted,model/Clinical/CMDecisionTree.cpp;model/Clinical/CMDecisionTree.h
 ClinicalModel,4,5,16,yes,196,3,4a/4b,3-config -> 2-state collapse (§5); DT interpreter owned by 4a,model/Clinical/CM5DayCommon.h;model/Clinical/ClinicalModel.h;model/Clinical/DecisionTree5Day.h;model/Clinical/EventScheduler.h;model/Clinical/ImmediateOutcomes.h
 DecayFunction,0,1,4,no,54,1,4b,exponential/extrap piecewise -> enum + free fn,model/util/DecayFunction.h
 EmergenceRateEstimator,2,3,2,no,187,2,4b,solver vs fitter -> tag+switch; ATSB secant path phase 8/9,model/Transmission/Anopheles/EmergenceRateEstimator.h

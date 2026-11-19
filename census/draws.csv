@@ -1,16 +1,16 @@
 file,line,kind,call,receiver,stream,consumer,contract,note
-model/Clinical/CM5DayCommon.cpp,148,rng-call,uniform_01,human,host-local,(file-scope),,
-model/Clinical/CMDecisionTree.cpp,315,rng-call,uniform_01,human,host-local,CMDTRandom::exec,d,
-model/Clinical/CMDecisionTree.cpp,671,order,(ordering),,n/a,create,d,child chain order == XSD sequence of decision-tree element choices
-model/Clinical/CMDecisionTree.cpp,767,order,(ordering),,n/a,create,d,cumulative keys summed in XSD outcome order (map<double> numeric key order)
-model/Clinical/DecisionTree5Day.cpp,92,rng-call,uniform_01,human,host-local,uncomplicatedEvent,d,
-model/Clinical/EventScheduler.cpp,179,rng-call,uniform_01,human,host-local,doClinicalUpdate,,
-model/Clinical/EventScheduler.cpp,224,rng-call,uniform_01,human,host-local,doClinicalUpdate,,
-model/Clinical/EventScheduler.cpp,292,rng-call,uniform_01,human,host-local,doClinicalUpdate,,
-model/Clinical/EventScheduler.cpp,311,rng-call,bernoulli,human,host-local,doClinicalUpdate,,
-model/Clinical/EventScheduler.cpp,341,rng-call,uniform_01,human,host-local,doClinicalUpdate,,
-model/Clinical/EventScheduler.cpp,352,rng-call,uniform_01,human,host-local,doClinicalUpdate,,
-model/Clinical/EventScheduler.cpp,382,rng-call,uniform_01,human,host-local,doClinicalUpdate,,
+model/Clinical/CM5DayCommon.cpp,150,rng-call,uniform_01,human,host-local,(file-scope),,
+model/Clinical/CMDecisionTree.cpp,65,rng-call,uniform_01,human,host-local,walk(DTK_Random),d,one uniform_01 per Random node then upper_bound on folded table
+model/xml/healthSystem.cpp,303,order,(ordering),,n/a,compile_multiple,d,child chain order == XSD sequence of decision-tree element choices (schema-sequence rank, at compile)
+model/xml/healthSystem.cpp,491,order,(ordering),,n/a,compile_random,d,cumulative keys summed in XSD outcome order; numeric key order + tie-drop + leaf-run fold in add_branch_table
+model/Clinical/DecisionTree5Day.cpp,58,rng-call,uniform_01,human,host-local,uncomplicatedEvent,d,
+model/Clinical/EventScheduler.cpp,103,rng-call,uniform_01,human,host-local,doClinicalUpdate,,
+model/Clinical/EventScheduler.cpp,148,rng-call,uniform_01,human,host-local,doClinicalUpdate,,
+model/Clinical/EventScheduler.cpp,215,rng-call,uniform_01,human,host-local,doClinicalUpdate,,
+model/Clinical/EventScheduler.cpp,234,rng-call,bernoulli,human,host-local,doClinicalUpdate,,
+model/Clinical/EventScheduler.cpp,264,rng-call,uniform_01,human,host-local,doClinicalUpdate,,
+model/Clinical/EventScheduler.cpp,275,rng-call,uniform_01,human,host-local,doClinicalUpdate,,
+model/Clinical/EventScheduler.cpp,305,rng-call,uniform_01,human,host-local,doClinicalUpdate,,
 model/Clinical/ImmediateOutcomes.cpp,188,rng-call,uniform_01,human,host-local,(file-scope),,
 model/Clinical/ImmediateOutcomes.cpp,206,rng-call,bernoulli,human,host-local,(file-scope),,
 model/Host/Human.cpp,59,rng-call,bernoulli,rng,local,hetSample,,
@@ -138,3 +138,4 @@ model/util/sampler.cpp,257,rng-call,gamma,rng,local,sample,,
 model/util/sampler.cpp,278,gsl-direct,gsl_cdf_gamma_P,gsl,gsl-shared,cdf,,
 model/util/sampler.cpp,314,rng-call,beta,rng,local,sample,,
 model/util/sampler.h,411,rng-call,weibull,rng,local,WeibullSampler::sample,,
+model/xml/healthSystem.cpp,276,order,(ordering),,n/a,add_branch_table,d,branch tables sorted by numeric key (stable_sort replicates map<double> operator< order; NaN p rejected at compile)
