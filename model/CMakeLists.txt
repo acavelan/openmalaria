@@ -35,9 +35,7 @@ configure_file(
 # files freely). main.cpp is the openMalaria executable's entry point (root
 # CMakeLists), never part of the lib. StreamValidator is opt-in (below).
 file (GLOB_RECURSE Model_CPP CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
-list (FILTER Model_CPP EXCLUDE REGEX "/(main|StreamValidator|DescriptiveIPTInfection)\.cpp$")
-# DescriptiveIPTInfection.cpp: dead since the IPTDescription schema type was
-# removed (census N1); excluded until deleted in this phase, step 2.
+list (FILTER Model_CPP EXCLUDE REGEX "/(main|StreamValidator)\.cpp$")
 
 if (${OM_STREAM_VALIDATOR})
   list(APPEND Model_CPP util/StreamValidator.cpp)

@@ -27,10 +27,7 @@
 #include "util/errors.h"
 #include "schema/healthSystem.h"
 
-/* Required by AgeGroupSplineInterpolation
-#include <gsl_interp.h>
-#include <gsl_spline.h>
-*/
+
 
 namespace OM { namespace util {
 
@@ -230,47 +227,7 @@ namespace OM { namespace util {
     };
     
     
-    /* * Spline interpolation using GSL.
-     * 
-     * GSL has a few interpolation algorithms: linear, polynomial,
-     * cspline, akima. They fit a single curve to the entire interval which
-     * looks nothing like the data set in some cases (e.g. CFR).
-     ******************************************** /
-    class AgeGroupSplineInterpolation : public AgeGroupInterpolationPoints
-    {
-    public:
-        AgeGroupSplineInterpolation (
-            const scnXml::AgeGroupValues& ageGroups, const char* eltName
-        ) : AgeGroupInterpolationPoints(ageGroups, eltName)
-        {
-            vector<double> x, y;
-            x.reserve( dataPoints.size() );
-            y.reserve( dataPoints.size() );
-            for( auto it=dataPoints.begin(); it!=dataPoints.end(); ++it ){
-                x.push_back( it->first );
-                y.push_back( it->second );
-            }
-            
-            acc = gsl_interp_accel_alloc ();
-            spline = gsl_spline_alloc (gsl_interp_cspline, 10);
-            gsl_spline_init (spline, x.data(), y.data(), 10);
-            
-            outputSamples( eltName );
-        }
-        virtual ~AgeGroupSplineInterpolation() {
-            gsl_spline_free (spline);
-            gsl_interp_accel_free (acc);
-        }
-        
-        virtual double eval( double ageYears ) const{
-            return gsl_spline_eval( spline, ageYears, acc );
-        }
-        
-    protected:
-        gsl_interp_accel *acc;
-        gsl_spline *spline;
-    };
-    */
+    
     
     
     // -----  AgeGroupInterpolator  -----
