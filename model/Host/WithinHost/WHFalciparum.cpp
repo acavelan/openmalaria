@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunExtensions.h"
 #include "core/RunContext.h"
 #include "Host/WithinHost/WHFalciparum.h"
 #include "Host/WithinHost/DescriptiveWithinHost.h"
@@ -220,7 +221,7 @@ bool WHFalciparum::diagnosticResult( LocalRng& rng, const Diagnostic& diagnostic
 }
 
 void WHFalciparum::treatment( Host::Human& human, TreatmentId treatId ){
-    const Treatments& treat = Treatments::select( treatId );
+    const Treatments& treat = Treatments::select( ctx, treatId );
     treatSimple( human, treat.liverEffect(), treat.bloodEffect() );
     
     // triggered intervention deployments:

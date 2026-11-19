@@ -43,7 +43,7 @@ public:
     
     virtual ~DummyInfection () {}
     
-    static void init ();
+    static void init (RunContext& ctx);
     
     virtual bool updateDensity( LocalRng& rng, double survivalFactor, SimTime bsAge, double );
 };

@@ -28,6 +28,7 @@
 #include "Global.h"
 #include "util/ModelOptions.h"
 
+#include "core/RunExtensions.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
 #include "PkPd/LSTMModel.h"
@@ -257,6 +258,7 @@ public:
     static const SimClock& clock() { return ctx().clock; }
 
     static void initTime(int daysPerStep){
+        ensure_extensions( ctx() );
         dummyXML::model.setModelOptions(dummyXML::modelOpts);
         dummyXML::modelParams.setInterval( daysPerStep );
         dummyXML::model.setParameters(dummyXML::modelParams);
@@ -313,7 +315,7 @@ public:
         dummyXML::surveys.setDetectionLimit(numeric_limits<double>::quiet_NaN());
         dummyXML::monitoring.setSurveys(dummyXML::surveys);
         dummyXML::scenario.setMonitoring(dummyXML::monitoring);
-        diagnostics::init( parameters, dummyXML::scenario );
+        diagnostics::init( ctx(), parameters, dummyXML::scenario );
     }
     
     static void PkPdSuiteSetup () {
@@ -454,7 +456,7 @@ public:
         Parameters parameters( dummyXML::model.getParameters(), util::ModelNameProvider(dummyXML::model) );
         
         // This sets up the model based on parameters and options
-        WithinHost::MolineauxInfection::init(parameters);
+        WithinHost::MolineauxInfection::init(ctx(), parameters);
     }
     
     static void MosqLifeCycle_init() {

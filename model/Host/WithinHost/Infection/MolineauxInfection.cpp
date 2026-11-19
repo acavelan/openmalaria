@@ -21,6 +21,7 @@
  */
 
 #include "Host/WithinHost/Infection/MolineauxInfection.h"
+#include "core/RunExtensions.h"
 #include "Host/WithinHost/CommonWithinHost.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -159,9 +160,9 @@ CommonInfection* checkpointedMolineauxInfection (RunContext& ctx, istream& strea
     return new MolineauxInfection (ctx, stream);
 }
 
-void MolineauxInfection::init( const Parameters& parameters ){
-    CommonWithinHost::createInfection = &createMolineauxInfection;
-    CommonWithinHost::checkpointedInfection = &checkpointedMolineauxInfection;
+void MolineauxInfection::init( RunContext& ctx, const Parameters& parameters ){
+    ctx.ext->createInfection = &createMolineauxInfection;
+    ctx.ext->checkpointedInfection = &checkpointedMolineauxInfection;
     
     multi_factor_gamma = util::ModelOptions::option( util::PARASITE_REPLICATION_GAMMA );
     

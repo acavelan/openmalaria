@@ -442,7 +442,7 @@ void WHVivax::clearImmunity(){
 }
 
 void WHVivax::treatment( Host::Human& human, TreatmentId treatId ){
-    const Treatments& treat = Treatments::select( treatId );
+    const Treatments& treat = Treatments::select( ctx, treatId );
     treatSimple( human, treat.liverEffect(), treat.bloodEffect() );
     
     // triggered intervention deployments:

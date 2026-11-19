@@ -1252,7 +1252,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             }
 
             HumanInterventionComponent *hiComponent;
-            if (component.getScreen().present()) { hiComponent = new ScreenComponent(id, component.getScreen().get()); }
+            if (component.getScreen().present()) { hiComponent = new ScreenComponent(ctx, id, component.getScreen().get()); }
             else if (component.getTreatSimple().present())
             {
                 hiComponent = new TreatSimpleComponent(ctx, id, component.getTreatSimple().get());

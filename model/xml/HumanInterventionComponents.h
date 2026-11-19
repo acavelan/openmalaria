@@ -224,9 +224,9 @@ public:
 
 class ScreenComponent : public HumanInterventionComponent {
 public:
-    ScreenComponent( ComponentId id, const scnXml::Screen& elt ) :
+    ScreenComponent( RunContext& ctx, ComponentId id, const scnXml::Screen& elt ) :
         HumanInterventionComponent(id),
-        diagnostic(diagnostics::get(elt.getDiagnostic())),
+        diagnostic(diagnostics::get(ctx, elt.getDiagnostic())),
         positive( elt.getPositive() ),
         negative( elt.getNegative() )
     {}

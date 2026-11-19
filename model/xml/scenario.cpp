@@ -28,6 +28,7 @@
 // below). Declarations for the moved entry points stay in the original
 // headers (scnXml forward-declared).
 
+#include "core/RunExtensions.h"
 #include "Global.h"
 #include "core/RunContext.h"
 #include "Parameters.h"
@@ -99,16 +100,16 @@ void WHInterface::init( RunContext& ctx, const OM::Parameters& parameters, const
         
         if (util::ModelOptions::option (util::DUMMY_WITHIN_HOST_MODEL)) {
             opt_dummy_whm = true;
-            DummyInfection::init ();
+            DummyInfection::init (ctx);
         } else if (util::ModelOptions::option (util::EMPIRICAL_WITHIN_HOST_MODEL)) {
             opt_empirical_whm = true;
-            EmpiricalInfection::init();    // 1-day time step check
+            EmpiricalInfection::init(ctx);    // 1-day time step check
         } else if (util::ModelOptions::option (util::MOLINEAUX_WITHIN_HOST_MODEL)) {
             opt_molineaux_whm = true;
-            MolineauxInfection::init( parameters );
+            MolineauxInfection::init( ctx, parameters );
         } else if (util::ModelOptions::option (util::PENNY_WITHIN_HOST_MODEL)) {
             opt_penny_whm = true;
-            PennyInfection::init();
+            PennyInfection::init(ctx);
         } else {
             DescriptiveInfection::init( ctx, parameters );      // 5-day time step check
         }
@@ -432,7 +433,8 @@ Diagnostic::Diagnostic( const Parameters& parameters, const scnXml::Diagnostic& 
     uses_hrp2 = elt.getMechanism() == "HRP2";
 }
 
-void diagnostics::init( const Parameters& parameters, const scnXml::Scenario& scenario ){
+void diagnostics::init( RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario ){
+    auto& diagnostic_set = ctx.ext->diagnostic_set;
     diagnostic_set.clear(); // compatibility with unit tests
     
     if(scenario.getDiagnostics().present()){
@@ -449,7 +451,7 @@ void diagnostics::init( const Parameters& parameters, const scnXml::Scenario& sc
     if( util::ModelOptions::option( util::VIVAX_SIMPLE_MODEL ) ){
         // So far the implemented Vivax code does not produce parasite
         // densities, thus this diagnostic model cannot be used.
-        diagnostics::monitoring_diagnostic = &diagnostics::make_deterministic( numeric_limits<double>::quiet_NaN() );
+        ctx.ext->monitoring_diagnostic = &make_deterministic(ctx, numeric_limits<double>::quiet_NaN() );
     }else if( surveys.getDetectionLimit().present() ){
         if( surveys.getDiagnostic().present() ){
             throw util::xml_scenario_error( "monitoring/surveys: do not "
@@ -477,7 +479,7 @@ void diagnostics::init( const Parameters& parameters, const scnXml::Scenario& sc
             densitybias = parameters[Parameter::DENSITY_BIAS_NON_GARKI];
         }
         double detectionLimit = surveys.getDetectionLimit().get() * densitybias;
-        diagnostics::monitoring_diagnostic = &diagnostics::make_deterministic( detectionLimit );
+        ctx.ext->monitoring_diagnostic = &make_deterministic(ctx, detectionLimit );
     }else{
         if( !surveys.getDiagnostic().present() ){
             throw util::xml_scenario_error( "monitoring/surveys: require "
@@ -487,10 +489,10 @@ void diagnostics::init( const Parameters& parameters, const scnXml::Scenario& sc
             throw util::xml_scenario_error( "Use of GARKI_DENSITY_BIAS is not "
                 "appropriate when monitoring/surveys/diagnostic is used." );
         }
-        diagnostics::monitoring_diagnostic = &diagnostics::get( surveys.getDiagnostic().get() );
+        ctx.ext->monitoring_diagnostic = &get(ctx, surveys.getDiagnostic().get() );
     }
     
-    if( diagnostics::monitoring_diagnostic->uses_hrp2 ){
+    if( ctx.ext->monitoring_diagnostic->uses_hrp2 ){
         throw util::xml_scenario_error( "the diagnostic used for "
             "monitoring may not use HRP2 as its mechanism" );
     }

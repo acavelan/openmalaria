@@ -21,6 +21,7 @@
  */
 
 #include "Host/WithinHost/Infection/DummyInfection.h"
+#include "core/RunExtensions.h"
 #include "Host/WithinHost/CommonWithinHost.h"
 #include "util/ModelOptions.h"
 
@@ -37,9 +38,9 @@ CommonInfection* checkpointedDummyInfection (RunContext& ctx, istream& stream) {
     return new DummyInfection (ctx, stream);
 }
 
-void DummyInfection::init () {
-    CommonWithinHost::createInfection = &createDummyInfection;
-    CommonWithinHost::checkpointedInfection = &checkpointedDummyInfection;
+void DummyInfection::init (RunContext& ctx) {
+    ctx.ext->createInfection = &createDummyInfection;
+    ctx.ext->checkpointedInfection = &checkpointedDummyInfection;
 }
 
 DummyInfection::DummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) :

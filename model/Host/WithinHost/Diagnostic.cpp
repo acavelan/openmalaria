@@ -21,6 +21,7 @@
  */
 
 #include "Host/WithinHost/Diagnostic.h"
+#include "core/RunExtensions.h"
 #include "Parameters.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -64,15 +65,13 @@ bool Diagnostic::allowsFalsePositives() const{
 
 // ———  diagnostics (static)  ———
 
-map<string, Diagnostic> diagnostic_set;
-const Diagnostic* diagnostics::monitoring_diagnostic = 0;
-
-void diagnostics::clear(){
-    diagnostic_set.clear();
+void diagnostics::clear( RunContext& ctx ){
+    ctx.ext->diagnostic_set.clear();
 }
 
 
-const Diagnostic& diagnostics::get( const string& name ){
+const Diagnostic& diagnostics::get( RunContext& ctx, const string& name ){
+    auto& diagnostic_set = ctx.ext->diagnostic_set;
     auto it = diagnostic_set.find(name);
     if( it == diagnostic_set.end() ){
         throw util::xml_scenario_error( string("diagnostic not found: ").append(name) );
@@ -80,7 +79,8 @@ const Diagnostic& diagnostics::get( const string& name ){
     return it->second;
 }
 
-const Diagnostic& diagnostics::make_deterministic(double minDens){
+const Diagnostic& diagnostics::make_deterministic( RunContext& ctx, double minDens ){
+    auto& diagnostic_set = ctx.ext->diagnostic_set;
     string name = "";   // anything not matching an existing name is fine
     assert( diagnostic_set.count(name) == 0 );  // we shouldn't need to call make_deterministic more than once, so I think this will do
     auto ret = diagnostic_set.insert( make_pair(std::move(name), Diagnostic( minDens )) );
@@ -88,4 +88,9 @@ const Diagnostic& diagnostics::make_deterministic(double minDens){
     return ret.first->second;
 }
 
+
+const Diagnostic& diagnostics::monitoringDiagnostic( RunContext& ctx ){
+    assert( ctx.ext->monitoring_diagnostic != 0 );
+    return *ctx.ext->monitoring_diagnostic;
+}
 } }

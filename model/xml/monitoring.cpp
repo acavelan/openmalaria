@@ -107,7 +107,7 @@ void initReporting(RunContext& ctx, const scnXml::Scenario& scenario)
             throw util::xml_scenario_error("unrecognised survey option: " + std::string(optElt.getName()));
         }
         if ((om.measure == measure("sumlogDens") || om.measure == measure("logDensByGenotype")) &&
-            WithinHost::diagnostics::monitoringDiagnostic().allowsFalsePositives())
+            WithinHost::diagnostics::monitoringDiagnostic( ctx ).allowsFalsePositives())
         {
             throw util::xml_scenario_error("measure " + std::string(optElt.getName()) + " may not be used when monitoring diagnostic sensitivity < 1");
         }

@@ -44,6 +44,7 @@
 
 #include "Host/NeonatalMortality.h"
 #include "checkpoint.h"
+#include "core/RunExtensions.h"
 
 #include <cerrno>
 
@@ -142,8 +143,12 @@ void run(RunContext& ctx, Population &population, TransmissionModel &transmissio
 } // namespace
 
 /// run_simulation() — loads scenario XML and runs the simulation (was main())
+RunContext::~RunContext() { delete ext; }
+
 void run_simulation(RunContext& ctx, const std::string& scenarioFile)
 {
+    ensure_extensions( ctx );
+
     bool startedFromCheckpoint;
 
     SimTime estEndTime, endTime;
@@ -173,7 +178,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
     util::ModelOptions::init( ctx.clock, scenario->getModel().getModelOptions(), modelNameProvider ); // Depends on ModelNameProvider.
 
     // 4) elements depending on only elements initialised in (3).
-    WithinHost::diagnostics::init( parameters, *scenario ); // Depends on Parameters.
+    WithinHost::diagnostics::init( ctx, parameters, *scenario ); // Depends on Parameters.
 
     // 5) elements depending on only elements initialised in (4).
     mon::initReporting( ctx, *scenario ); // Reporting init depends on diagnostics and monitoring

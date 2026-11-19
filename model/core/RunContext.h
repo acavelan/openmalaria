@@ -29,6 +29,7 @@
 #include "Host/WithinHost/Genotypes.h"
 #include "PkPd/Drug/LSTMDrugType.h"
 #include "PkPd/LSTMMedicate.h"
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -37,6 +38,8 @@ class Scenario;
 }
 
 namespace OM {
+
+struct RunExtensions;   // core/RunExtensions.h: registries needing complete RunContext
 
 namespace util {
 class ModelNameProvider;
@@ -184,6 +187,8 @@ public:
  * global. */
 class RunContext {
 public:
+    ~RunContext();      // out-of-line: deletes ext (incomplete type here)
+    
     SimClock clock;
     /** Master RNG. (0, 0) matches the old global's construction — the
      * percentile-stream seed depends on it; run_simulation reseeds from
@@ -195,6 +200,11 @@ public:
     PkPd::DrugRegistry drugs;
     /// PK/PD treatment-course registry (LSTMTreatments::init).
     PkPd::TreatmentRegistry treatments;
+    /// Registries whose types need a complete RunContext; created by
+    /// ensure_extensions() (model/core/RunExtensions.h) at run start,
+    /// owned and deleted by ~RunContext (raw pointer: gcc 16 instantiates
+    /// unique_ptr's deleter on incomplete types at class scope).
+    RunExtensions* ext = nullptr;
     /// Intervention states saved for checkpoints (checkpoint read/write).
 };
 

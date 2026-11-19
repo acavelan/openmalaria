@@ -83,7 +83,7 @@ void ctsHostDemography (RunContext& ctx, Population &population, ostream& stream
 /// Delegate to print the number of births since last count
 void ctsRecentBirths (Population &population, ostream& stream);
 /// Delegate to print the number of patent hosts
-void ctsPatentHosts (Population &population, ostream& stream);
+void ctsPatentHosts (RunContext& ctx, Population &population, ostream& stream);
 /// Delegate to print immunity's cumulativeh parameter
 void ctsImmunityh (Population &population, ostream& stream);
 /// Delegate to print immunity's cumulativeY parameter (mean across population)
