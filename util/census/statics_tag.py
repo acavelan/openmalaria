@@ -70,8 +70,18 @@ def run_ctx(file, name):
         return '', 'constexpr clamp -> SlotAllocator in phase 6, not RunContext'
     for rx, names, role in RUN_CONTEXT:
         if re.search(rx, file) and re.fullmatch(names, name):
-            return 'yes', 'RunContext: ' + role
+            s = SURVIVOR.get((file, name))
+            return 'yes', 'RunContext: ' + role + (' — ' + s if s else '')
     return 'no', ''
+
+# phase-3 survivors: planned for RunContext, stayed static, legality
+# verified (TwoRunsSuite green + T1 bit-exact with them shared):
+SURVIVOR = {
+    ('model/util/AgeGroupInterpolation.cpp', 'singleton'):
+        'stateless dummy (every method throws), never written — no per-run state',
+    ('model/util/ModelOptions.h', 'options'):
+        'fully reassigned per run by ModelOptions::init (xml/util.cpp:771); argv bits are process-constant',
+}
 
 # hand-verified fixes the write-regex cannot see (GSL mutates the workspace
 # through the pointer; comparators/dummy are stateless => keep init, just high)
