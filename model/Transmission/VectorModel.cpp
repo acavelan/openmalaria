@@ -29,7 +29,6 @@
 #include "util/vectors.h"
 #include "util/ModelOptions.h"
 #include "util/StreamValidator.h"
-#include "Transmission/Anopheles/SimpleMPDAnophelesModel.h"
 
 #include <fstream>
 #include <map>
@@ -42,7 +41,6 @@ namespace Transmission
 {
 using namespace OM::util;
 using Anopheles::AnophelesModel;
-using Anopheles::SimpleMPDAnophelesModel;
 
 void VectorModel::ctsCbN_v0(ostream &stream)
 {

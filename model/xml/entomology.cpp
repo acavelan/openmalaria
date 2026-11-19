@@ -37,7 +37,6 @@
 #include "Transmission/VectorModel.h"
 #include "Transmission/PerHost.h"
 #include "Transmission/Anopheles/AnophelesModel.h"
-#include "Transmission/Anopheles/SimpleMPDAnophelesModel.h"
 #include "Transmission/Anopheles/EmergenceRateEstimator.h"
 #include "util/AgeGroupInterpolation.h"
 #include "util/CommandLine.h"
@@ -147,7 +146,8 @@ Anopheles::AnophelesModel *createAnophelesModel(RunContext& ctx, size_t i, const
             throw util::xml_scenario_error("entomology.vector.simpleMPD.femaleEggsLaidByOviposit: "
                 "must be positive");
 
-        anophModel = new Anopheles::SimpleMPDAnophelesModel(ctx, developmentDuration, probPreadultSurvival, fEggsLaidByOviposit);
+        anophModel = new Anopheles::AnophelesModel(ctx);
+        anophModel->initSimpleMPD(developmentDuration, probPreadultSurvival, fEggsLaidByOviposit);
     }
     else
         anophModel = new Anopheles::AnophelesModel(ctx);

@@ -26,7 +26,6 @@
 #include "Transmission/NonVectorModel.h"
 #include "Transmission/VectorModel.h"
 #include "Transmission/Anopheles/AnophelesModel.h"
-#include "Transmission/Anopheles/SimpleMPDAnophelesModel.h"
 #include "Transmission/Anopheles/EmergenceRateEstimator.h"
 #include "util/ModelOptions.h"
 
