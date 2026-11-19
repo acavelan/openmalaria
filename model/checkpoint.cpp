@@ -83,7 +83,7 @@ void checkpoint (RunContext& ctx, istream& stream, SimTime &endTime, SimTime &es
         ctx.clock.t0 & stream;
         ctx.clock.t1 & stream;
         // parity: order — checkpoint serialises master RNG state; v2 stream format frozen (do not reorder with other state)
-        util::master_RNG.checkpoint(stream);
+        ctx.master_RNG.checkpoint(stream);
     } catch (const util::checkpoint_error& e) { // append " (pos X of Y bytes)"
         ostringstream pos;
         pos<<" (pos "<<stream.tellg()<<" of ";
@@ -128,7 +128,7 @@ void checkpoint (RunContext& ctx, ostream& stream, SimTime &endTime, SimTime &es
     ctx.clock.t0 & stream;
     ctx.clock.t1 & stream;
     // parity: order — checkpoint serialises master RNG state; v2 stream format frozen (do not reorder with other state)
-    util::master_RNG.checkpoint(stream);
+    ctx.master_RNG.checkpoint(stream);
     
     if (stream.fail())
         throw util::checkpoint_error ("stream write error");

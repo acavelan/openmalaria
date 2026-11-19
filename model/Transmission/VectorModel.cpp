@@ -193,7 +193,7 @@ VectorModel::VectorModel(RunContext& ctx, vector<double> initEIR, int interventi
                          int populationSize)
     : TransmissionModel(ctx, std::move(initEIR), interventionMode, WithinHost::Genotypes::N())
     // parity: order — vector-model LocalRng copy-seeded from master at construction; construction order frozen
-    , m_rng(util::master_RNG)
+    , m_rng(ctx.master_RNG)
     , initIterations(0)
     , species(std::move(speciesList))
     , emergenceRateEstimators(std::move(emergenceRateEstimatorsList))

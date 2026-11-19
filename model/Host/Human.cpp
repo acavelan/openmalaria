@@ -117,7 +117,7 @@ Human::Human(RunContext& ctx, SimTime dateOfBirth) :
     ctx(&ctx),
     infIncidence(InfectionIncidenceModel::createModel(ctx)),
     // parity: order — each Human copies+seeds its LocalRng from the master at construction: human-creation order == master consumption order; never reorder Human ctor
-    rng(util::master_RNG),
+    rng(ctx.master_RNG),
     dateOfBirth(dateOfBirth)
 {
     // Initial humans are created at time 0 and may have dateOfBirth in past. Otherwise dateOfBirth must be now.

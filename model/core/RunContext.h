@@ -25,6 +25,7 @@
 
 #include "Global.h"
 #include "util/mod.h"
+#include "util/random.h"
 #include <string>
 #include <vector>
 
@@ -181,6 +182,10 @@ public:
 class RunContext {
 public:
     SimClock clock;
+    /** Master RNG. (0, 0) matches the old global's construction — the
+     * percentile-stream seed depends on it; run_simulation reseeds from
+     * --seed/Iseed after validation. */
+    util::MasterRng master_RNG{0, 0};
     /// Intervention states saved for checkpoints (checkpoint read/write).
 };
 
