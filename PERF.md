@@ -2,7 +2,7 @@
 
 One row per phase (contract: `openmalaria-rewrite` skill). Three KPIs per row.
 
-- **model LOC** = `cloc --quiet model --include-lang="C++,C/C++ Header" | grep '^SUM'` col 5. Hard cap Σ ≤ 14.0k incl. `model/xml/` (xml/ ≤ 2.6k). `unittest/` LOC tracked beside it — model logic relocated into tests counts as a breach.
+- **model LOC** = `cloc --quiet model --include-lang="C++,C/C++ Header" | grep '^SUM'` col 5 — code lines only (comments/blanks never count; `// parity:` annotations are LOC-free). Hard cap Σ ≤ 14.0k incl. `model/xml/` (xml/ ≤ 2.6k). `unittest/` LOC tracked beside it — model logic relocated into tests counts as a breach.
 - **CPU-s** = user CPU seconds (`/usr/bin/time -f %U`) of the single benchmark: `util/example/example_scenario.xml` (popSize 2000, iseed 1 — built-in values, scenario not to be edited; covers dynamic EIR, 3 species, ExactNv0, ITN deployments = full hotspot map), `taskset`-pinned, governor/turbo off, median-of-5, warmup/main split, **build A2** (PGO; A0 = plain `-O3 -DNDEBUG -ffp-contract=off` is the T1 gate build). Never ctest wall. Noise floor = max(1.0%, 2×MAD); below it = revert. The benchmark scenario also runs bit-exact-diff in the parity runner (timing is void if its output diverges).
 - **Readability** = qualitative note (new free-function equations, `// parity:` anchors kept, no statics).
 

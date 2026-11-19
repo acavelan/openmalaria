@@ -12,7 +12,7 @@ the plan is the detail. Repo: `/home/razlock/git/fork`, baseline `cfc3c8e0`.
 
 | KPI | Baseline | Target |
 |---|---|---|
-| **LOC** — `cloc --quiet model --include-lang="C++,C/C++ Header" \| grep '^SUM'`, col 5 | 18,813 | **Σ ≤ 14.0k incl. `model/xml/` (hard cap; xml/ ≤ 2.6k)**. Breach = user sign-off event, never silent drift. `unittest/` LOC is a second column — moving model logic into tests is forbidden |
+| **LOC** — `cloc --quiet model --include-lang="C++,C/C++ Header" \| grep '^SUM'`, col 5 (code lines only — comments/blanks free) | 18,813 | **Σ ≤ 14.0k incl. `model/xml/` (hard cap; xml/ ≤ 2.6k)**. Breach = user sign-off event, never silent drift. `unittest/` LOC is a second column — moving model logic into tests is forbidden. Comments cost nothing toward the KPI: annotate `// parity:` generously |
 | **Performance** — per-scenario **CPU-seconds** (`/usr/bin/time -f %U`), single benchmark = `util/example/example_scenario.xml` (popSize 2000, iseed 1, its built-in values — do not edit), `taskset`-pinned, governor/turbo off, median-of-5, vs the A2 (PGO) build of the *current* baseline; warmup/main split; never ctest wall | phase 0 stamps A0/A2 | flags alone ≥1.10 (A2/A0); rewrite **1.15–1.35× pre-break, 1.5–2.0× post-break vs A2**; end state ≈1.8× vs plain `-O3` |
 | **Readability** | — | one free function per named model quantity, unit-testable in isolation; doc comment = symbolic formula + paper ref + `// parity: File.cpp:NN` anchor; zero constraint checks in hot math |
 
