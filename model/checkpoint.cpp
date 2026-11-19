@@ -75,7 +75,7 @@ void checkpoint (RunContext& ctx, istream& stream, SimTime &endTime, SimTime &es
         estEndTime & stream;
         transmission & stream;
         population.checkpoint(stream);
-        interventions::InterventionManager::checkpoint(stream);
+        interventions::InterventionManager::checkpoint(ctx, stream);
         interventions::InterventionManager::loadFromCheckpoint(ctx, population.humans, transmission);
         
         // read last, because other loads may use random numbers or expect time
@@ -123,7 +123,7 @@ void checkpoint (RunContext& ctx, ostream& stream, SimTime &endTime, SimTime &es
     estEndTime & stream;
     transmission & stream;
     population.checkpoint(stream);
-    interventions::InterventionManager::checkpoint( stream );
+    interventions::InterventionManager::checkpoint( ctx, stream );
     
     ctx.clock.t0 & stream;
     ctx.clock.t1 & stream;

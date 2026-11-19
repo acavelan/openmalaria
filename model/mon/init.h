@@ -37,7 +37,7 @@ namespace mon {
 
 SimTime readSurveyDates(const SimClock& clock, const scnXml::Monitoring& monitoring);
 void initReporting(RunContext& ctx, const scnXml::Scenario& scenario);
-void initCohorts(const SimClock& clock, const scnXml::Monitoring& monitoring);
+void initCohorts(RunContext& ctx, const scnXml::Monitoring& monitoring);
 
 } // namespace mon
 } // namespace OM

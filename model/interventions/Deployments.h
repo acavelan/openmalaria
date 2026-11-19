@@ -20,10 +20,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-// Note: this file is included by exactly one source (InterventionManager.cpp)
-// and contains definitions as well as declarations.
+// Note: this file is included by several sources (InterventionManager.cpp,
+// xml/interventions.cpp and core/RunExtensions.h). All definitions here must
+// stay inline/template or header-only.
 
 // The includes here are more for documentation than required.
+#ifndef OM_INTERVENTIONS_DEPLOYMENTS_H
+#define OM_INTERVENTIONS_DEPLOYMENTS_H
+
 #include "Global.h"
 #include "core/RunContext.h"
 #include "util/errors.h"
@@ -425,3 +429,5 @@ struct ByDeployTime {
 inline const ByDeployTime byDeployTime{};
 
 } }
+
+#endif

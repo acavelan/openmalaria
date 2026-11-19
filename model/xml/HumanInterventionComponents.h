@@ -50,12 +50,13 @@ bool componentCmp(const HumanInterventionComponent *a, const HumanInterventionCo
     return a->componentType() < b->componentType();
 }
 HumanIntervention::HumanIntervention(
+    RunContext& ctx,
     const xsd::cxx::tree::sequence<scnXml::Component>& componentList )
 {
     components.reserve( componentList.size() );
     for( auto it = componentList.begin(), end = componentList.end(); it != end; ++it ) {
-        ComponentId id = InterventionManager::getComponentId( it->getId() );
-        const HumanInterventionComponent* component = &InterventionManager::getComponent( id );
+        ComponentId id = InterventionManager::getComponentId( ctx, it->getId() );
+        const HumanInterventionComponent* component = &InterventionManager::getComponent( ctx, id );
         components.push_back( component );
     }
     
@@ -78,8 +79,8 @@ HumanIntervention::HumanIntervention(
 {
     components.reserve( componentList.size() );
     for( auto it = componentList.begin(), end = componentList.end(); it != end; ++it ) {
-        ComponentId id = InterventionManager::getComponentId( it->getId() );
-        const HumanInterventionComponent* component = &InterventionManager::getComponent( id );
+        ComponentId id = InterventionManager::getComponentId( ctx, it->getId() );
+        const HumanInterventionComponent* component = &InterventionManager::getComponent( ctx, id );
         components.push_back( component );
     }
     
@@ -101,11 +102,12 @@ HumanIntervention::HumanIntervention(
         conditions.push_back(mon::setupCondition( ctx, it->getMeasure(), min, max, it->getInitialState() ));
     }
 }
-HumanIntervention::HumanIntervention( const xsd::cxx::tree::sequence<scnXml::DTDeploy>& componentList ){
+HumanIntervention::HumanIntervention(
+    RunContext& ctx, const xsd::cxx::tree::sequence<scnXml::DTDeploy>& componentList ){
     components.reserve( componentList.size() );
     for( auto it = componentList.begin(), end = componentList.end(); it != end; ++it ) {
-        ComponentId id = InterventionManager::getComponentId( it->getComponent() );
-        const HumanInterventionComponent* component = &InterventionManager::getComponent( id );
+        ComponentId id = InterventionManager::getComponentId( ctx, it->getComponent() );
+        const HumanInterventionComponent* component = &InterventionManager::getComponent( ctx, id );
         components.push_back( component );
     }
     
@@ -163,7 +165,7 @@ void TriggeredDeployments::deploy( RunContext& ctx, Human& human,
 }
 
 TriggeredDeployments::SubList::SubList( RunContext& ctx, const scnXml::Deploy& elt ) :
-        HumanIntervention( elt.getComponent() ),
+        HumanIntervention( ctx, elt.getComponent() ),
         minAge( ctx.clock.from_years_n( elt.getMinAge() ) ),
         maxAge( sim::future() ),
         coverage( elt.getP() )
@@ -227,8 +229,8 @@ public:
     ScreenComponent( RunContext& ctx, ComponentId id, const scnXml::Screen& elt ) :
         HumanInterventionComponent(id),
         diagnostic(diagnostics::get(ctx, elt.getDiagnostic())),
-        positive( elt.getPositive() ),
-        negative( elt.getNegative() )
+        positive( ctx, elt.getPositive() ),
+        negative( ctx, elt.getNegative() )
     {}
     
     void deploy( RunContext& ctx, Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits ) const{

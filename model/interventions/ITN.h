@@ -227,7 +227,6 @@ private:
     
     // This is sparse vector: only indexes corresponding to ITN components are
     // used. No memory management.
-    static vector<ITNComponent*> componentsByIndex;
     
     friend class HumanITN;
 };

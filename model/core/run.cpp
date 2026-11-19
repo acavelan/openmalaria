@@ -207,7 +207,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
     // MDA1D may depend on health system (too complex to verify)
     interventions::InterventionManager::init(ctx, scenario->getInterventions(), *population, *transmission );
     Clinical::ClinicalModel::setHS( ctx, scenario->getHealthSystem() ); // Depends on interventions, PK/PD (from humanPop)
-    mon::initCohorts(ctx.clock,  scenario->getMonitoring() ); // Depends on interventions
+    mon::initCohorts(ctx,  scenario->getMonitoring() ); // Depends on interventions
 
     bool surveyOnlyNewEp = scenario->getMonitoring().getSurveyOptions().getOnlyNewEpisode();
 

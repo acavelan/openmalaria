@@ -26,6 +26,7 @@
 // mon/Continuous.cpp (Continuous::init). Declarations stay in the mon headers.
 
 #include "Global.h"
+#include "core/RunExtensions.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "interventions/InterventionManager.h"
 #include "mon/Continuous.h"
@@ -223,7 +224,7 @@ SimTime readSurveyDates(const SimClock& clock, const scnXml::Monitoring& monitor
     return runtime.surveyDates.back().date;
 }
 
-void initCohorts(const SimClock& clock, const scnXml::Monitoring& monitoring)
+void initCohorts(RunContext& ctx, const scnXml::Monitoring& monitoring)
 {
     runtime.cohortSubPopNumbers.clear();
     runtime.cohortSubPopIds.clear();
@@ -232,7 +233,7 @@ void initCohorts(const SimClock& clock, const scnXml::Monitoring& monitoring)
     const scnXml::Cohorts monCohorts = monitoring.getCohorts().get();
     uint32_t nextId = 0;
     for (auto it = monCohorts.getSubPop().begin(), end = monCohorts.getSubPop().end(); it != end; ++it) {
-        const interventions::ComponentId compId = interventions::InterventionManager::getComponentId(it->getId());
+        const interventions::ComponentId compId = interventions::InterventionManager::getComponentId(ctx, it->getId());
         const bool inserted = runtime.cohortSubPopIds.insert(std::make_pair(compId, nextId)).second;
         if (!inserted) {
             throw util::xml_scenario_error(

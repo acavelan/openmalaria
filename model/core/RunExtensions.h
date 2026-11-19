@@ -32,6 +32,13 @@
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/Infection/CommonInfection.h"
+#include "Host/ImportedInfections.h"
+#include "interventions/Deployments.h"
+#include "interventions/GVI.h"
+#include "interventions/HumanComponents.h"
+#include "interventions/IRS.h"
+#include "interventions/ITN.h"
+#include "interventions/Vaccine.h"
 
 #include <map>
 #include <memory>
@@ -53,6 +60,31 @@ struct RunExtensions {
     /// Diagnostics registry (built while reading XML / from defaults).
     std::map<std::string, WithinHost::Diagnostic> diagnostic_set;
     const WithinHost::Diagnostic* monitoring_diagnostic = nullptr;
+
+    // ——— intervention registries (was: InterventionManager/ITN/IRS/GVI/
+    //     Vaccine/removeAtIds statics) ———
+    /// Map of textual identifiers to numeric identifiers for components.
+    std::map<std::string, interventions::ComponentId> identifierMap;
+    /// All human intervention components, indexed; owns the components.
+    std::vector<std::unique_ptr<interventions::HumanInterventionComponent>> humanComponents;
+    /// Continuous interventions, sorted by deployment age (weakly increasing).
+    std::vector<interventions::ContinuousHumanDeployment> continuous;
+    /// All timed interventions, sorted (time weakly increasing), sentinel last.
+    std::vector<std::unique_ptr<interventions::TimedDeployment>> timed;
+    uint32_t nextTimed = 0;
+    /// Imported infections (not really an intervention; schema association).
+    OM::Host::ImportedInfections importedInfections;
+    /// Sub-population removal component lists, per remove-at trigger.
+    std::vector<interventions::ComponentId> removeAtIds[interventions::SubPopRemove::NUM];
+    /// Per-type component parameter look-ups by id (not owning: components
+    /// are owned by humanComponents).
+    std::vector<interventions::ITNComponent*> itnComponents;
+    std::vector<interventions::IRSComponent*> irsComponents;
+    std::vector<interventions::GVIComponent*> gviComponents;
+    std::vector<interventions::VaccineComponent*> vaccineComponents;
+    /// Which vaccine component deployment monitoring reports on.
+    interventions::ComponentId vaccineReportComponent =
+        interventions::ComponentId::wholePop();
 };
 
 /// Create RunContext::ext if not yet present (idempotent).

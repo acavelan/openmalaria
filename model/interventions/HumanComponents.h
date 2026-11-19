@@ -60,7 +60,6 @@ namespace SubPopRemove{
 
 /** For each RemoveAtCode (excluding NUM), this is a list of all sub-population
  * identifiers for which the option is enabled. */
-extern vector<ComponentId> removeAtIds[SubPopRemove::NUM];
 
 // ———  vaccines  ———
 
@@ -81,11 +80,14 @@ public:
         numDosesAdministered & stream;
         timeLastDeployment & stream;
         perGenotypeInitialEfficacy & stream;
-        checkpointHet(stream);
     }
     
 private:
     PerEffectPerHumanVaccine( LocalRng& rng, ComponentId id, const VaccineComponent& params );
+    
+    /// The het sample needs the run's parameter registry (ctx)
+    void checkpointHet( RunContext& ctx, ostream& stream );
+    void checkpointHet( RunContext& ctx, istream& stream );
     
     ComponentId component;      // id of component (for finding parameters)
     // Type of vaccine
@@ -101,8 +103,6 @@ private:
     vector<double> perGenotypeInitialEfficacy;
     unique_ptr<util::DecayFunction> hetSample;
 
-    void checkpointHet(ostream& stream);
-    void checkpointHet(istream& stream);
     
     friend class PerHumanVaccine;
 };
@@ -134,8 +134,10 @@ public:
     
     /// Checkpointing
     template<class S>
-    void operator& (S& stream) {
+    void checkpoint (RunContext& ctx, S& stream) {
+        using namespace OM::util::checkpoint;
         effects & stream;
+        for( auto& e : effects ) e.checkpointHet( ctx, stream );
     }
 
 private:

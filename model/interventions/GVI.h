@@ -94,7 +94,6 @@ private:
     
     // This is sparse vector: only indexes corresponding to a GVI component are used
     // No memory management
-    static vector<GVIComponent*> componentsByIndex;
     
     friend class HumanGVI;
 };

@@ -155,7 +155,6 @@ private:
     
     // This is sparse vector: only indexes corresponding to a IRS component are used
     // No memory management
-    static vector<IRSComponent*> componentsByIndex;
     
     friend class HumanIRS;
 };

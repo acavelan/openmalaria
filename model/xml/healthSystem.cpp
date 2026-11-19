@@ -710,7 +710,7 @@ private:
 class CMDTDeploy : public CMDecisionTree, interventions::HumanIntervention {
 public:
     CMDTDeploy( RunContext& ctx, const scnXml::DecisionTree::DeploySequence& seq ) :
-        HumanIntervention(seq) {}
+        HumanIntervention(ctx, seq) {}
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -769,10 +769,11 @@ protected:
     
 private:
     CMDTCohort(
+        RunContext& ctx,
         const std::string component,
         const CMDecisionTree& positive,
         const CMDecisionTree& negative ) :
-        component(interventions::InterventionManager::getComponentId(component)), positive(positive), negative(negative)
+        component(interventions::InterventionManager::getComponentId(ctx, component)), positive(positive), negative(negative)
     {
     }
     
@@ -909,7 +910,7 @@ const CMDecisionTree& CMDTSevere::create( RunContext& ctx, const scnXml::DTSever
 
 const CMDecisionTree& CMDTCohort::create( RunContext& ctx, const scnXml::DTCohort& node, bool isUC ){
     return save_decision( ctx, new CMDTCohort(
-        node.getComponent(),
+        ctx, node.getComponent(),
         CMDecisionTree::create( ctx, node.getPositive(), isUC ),
         CMDecisionTree::create( ctx, node.getNegative(), isUC )
     ) );
