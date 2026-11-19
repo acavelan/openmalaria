@@ -241,7 +241,7 @@ void AnophelesModel::initAvailability(size_t species, const vector<NhhParams> &n
     }
 
     // -----  Calculate availability rate of hosts (α_i) and non-human population data  -----
-    PerHostAnophParams::setEntoAvailabilityFactor(species, (P_A1 / populationSize) * availFactor);
+    PerHostAnophParams::setEntoAvailabilityFactor(ctx, species, (P_A1 / populationSize) * availFactor);
 
     initAvail = (P_A1 / populationSize) * availFactor;
 
@@ -416,7 +416,7 @@ void AnophelesModel::deployVectorTrap(LocalRng &rng, size_t species, size_t inst
     assert(instance < trapParams.size());
     TrapData data;
     data.instance = instance;
-    const PerHostAnophParams &anophParams = PerHostAnophParams::get(species);
+    const PerHostAnophParams &anophParams = PerHostAnophParams::get(ctx, species);
     const double adultAvail = anophParams.entoAvailability->mean() * anophParams.entoAvailabilityFactor;
     data.initialAvail = popSize * adultAvail * trapParams[instance].relAvail;
     data.availHet = trapParams[instance].availDecay->hetSample(rng);

@@ -129,7 +129,7 @@ Human::Human(RunContext& ctx, SimTime dateOfBirth) :
     double iiFactor = infIncidence->getAvailabilityFactor(rng, 1.0);
     perHostTransmission.ctx = &ctx;
     vaccine.ctx = &ctx;
-    perHostTransmission.initialise (rng, het.availabilityFactor * iiFactor);
+    perHostTransmission.initialise (ctx, rng, het.availabilityFactor * iiFactor);
     clinicalModel = Clinical::ClinicalModel::createClinicalModel(ctx, het.treatmentSeekingFactor);
 }
 

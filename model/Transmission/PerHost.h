@@ -57,19 +57,14 @@ public:
     PerHostAnophParams(const PerHostAnophParams&) = delete;
     PerHostAnophParams& operator=(const PerHostAnophParams&) = delete;
 
-    static inline void init (const scnXml::Mosq& mosq) {
-        params.emplace_back(mosq);
-    }
+    /// Register one species' parameters (registry: ctx.ext->anophParams).
+    static void init (RunContext& ctx, const scnXml::Mosq& mosq);
     
     /// Get the number of vector species
-    static inline size_t numSpecies() {
-        return params.size();
-    }
+    static size_t numSpecies (RunContext& ctx);
     
     /// Get parameters for the given vector species
-    static inline const PerHostAnophParams& get(size_t species) {
-        return params[species];
-    }
+    static const PerHostAnophParams& get (RunContext& ctx, size_t species);
     
     /** entoAvailability is calculated externally, then set after other
      * parameters have been initialised.
@@ -78,49 +73,13 @@ public:
      * 
      * It should be called exactly once.
       */
-    inline static void setEntoAvailabilityFactor(size_t species, double entoAvailability){
-        params[species].entoAvailabilityFactor = entoAvailability;
-    }
+    static void setEntoAvailabilityFactor(RunContext& ctx, size_t species, double entoAvailability);
 
-    inline static void calcAvailabilityPercentiles(){
-        int nSamples = 100000;
-        vector<double> samples(nSamples, 0.0);
+    /** Sample the population availability distribution and store its
+     * percentiles in ctx.ext->entoAvailabilityPercentiles. */
+    static void calcAvailabilityPercentiles(RunContext& ctx);
 
-        // Using a different seed to make sure old results will not change
-        // Does it really matter? 
-        // parity: order — MasterRng(0,0) availability-percentile seed is load-bearing for goldens — do not “clean up” (PerHost.h:86-89)
-        util::MasterRng seed(0, 0);
-        seed.seed(0, 0);
-        
-        util::LocalRng rng(seed);
-
-        // Sample
-        for(int i=0; i<nSamples; i++)
-        {
-            double avail = 0.0;
-            for(size_t s = 0; s < Transmission::PerHostAnophParams::numSpecies(); ++s)
-                avail += Transmission::PerHostAnophParams::get(s).entoAvailabilityFactor * Transmission::PerHostAnophParams::get(s).entoAvailability->sample(rng);
-            samples[i] = avail;
-        }
-
-        // Sort samples
-        sort(samples.begin(), samples.end());
-
-        entoAvailabilityPercentiles.resize(100);
-
-        // Calc percetiles threshold values
-        for(int i=0; i<100; i++)
-            entoAvailabilityPercentiles[i] = samples[int(i*nSamples/100)];
-        entoAvailabilityPercentiles[0] = 0.0;
-    }
-
-    inline static double getEntoAvailabilityPercentile(int p){
-        if(p >= 0 && p < 100)
-            return entoAvailabilityPercentiles[p];
-        else if(p == 100)
-            return std::numeric_limits<double>::max();
-        else throw util::xml_scenario_error("Availability percentiles in intervention specifications can only be in [0 and 100]");
-    }
+    static double getEntoAvailabilityPercentile(RunContext& ctx, int p);
 
     /** @brief Probabilities of finding a host and surviving a feeding cycle
      * 
@@ -146,9 +105,7 @@ public:
     util::BetaSampler probMosqSurvivalResting;
     //@}
     
-private:
-    static vector<PerHostAnophParams> params;
-    static vector<double> entoAvailabilityPercentiles;
+    // (no per-type data here: the registry lives in RunExtensions)
 
 };
 
@@ -248,7 +205,7 @@ public:
     //@{
 RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoint restore
     PerHost ();
-    void initialise (LocalRng& rng, double availabilityFactor);
+    void initialise (RunContext& ctx, LocalRng& rng, double availabilityFactor);
     //@}
     
     /// Call once per time step. Updates net holes.

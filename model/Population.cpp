@@ -61,10 +61,10 @@ void Population::createInitialHumans()
     until vector init, which saves computation and memory (no infections). */
     
     int cumulativePop = 0;
-    for(size_t iage_prev = AgeStructure::getMaxTStepsPerLife(), iage = iage_prev - 1;
+    for(size_t iage_prev = AgeStructure::getMaxTStepsPerLife(ctx), iage = iage_prev - 1;
          iage_prev > 0; iage_prev = iage, iage -= 1 )
     {
-        int targetPop = AgeStructure::targetCumPop( iage, size );
+        int targetPop = AgeStructure::targetCumPop(ctx, iage, size );
         while (cumulativePop < targetPop) {
             SimTime dob = sim::zero() - ctx.clock.fromTS(iage);
             util::streamValidate( dob );
@@ -91,7 +91,7 @@ void Population::update()
         // "outmigrate" some to maintain population shape
         //NOTE: better to use age(ctx.clock.ts0())? Possibly, but the difference will not be very significant.
         // Also see targetPop = ... comment above
-        bool outmigrate = cumPop >= AgeStructure::targetCumPop(ctx.clock.inSteps(it->age(ctx.clock.ts1())), size);
+        bool outmigrate = cumPop >= AgeStructure::targetCumPop(ctx, ctx.clock.inSteps(it->age(ctx.clock.ts1())), size);
         
         if( isDead || outmigrate ){
             it = humans.erase (it);

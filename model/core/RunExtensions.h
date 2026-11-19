@@ -87,6 +87,11 @@ struct RunExtensions {
     interventions::ComponentId vaccineReportComponent =
         interventions::ComponentId::wholePop();
 
+    // ——— entomology parameters (was: PerHostAnophParams statics) ———
+    /// Per-species host-availability/biting parameters (XML read).
+    std::vector<Transmission::PerHostAnophParams> anophParams;
+    std::vector<double> entoAvailabilityPercentiles;
+
     // ——— continuous output (was: mon/Continuous.cpp statics) ———
     /// Continuous-output file; its resume position; callback registry.
     std::fstream ctsOStream;

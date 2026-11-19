@@ -247,7 +247,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
         readCheckpoint(ctx, checkpointFileName, endTime, estEndTime, *population, *transmission);
 
         /** Calculate ento availability percentiles **/
-        Transmission::PerHostAnophParams::calcAvailabilityPercentiles();
+        Transmission::PerHostAnophParams::calcAvailabilityPercentiles(ctx);
     }
     else
     {
@@ -256,7 +256,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
         transmission->init2(population->humans);
         
         /** Calculate ento availability percentiles **/
-        Transmission::PerHostAnophParams::calcAvailabilityPercentiles();
+        Transmission::PerHostAnophParams::calcAvailabilityPercentiles(ctx);
 
         /** Warm-up phase: 
          * Run the simulation using the equilibrium inoculation rates over one

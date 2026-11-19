@@ -29,6 +29,7 @@
 #include "Host/WithinHost/Genotypes.h"
 #include "PkPd/Drug/LSTMDrugType.h"
 #include "PkPd/LSTMMedicate.h"
+#include "PopulationAgeStructure.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -205,6 +206,8 @@ public:
     /// owned and deleted by ~RunContext (raw pointer: gcc 16 instantiates
     /// unique_ptr's deleter on incomplete types at class scope).
     RunExtensions* ext = nullptr;
+    /// Demography / target age-structure state (PopulationAgeStructure.h).
+    AgeStructureState age;
     /// Intervention states saved for checkpoints (checkpoint read/write).
 };
 
