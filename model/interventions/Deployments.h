@@ -268,6 +268,7 @@ public:
                         const double ux = Transmission::PerHostAnophParams::get(0).entoAvailability->cdf(human.perHostTransmission.anophEntoAvailabilityRaw[0]);
                         if(ux < 1)
                         {
+                            // parity: a — per-human heterogeneity lognormal/beta draws (gsl_cdf pure quantiles, no stream cost) then bernoulli-last; per-candidate draw order/count frozen (plan §3a)
                             double xx = gsl_cdf_ugaussian_Pinv(ux);                      // Unit interval to Normal
 
                             // Apply the Gaussian copula transformation for correlation
@@ -310,6 +311,7 @@ public:
 
                 if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(maxAvailability) ) {
                     if( subPop == ComponentId::wholePop() || (human.isInSubPop( subPop ) != complement) ){
+                        // parity: a — deploy short-circuit: RNG draw is the LAST test of the deploy condition; filter/age/cohort checks must precede it (plan §3a)
                         if( human.rng.bernoulli( probability ) ){
                             deployToHuman( human, mon::Deploy::TIMED );
                         }
@@ -384,6 +386,7 @@ public:
             double additionalCoverage = (coverage - propProtected) / (1.0 - propProtected);
             cerr << "cum deployment: prop protected " << propProtected << "; additionalCoverage " << additionalCoverage << "; total " << total << endl;
             for(Human* human : unprotected) {
+                // parity: a — deploy short-circuit: RNG draw is the LAST test of the deploy condition; filter/age/cohort checks must precede it (plan §3a)
                 if( human->rng.uniform_01() < additionalCoverage ){
                     deployToHuman( *human, mon::Deploy::TIMED );
                 }
@@ -670,6 +673,7 @@ public:
                     ( subPop == ComponentId::wholePop() ||
                         (human.isInSubPop( subPop ) != complement)
                     ) &&
+                    // parity: a — deploy short-circuit: RNG draw is the LAST test of the deploy condition; filter/age/cohort checks must precede it (plan §3a)
                     human.rng.uniform_01() < coverage )     // RNG call should be last test
                 {
                     deployToHuman( human, mon::Deploy::CTS );

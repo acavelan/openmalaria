@@ -88,6 +88,7 @@ void NeonatalMortality::staticCheckpoint (ostream& stream) {
 }
 
 bool NeonatalMortality::eventNeonatalMortality(LocalRng& rng) {
+  // parity: order — local RNG stream: draw call order fixes stream state
   return rng.uniform_01() <= riskFromMaternalInfection;
 }
 

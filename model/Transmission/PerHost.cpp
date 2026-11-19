@@ -101,6 +101,7 @@ void PerHost::deployComponent( LocalRng& rng, const HumanVectorInterventionCompo
 // (easily large enough for conceivable Weibull params that the value is 0.0 when
 // rounded to a double. Performance-wise it's perhaps slightly slower than using
 // an if() when interventions aren't present.
+// parity: c — history-ordered activeComponents FP product — multiply in vector order, not reassociated
 double PerHost::entoAvailabilityHetVecItv (size_t species) const {
     double alpha_i = anophEntoAvailability[species];
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){

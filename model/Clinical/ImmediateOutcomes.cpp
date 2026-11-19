@@ -184,6 +184,7 @@ void ImmediateOutcomes::uncomplicatedEvent (
 
     latestReport.update (human, Episode::State( pgState ) );
 
+    // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
     double x = human.rng.uniform_01();
     if( x < accessUCAny[regimen] * m_treatmentSeekingFactor ){
         // UC1: official care OR self treatment
@@ -201,6 +202,7 @@ void ImmediateOutcomes::uncomplicatedEvent (
         
         double p = ( x < accessUCSelfTreat[regimen] * m_treatmentSeekingFactor ) ?
             cureRateUCSelfTreat[regimen] : cureRateUCOfficial[regimen];
+        // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
         if( human.rng.bernoulli(p) ){
             // Could report Episode::RECOVERY to latestReport,
             // but we don't report out-of-hospital recoveries anyway.

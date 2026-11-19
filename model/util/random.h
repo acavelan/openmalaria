@@ -145,17 +145,20 @@ struct RNG {
     ///@brief Random number distributions
     //@{
     /** Generate a random number in the range [0,1). */
+    // parity: order — one gen_double per call = one stream position; basis of every contract
     inline double uniform_01 () {
         return m_rng.gen_double();
     }
     
     /** This function returns a Gaussian random variate, with mean mean and
      * standard deviation std. The sampled value x ~ N(mean, std^2) . */
+    // parity: F2 — GSL gsl_ran_gaussian on wrapped stream — value sequence depends on GSL version (F2)
     double gauss (double mean, double std){
         return gsl_ran_gaussian(&m_gsl_gen,std)+mean;
     }
     
     /** This function returns a random variate from the gamma distribution. */
+    // parity: F2 — GSL gsl_ran_gamma on wrapped stream (F2)
     double gamma (double a, double b){
         return gsl_ran_gamma(&m_gsl_gen, a, b);
     }
@@ -168,6 +171,7 @@ struct RNG {
      * @param mu mean-log
      * @param sigma sigma-log
      */
+    // parity: F2 — GSL gsl_ran_lognormal on wrapped stream (F2)
     double log_normal (double meanlog, double stdlog){
         return gsl_ran_lognormal (&m_gsl_gen, meanlog, stdlog);
     }
@@ -180,6 +184,7 @@ struct RNG {
      * @param meanlog mean of underlying Gaussian
      * @param stdlog standard deviation of underlying Gaussian
      */
+    // parity: order — exactly ONE uniform_01 + one ugaussian_Pinv; CDF-inversion identity frozen
     double max_multi_log_normal (double start, int n, double meanlog, double stdlog){
         // Used for performance reasons. Calling GSL's log_normal 5 times is 50% slower.
         // For random variables X1, .., Xn with identical distribution X and
@@ -195,12 +200,14 @@ struct RNG {
     }
     
     /** This function returns a random variate from the beta distribution. */
+    // parity: F2 — GSL gsl_ran_beta on wrapped stream (F2)
     double beta(double a, double b){
         return gsl_ran_beta (&m_gsl_gen,a,b);
     }
     
     /** This function wraps beta(), setting b=b and a such that m is the mean
      * of the distribution. */
+    // parity: order — wraps beta() — one beta draw; a=m*b/(1-m) algebra frozen
     inline double betaWithMean(double m, double b) {
         //TODO(performance): could do this calculation externally, and feed in a,b instead of mean,b
         double a = m * b / (1.0 - m);
@@ -208,6 +215,7 @@ struct RNG {
     }
     
     /** This function returns a random integer from the Poisson distribution with mean lambda. */
+    // parity: F2 — GSL gsl_ran_poisson on wrapped stream (F2)
     int poisson(double lambda){
         if( !(std::isfinite)(lambda) ){
             //This would lead to an inifinite loop
@@ -218,6 +226,7 @@ struct RNG {
 
     /** This function returns true with probability prob or 0 with probability
      * 1-prob (Bernoulli distribution). */
+    // parity: a/d/e — consumes exactly ONE uniform_01 (prob compare) — basis of contracts a/d/e
     bool bernoulli(double prob){
         assert( (std::isfinite)(prob) );
         // return true iff our variate is less than the probability
@@ -226,6 +235,7 @@ struct RNG {
     
     /** This function returns an integer from 0 to 1-n, where every value has
      * equal probability of being sampled. */
+    // parity: a/d/e — consumes exactly ONE uniform_01 (scaled int) — do not reorder vs bernoulli
     inline int uniform (int n) {
         assert( (std::isfinite)(n) );
         return static_cast<int>( uniform_01() * n );
@@ -239,6 +249,7 @@ struct RNG {
      * @param lambda (λ) is the scale parameter
      * @param k is the shape parameter
      */
+    // parity: F2 — GSL gsl_ran_weibull on wrapped stream (F2)
     double weibull( double lambda, double k ){
         return gsl_ran_weibull( &m_gsl_gen, lambda, k );
     }
@@ -258,6 +269,7 @@ typedef RNG<Xoshiro256P> LocalRng;
 typedef RNG<ChaCha<8>> MasterRng;
 
 /// The master RNG, used only for seeding local RNGs
+// parity: order — single extern master stream declaration
 extern MasterRng master_RNG;
 
 } }

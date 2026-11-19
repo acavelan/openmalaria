@@ -282,6 +282,7 @@ uint32_t Genotypes::sampleGenotype( LocalRng& rng, vector<double>& genotype_weig
     }else if( GT::current_mode == GT::SAMPLE_INITIAL
             || genotype_weights.size() == 0 )
     {
+        // parity: order — local RNG stream: draw call order fixes stream state
         double sample = rng.uniform_01();
         auto it = GT::cum_initial_freqs.upper_bound( sample );
         assert( it != GT::cum_initial_freqs.end() );

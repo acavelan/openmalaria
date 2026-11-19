@@ -468,6 +468,7 @@ void InterventionManager::init(const scnXml::Interventions &intervElt, const Pop
 
     // lists must be sorted, increasing
     // For reproducability, we need to use stable_sort, not sort.
+    // parity: b — stable_sort order = reproducibility contract; comparator ties resolve by insertion order
     stable_sort(continuous.begin(), continuous.end(), byDeployTime);
     stable_sort(timed.begin(), timed.end(), byDeployTime);
 
