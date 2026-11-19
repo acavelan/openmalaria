@@ -117,10 +117,11 @@ void run(RunContext& ctx, Population &population, TransmissionModel &transmissio
         // (until humans old enough to be pregnate get updated and can be infected).
         Host::NeonatalMortality::update (ctx, population.humans);
         
+        Host::HostScratch scratch;   // EIR out-vectors, reused across humans/ticks
         for (Host::Human& human : population.humans)
         {
             if (human.getDOB() + ctx.clock.max_human_age >= humanWarmupLength) // this is last time of possible update
-                Host::update(ctx, human, transmission);
+                Host::update(ctx, human, transmission, scratch);
         }
        
         population.update();

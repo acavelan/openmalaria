@@ -132,8 +132,13 @@ public:
         checkpoint (stream);
     }
 
-    /** Time of the last treatment (sim::never() if never treated). */
-    SimTime m_tLastTreatment = sim::never();
+    /** Time of the last treatment (sim::never() if never treated): SoA
+     * column t_last_treatment (old member; accessors keep read/write syntax). */
+    SimTime& t_last_treatment() const { return cols->t_last_treatment[row]; }
+
+    /** Bind the host human's column row (Human ctor after creation; see
+     * Human::set_row for renumber rebinds). */
+    void bind_columns( HumanColumns& c, size_t r ) { cols = &c; row = r; }
     
     /** Construct a per-human instance. Kind selects behaviour; the
      * EventScheduler kind rejects treatment-seeking heterogeneity. */
@@ -156,10 +161,18 @@ public:
     /** EventScheduler-kind state (parity: old ClinicalEventScheduler members;
      * unused by the other kinds, never serialized there — bytes unchanged). */
     Episode::State esPgState;                    ///< current sickness state
-    SimTime esCaseStartTime = sim::never();      ///< when a bout should start
-    SimTime esTimeOfRecovery = sim::never();     ///< recovers when ts0 >= this
-    SimTime esTimeLastTreatment = sim::never();  ///< last treatment (second-case)
-    double esPreviousDensity;                    ///< total density last time step
+    /// ES bout clock/state (old esCaseStartTime/esTimeOfRecovery/
+    /// esTimeLastTreatment SimTime members; column row refs, same syntax).
+    SimTime& es_case_start() const { return cols->es_case_start[row]; }
+    SimTime& es_time_recovery() const { return cols->es_time_recovery[row]; }
+    SimTime& es_time_treatment() const { return cols->es_time_treatment[row]; }
+    /// Total density last time step (old esPreviousDensity; column).
+    double& es_prev_density() const { return cols->es_prev_density[row]; }
+
+    /// The host human's SoA columns/row (bind_columns; re-bound by
+    /// Human::set_row — stale mirror = wrong host after renumber).
+    HumanColumns* cols = nullptr;
+    size_t row = 0;
 
     
     /** Can indicate that the individual is dead or about to die.

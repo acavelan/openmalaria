@@ -25,6 +25,8 @@
 
 #include "Global.h"
 #include "core/RunContext.h"
+#include "humans/HostColumns.h"
+#include "infections/SlotAllocator.h"
 #include "util/random.h"
 #include "util/sampler.h"
 #include "util/errors.h"
@@ -138,7 +140,7 @@ public:
      * 
      * @return pair describing whether the infection is finished (no more blood
      *  or liver stages) and whether a new primary blood-stage has started (to
-     *  update cumPrimInf)
+     *  update cum_prim_inf_ref())
      */
     UpdResult update(LocalRng& rng);
     
@@ -210,6 +212,10 @@ class WHInterface final {
 public:
     /// The within-host model variant implemented by this instance.
     enum class Kind { Vivax, Common, Descriptive, Mock };
+
+    /** Bind the host human's column row (Human ctor immediately after
+     * creation; unit tests bind a mini-column themselves). */
+    void bind_columns( HumanColumns& c, size_t r ) { cols = &c; row = r; }
 
     /// The run this model belongs to (clock accessed as ctx.clock).
     RunContext& ctx;
@@ -351,12 +357,9 @@ public:
 
     InfectionOrigin getInfectionOrigin() const;
 
-    /** The maximum number of infections a human can have. The only real reason
-     * for this limit is to prevent incase bad input from causing the number of
-     * infections to baloon stupidly.
-     *
-     * Exact constraint is: _MOI <= MAX_INFECTIONS. */
-    static const int MAX_INFECTIONS = 21;
+    /** The maximum number of infections a human can have: owned by
+     * SlotAllocator (model/infections/SlotAllocator.h), the single clamp
+     * owner; see its comment for the two RNG-visible modes. */
 
 private:
     /// @brief Per-kind constructor/destructor fragments
@@ -439,7 +442,7 @@ private:
      */
     void clearInfections( Treatments::Stages stage );
     
-    /** Updates for the immunity model − assumes m_cumulative_h and m_cumulative_Y
+    /** Updates for the immunity model − assumes imm_h_ref() and imm_Y_ref()
      * have already been incremented.
      *
      * Applies decay of immunity against asexual blood stages, if present. */
@@ -459,6 +462,11 @@ private:
     
     /// Which model this instance is (never serialised).
     Kind m_kind;
+
+    /// The host human's SoA columns/row (bind_columns; immunity state lives
+    /// in the imm_* / cum_prim_inf columns).
+    HumanColumns* cols = nullptr;
+    size_t row = 0;
     
     /// Multiplicity of infection
     int numInfs = 0;
@@ -468,12 +476,15 @@ private:
     //!innate ability to control parasite densities
     double _innateImmSurvFact = 0.0;
 
-    /** Number of infections received since birth. */
-    double m_cumulative_h = 0.0;
-    /// Cumulative parasite density since birth (units: days * units of density)
-    double m_cumulative_Y = 0.0;
-    /// m_cumulative_Y from previous time step
-    double m_cumulative_Y_lag = 0.0;
+    /** Number of infections received since birth, cumulative parasite
+     * density since birth and its one-step lag: SoA columns (imm_h/imm_Y/
+     * imm_Y_lag; bound via bind_columns — accessor refs keep read/write
+     * syntax). Old: imm_h_ref()/_Y/_Y_lag doubles. */
+    double& imm_h_ref() const { return cols->imm_h[row]; }
+    double& imm_Y_ref() const { return cols->imm_Y[row]; }
+    double& imm_Y_lag_ref() const { return cols->imm_Y_lag[row]; }
+    /// Primary blood-stage infections since birth (old cumPrimInf; column).
+    uint32_t& cum_prim_inf_ref() const { return cols->cum_prim_inf[row]; }
     
     /// Total asexual blood stage density (sum of density of infections).
     double totalDensity = 0.0;
@@ -535,8 +546,7 @@ private:
     Pathogenesis::State morbidity = Pathogenesis::NONE;
     
     // The number of primary blood stage infections to have started since this
-    // human was born.
-    uint32_t cumPrimInf = 0;
+    // human was born: SoA column, see cum_prim_inf_ref().
     
     // Either never or expiry time of treatment (Vivax kind)
     SimTime treatExpiryLiverVivax = sim::zero(), treatExpiryBloodVivax = sim::zero();

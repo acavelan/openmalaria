@@ -56,7 +56,7 @@ void Episode::update (RunContext& ctx, const Host::Human& human, Episode::State 
 
         time = ctx.clock.ts0();
         surveyPeriod = mon::eventSurveyNumber(ctx);
-        ageGroup = human.monitoringAgeGroup;
+        ageGroup = human.monitoringAgeGroup();
         cohortSet = human.getCohortSet();
         state = newState;
     } else {

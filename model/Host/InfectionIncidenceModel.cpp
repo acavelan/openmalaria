@@ -179,7 +179,7 @@ double InfectionIncidenceModel::getModelExpectedInfections (LocalRng& rng, doubl
   switch(kind) {
   case Kind::HetWorkaround:  // parity: old HeterogeneityWorkaroundII formula
     return (Sinf+(1-Sinf) / 
-      (1 + effectiveEIR/(ctx.clock.one_TS()*phTrans.relativeAvailabilityHet)*EstarInv)) *
+      (1 + effectiveEIR/(ctx.clock.one_TS()*phTrans.rel_avail_het())*EstarInv)) *
       susceptibility() * effectiveEIR;
   case Kind::NegBinom:  // parity: old NegBinomMAII formula
     // Documentation: http://www.plosmedicine.org/article/fetchSingleRepresentation.action?uri=info:doi/10.1371/journal.pmed.1001157.s009
@@ -228,7 +228,7 @@ double InfectionIncidenceModel::expectedNumNewInfections(OM::Host::Human& human,
         throw TRACED_EXCEPTION (out.str(), util::Error::EffectiveEIR);
     }
 
-    double expectedNumInfections = getModelExpectedInfections (human.rng, effectiveEIR, human.perHostTransmission);    
+    double expectedNumInfections = getModelExpectedInfections (human.rng(), effectiveEIR, human.perHostTransmission);    
     
     // Only to be consistent with old simulation runs when set to false
     // Setting this option to true will only affect reporting
@@ -252,10 +252,9 @@ int InfectionIncidenceModel::numNewInfections (Human& human, double expectedNumI
 { 
   if (expectedNumInfections > 0.0000001){
     // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-    int n = human.rng.poisson(expectedNumInfections);
+    int n = human.rng().poisson(expectedNumInfections);
 
-    if( n > WithinHost::WHInterface::MAX_INFECTIONS )
-        n = WithinHost::WHInterface::MAX_INFECTIONS;
+    n = WithinHost::SlotAllocator::clamp_count( n );   // post-draw clamp
     return n;
   }
   

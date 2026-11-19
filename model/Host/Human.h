@@ -24,6 +24,7 @@
 #define Hmod_human
 #include "Global.h"
 #include "core/RunContext.h"
+#include "humans/HostColumns.h"
 #include "Transmission/PerHost.h"
 #include "InfectionIncidenceModel.h"
 #include "interventions/HumanComponents.h"
@@ -52,10 +53,18 @@ public:
     /// construction; a pointer so Human stays move-assignable.
     RunContext* ctx;
 
+    /// This human's SoA columns (owned by Population; same lifetime as ctx).
+    HumanColumns* cols;
+    /// This human's row index in every column (kept in sync by Population;
+    /// renumbered after every structural erase — see Population::update).
+    size_t row;
+
     /** Initialise all variables of a human datatype.
     * 
-    * @param dateOfBirth date of birth (usually start of next time step) */
-    Human(RunContext& ctx, SimTime dateOfBirth);
+    * @param dateOfBirth date of birth (usually start of next time step)
+    * @param columns persistent columns receiving this human's row (the rng
+    * row is copy-seeded from the master HERE — the old member-init moment) */
+    Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns);
 
     /// Allow move construction
     Human(Human&&) = default;
@@ -116,70 +125,106 @@ public:
     * and clinical outcomes (morbidity, reporting). */
     unique_ptr<Clinical::ClinicalModel> clinicalModel;
 
-    util::LocalRng rng;
+    /** Per-host RNG: SoA column row, not a member (accessor below keeps the
+     * old `human.rng()` call syntax; 4×u64 Xoshiro state per row). */
+    inline util::LocalRng& rng();
+
+    /** Set the column row index (Population-only; see Population::update). */
+    void set_row( size_t r );
 
     /** Vaccines */
     interventions::PerHumanVaccine vaccine;
 
-    /** Made persistant to save a lookup each time step (significant performance improvement) */
-    size_t monitoringAgeGroup = 0;
+    /** Monitoring age group (column row; accessor keeps read/write syntax). */
+    inline uint16_t& monitoringAgeGroup();
+    /// ditto (read-only use, e.g. episode recording)
+    inline uint16_t& monitoringAgeGroup() const;
 
-    /** The next continuous distribution in the series */
-    uint32_t nextCtsDist = 0;
-
-private:
-    SimTime dateOfBirth = sim::never();        // date of birth; humans are always born at the end of a time step
-
-    /** Cache, updated when human is added to or removed from a sub-population */
-    uint32_t cohortSet = 0;
-
-    /** The state of he human. A human cannot be revived. */
-    bool dead = false;
-
-    /** This lists sub-populations of which the human is a member together with
-    * expiry time.
-    * 
-    * Definition: a human is in sub-population p if subPopExp.contains(p) and,
-    * for t=subPopExp[p], t > ctx.clock.now() (at the time of intervention
-    * deployment) or t > ctx.clock.ts0() (equiv t >= ctx.clock.ts1()) during human update.
-    * 
-    * NOTE: this discrepancy is because intervention deployment effectively
-    * happens at the end of a time step and we want a duration of 1 time step to
-    * mean 1 intervention deployment (that where the human becomes a member) and
-    * 1 human update (the next). */
-    //TODO(optimisation): it might be better to instead store for each
-    // ComponentId of interest the set of humans who are members
-    std::map<interventions::ComponentId,SimTime> subPopExp;
+    /** The next continuous distribution in the series (column row). */
+    inline uint32_t& nextCtsDist();
 };
 
 void summarize(RunContext& ctx, Human &human, bool surveyOnlyNewEp);
 
-void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& transmission);
+/** Per-sweep scratch reused across humans within a time step (owned by the
+ * sweep caller — the run loop). Holds the EIR-per-genotype out-vectors that
+ * getEIR overwrites via assign() each host, so the buffer allocates once per
+ * run instead of once per host per tick, plus the scalars the §9 host-update
+ * stages hand to each other (all written before read within one host's pass). */
+struct HostScratch {
+    std::vector<double> EIR_per_genotype_i, EIR_per_genotype_l;
+    SimTime age0;
+    double age1, eir_i, eir_l, eir;
+    int nNewInfs_i, nNewInfs_l;
+};
+
+/** Per-host view for the 7 §9 update stages (pinned phases-6-7 shape).
+ * Phase-6 form carries Human& because the submodels still hang off it;
+ * phase 7 dissolves them into columns and the view shrinks toward
+ * {cols,row,rng,scratch,iv,mon}. */
+struct HostView {
+    RunContext& ctx;
+    Human& human;
+    Transmission::TransmissionModel& transmission;
+    HostScratch& scratch;
+};
+
+/// The 7 §9 stages, in call order; Host::update is the driver. Bodies moved
+/// verbatim from the old Host::update (draw/FP order sacred).
+bool host_is_dead(HostView& v);
+void host_update_mon_cohorts(HostView& v);
+void host_calculate_eir(HostView& v);
+void host_sample_new_infections(HostView& v);
+void host_within_host_update(HostView& v);
+void host_clinical_update(HostView& v);
+void host_update_infant_deaths(HostView& v);
+
+void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& transmission, HostScratch& scratch);
 
 inline SimTime Human::age( SimTime time ) const { 
-    return time - dateOfBirth; 
+    return time - cols->dob[row]; 
+}
+
+inline util::LocalRng& Human::rng() {
+    return cols->rng[row];
+}
+
+inline uint16_t& Human::monitoringAgeGroup() {
+    return cols->mon_age_group[row];
+}
+
+inline uint16_t& Human::monitoringAgeGroup() const {
+    return cols->mon_age_group[row];
+}
+
+inline uint32_t& Human::nextCtsDist() {
+    return cols->next_cts_dist[row];
 }
 
 inline bool Human::isInSubPop( interventions::ComponentId id ) const {
-    auto it = subPopExp.find( id );
-    if( it == subPopExp.end() ) return false;   // no history of membership
-    else return it->second >= ctx->clock.nowOrTs0();   // added: has expired?
+    // Definition (unchanged from the old std::map): member if (id,expiry) is
+    // present with expiry >= nowOrTs0(). Few spans per host; linear is fine.
+    for( auto const& span : cols->cohorts[row] ) {
+        if( span.first == id ) return span.second >= ctx->clock.nowOrTs0();
+    }
+    return false;   // no history of membership
 }
 
 inline uint32_t Human::getCohortSet() const { 
-    return cohortSet; 
+    return cols->cohort_set[row]; 
 }
 
 inline SimTime Human::getDOB() const {
-    return dateOfBirth;
+    return cols->dob[row];
 }
 
 inline bool Human::isDead() const {
-    return dead;
+    return cols->death[row] != sim::never();
 }
 
 inline void Human::kill() {
-    dead = true;
+    // A human cannot be revived: only Population::update erases the row.
+    cols->death[row] = ctx->clock.nowOrTs1();
 }
 
 } }

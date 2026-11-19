@@ -336,7 +336,7 @@ void WHInterface::update_vivax(Host::Human &human, LocalRng& rng, int &nNewInfs_
     // update vivaxInfections
     // NOTE: currently no BSV model
     morbidity = Pathogenesis::NONE;
-    uint32_t oldCumInf = cumPrimInf;
+    uint32_t oldCumInf = cum_prim_inf_ref();
     bool treatmentLiver = treatExpiryLiverVivax > ctx.clock.ts0();
     bool treatmentBlood = treatExpiryBloodVivax > ctx.clock.ts0();
     double matImmClin = 1 - (0.90 * exp(-2.53*ageInYears));
@@ -346,7 +346,7 @@ void WHInterface::update_vivax(Host::Human &human, LocalRng& rng, int &nNewInfs_
         if( treatmentLiver ) inf->treatmentLS();
         if( treatmentBlood ) inf->treatmentBS();        // clearance due to treatment; no protection against reemergence
         VivaxBrood::UpdResult result = inf->update(rng);
-        if( result.newPrimaryBS ) cumPrimInf += 1;
+        if( result.newPrimaryBS ) cum_prim_inf_ref() += 1;
         
         if( result.newBS ){
             // Sample for each new blood stage infection: the chance of some clinical event.
@@ -440,9 +440,9 @@ void WHInterface::optionalPqTreatment_vivax( Host::Human& human ){
     // gametocytes, because these are always cleared by blood-stage drugs with
     // Vivax, and PQ is not given without BS drugs. NOTE: this ignores drug failure.
     // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-    if (pReceivePQ > 0.0 && (ignoreNoPQ || !noPQ) && human.rng.bernoulli(pReceivePQ)){
+    if (pReceivePQ > 0.0 && (ignoreNoPQ || !noPQ) && human.rng().bernoulli(pReceivePQ)){
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-        if( human.rng.bernoulli(effectivenessPQ) ){
+        if( human.rng().bernoulli(effectivenessPQ) ){
             for( auto it = vivaxInfections.begin(); it != vivaxInfections.end(); ++it ){
                 it->treatmentLS();
             }
@@ -463,7 +463,7 @@ bool WHInterface::treatSimple_vivax( Host::Human& human, SimTime timeLiver, SimT
             "(liverStageDrug) option; it is suggested to use the former over the latter");
         }
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-        if( (ignoreNoPQ || !noPQ) && (effectivenessPQ == 1.0 || human.rng.bernoulli(effectivenessPQ)) ){
+        if( (ignoreNoPQ || !noPQ) && (effectivenessPQ == 1.0 || human.rng().bernoulli(effectivenessPQ)) ){
             if( timeLiver >= sim::zero() ){
                 treatExpiryLiverVivax = max( int(treatExpiryLiverVivax), ctx.clock.nowOrTs1() + timeLiver );
             }else{
@@ -503,7 +503,7 @@ void WHInterface::checkpoint_vivax(istream& stream){
     int morbidity_i;
     morbidity_i & stream;
     morbidity = static_cast<Pathogenesis::State>( morbidity_i );
-    cumPrimInf & stream;
+    cum_prim_inf_ref() & stream;
     treatExpiryLiverVivax & stream;
     treatExpiryBloodVivax & stream;
     pEvent & stream;
@@ -516,7 +516,7 @@ void WHInterface::checkpoint_vivax(ostream& stream){
     }
     noPQ & stream;
     static_cast<int>( morbidity ) & stream;
-    cumPrimInf & stream;
+    cum_prim_inf_ref() & stream;
     treatExpiryLiverVivax & stream;
     treatExpiryBloodVivax & stream;
     pEvent & stream;

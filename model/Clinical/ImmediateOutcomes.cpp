@@ -49,7 +49,7 @@ void immOutUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx,
 ) {
     // If last treatment prescribed was in recent memory, consider second line.
     CM5DayCommon::CaseType regimen = CM5DayCommon::FirstLine;
-    if (cm.m_tLastTreatment + ClinicalModel::healthSystemMemory > ctx.clock.ts0()){
+    if (cm.t_last_treatment() + ClinicalModel::healthSystemMemory > ctx.clock.ts0()){
         pgState = Episode::State (pgState | Episode::SECOND_CASE);
         regimen = CM5DayCommon::SecondLine;
     }
@@ -57,7 +57,7 @@ void immOutUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx,
     cm.latestReport.update (ctx, human, Episode::State( pgState ) );
 
     // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-    double x = human.rng.uniform_01();
+    double x = human.rng().uniform_01();
     if( x < CM5DayCommon::accessUCAny[regimen] * cm.m_treatmentSeekingFactor ){
         // UC1: official care OR self treatment
         // UC2: official care only
@@ -65,17 +65,17 @@ void immOutUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx,
         if( ImmediateOutcomes::useDiagnosticUC ){
             mon::recordEvent(mon::measure("nTreatDiagnostics"), human);
             auto diag = WithinHost::diagnostics::monitoringDiagnostic( ctx );
-            if( !human.withinHostModel->diagnosticResult(human.rng, diag) )
+            if( !human.withinHostModel->diagnosticResult(human.rng(), diag) )
                 return; // negative outcome: no treatment
         }
         
-        cm.m_tLastTreatment = ctx.clock.ts0();
+        cm.t_last_treatment() = ctx.clock.ts0();
         mon::recordEvent(CM5DayCommon::measures[regimen], human);
         
         double p = ( x < CM5DayCommon::accessUCSelfTreat[regimen] * cm.m_treatmentSeekingFactor ) ?
             ImmediateOutcomes::cureRateUCSelfTreat[regimen] : ImmediateOutcomes::cureRateUCOfficial[regimen];
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-        if( human.rng.bernoulli(p) ){
+        if( human.rng().bernoulli(p) ){
             // Could report Episode::RECOVERY to cm.latestReport,
             // but we don't report out-of-hospital recoveries anyway.
             human.withinHostModel->treatment( human, ImmediateOutcomes::treatmentUC[regimen] );

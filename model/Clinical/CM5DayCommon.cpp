@@ -80,7 +80,7 @@ void clinicalUpdate5Day (ClinicalModel& cm, RunContext& ctx, Human& human, doubl
     if (pg.indirectMortality && cm.doomed == NOT_DOOMED)
         cm.doomed = -ctx.clock.one_TS();
     
-    if( cm.m_tLastTreatment == ctx.clock.ts0() )
+    if( cm.t_last_treatment() == ctx.clock.ts0() )
         human.removeFirstEvent(interventions::SubPopRemove::ON_FIRST_TREATMENT);
     
     if( pgState & Episode::SICK )
@@ -145,11 +145,11 @@ void severeMalaria (ClinicalModel& cm, RunContext& ctx,
     mon::recordStat(mon::measure("expectedSequelae"), human, exSeq);
 
     // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-    double prandom = human.rng.uniform_01();
+    double prandom = human.rng().uniform_01();
     
     //NOTE: we do not model diagnostics in this case
     if( prandom >= q[2] ){      // treated in hospital
-        cm.m_tLastTreatment = ctx.clock.ts0();
+        cm.t_last_treatment() = ctx.clock.ts0();
         mon::recordEvent(mon::measure("nTreatments3"), human);
         Episode::State stateTreated = Episode::State (pgState | Episode::EVENT_IN_HOSPITAL);
         

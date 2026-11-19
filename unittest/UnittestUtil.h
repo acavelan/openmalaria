@@ -480,14 +480,22 @@ public:
         pkpd.medicateQueue.clear();
     }
     
+    /// Shared SoA columns for stand-alone test humans (rows accumulate; the
+    /// process is short and row identity is all that matters).
+    static HumanColumns& testCols() { static HumanColumns c; return c; }
     static unique_ptr<Host::Human> createHuman(SimTime dateOfBirth){
-        return unique_ptr<Host::Human>( new Host::Human(ctx(), dateOfBirth) );
+        return unique_ptr<Host::Human>( new Host::Human(ctx(), dateOfBirth, testCols()) );
     }
     // Set the WithinHost model used by the human, and return a pointer to it. Do not delete this!
     static WithinHost::WHInterface* setHumanWH(Host::Human& human, unique_ptr<WithinHost::WHInterface> wh){
         human.withinHostModel = std::move(wh);
         return &*human.withinHostModel;
     }
+    /// Slot-capsule access for the slot clamp contract (SlotAllocatorSuite)
+    static void setNumInfs(WithinHost::WHInterface& wh, int n){ wh.numInfs = n; }
+    static int getNumInfs(const WithinHost::WHInterface& wh){ return wh.numInfs; }
+    /// ModelOptions::reset is friend-gated; expose for suites needing a clean slate.
+    static void resetModelOptions(){ util::ModelOptions::reset(); }
 };
 
 #endif

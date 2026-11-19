@@ -25,6 +25,7 @@
 
 #include "Global.h"
 #include "core/RunContext.h"
+#include "humans/HostColumns.h"  // leaf: SoA columns owned by Population
 #include "interventions/ComponentId.h"  // leaf: Component::Type + ComponentId only
 #include "util/AgeGroupInterpolation.h"
 #include "util/sampler.h"
@@ -157,19 +158,19 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
      * 
      * Also has a switch to put individuals entirely outside transmission. */
     inline double relativeAvailabilityAge (double ageYears) const {
-        return outsideTransmission ? 0.0 : relAvailAge.eval( ageYears );
+        return outside_trans() ? 0.0 : relAvailAge.eval( ageYears );
     }
     
     /** Get the availability of this host to mosquitoes relative to an average
      * adult (including heterogeneity and age effects).
      *
      * Used to drive a simulation from an input EIR.
-     * Is relativeAvailabilityHet()*relativeAvailabilityAge(ageYears).
+     * Is rel_avail_het()*relativeAvailabilityAge(ageYears).
      * 
      * Mean output is less than 1.0 (roughly 1.0/invMeanPopAvail).
      */
     inline double relativeAvailabilityHetAge (double ageYears) const {
-        return relativeAvailabilityHet * relativeAvailabilityAge (ageYears);
+        return rel_avail_het() * relativeAvailabilityAge (ageYears);
     }
     
     /** Availability rate of human to mosquitoes (α_i). Equals 
@@ -230,39 +231,37 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
     /// Checkpointing
     template<class S>
     void operator& (S& stream) {
-        anophEntoAvailabilityRaw & stream;
-        anophEntoAvailability & stream;
-        anophProbMosqBiting & stream;
-        anophProbMosqResting & stream;
-        relativeAvailabilityHet & stream;
-        outsideTransmission & stream;
+        anoph_ento_raw() & stream;
+        anoph_ento_avail() & stream;
+        anoph_prob_biting() & stream;
+        anoph_prob_resting() & stream;
+        rel_avail_het() & stream;
+        outside_trans() & stream;
         copulaGaussianSamples & stream;
         checkpointIntervs( stream );
     }
     //@}
     
-    // Determines whether human is outside transmission
-    bool outsideTransmission;
+    /** Species availability rate of human to mosquitoes: per-species
+     * vector at this row (old anoph* members; refs keep the old syntax). */
+    std::vector<double>& anoph_ento_raw() const { return cols->anoph_ento_raw[row]; }
+    std::vector<double>& anoph_ento_avail() const { return cols->anoph_ento_avail[row]; }
+    std::vector<double>& anoph_prob_biting() const { return cols->anoph_prob_biting[row]; }
+    std::vector<double>& anoph_prob_resting() const { return cols->anoph_prob_resting[row]; }
+    /// Heterogeneity factor in availability (old relativeAvailabilityHet;
+    /// already multiplied into the entoAvailability HostMosquitoInteraction uses).
+    double& rel_avail_het() const { return cols->rel_avail_het[row]; }
+    /// Determines whether human is outside transmission (old bool member;
+    /// u8 column, same 1-byte wire shape, truthiness identical).
+    uint8_t& outside_trans() const { return cols->outside_trans[row]; }
 
-    // Heterogeneity factor in availability; this is already multiplied into the
-    // entoAvailability param stored in HostMosquitoInteraction.
-    double relativeAvailabilityHet;
+    /** Bind the host human's column row (Human ctor before initialise;
+     * Human::set_row rebinds — stale mirror = wrong host after renumber). */
+    void bind_columns( HumanColumns& c, size_t r ) { cols = &c; row = r; }
 
-    /** Species availability rate of human to mosquitoes */
-    vector<double> anophEntoAvailabilityRaw;
-
-    /** Species availability rate of human to mosquitoes, including heterogeneity factor
-     * and base rate, but excluding age and intervention factors. */
-    vector<double> anophEntoAvailability;
-    
-    /** Species probability of mosquito successfully biting host (P_B_i) in the absense of
-     * interventions. */
-    vector<double> anophProbMosqBiting;
-    
-    /** Species probability of mosquito escaping human and finding a resting site, then
-     * resting without dying, after biting the human (P_C_i * P_D_i) in the
-     * absense of interventions. */
-    vector<double> anophProbMosqResting;
+    /// The host human's SoA columns/row (see bind_columns).
+    HumanColumns* cols = nullptr;
+    size_t row = 0;
 
     /** @brief gaussian sample used in the deployment of intervention 
      * components using the gaussian copula transformation. The factors are 

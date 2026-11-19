@@ -46,7 +46,7 @@ const FlatTree *treeUCOfficial = 0, *treeUCSelfTreat = 0;
 void treeUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState ){    
     // If last treatment prescribed was in recent memory, consider second line.
     CaseType regimen = FirstLine;
-    if (cm.m_tLastTreatment + ClinicalModel::healthSystemMemory > ctx.clock.ts0()){
+    if (cm.t_last_treatment() + ClinicalModel::healthSystemMemory > ctx.clock.ts0()){
         pgState = Episode::State (pgState | Episode::SECOND_CASE);
         regimen = SecondLine;
     }
@@ -54,7 +54,7 @@ void treeUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx, Human& human, E
     cm.latestReport.update (ctx, human, Episode::State( pgState ) );
 
     // parity: d — clinical decision fraction draw order (plan §3d)
-    double x = human.rng.uniform_01();
+    double x = human.rng().uniform_01();
     if( x < CM5DayCommon::accessUCAny[regimen] * cm.m_treatmentSeekingFactor ){
         // Run tree (which may deploy treatment)
         DTExecCtx ec( ctx, human, sim::inYears( human.age( ctx.clock.ts0() ) ),
@@ -64,7 +64,7 @@ void treeUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx, Human& human, E
                 *treeUCSelfTreat : *treeUCOfficial, ec );
         
         if( output.treated ){   // if any treatment or intervention deployed
-            cm.m_tLastTreatment = ctx.clock.ts0();
+            cm.t_last_treatment() = ctx.clock.ts0();
             mon::recordEvent(CM5DayCommon::measures[regimen], human);
         }
         if( output.screened ){

@@ -39,10 +39,11 @@ AgeGroupInterpolator PerHost::relAvailAge;
 
 // -----  PerHost non-static -----
 
-PerHost::PerHost () :
-        outsideTransmission(false),
-        relativeAvailabilityHet(numeric_limits<double>::signaling_NaN())
+PerHost::PerHost ()
 {
+    // Transmission state lives in HumanColumns (bind_columns); old member
+    // inits (outsideTransmission=false, relativeAvailabilityHet=signaling_NaN)
+    // are now the column defaults in append_row.
 }
 
 PerHost::~PerHost() = default;
@@ -50,20 +51,20 @@ PerHost::PerHost( PerHost&& ) = default;
 PerHost& PerHost::operator= ( PerHost&& ) = default;
 
 void PerHost::initialise (RunContext& ctx, LocalRng& rng, double availabilityFactor) {
-    relativeAvailabilityHet = availabilityFactor;
-    anophEntoAvailabilityRaw.resize(PerHostAnophParams::numSpecies(ctx));
-    anophEntoAvailability.resize(PerHostAnophParams::numSpecies(ctx));
-    anophProbMosqBiting.resize(PerHostAnophParams::numSpecies(ctx));
-    anophProbMosqResting.resize(PerHostAnophParams::numSpecies(ctx));
+    rel_avail_het() = availabilityFactor;
+    anoph_ento_raw().resize(PerHostAnophParams::numSpecies(ctx));
+    anoph_ento_avail().resize(PerHostAnophParams::numSpecies(ctx));
+    anoph_prob_biting().resize(PerHostAnophParams::numSpecies(ctx));
+    anoph_prob_resting().resize(PerHostAnophParams::numSpecies(ctx));
 
     for(size_t i = 0; i < PerHostAnophParams::numSpecies(ctx); ++i) {
         const PerHostAnophParams& base = PerHostAnophParams::get(ctx, i);
-        anophEntoAvailabilityRaw[i] = base.entoAvailability->sample(rng);
-        anophEntoAvailability[i] = base.entoAvailabilityFactor * anophEntoAvailabilityRaw[i] * availabilityFactor;
-        anophProbMosqBiting[i] = base.probMosqBiting.sample(rng);
+        anoph_ento_raw()[i] = base.entoAvailability->sample(rng);
+        anoph_ento_avail()[i] = base.entoAvailabilityFactor * anoph_ento_raw()[i] * availabilityFactor;
+        anoph_prob_biting()[i] = base.probMosqBiting.sample(rng);
         auto pRest1 = base.probMosqFindRestSite.sample(rng);
         auto pRest2 = base.probMosqSurvivalResting.sample(rng);
-        anophProbMosqResting[i] = pRest1 * pRest2;
+        anoph_prob_resting()[i] = pRest1 * pRest2;
     }
 }
 
@@ -94,21 +95,21 @@ void PerHost::deployComponent( RunContext& ctx, LocalRng& rng, const HumanVector
 // an if() when interventions aren't present.
 // parity: c — history-ordered activeComponents FP product — multiply in vector order, not reassociated
 double PerHost::entoAvailabilityHetVecItv (size_t species) const {
-    double alpha_i = anophEntoAvailability[species];
+    double alpha_i = anoph_ento_avail()[species];
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
         alpha_i *= (*iter)->relativeAttractiveness( species );
     }
     return alpha_i;
 }
 double PerHost::probMosqBiting (size_t species) const {
-    double P_B_i = anophProbMosqBiting[species];
+    double P_B_i = anoph_prob_biting()[species];
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
         P_B_i *= (*iter)->preprandialSurvivalFactor( species );
     }
     return P_B_i;
 }
 double PerHost::probMosqResting (size_t species) const {
-    double pRest = anophProbMosqResting[species];
+    double pRest = anoph_prob_resting()[species];
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
         pRest *= (*iter)->postprandialSurvivalFactor( species );
     }
