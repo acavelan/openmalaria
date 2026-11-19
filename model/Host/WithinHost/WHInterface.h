@@ -25,6 +25,7 @@
 
 #include "Global.h"
 #include "core/RunContext.h"
+#include "infections/SlotAllocator.h"
 #include "util/random.h"
 #include "util/sampler.h"
 #include "util/errors.h"
@@ -351,12 +352,9 @@ public:
 
     InfectionOrigin getInfectionOrigin() const;
 
-    /** The maximum number of infections a human can have. The only real reason
-     * for this limit is to prevent incase bad input from causing the number of
-     * infections to baloon stupidly.
-     *
-     * Exact constraint is: _MOI <= MAX_INFECTIONS. */
-    static const int MAX_INFECTIONS = 21;
+    /** The maximum number of infections a human can have: owned by
+     * SlotAllocator (model/infections/SlotAllocator.h), the single clamp
+     * owner; see its comment for the two RNG-visible modes. */
 
 private:
     /// @brief Per-kind constructor/destructor fragments

@@ -78,7 +78,7 @@ void WHInterface::loadInfection_descriptive(istream& stream) {
 // kind (identical code, defined in CommonWithinHost.cpp).
 
 void WHInterface::importInfection_descriptive(LocalRng& rng){
-    if( numInfs < MAX_INFECTIONS ){
+    if( SlotAllocator::try_import(numInfs) ){   // mode A: at the cap, no draw at all
         m_cumulative_h += 1;
         numInfs += 1;
         // This is a hook, used by interventions. The newly imported infections
@@ -101,11 +101,10 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
     int nNewInfsToBeCreated_i = nNewInfs_i;
     int nNewInfsToBeCreated_l = nNewInfs_l;
 
-    nNewInfs_l = min(nNewInfs_l,MAX_INFECTIONS-numInfs);
-    nNewInfs_i = min(nNewInfs_i,MAX_INFECTIONS-numInfs-nNewInfs_l);
+    SlotAllocator::clamp_new( nNewInfs_i, nNewInfs_l, numInfs );   // mode B
 
     numInfs += nNewInfs_i;
-    assert( numInfs>=0 && numInfs<=MAX_INFECTIONS );
+    assert( numInfs>=0 && numInfs<=SlotAllocator::MAX_INFECTIONS );
     for( int i=0; i<nNewInfs_i; ++i ) {
         uint32_t genotype = ctx.genotypes.sampleGenotype(rng, genotype_weights_i);
 
@@ -123,7 +122,7 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
     assert( numInfs == static_cast<int>(infections.size()) );
 
     numInfs += nNewInfs_l;
-    assert( numInfs>=0 && numInfs<=MAX_INFECTIONS );
+    assert( numInfs>=0 && numInfs<=SlotAllocator::MAX_INFECTIONS );
     for( int i=0; i<nNewInfs_l; ++i ) {
         uint32_t genotype = ctx.genotypes.sampleGenotype(rng, genotype_weights_l);
 

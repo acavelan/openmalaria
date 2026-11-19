@@ -254,8 +254,7 @@ int InfectionIncidenceModel::numNewInfections (Human& human, double expectedNumI
     // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
     int n = human.rng.poisson(expectedNumInfections);
 
-    if( n > WithinHost::WHInterface::MAX_INFECTIONS )
-        n = WithinHost::WHInterface::MAX_INFECTIONS;
+    n = WithinHost::SlotAllocator::clamp_count( n );   // post-draw clamp
     return n;
   }
   

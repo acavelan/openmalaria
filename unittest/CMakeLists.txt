@@ -52,6 +52,7 @@ set (OM_CXXTEST_HEADERS
   RngGoldenSuite.h
   SamplerBatterySuite.h
   PercentileCFRSuite.h
+  SlotAllocatorSuite.h
   TwoRunsSuite.h
 )
 

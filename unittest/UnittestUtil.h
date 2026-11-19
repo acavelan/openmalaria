@@ -488,6 +488,11 @@ public:
         human.withinHostModel = std::move(wh);
         return &*human.withinHostModel;
     }
+    /// Slot-capsule access for the slot clamp contract (SlotAllocatorSuite)
+    static void setNumInfs(WithinHost::WHInterface& wh, int n){ wh.numInfs = n; }
+    static int getNumInfs(const WithinHost::WHInterface& wh){ return wh.numInfs; }
+    /// ModelOptions::reset is friend-gated; expose for suites needing a clean slate.
+    static void resetModelOptions(){ util::ModelOptions::reset(); }
 };
 
 #endif

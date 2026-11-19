@@ -108,7 +108,7 @@ void WHInterface::clearImmunity_falciparum() {
     m_cumulative_Y_lag = 0.0;
 }
 void WHInterface::importInfection_common(LocalRng& rng){
-    if( numInfs < MAX_INFECTIONS ){
+    if( SlotAllocator::try_import(numInfs) ){   // mode A: at the cap, no draw at all
         m_cumulative_h += 1;
         numInfs += 1;
         // This is a hook, used by interventions. The newly imported infections
@@ -128,12 +128,11 @@ void WHInterface::update_common(Host::Human &human, LocalRng& rng, int &nNewInfs
 {
     // Note: adding infections at the beginning of the update instead of the end
     // shouldn't be significant since before latentp delay nothing is updated.
-    nNewInfs_l = min(nNewInfs_l,MAX_INFECTIONS-numInfs);
-    nNewInfs_i = min(nNewInfs_i,MAX_INFECTIONS-numInfs-nNewInfs_l);
+    SlotAllocator::clamp_new( nNewInfs_i, nNewInfs_l, numInfs );   // mode B
 
-    int nNewInfsIgnored = nNewInfs_i + nNewInfs_l - (MAX_INFECTIONS-numInfs);
+    int nNewInfsIgnored = nNewInfs_i + nNewInfs_l - SlotAllocator::free_slots(numInfs);
 
-    assert( numInfs>=0 && numInfs<=MAX_INFECTIONS );
+    assert( numInfs>=0 && numInfs<=SlotAllocator::MAX_INFECTIONS );
 
     int nNewInfsDiscarded = 0;
     for( int i=0; i<nNewInfs_i; ++i ) {
