@@ -22,10 +22,10 @@ Crash-recovery file. Update EVERY green commit. Baseline p4a-green: model **19,1
 - **ClinicalModel** (base + CM5DayCommon + DecisionTree5Day + ImmediateOutcomes + ClinicalEventScheduler → ONE final class, `enum class Kind`; behaviours became free fns clinicalUpdate5Day/treeUncomplicatedEvent/immOutUncomplicatedEvent/esClinicalUpdate): Δ **−22** (cum. −284), unittest −7. Gates: ctest 52/52, unittest 91/91 (PercentileCFRSuite probe deleted — getCommunityCFR now public), T1 tier-a 53/53. ES per-human fields merged as es* (unused by 5-day kinds, never serialized there); checkpoint dispatches per kind, bytes frozen; ctor keeps ES tSF!=1 throw. Old classes survive ONLY as static config holders (xml/healthSystem.cpp setHS API byte-identical). es* fields left uninit-cleared: ctor inits all (esPreviousDensity=NaN like old ES).
 
 ## Queue (risk order, small first)
-1–7 DONE (DecayFunction, AgeGroupInterp, Incidence, Pathogenesis, ClinicalModel, EmergenceRateEstimator, LSTMDrug)
+1–8 DONE (DecayFunction, AgeGroupInterp, Incidence, Pathogenesis, ClinicalModel, EmergenceRateEstimator, LSTMDrug, AnophelesModel)
 7. LSTMDrug: Δ **−177** LOC (base + OneComp/ThreeComp/Conversion → one final class, Kind tag; per-kind .cpp kept as member-def files drugFactor_X/updateConcentration_X/checkpoint_X; ctor keeps per-kind RNG order — **fixed sign bug: nkM_sample must be -metabolite.sample_elim_rate**; 3 subclass headers deleted; factory picks Kind from conversion_rate/k12; checkpoint wire frozen per kind). Gates: 52/52, 91/91, tier-a 53/53.
-8. AnophelesModel/SimpleMPD (optional member + 4 hooks) — NEXT
-9. Sampler (deferred: LognormalSampler is a concrete member type in ITN/IRS/GVI/PkPd/vivax — churn; not HumanInterventionComponent so still 4b scope) — tier-b seeds 1–4 DUE after this 9th
+8. AnophelesModel/SimpleMPD: Δ **−117** LOC (subclass → nested SimpleMPDState behind unique_ptr; 5 guarded hooks, getResRequirements = base dropped; wire order kept; trap: base init2 mutates sigma_dff param — reuse its local tsP_dff, don't recompute from incremented sigma_dff). Gates: 52/52, 91/91, tier-a 53/53.
+9. Sampler (LognormalSampler is a concrete member type in ITN/IRS/GVI/PkPd/vivax — churn expected; not HumanInterventionComponent so still 4b scope) — NEXT — tier-b seeds 1–4 DUE after this 9th
 10. TransmissionModel (PerHost stays for phase 5)
 11. WHInterface + WHFalciparum/Descriptive/Vivax/Dummy (largest; per-species infection models inside)
 12. immunity components (InfectionImmunity* — find rows in census)
@@ -39,7 +39,7 @@ Crash-recovery file. Update EVERY green commit. Baseline p4a-green: model **19,1
 - Hierarchy collapse hits INHERITED-SCOPE name lookup: base-class statics resolved unqualified inside every member definition body (update fns AND xml/healthSystem.cpp setHealthSystem/setParameters bodies). Qualify per body (CM5DayCommon::/ClinicalModel::…) or the error only appears post-edit. Convert via scripted pass from `git show HEAD:file` (fresh anchors + asserts), never from a possibly-stale working copy.
 
 ## CRASH-CHECKPOINT (2026-11-19, post-hierarchy-7)
-- HEAD: `a726acdd` LSTMDrug green (ctest 52/52, unittest 91/91, tier-a 53/53). Cum. model LOC −462. Tree clean apart from this HANDOFF.
-- NEXT: hierarchy 8 = AnophelesModel/SimpleMPD (model/Transmission/Anopheles/AnophelesModel.h + SimpleMPDAnophelesModel.h; census plan §5: SimpleMPD -> optional member + 4 guarded hooks; solver flip phase 8). Then Sampler (tier-b seeds 1–4 DUE after 9th), TransmissionModel, WHInterface, immunity. FINAL gate at end (Gate commands section).
+- HEAD: `27bfea20` AnophelesModel/SimpleMPD green (ctest 52/52, unittest 91/91, tier-a 53/53). Cum. model LOC −579. Tree clean apart from this HANDOFF.
+- NEXT: hierarchy 9 = Sampler (model/util/sampler.h: Sampler base + Lognormal/Gamma -> Kind tag; LognormalSampler used as concrete member in interventions/PkPd/vivax — expect churn). TIER-B seeds 1–4 DUE right after its commit (9th). Then TransmissionModel, WHInterface, Infection (4b row, big: slots+tag columns — assess whether mechanical or defer w/ note). FINAL gate at end (Gate commands section).
 - Untracked PROMPT.md/email = user files, leave.
 - Follow-up deliberately deferred (not blocking): move setHS-overwritten clinical statics (treeUCOfficial, escm_*, accessUCAny…) to ctx.ext — needs TwoRunsSuite rerun; optional.
