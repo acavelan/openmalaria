@@ -29,6 +29,7 @@
 // run_simulation() (and by UnittestUtil for tests).
 
 #include "Clinical/CMDecisionTree.h"
+#include "mon/Monitoring.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/Infection/CommonInfection.h"
@@ -85,6 +86,11 @@ struct RunExtensions {
     /// Which vaccine component deployment monitoring reports on.
     interventions::ComponentId vaccineReportComponent =
         interventions::ComponentId::wholePop();
+
+    /// Monitoring runtime state (survey numbers, stores, conditions; mon/).
+    /// (In ext, not RunContext: the state's map keys need ComponentId
+    /// complete, which would cycle RunContext.h through Interfaces.h.)
+    mon::internal::RuntimeState monitoring;
 };
 
 /// Create RunContext::ext if not yet present (idempotent).

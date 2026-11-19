@@ -80,7 +80,8 @@ public:
         RUN_CM_TREE = 0x10000,      ///< Flag to indicate that CM tree should be run now or after a delay
     };
     
-    Episode() :
+    explicit Episode(RunContext& ctx) :
+            rctx(&ctx),
             time(sim::never()),
             surveyPeriod(mon::NOT_USED),
             ageGroup(0),
@@ -130,6 +131,8 @@ private:
     void report();
 
     bool healthSystemMemoryFix = false;
+    /// The run this episode reports to (set at construction).
+    RunContext* rctx;
 };
 
 } }

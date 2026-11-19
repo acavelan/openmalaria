@@ -153,20 +153,20 @@ public:
     /** Set some summary items.
      *
      * Overriding functions should call this base version too. */
-    virtual void summarize()
+    virtual void summarize(RunContext& ctx)
     {
-        mon::recordStat(mon::measure("nTransmit"), laggedKappa[ctx.clock.moduloSteps(ctx.clock.now(), laggedKappa.size())]);
-        mon::recordStat(mon::measure("annAvgK"), _annualAverageKappa);
+        mon::recordStat(ctx, mon::measure("nTransmit"), laggedKappa[ctx.clock.moduloSteps(ctx.clock.now(), laggedKappa.size())]);
+        mon::recordStat(ctx, mon::measure("annAvgK"), _annualAverageKappa);
 
-        if (!mon::isReported()) return; // cannot use counters below when not reporting
+        if (!mon::isReported(ctx)) return; // cannot use counters below when not reporting
 
         double duration = ctx.clock.inSteps(ctx.clock.now() - lastSurveyTime);
         if (duration > 0.0)
         {
-            mon::recordStat(mon::measure("inputEIR"), surveyInputEIR / duration);
-            mon::recordStat(mon::measure("simulatedEIR"), surveySimulatedEIR / duration);
-            mon::recordStat(mon::measure("simulatedEIR_Introduced"), surveySimulatedEIR_i / duration);
-            mon::recordStat(mon::measure("simulatedEIR_Indigenous"), surveySimulatedEIR_l / duration);
+            mon::recordStat(ctx, mon::measure("inputEIR"), surveyInputEIR / duration);
+            mon::recordStat(ctx, mon::measure("simulatedEIR"), surveySimulatedEIR / duration);
+            mon::recordStat(ctx, mon::measure("simulatedEIR_Introduced"), surveySimulatedEIR_i / duration);
+            mon::recordStat(ctx, mon::measure("simulatedEIR_Indigenous"), surveySimulatedEIR_l / duration);
         }
 
         surveyInputEIR = 0.0;

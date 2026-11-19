@@ -53,9 +53,9 @@ namespace {
 
 /// Raw IEEE-754 bit pattern of every monitoring report value, in store order
 /// (contract (g): store order is deterministic). NaN-safe: compares bits.
-void captureMonStores(std::vector<uint64_t>& out)
+void captureMonStores(OM::RunContext& ctx, std::vector<uint64_t>& out)
 {
-    for (const OM::mon::internal::MeasureStore& store : OM::mon::internal::runtime.stores) {
+    for (const OM::mon::internal::MeasureStore& store : ctx.ext->monitoring.stores) {
         out.push_back(uint64_t(INT64_MAX) + 1 + static_cast<uint64_t>(store.output.measure));
         out.push_back(store.size());
         std::visit([&out](const auto& reports) {
@@ -74,10 +74,10 @@ struct RunCapture {
     std::vector<char> surveyBytes;
 };
 
-RunCapture captureRun(const std::string& surveyFile)
+RunCapture captureRun(RunContext& ctx, const std::string& surveyFile)
 {
     RunCapture c;
-    captureMonStores(c.monValues);
+    captureMonStores(ctx, c.monValues);
     std::ifstream in(surveyFile, std::ios::in | std::ios::binary);
     c.surveyBytes.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
     return c;
@@ -127,7 +127,7 @@ public:
             try {
                 RunContext ctx; // each run gets a fresh context: runs must not share state
                 OM::run_simulation(ctx, scenarioFile);
-                (run == 1 ? run1 : run2) = captureRun("tworuns.bin");
+                (run == 1 ? run1 : run2) = captureRun(ctx, "tworuns.bin");
             } catch (const std::exception& e) {
                 ok = false;
                 err = "run " + std::to_string(run) + ": " + e.what();

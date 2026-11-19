@@ -269,7 +269,7 @@ public:
         dummyXML::monitoring.setSurveys( dummyXML::surveys );
         dummyXML::scenario.setMonitoring( dummyXML::monitoring );
         util::ModelNameProvider modelNameProvider(dummyXML::scenario.getModel());
-        ctx().clock.init( dummyXML::scenario, modelNameProvider );
+        ctx().clock.init( ctx(), dummyXML::scenario, modelNameProvider );
         
         // we could just use zero, but we may spot more errors by using some weird number
         ctx().clock.t0 = ctx().clock.from_years_n(83.2591);

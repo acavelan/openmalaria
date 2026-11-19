@@ -157,7 +157,7 @@ public:
     //@}
 
     /// Initial set-up: called by run_simulation via Scenario::load.
-    void init( const scnXml::Scenario& scenario, util::ModelNameProvider mnp );
+    void init( RunContext& ctx, const scnXml::Scenario& scenario, util::ModelNameProvider mnp );
 
     /** Sets up time step duration: either a named model's interval or the
      * scenario's explicit interval. Must be 1 or 5 days (checked by

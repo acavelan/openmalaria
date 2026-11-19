@@ -43,12 +43,12 @@ extern bool bugfix_max_dens;    // DescriptiveInfection.cpp
 bool reportPatentInfected = false;
 // -----  Initialization  -----
 
-void DescriptiveWithinHostModel::initDescriptive(){
+void DescriptiveWithinHostModel::initDescriptive(RunContext& ctx){
     reportPatentInfected = (
-                                mon::isUsed(mon::measure("totalPatentInf"))
-                                || mon::isUsed(mon::measure("totalPatentInf_Imported"))
-                                || mon::isUsed(mon::measure("totalPatentInf_Introduced"))
-                                || mon::isUsed(mon::measure("totalPatentInf_Indigenous"))
+                                mon::isUsed(ctx, mon::measure("totalPatentInf"))
+                                || mon::isUsed(ctx, mon::measure("totalPatentInf_Imported"))
+                                || mon::isUsed(ctx, mon::measure("totalPatentInf_Introduced"))
+                                || mon::isUsed(ctx, mon::measure("totalPatentInf_Indigenous"))
                             );
 }
 

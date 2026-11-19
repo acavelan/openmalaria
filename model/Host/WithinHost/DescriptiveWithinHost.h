@@ -39,7 +39,7 @@ namespace OM { namespace WithinHost {
 class DescriptiveWithinHostModel : public WHFalciparum {
 public:
     /// Must run after monitoring is set up.
-    static void initDescriptive();
+    static void initDescriptive(RunContext& ctx);
     
     /// Create a new WHM
     DescriptiveWithinHostModel( RunContext& ctx, LocalRng& rng, double comorbidityFactor );

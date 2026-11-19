@@ -494,13 +494,13 @@ void VectorModel::uninfectVectors()
         species[i]->uninfectVectors();
 }
 
-void VectorModel::summarize()
+void VectorModel::summarize(RunContext& ctx)
 {
-    TransmissionModel::summarize();
+    TransmissionModel::summarize(ctx);
 
     for (size_t i = 0; i < speciesIndex.size(); ++i)
     {
-        species[i]->summarize(i);
+        species[i]->summarize(ctx, i);
     }
 }
 

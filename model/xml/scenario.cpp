@@ -88,9 +88,9 @@ extern bool reportInfectedOrPatentInfected;
 extern map<string, Diagnostic> diagnostic_set;
 
 void WHInterface::init( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario ) {
-    reportInfectionsByGenotype = mon::isUsed(mon::measure("nInfectByGenotype")) ||
-        mon::isUsed(mon::measure("nPatentByGenotype")) ||
-        mon::isUsed(mon::measure("logDensByGenotype"));
+    reportInfectionsByGenotype = mon::isUsed(ctx, mon::measure("nInfectByGenotype")) ||
+        mon::isUsed(ctx, mon::measure("nPatentByGenotype")) ||
+        mon::isUsed(ctx, mon::measure("logDensByGenotype"));
     
     if( util::ModelOptions::option( util::VIVAX_SIMPLE_MODEL ) ){
         opt_vivax_simple = true;
@@ -119,7 +119,7 @@ void WHInterface::init( RunContext& ctx, const OM::Parameters& parameters, const
         if( opt_common_whm ){
             CommonWithinHost::init( ctx, scenario );
         }else{
-            DescriptiveWithinHostModel::initDescriptive();
+            DescriptiveWithinHostModel::initDescriptive(ctx);
         }
     }
 }
@@ -170,8 +170,8 @@ void CommonWithinHost::init( RunContext& ctx, const scnXml::Scenario& scenario )
     // hetWeightMult must be large enough that birth weight is at least 0.5 kg:
     minHetMassMult = 0.5 / massByAge.eval( 0.0 );
     
-    reportInfectedOrPatentInfected = mon::isUsed(mon::measure("totalInfs")) ||
-        mon::isUsed(mon::measure("totalPatentInf"));
+    reportInfectedOrPatentInfected = mon::isUsed(ctx, mon::measure("totalInfs")) ||
+        mon::isUsed(ctx, mon::measure("totalPatentInf"));
     
     PkPd::LSTMModel::init( ctx, scenario );
 }
@@ -504,7 +504,7 @@ void diagnostics::init( RunContext& ctx, const Parameters& parameters, const scn
 
 namespace OM {
 
-void SimClock::init( const scnXml::Scenario& scenario, util::ModelNameProvider mnp ){
+void SimClock::init( RunContext& ctx, const scnXml::Scenario& scenario, util::ModelNameProvider mnp ){
     initInterval(scenario, mnp);
     steps_per_year = inSteps(sim::oneYear());
     years_per_step = 1.0 / steps_per_year;
@@ -525,7 +525,7 @@ void SimClock::init( const scnXml::Scenario& scenario, util::ModelNameProvider m
     }
 
     interv = sim::never(); // large negative number
-    end_date = mon::readSurveyDates(*this, mon );
+    end_date = mon::readSurveyDates(ctx, mon );
 }
 
 void SimClock::initInterval(const scnXml::Scenario& scenario, util::ModelNameProvider mnp)

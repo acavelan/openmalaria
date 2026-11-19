@@ -35,7 +35,7 @@ class SimClock;
 namespace OM { class RunContext;
 namespace mon {
 
-SimTime readSurveyDates(const SimClock& clock, const scnXml::Monitoring& monitoring);
+SimTime readSurveyDates(RunContext& ctx, const scnXml::Monitoring& monitoring);
 void initReporting(RunContext& ctx, const scnXml::Scenario& scenario);
 void initCohorts(RunContext& ctx, const scnXml::Monitoring& monitoring);
 

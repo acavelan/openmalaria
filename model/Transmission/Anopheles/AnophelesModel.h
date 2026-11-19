@@ -392,7 +392,7 @@ public:
     }
     
     /// Write some per-species summary information.
-    void summarize( size_t species )const;
+    void summarize( RunContext& ctx, size_t species )const;
     //@}
     
     virtual void checkpoint (istream& stream){ (*this) & stream; }
