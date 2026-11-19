@@ -24,7 +24,6 @@
 #include "util/errors.h"
 #include "util/CommandLine.h"
 #include "util/UnitParse.h"
-#include "schema/monitoring.h"
 
 #include <vector>
 #include <map>
@@ -50,54 +49,6 @@ namespace OM {
         SimTime ctsPeriod = sim::zero();
 
         bool duringInit = false;
-
-        /* Initialise: enable outputs registered and requested in XML.
-         * Search for Continuous::registerCallback to see outputs available. */
-        void init (const scnXml::Monitoring& monitoring, bool isCheckpoint) {
-            const scnXml::Monitoring::ContinuousOptional& ctsOpt = monitoring.getContinuous();
-            if( !ctsOpt.present() ) {
-                ctsPeriod = sim::zero();
-                return;
-            }
-            const auto& options = ctsOpt.get();
-            try{
-                //NOTE: if changing XSD, this should not have a default unit:
-                ctsPeriod = UnitParse::readShortDuration( options.getPeriod(), UnitParse::STEPS );
-                if( ctsPeriod < sim::oneTS() )
-                    throw util::format_error("must be >= 1 time step");
-            }catch( const util::format_error& e ){
-                throw xml_scenario_error( string("monitoring/continuous/period: ").append(e.message()) );
-            }
-
-            if( options.getDuringInit().present() )
-                duringInit = options.getDuringInit().get();
-
-            for (const auto& option : options.getOption()) {
-                auto registeredOutput = registered.find(option.getName());
-                if (registeredOutput == registered.end()) {
-                    throw xml_scenario_error("monitoring.continuous: no output " + string(option.getName()));
-                }
-                if (option.getValue()) toReport.push_back(registeredOutput->second);
-            }
-
-            const string filename = util::CommandLine::getCtsoutName();
-
-            if( isCheckpoint ){
-                // When loading a check-point, we resume reporting to this file.
-                ctsOStream.open(filename, ios::binary|ios::ate|ios::in|ios::out);
-                if( ctsOStream.fail() )
-                    throw util::checkpoint_error ("Continuous: resume error (no file)");
-                return; // checkpoint() sets the saved output position later
-            }
-
-            ctsOStream.open(filename, ios::binary|ios::out);
-            ctsOStream << "##\t##\n"; // live-graph needs a delimiter specifier when it is not a comma
-            if( duringInit ) ctsOStream << "simulation time\t";
-            ctsOStream << "timestep"; // TODO: change to days or remove or leave?
-            for (const auto& report : toReport) ctsOStream << std::get<0>(report);
-            ctsOStream << '\n' << flush;
-            streamOffset = ctsOStream.tellp();
-        }
 
         void checkpoint (ostream& stream){
             if( ctsPeriod == sim::zero() )
