@@ -20,10 +20,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-// p8-files: InfectionIncidenceModel.h sits in the Human/WH chain; the per-Kind
+// p8-files: IncidenceModel.h sits in the Human/WH chain; the per-Kind
 // incidence formula bodies stay here (wide-cone rule).
 #include "Context.h"
-#include "Host/InfectionIncidenceModel.h"
+#include "Host/IncidenceModel.h"
 #include "Host/Human.h"
 #include "Transmission/PerHost.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -69,11 +69,11 @@ bool opt_neg_bin_mass_action = false, opt_lognormal_mass_action = false, opt_no_
      opt_any_het = false, opt_vaccine_genotype = false;
 
 // ———  variables  ———
-int InfectionIncidenceModel::ctsNewInfections = 0;
+int IncidenceModel::ctsNewInfections = 0;
 
 // -----  static initialisation  -----
 
-void InfectionIncidenceModel::init(Context& ctx, const Parameters& parameters) {
+void IncidenceModel::init(Context& ctx, const Parameters& parameters) {
     baseline_avail_shape_param = parameters[Parameter::BASELINE_AVAILABILITY_SHAPE];
     baseline_avail_offset = 0.5 * pow(baseline_avail_shape_param, 2);
 
@@ -125,32 +125,32 @@ void InfectionIncidenceModel::init(Context& ctx, const Parameters& parameters) {
     }
 
     mon::Continuous::registerCallback(ctx, "new infections", "\tnew infections",
-                                      &InfectionIncidenceModel::ctsReportNewInfections);
+                                      &IncidenceModel::ctsReportNewInfections);
 }
 
 // -----  other static methods  -----
 
-void InfectionIncidenceModel::ctsReportNewInfections(const vector<Host::Human>&, ostream& stream) {
+void IncidenceModel::ctsReportNewInfections(const vector<Host::Human>&, ostream& stream) {
     stream << '\t' << ctsNewInfections;
     ctsNewInfections = 0;
 }
 
 // -----  non-static non-checkpointing constructors  -----
 
-InfectionIncidenceModel* InfectionIncidenceModel::createModel(Context& ctx) {
+IncidenceModel* IncidenceModel::createModel(Context& ctx) {
     // Kind from model options (read once in init; same dispatch as old factory)
     if (opt_neg_bin_mass_action)
-        return new InfectionIncidenceModel(ctx, Kind::NegBinom);
+        return new IncidenceModel(ctx, Kind::NegBinom);
     if (opt_lognormal_mass_action)
-        return new InfectionIncidenceModel(ctx, Kind::LogNormal);
+        return new IncidenceModel(ctx, Kind::LogNormal);
     if (opt_any_het)
-        return new InfectionIncidenceModel(ctx, Kind::HetWorkaround);
-    return new InfectionIncidenceModel(ctx, Kind::Default);
+        return new IncidenceModel(ctx, Kind::HetWorkaround);
+    return new IncidenceModel(ctx, Kind::Default);
 }
 
 // -----  non-static methods  -----
 
-double InfectionIncidenceModel::getAvailabilityFactor(LocalRng& rng, double baseAvailability) {
+double IncidenceModel::getAvailabilityFactor(LocalRng& rng, double baseAvailability) {
     switch (kind) {
     case Kind::NegBinom:
         // Gamma sample with k=BaselineAvailabilityShapeParam; mean is baseAvailability
@@ -169,11 +169,11 @@ double InfectionIncidenceModel::getAvailabilityFactor(LocalRng& rng, double base
     }
 }
 
-void InfectionIncidenceModel::summarize(const Host::Human& human) {
+void IncidenceModel::summarize(const Host::Human& human) {
     mon::recordStat(mon::measure("nExpectd"), human, m_pInfected);
 }
 
-double InfectionIncidenceModel::getModelExpectedInfections(LocalRng& rng, double effectiveEIR,
+double IncidenceModel::getModelExpectedInfections(LocalRng& rng, double effectiveEIR,
                                                            const Transmission::PerHost& phTrans) {
     switch (kind) {
     case Kind::HetWorkaround: // parity: old HeterogeneityWorkaroundII formula
@@ -198,7 +198,7 @@ double InfectionIncidenceModel::getModelExpectedInfections(LocalRng& rng, double
     }
 }
 
-double InfectionIncidenceModel::susceptibility() {
+double IncidenceModel::susceptibility() {
     if (opt_no_pre_erythrocytic) {
         //! The average proportion of bites from sporozoite positive mosquitoes resulting in infection.
         /*! 
@@ -214,7 +214,7 @@ double InfectionIncidenceModel::susceptibility() {
     }
 }
 
-double InfectionIncidenceModel::expectedNumNewInfections(OM::Host::Human& human, double effectiveEIR) {
+double IncidenceModel::expectedNumNewInfections(OM::Host::Human& human, double effectiveEIR) {
     // error check (should be OK if kappa is checked, for nonVector model):
     if (!(std::isfinite)(effectiveEIR)) {
         ostringstream out;
@@ -242,7 +242,7 @@ double InfectionIncidenceModel::expectedNumNewInfections(OM::Host::Human& human,
     return expectedNumInfections;
 }
 
-int InfectionIncidenceModel::numNewInfections(Human& human, double expectedNumInfections) {
+int IncidenceModel::numNewInfections(Human& human, double expectedNumInfections) {
     if (expectedNumInfections > 0.0000001) {
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
         int n = human.rng().poisson(expectedNumInfections);
@@ -258,7 +258,7 @@ int InfectionIncidenceModel::numNewInfections(Human& human, double expectedNumIn
     return 0;
 }
 
-void InfectionIncidenceModel::reportNumNewInfections(Human& human, int newNumInfections_i, int newNumInfections_l) {
+void IncidenceModel::reportNumNewInfections(Human& human, int newNumInfections_i, int newNumInfections_l) {
     mon::recordEvent(mon::measure("nNewInfections"), human, newNumInfections_i + newNumInfections_l);
     mon::recordEvent(mon::measure("nNewInfections_Introduced"), human, newNumInfections_i);
     mon::recordEvent(mon::measure("nNewInfections_Indigenous"), human, newNumInfections_l);

@@ -108,7 +108,7 @@ class Episode {
     /// be reported (e.g. indirect deaths are reported independantly).
     Episode::State state;
 
-    WithinHost::InfectionOrigin infectionType = WithinHost::InfectionOrigin::Indigenous;
+    WithinHost::Origin infectionType = WithinHost::Origin::Indigenous;
 
   private:
     /** Report a clinical episode.

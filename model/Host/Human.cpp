@@ -22,7 +22,7 @@
 
 #include "Context.h"
 #include "Host/Human.h"
-#include "Host/InfectionIncidenceModel.h"
+#include "Host/IncidenceModel.h"
 #include "Clinical/Model.h"
 #include "Host/WithinHost/WHInterface.h"
 
@@ -119,7 +119,7 @@ HumanHet hetSample(util::LocalRng& rng)
 }
 
 Human::Human(Context& ctx, SimTime dateOfBirth, HumanColumns& columns)
-    : ctx(&ctx), cols(&columns), infIncidence(InfectionIncidenceModel::createModel(ctx)) {
+    : ctx(&ctx), cols(&columns), infIncidence(IncidenceModel::createModel(ctx)) {
     // parity: order — each Human copies+seeds its LocalRng from the master at
     // construction (append_row builds the rng column row; same ctor point as
     // the old member init): human-creation order == master consumption order;

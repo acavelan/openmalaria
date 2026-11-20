@@ -75,9 +75,9 @@ void Episode::report() {
             }
         } else { // UC or UC2
             mon::recordEvent(*rctx, mon::measure("nUncomp"), surveyPeriod, ageGroup, cohortSet);
-            if (infectionType == WithinHost::InfectionOrigin::Indigenous)
+            if (infectionType == WithinHost::Origin::Indigenous)
                 mon::recordEvent(*rctx, mon::measure("nUncomp_Indigenous"), surveyPeriod, ageGroup, cohortSet);
-            else if (infectionType == WithinHost::InfectionOrigin::Introduced)
+            else if (infectionType == WithinHost::Origin::Introduced)
                 mon::recordEvent(*rctx, mon::measure("nUncomp_Introduced"), surveyPeriod, ageGroup, cohortSet);
             else
                 mon::recordEvent(*rctx, mon::measure("nUncomp_Imported"), surveyPeriod, ageGroup, cohortSet);

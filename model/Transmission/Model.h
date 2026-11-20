@@ -607,7 +607,7 @@ class Model {
     const double min_EIR_mult = 0.01;
 
     //! Variance of Infection Rate according to fielddata == 1.0 (totalInfectionrateVariance
-    //! member removed by audit sweep; the formula using it is documented in InfectionIncidenceModel.cpp)
+    //! member removed by audit sweep; the formula using it is documented in IncidenceModel.cpp)
 
     //! The duration of sporogony in time steps (doesn't need checkpointing)
     SimTime nSpore = sim::never();

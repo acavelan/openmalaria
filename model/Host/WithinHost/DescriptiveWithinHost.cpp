@@ -68,7 +68,7 @@ void WHDescriptive::importInfection(LocalRng& rng) {
         // should use initial frequencies to select genotypes.
         vector<double> weights(0); // zero length: signal to use initial frequencies
         uint32_t genotype = ctx.genotypes.sampleGenotype(rng, weights);
-        infections.push_back(new DescriptiveInfection(ctx, rng, genotype, InfectionOrigin::Imported));
+        infections.push_back(new DescriptiveInfection(ctx, rng, genotype, Origin::Imported));
     }
     assert(numInfs == static_cast<int>(infections.size()));
 }
@@ -90,10 +90,10 @@ void WHDescriptive::update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, i
     struct Side {
         vector<double>& weights;
         int& nNewInfs;
-        InfectionOrigin origin;
+        Origin origin;
     };
-    Side sides[] = {{genotype_weights_i, nNewInfs_i, InfectionOrigin::Introduced},
-                    {genotype_weights_l, nNewInfs_l, InfectionOrigin::Indigenous}};
+    Side sides[] = {{genotype_weights_i, nNewInfs_i, Origin::Introduced},
+                    {genotype_weights_l, nNewInfs_l, Origin::Indigenous}};
     for (Side& side : sides) {
         numInfs += side.nNewInfs;
         assert(numInfs >= 0 && numInfs <= SlotAllocator::MAX_INFECTIONS);
@@ -200,23 +200,23 @@ void WHDescriptive::update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, i
 bool WHDescriptive::summarize(Host::Human& human) const {
     pathogenesisModel->summarize(human);
 
-    InfectionOrigin infectionType = get_infection_origin(infections);
+    Origin infectionType = get_infection_origin(infections);
 
     // If the number of infections is 0 and parasite density is positive we default to Indigenous
     if (infections.size() > 0) {
         mon::recordStat(mon::measure("nInfect"), human);
-        if (infectionType == InfectionOrigin::Indigenous)
+        if (infectionType == Origin::Indigenous)
             mon::recordStat(mon::measure("nInfect_Indigenous"), human);
-        else if (infectionType == InfectionOrigin::Introduced)
+        else if (infectionType == Origin::Introduced)
             mon::recordStat(mon::measure("nInfect_Introduced"), human);
         else
             mon::recordStat(mon::measure("nInfect_Imported"), human);
 
         int nImported = 0, nIntroduced = 0, nIndigenous = 0;
         for (auto inf = infections.begin(); inf != infections.end(); ++inf) {
-            if ((*inf)->origin() == InfectionOrigin::Indigenous)
+            if ((*inf)->origin() == Origin::Indigenous)
                 nIndigenous++;
-            else if ((*inf)->origin() == InfectionOrigin::Introduced)
+            else if ((*inf)->origin() == Origin::Introduced)
                 nIntroduced++;
             else
                 nImported++;
@@ -234,9 +234,9 @@ bool WHDescriptive::summarize(Host::Human& human) const {
                 if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), (*inf)->getDensity(),
                                                                       std::numeric_limits<double>::quiet_NaN())) {
                     mon::recordStat(mon::measure("totalPatentInf"), human);
-                    if ((*inf)->origin() == InfectionOrigin::Indigenous)
+                    if ((*inf)->origin() == Origin::Indigenous)
                         mon::recordStat(mon::measure("totalPatentInf_Indigenous"), human);
-                    else if ((*inf)->origin() == InfectionOrigin::Introduced)
+                    else if ((*inf)->origin() == Origin::Introduced)
                         mon::recordStat(mon::measure("totalPatentInf_Introduced"), human);
                     else
                         mon::recordStat(mon::measure("totalPatentInf_Imported"), human);
@@ -267,11 +267,11 @@ bool WHDescriptive::summarize(Host::Human& human) const {
     if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), totalDensity,
                                                           std::numeric_limits<double>::quiet_NaN())) {
         mon::recordStat(mon::measure("nPatent"), human);
-        if (infectionType == InfectionOrigin::Imported)
+        if (infectionType == Origin::Imported)
             mon::recordStat(mon::measure("nPatent_Imported"), human);
-        else if (infectionType == InfectionOrigin::Introduced)
+        else if (infectionType == Origin::Introduced)
             mon::recordStat(mon::measure("nPatent_Introduced"), human);
-        else if (infectionType == InfectionOrigin::Indigenous)
+        else if (infectionType == Origin::Indigenous)
             mon::recordStat(mon::measure("nPatent_Indigenous"), human);
 
         if (totalDensity > 1e-10)

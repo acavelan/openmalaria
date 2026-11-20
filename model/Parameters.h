@@ -79,7 +79,7 @@ enum class Parameter {
     ALPHA,
     //@}
     DENSITY_BIAS_NON_GARKI,       ///< Used in Diagnostic
-    BASELINE_AVAILABILITY_SHAPE,  ///< Used in InfectionIncidenceModel
+    BASELINE_AVAILABILITY_SHAPE,  ///< Used in IncidenceModel
     LOG_ODDS_RATIO_CF_COMMUNITY,  ///< Used in CaseManagementModel
     INDIRECT_RISK_COFACTOR,       ///< Used in Model
     NON_MALARIA_INFANT_MORTALITY, ///< Used in Summary

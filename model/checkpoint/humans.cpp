@@ -34,7 +34,7 @@
 
 #include "Population.h"
 #include "Host/Human.h"
-#include "Host/InfectionIncidenceModel.h"
+#include "Host/IncidenceModel.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Pathogenesis.h"
 #include "Clinical/Model.h"
@@ -46,7 +46,7 @@ namespace OM {
 
 namespace Host {
 
-void checkpoint(checkpoint::Archive& a, InfectionIncidenceModel& m) {
+void checkpoint(checkpoint::Archive& a, IncidenceModel& m) {
     a.value(m.m_pInfected);
     a.value(m.m_cumulativeEIRa);
 }
@@ -275,7 +275,7 @@ void ckEpisode(checkpoint::Archive& a, Episode& ep) {
         a.value(infType);
         if (a.reading()) {
             ep.state = Episode::State(state);
-            ep.infectionType = WithinHost::InfectionOrigin(infType);
+            ep.infectionType = WithinHost::Origin(infType);
         }
     }
 }

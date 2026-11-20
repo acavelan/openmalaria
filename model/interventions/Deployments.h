@@ -25,7 +25,7 @@
 // stay inline/template or header-only.
 
 // Phase 7.1: the polymorphic TimedDeployment class tree is gone — one flat
-// TimedDeploymentKind + variant payload, built at load, date-cursor driven.
+// DeploymentKind + variant payload, built at load, date-cursor driven.
 // Processing order is unchanged: same single list, same stable_sort by date
 // with insertion-order tie-break (contract b), and the deploy bodies are
 // moved verbatim (contract a: the RNG draw stays the LAST filter test).
@@ -61,7 +61,7 @@ using Host::Human;
 
 /** Flat replacement of the TimedDeployment subclass tree: kind selects the
  * variant payload and the deploy/print switch case (no per-timestep clones). */
-enum class TimedDeploymentKind : uint8_t {
+enum class DeploymentKind : uint8_t {
     DUMMY,            // after-last sentinel; never deploys
     HUMAN,            // timed mass deployment to a human intervention
     CUMULATIVE_HUMAN, // bring coverage of cumCovId up to target
@@ -76,8 +76,8 @@ enum class TimedDeploymentKind : uint8_t {
 
 /// True for the kinds re-applied at checkpoint restore (they mutate model
 /// state, unlike per-host deployments; was TimedDeployment::replayedOnRestore).
-inline bool replayed_on_restore(TimedDeploymentKind kind) {
-    return kind == TimedDeploymentKind::CHANGE_HS || kind == TimedDeploymentKind::CHANGE_EIR;
+inline bool replayed_on_restore(DeploymentKind kind) {
+    return kind == DeploymentKind::CHANGE_HS || kind == DeploymentKind::CHANGE_EIR;
 }
 
 /** Old TimedDeployment ctor date checks; run at load, before payload reading
@@ -303,7 +303,7 @@ inline void timed_cumulative_deploy(Context& ctx, std::vector<Host::Human>& popu
  * Move-only (changeHS/changeEIR payloads are consumed on deploy). */
 struct TimedDeployment {
     SimTime date = sim::never();
-    TimedDeploymentKind kind = TimedDeploymentKind::DUMMY;
+    DeploymentKind kind = DeploymentKind::DUMMY;
     std::variant<std::monostate, TimedHumanParams, CumulativeHumanParams, VectorDeployParams, TrapDeployParams,
                  AddNhhDeployParams, NhhModsDeployParams, ChangeHsDeployParams, ChangeEirDeployParams>
         p;
@@ -321,22 +321,22 @@ inline void TimedDeployment::deploy(Context& ctx, std::vector<Host::Human>& popu
                                     Transmission::Model& transmission) {
     switch (kind) {
 
-    case TimedDeploymentKind::DUMMY:
+    case DeploymentKind::DUMMY:
         break;
-    case TimedDeploymentKind::HUMAN:
+    case DeploymentKind::HUMAN:
         timed_human_deploy(ctx, population, std::get<TimedHumanParams>(p));
         break;
-    case TimedDeploymentKind::CUMULATIVE_HUMAN:
+    case DeploymentKind::CUMULATIVE_HUMAN:
         timed_cumulative_deploy(ctx, population, std::get<CumulativeHumanParams>(p));
         break;
-    case TimedDeploymentKind::UNINFECT_VECTORS:
+    case DeploymentKind::UNINFECT_VECTORS:
         transmission.uninfectVectors();
         break;
-    case TimedDeploymentKind::VECTOR:
+    case DeploymentKind::VECTOR:
         if (transmission.isVector())
             transmission.deployVectorPopInterv(std::get<VectorDeployParams>(p).instance);
         break;
-    case TimedDeploymentKind::TRAP: {
+    case DeploymentKind::TRAP: {
         const TrapDeployParams& t = std::get<TrapDeployParams>(p);
         if (transmission.isVector()) {
             double number = population.size() * t.ratio;
@@ -344,16 +344,16 @@ inline void TimedDeployment::deploy(Context& ctx, std::vector<Host::Human>& popu
         }
         break;
     }
-    case TimedDeploymentKind::ADD_NHH:
+    case DeploymentKind::ADD_NHH:
         timed_deploy_add_nhh(ctx, population, transmission, std::get<AddNhhDeployParams>(p));
         break;
-    case TimedDeploymentKind::NHH_MODS:
+    case DeploymentKind::NHH_MODS:
         timed_deploy_nhh_mods(ctx, population, transmission, std::get<NhhModsDeployParams>(p));
         break;
-    case TimedDeploymentKind::CHANGE_HS:
+    case DeploymentKind::CHANGE_HS:
         timed_deploy_change_hs(ctx, transmission, std::get<ChangeHsDeployParams>(p));
         break;
-    case TimedDeploymentKind::CHANGE_EIR:
+    case DeploymentKind::CHANGE_EIR:
         timed_deploy_change_eir(ctx, transmission, std::get<ChangeEirDeployParams>(p));
         break;
     default:
@@ -362,14 +362,14 @@ inline void TimedDeployment::deploy(Context& ctx, std::vector<Host::Human>& popu
 }
 
 /// Builders (TimedDeployment declares move/copy ops, so isn't brace-constructible).
-inline TimedDeployment timed_deployment(SimTime date, TimedDeploymentKind kind) {
+inline TimedDeployment timed_deployment(SimTime date, DeploymentKind kind) {
     TimedDeployment td;
     td.date = date;
     td.kind = kind;
     return td;
 }
 
-template <class P> inline TimedDeployment timed_deployment(SimTime date, TimedDeploymentKind kind, P&& payload) {
+template <class P> inline TimedDeployment timed_deployment(SimTime date, DeploymentKind kind, P&& payload) {
     TimedDeployment td = timed_deployment(date, kind);
     td.p = std::forward<P>(payload);
     return td;
@@ -378,25 +378,25 @@ template <class P> inline TimedDeployment timed_deployment(SimTime date, TimedDe
 /// PRINT_INTERVENTIONS listing; texts byte-identical to the old print_details.
 inline void print_timed_details(std::ostream& out, const TimedDeployment& td) {
     switch (td.kind) {
-    case TimedDeploymentKind::DUMMY:
+    case DeploymentKind::DUMMY:
         out << "Dummy";
         break;
-    case TimedDeploymentKind::UNINFECT_VECTORS:
+    case DeploymentKind::UNINFECT_VECTORS:
         out << "UninfectVectors";
         break;
-    case TimedDeploymentKind::VECTOR:
+    case DeploymentKind::VECTOR:
         out << "Vector";
         break;
-    case TimedDeploymentKind::CHANGE_HS:
+    case DeploymentKind::CHANGE_HS:
         out << "ChangeHS";
         break;
-    case TimedDeploymentKind::CHANGE_EIR:
+    case DeploymentKind::CHANGE_EIR:
         out << "ChangeEIR";
         break;
-    case TimedDeploymentKind::HUMAN:
-    case TimedDeploymentKind::CUMULATIVE_HUMAN: {
+    case DeploymentKind::HUMAN:
+    case DeploymentKind::CUMULATIVE_HUMAN: {
         // old TimedCumulativeHumanDeployment inherited the plain Human text
-        const TimedHumanParams& th = td.kind == TimedDeploymentKind::HUMAN ? std::get<TimedHumanParams>(td.p)
+        const TimedHumanParams& th = td.kind == DeploymentKind::HUMAN ? std::get<TimedHumanParams>(td.p)
                                                                            : std::get<CumulativeHumanParams>(td.p).h;
         const HumanDeployParams& d = th.d;
         out << "Human:" << endl;
@@ -409,17 +409,17 @@ inline void print_timed_details(std::ostream& out, const TimedDeployment& td) {
         d.intervention->print_details(out);
         break;
     }
-    case TimedDeploymentKind::TRAP: {
+    case DeploymentKind::TRAP: {
         const TrapDeployParams& t = std::get<TrapDeployParams>(td.p);
         out << "VectorTrap:" << endl;
         out << "\tratio: " << t.ratio << "\tlifespan: " << t.lifespan;
         break;
     }
-    case TimedDeploymentKind::ADD_NHH:
+    case DeploymentKind::ADD_NHH:
         out << "AddNonHumanHosts(" << std::get<AddNhhDeployParams>(td.p).intervName << "):" << endl;
         out << "\tlifespan: " << std::get<AddNhhDeployParams>(td.p).lifespan;
         break;
-    case TimedDeploymentKind::NHH_MODS:
+    case DeploymentKind::NHH_MODS:
         out << "NonHumanHosts(" << std::get<NhhModsDeployParams>(td.p).intervName << ")";
         break;
     default:

@@ -92,7 +92,7 @@ struct SlotAllocator {
     }
 
     /// Clamp a stand-alone drawn count (post-draw; no rng effect).
-    /// parity: InfectionIncidenceModel.cpp:257-258
+    /// parity: IncidenceModel.cpp:257-258
     static constexpr int clamp_count(int want) { return want > MAX_INFECTIONS ? MAX_INFECTIONS : want; }
 };
 
@@ -371,7 +371,7 @@ class WHInterface {
 
     /// Vivax/Mock have no per-infection origins (Indigenous); Falciparum
     /// layer derives from its infection list.
-    virtual InfectionOrigin getInfectionOrigin() const { return InfectionOrigin::Indigenous; }
+    virtual Origin getInfectionOrigin() const { return Origin::Indigenous; }
 
     /// Which model this instance is (never serialised; the checkpoint module
     /// switches on it and static_casts to the derived class — the tag is the
@@ -455,7 +455,7 @@ class WHFalciparum : public WHInterface {
     bool treatSimple(Host::Human& human, SimTime timeLiver, SimTime timeBlood) override;
     Pathogenesis::StatePair determineMorbidity(Host::Human& human, double ageYears, bool isDoomed) override;
     void clearImmunity() override;
-    InfectionOrigin getInfectionOrigin() const override;
+    Origin getInfectionOrigin() const override;
 
     /** Clear infections of the appropriate stages.
      * 

@@ -25,7 +25,7 @@
 #include "Context.h"
 #include "Host/HostColumns.h"
 #include "Transmission/PerHost.h"
-#include "InfectionIncidenceModel.h"
+#include "IncidenceModel.h"
 #include "interventions/HumanComponents.h"
 #include <map>
 
@@ -106,8 +106,8 @@ class Human {
     /** The WithinHostModel models parasite density and immunity */
     unique_ptr<WithinHost::WHInterface> withinHostModel;
 
-    /** The InfectionIncidenceModel translates per-host EIR into new infections */
-    unique_ptr<InfectionIncidenceModel> infIncidence;
+    /** The IncidenceModel translates per-host EIR into new infections */
+    unique_ptr<IncidenceModel> infIncidence;
 
     /** The Model encapsulates pathogenesis (sickness status),
     * case management (medicating drugs)

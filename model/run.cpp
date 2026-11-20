@@ -244,7 +244,7 @@ void run_simulation(Context& ctx, const std::string& scenarioFile) {
 
     // Init models used by humans
     Transmission::PerHost::init(ctx, scenario->getModel().getHuman().getAvailabilityToMosquitoes());
-    Host::InfectionIncidenceModel::init(ctx, parameters);
+    Host::IncidenceModel::init(ctx, parameters);
     WithinHost::WHInterface::init(ctx, parameters, *scenario);
     Clinical::Model::init(ctx, parameters, *scenario);
     Host::NeonatalMortality::init(ctx, scenario->getModel().getClinical());
@@ -341,7 +341,7 @@ void run_simulation(Context& ctx, const std::string& scenarioFile) {
         // reset endTime and estEndTime to their exact value after initIterate()
         estEndTime = endTime = endTime + (ctx.clock.end_date - ctx.clock.start_date) + ctx.clock.one_TS();
         ctx.clock.interv = sim::zero();
-        Host::InfectionIncidenceModel::preMainSimInit();
+        Host::IncidenceModel::preMainSimInit();
         Clinical::InfantMortality::preMainSimInit();
         ctx.genotypes.preMainSimInit();
         population->recentBirths = 0;

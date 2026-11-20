@@ -44,7 +44,7 @@ class PennyInfectionSuite : public CxxTest::TestSuite {
         PennyInfection::init(UnittestUtil::ctx());
         infection = new PennyInfection(
             UnittestUtil::ctx(), m_rng, 0xFFFFFFFF,
-            InfectionOrigin::Indigenous); // pkpdID (value) isn't important since we're not using drug model here
+            Origin::Indigenous); // pkpdID (value) isn't important since we're not using drug model here
     }
     void tearDown() { delete infection; }
 

@@ -34,7 +34,7 @@ namespace WithinHost {
 
 using util::LocalRng;
 
-enum InfectionOrigin {
+enum Origin {
     /** Imported infections are directly added to the human population dependent on the importation rate. **/
     Imported,
 
@@ -361,16 +361,16 @@ struct PennyInfection final : Infection {
 /// Create a dummy infection (used directly by unit tests).
 Infection* createDummyInfection(Context& ctx, LocalRng& rng, uint32_t protID, int origin);
 
-template <typename T> InfectionOrigin get_infection_origin(const std::list<T*>& infections) {
+template <typename T> Origin get_infection_origin(const std::list<T*>& infections) {
     if (infections.empty())
-        return InfectionOrigin::Indigenous;
+        return Origin::Indigenous;
 
     // only >0 tests below matter (all-Imported = neither counter set)
     int nIntroduced = 0, nIndigenous = 0;
     for (auto inf = infections.begin(); inf != infections.end(); ++inf) {
-        if ((*inf)->origin() == InfectionOrigin::Indigenous)
+        if ((*inf)->origin() == Origin::Indigenous)
             nIndigenous++;
-        else if ((*inf)->origin() == InfectionOrigin::Introduced)
+        else if ((*inf)->origin() == Origin::Introduced)
             nIntroduced++;
     }
 
@@ -379,11 +379,11 @@ template <typename T> InfectionOrigin get_infection_origin(const std::list<T*>& 
     - Introduced if at least one Introduced
     - Indigenous otherwise (Imported + Indigenous or just Indigenous infections) */
     if (nIntroduced > 0)
-        return InfectionOrigin::Introduced;
+        return Origin::Introduced;
     else if (nIndigenous > 0)
-        return InfectionOrigin::Indigenous;
+        return Origin::Indigenous;
     else
-        return InfectionOrigin::Imported;
+        return Origin::Imported;
 }
 
 }

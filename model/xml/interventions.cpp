@@ -1058,7 +1058,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
 
     // changeHS and changeEIR timed deployments: identical loops differing only
     // in payload kind and error prefix (former duplicated blocks, merged).
-    auto timed_clone = [&ctx](const auto& seq, TimedDeploymentKind kind, const char* errPrefix, const auto& mk) {
+    auto timed_clone = [&ctx](const auto& seq, DeploymentKind kind, const char* errPrefix, const auto& mk) {
         for (const auto& it : seq) {
             try {
                 SimTime date = readDate_steps(ctx.clock, it.getTime());
@@ -1070,12 +1070,12 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
         }
     };
     if (intervElt.getChangeHS().present())
-        timed_clone(intervElt.getChangeHS().get().getTimedDeployment(), TimedDeploymentKind::CHANGE_HS,
+        timed_clone(intervElt.getChangeHS().get().getTimedDeployment(), DeploymentKind::CHANGE_HS,
                     "interventions/changeHS/timedDeployment/time: ", [](const auto& it) {
                         return ChangeHsDeployParams{it._clone()};
                     });
     if (intervElt.getChangeEIR().present())
-        timed_clone(intervElt.getChangeEIR().get().getTimedDeployment(), TimedDeploymentKind::CHANGE_EIR,
+        timed_clone(intervElt.getChangeEIR().get().getTimedDeployment(), DeploymentKind::CHANGE_EIR,
                     "interventions/changeEIR/timedDeployment/time: ", [](const auto& it) {
                         return ChangeEirDeployParams{it._clone()};
                     });
@@ -1267,7 +1267,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
                         ComponentId cumCovComponent = getComponentId(ctx, cumCov.getComponent());
                         for (auto deploy = deployTimes.begin(), end = deployTimes.end(); deploy != end; ++deploy) {
                             ctx.timed->push_back(timed_deployment(
-                                deploy->first, TimedDeploymentKind::CUMULATIVE_HUMAN,
+                                deploy->first, DeploymentKind::CUMULATIVE_HUMAN,
                                 CumulativeHumanParams{TimedHumanParams::read(ctx, deploy->first, *deploy->second,
                                                                              intervention, subPop, complement),
                                                       cumCovComponent}));
@@ -1275,7 +1275,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
                     } else {
                         for (auto deploy = deployTimes.begin(), end = deployTimes.end(); deploy != end; ++deploy) {
                             ctx.timed->push_back(
-                                timed_deployment(deploy->first, TimedDeploymentKind::HUMAN,
+                                timed_deployment(deploy->first, DeploymentKind::HUMAN,
                                                  TimedHumanParams::read(ctx, deploy->first, *deploy->second,
                                                                         intervention, subPop, complement)));
                         }
@@ -1304,7 +1304,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
         for (const auto& it : elt.getTimedDeployment()) {
             SimTime date = readDate_steps(ctx.clock, it.getTime());
             check_timed_date(ctx, date);
-            ctx.timed->push_back(timed_deployment(date, TimedDeploymentKind::UNINFECT_VECTORS));
+            ctx.timed->push_back(timed_deployment(date, DeploymentKind::UNINFECT_VECTORS));
         }
     }
     if (intervElt.getVectorPop().present()) {
@@ -1322,7 +1322,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
                         SimTime date = readDate_steps(ctx.clock, it->getTime());
                         check_timed_date(ctx, date);
                         ctx.timed->push_back(
-                            timed_deployment(date, TimedDeploymentKind::VECTOR, VectorDeployParams{instance}));
+                            timed_deployment(date, DeploymentKind::VECTOR, VectorDeployParams{instance}));
                     }
                     instance++;
                 }
@@ -1341,7 +1341,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
                         SimTime date = readDate_steps(ctx.clock, deploy.getTime());
                         SimTime lifespan = UnitParse::readDuration(ctx.clock, deploy.getLifespan(), UnitParse::NONE);
                         ctx.timed->push_back(
-                            timed_deployment(date, TimedDeploymentKind::ADD_NHH,
+                            timed_deployment(date, DeploymentKind::ADD_NHH,
                                              read_add_nhh(ctx, date, elt.getName(), lifespan,
                                                           elt.getDescription().getAnopheles(), transmission)));
                     }
@@ -1366,7 +1366,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
                         nhh_mods_setup(ctx, instance, elt.getNonHumanHostsName(), elt.getDescription().getAnopheles(),
                                        decay, transmission);
                         ctx.timed->push_back(
-                            timed_deployment(date, TimedDeploymentKind::NHH_MODS,
+                            timed_deployment(date, DeploymentKind::NHH_MODS,
                                              NhhModsDeployParams{instance, elt.getNonHumanHostsName()}));
                     }
                     instance++;
@@ -1387,7 +1387,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
                         double ratio = deploy.getRatioToHumans();
                         SimTime lifespan = UnitParse::readDuration(ctx.clock, deploy.getLifespan(), UnitParse::NONE);
                         check_timed_date(ctx, date);
-                        ctx.timed->push_back(timed_deployment(date, TimedDeploymentKind::TRAP,
+                        ctx.timed->push_back(timed_deployment(date, DeploymentKind::TRAP,
                                                               TrapDeployParams{instance, ratio, lifespan}));
                     }
                 }
@@ -1405,7 +1405,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
 
     // make sure the list ends with something always in the future, so we don't
     // have to check ctx.nextTimed is within range:
-    ctx.timed->push_back(timed_deployment(sim::future(), TimedDeploymentKind::DUMMY));
+    ctx.timed->push_back(timed_deployment(sim::future(), DeploymentKind::DUMMY));
 
     if (util::CommandLine::option(util::CommandLine::PRINT_INTERVENTIONS)) {
         cout << "Continuous deployments:" << endl << "begin\tend\tage\tsub pop\tcompl\tcoverag\tcomponents" << endl;

@@ -32,7 +32,7 @@
 #include "Clock.h"
 #include "Context.h"
 #include "Host/NeonatalMortality.h"
-#include "Host/InfectionIncidenceModel.h"
+#include "Host/IncidenceModel.h"
 #include "Host/ImportedInfections.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Clinical/Model.h"
@@ -58,8 +58,8 @@ void neonatalStatics(checkpoint::Archive& a) {
     a.value(riskFromMaternalInfection);
     a.vector(prevByGestationalAge);
 }
-/// InfectionIncidenceModel run counter (was InfectionIncidenceModel::staticCheckpoint).
-void infectionIncidenceStatics(checkpoint::Archive& a) { a.value(InfectionIncidenceModel::ctsNewInfections); }
+/// IncidenceModel run counter (was IncidenceModel::staticCheckpoint).
+void infectionIncidenceStatics(checkpoint::Archive& a) { a.value(IncidenceModel::ctsNewInfections); }
 /// ImportedInfections rate-table cursor (was ImportedInfections::checkpoint).
 void checkpoint(checkpoint::Archive& a, ImportedInfections& ii) { a.value(ii.lastIndex); }
 } // namespace Host

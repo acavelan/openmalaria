@@ -275,7 +275,7 @@ bool WHVivax::summarize(Host::Human& human) const {
 
 void WHVivax::importInfection(LocalRng& rng) {
     // this means one new liver stage infection, which can result in multiple blood stages
-    vivaxInfections.push_back(VivaxBrood(ctx, rng, WithinHost::InfectionOrigin::Imported, this));
+    vivaxInfections.push_back(VivaxBrood(ctx, rng, WithinHost::Origin::Imported, this));
 }
 
 void WHVivax::update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l,
@@ -284,10 +284,10 @@ void WHVivax::update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nN
 
     // create new vivaxInfections, letting the constructor do the initialisation work:
     for (int i = 0; i < nNewInfs_i; ++i)
-        vivaxInfections.push_back(VivaxBrood(ctx, rng, InfectionOrigin::Introduced, this));
+        vivaxInfections.push_back(VivaxBrood(ctx, rng, Origin::Introduced, this));
 
     for (int i = 0; i < nNewInfs_l; ++i)
-        vivaxInfections.push_back(VivaxBrood(ctx, rng, InfectionOrigin::Indigenous, this));
+        vivaxInfections.push_back(VivaxBrood(ctx, rng, Origin::Indigenous, this));
 
     // update vivaxInfections
     // NOTE: currently no BSV model

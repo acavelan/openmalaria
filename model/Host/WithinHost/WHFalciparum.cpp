@@ -106,7 +106,7 @@ WHFalciparum::~WHFalciparum() {
     infections.clear();
 }
 
-InfectionOrigin WHFalciparum::getInfectionOrigin() const { return get_infection_origin(infections); }
+Origin WHFalciparum::getInfectionOrigin() const { return get_infection_origin(infections); }
 
 double WHFalciparum::immunitySurvivalFactor(double ageInYears, double cumulativeExposureJ) {
     // Row reads hoisted to locals: one cols->deref per call instead of four
