@@ -77,8 +77,10 @@ report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
       libm/GSL 12 %, pyrogen serial recurrence ≈6 % (all shape-blind, phase-8). Slab-arena
       hypothesis (iv/vac scatter) measured and rejected.
 - [x] 7c-Da: dead-code sweep −22 LOC (commit f1f7ab10). C6 RESTORED per ruling (1fbf788a).
-- [ ] 7c-D2: wrappers/duplication/xml/ compaction (xml subset 4,287 vs 2.6k — assess honestly,
-      code already looked dense; a forced cut = risky churn vs zero perf)
+- [x] 7c-D2: dedup sweep −36 (LSTM checkpoint pairs templated). Dup scan otherwise empty
+      after 7 phases. **xml/ compaction deliberately deferred** — reviewed, already dense,
+      forced cut = risky config-path churn, zero perf (rationale in PERF 7c-Db).
+      7c-D total: 18,675→18,617 (−58); branch net vs p7b-green: **−29**.
 - [ ] 7c-E: final gate (T1 a+b 63/63, ctest, unittest, cloc table, benches incl. a2p,
       perf top-5, PERF 7c-F scoreboard, report, HANDOFF close)
 
