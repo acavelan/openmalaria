@@ -189,6 +189,9 @@ void WHInterface::update_common(Host::Human &human, LocalRng& rng, int &nNewInfs
     
     double body_mass = massByAge.eval( ageInYears ) * hetMassMultiplier;
     
+    // p7b B4 hoist: pure + empty⇒1.0, so per-infection calls collapse to one
+    // check per host (vac column is frozen during the human update).
+    const bool anyVac = human.has_vaccines();
     for( SimTime now = ctx.clock.ts0(), end = ctx.clock.ts0() + ctx.clock.one_TS(); now < end; now = now + sim::oneDay() ){
         // every day, medicate drugs, update each infection, then decay drugs
         pkpdModel.medicate(ctx, rng);
@@ -202,7 +205,7 @@ void WHInterface::update_common(Host::Human &human, LocalRng& rng, int &nNewInfs
             if( !expires ){     /* no expiry due to simple treatment model; do update */
                 const double drugFactor = pkpdModel.getDrugFactor(rng, *inf, body_mass);
                 const double immFactor = immunitySurvivalFactor(ageInYears, (*inf)->cumulativeExposureJ());
-                const double bsvFactor = human.vaccine_factor(interventions::Vaccine::BSV, opt_vaccine_genotype? (*inf)->genotype() : 0);
+                const double bsvFactor = anyVac ? human.vaccine_factor(interventions::Vaccine::BSV, opt_vaccine_genotype? (*inf)->genotype() : 0) : 1.0;
                 const double survivalFactor = bsvFactor * _innateImmSurvFact * immFactor * drugFactor;
                 // update, may result in termination of infection:
                 expires = (*inf)->update(rng, survivalFactor, now, body_mass);
