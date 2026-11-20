@@ -42,7 +42,19 @@ reverted+logged if ≤ noise floor (max(1.0%, 2×MAD)). Full p7 handoff: `git sh
 - [x] B2 rng compaction (104→32 B): all gates green but −0.33% < floor ⇒ REVERTED+logged (row 7b-B2)
 - [x] B4 vaccine_factor hoists (4 loops, anyVac check): 12.13→11.98 = −1.24% KEEP
 - [x] ~~B3~~ VERIFIED-ALREADY-SKIPPED (see PERF 7b-B1a) — nothing to write
-- [ ] FINAL: T1 a+b 63/63, ctest 52/52, unittest 94/94, cloc, census touch, final report
+- [x] FINAL: T1 a+b 63/63 ✓ ctest 52/52 ✓ unittest 94/94 ✓ cloc 18,646/3,794 ✓
+      census untouched (no files moved) ✓ PERF rows 7b-A/B1a/B2/B4/F ✓
+## FINAL 7b scoreboard (details in PERF.md rows 7b-*)
+| binary | CPU-s | vs frozen baseline-A2 11.34 | note |
+|---|---|---|---|
+| A2 @ p7-green (stage A) | 12.43 MAD .010 | 0.912 | yardstick before levers |
+| A2 + B1a | 12.13 MAD .005 | 0.935 | malloc 88.2M→5.9M |
+| A2 + B2 (reverted) | 12.09 MAD .010 | — | −0.33% < floor ⇒ reverted |
+| **A2 final (HEAD 2180c23d)** | **11.98 MAD .005** | **0.947** | + B4 vac-factor hoists |
+Phase-8 readiness: pre-break ratio 0.947; the remaining ExactNv0 dgemm+dgemv+dcopy ≈21%
+(≈2.5 s) flips to solve_Nv0_linear at the sanctioned break (F3) → ≈1.19 expected, FP
+reassociation / SIMD samplers / slot traversal add on top toward the 1.15–1.35 target.
+MERGE NOTE for main session: branch p7b-levers, merge like p7; consider tag p7b-green.
 - Lever measurement: rebuild lever INTO build-p7b-a2 (profiles from pre-lever tree are fine;
   same flags/dir) AND into build-p7b (gate build) for ctest/unittest/tier-a.
 - Alloc probe lives at /tmp/opencode/allocprobe.cpp (+.so, LD_PRELOAD, BT sampling via
