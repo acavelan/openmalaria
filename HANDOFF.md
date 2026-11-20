@@ -97,6 +97,10 @@ report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
 - Per-structure commits, measure on build-p7c-a2 rebuild (same recipe = 11.98 baseline),
   keep only >floor wins, revert+log the rest.
 
+- [x] 7c-E: FINAL GATE GREEN — gate build T1 a+b 63/63, ctest 52/52, unittest OK; a2p (final
+      tree, fresh two-pass profiles) also 63/63 + ctest + unittest. Perf: dgemm 21.15 % top
+      (phase-8 flip intact). Scoreboard row 7c-F. **Phase 7c CLOSED.**
+
 ## Gates log
 - (setup) 3 builds configured; gate build: ctest 52/52 ✓, unittest .OK! ✓; a2 bench 11.98
   (raw 11.96–12.00) = yardstick reproduced.
@@ -188,3 +192,6 @@ order of side-effecting calls all preserved explicitly.
 - monitoring.cpp 251->242 (-9): dead extern Continuous block deleted (all state
   now bound from ctx.ext-> inside Continuous::init; grep proof: names only
   referenced via those locals) + duplicate using internal::SurveyDate. Same gates.
+- pharmacology.cpp 311->301 (-10): phenotype-name if/else repeated 3x -> one
+  lazy pheno_name lambda (still evaluated only at the original use points).
+  Gate: 52/52, OK, 53/53.

@@ -159,11 +159,12 @@ LSTMDrugType::LSTMDrugType (RunContext& ctx, size_t index, const scnXml::PKPDDru
     phenotype_restrictions.reserve( n_phenotypes );
     for(size_t i = 0; i < n_phenotypes; ++i) {
         const scnXml::Phenotype& phenotype = pd[i];
+        // phenotype name for error messages: name attribute, else index
+        auto pheno_name = [&phenotype, i](){
+            return phenotype.getName().present() ? string(phenotype.getName().get()) : to_string(i);
+        };
         if( i == 0 ){
-            if( phenotype.getName().present() )
-                first_phenotype_name = phenotype.getName().get();
-            else
-                first_phenotype_name = to_string(i);
+            first_phenotype_name = pheno_name();
             for( const scnXml::Restriction& restriction : phenotype.getRestriction() ){
                 loci_per_phenotype.insert( restriction.getOnLocus() );
             }
@@ -172,27 +173,17 @@ LSTMDrugType::LSTMDrugType (RunContext& ctx, size_t index, const scnXml::PKPDDru
             for( const scnXml::Restriction& restriction : phenotype.getRestriction() ){
                 size_t n = expected_loci.erase( restriction.getOnLocus() );
                 if( n == 0 ){
-                    string this_phenotype_name;
-                    if( phenotype.getName().present() )
-                        this_phenotype_name = phenotype.getName().get();
-                    else
-                        this_phenotype_name = to_string(i);
                     throw util::xml_scenario_error(
                         "pharmacology/drugs/drug/pd/phenotype/restriction/onLocus:"
                         "locus " + string(restriction.getOnLocus()) + " included in restriction of phenotype "
-                        + string(this_phenotype_name) + " but not " + string(first_phenotype_name));
+                        + string(pheno_name()) + " but not " + string(first_phenotype_name));
                 }
             }
             if( !expected_loci.empty() ){
-                string this_phenotype_name;
-                if( phenotype.getName().present() )
-                    this_phenotype_name = phenotype.getName().get();
-                else
-                    this_phenotype_name = to_string(i);
                 throw util::xml_scenario_error(
                     "pharmacology/drugs/drug/pd/phenotype/restriction/onLocus:"
                     "locus " + string(*expected_loci.begin()) + " included in restriction of phenotype "
-                    + string(first_phenotype_name) + " but not " + string(this_phenotype_name));
+                    + string(first_phenotype_name) + " but not " + string(pheno_name()));
             }
         }
         map<string,size_t> loci;
