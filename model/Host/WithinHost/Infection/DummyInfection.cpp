@@ -32,10 +32,10 @@
 namespace OM { namespace WithinHost {
     
 Infection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
-    return new Infection (ctx, rng, protID, origin, Infection::Kind::Dummy);
+    return infection_new (ctx, rng, protID, origin, Infection::Kind::Dummy);
 }
 Infection* checkpointedDummyInfection (RunContext& ctx, istream& stream) {
-    return new Infection (ctx, stream, Infection::Kind::Dummy);
+    return infection_new_checkpointed (ctx, stream, Infection::Kind::Dummy);
 }
 
 void infection_init_dummy (RunContext& ctx) {

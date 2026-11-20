@@ -70,12 +70,12 @@ public:
 //         out << setprecision(8);
         
         // pkpdID (value) isn't important since we're not using drug model here:
-        Infection* infection = new Infection (UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous, Infection::Kind::Molineaux);
+        Infection* infection = infection_new (UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous, Infection::Kind::Molineaux);
         bool extinct = false;
         size_t day=0;
         SimTime now = UnittestUtil::clock().ts0();
         do{
-            extinct = infection->update(m_rng, 1.0 /*no external immunity*/, now, 71.43 /*adult body mass in kg to get 5l blood volume*/);
+            extinct = infection_update(*infection, m_rng, 1.0 /*no external immunity*/, now, 71.43 /*adult body mass in kg to get 5l blood volume*/);
             SimTime age = now - infection->m_startDate - infection->s_latentP;
             if( age >= sim::zero() ){
                 ETS_ASSERT_LESS_THAN( day, dens.size() );
@@ -290,10 +290,10 @@ private:
             vector<double> dens;    // time series of density
             for( size_t run = 0; run < N; ++run ){
                 dens.resize( 0 );
-                Infection* infection = new Infection (UnittestUtil::ctx(), rng, 0xFFFFFFFF, InfectionOrigin::Indigenous, Infection::Kind::Molineaux);
+                Infection* infection = infection_new (UnittestUtil::ctx(), rng, 0xFFFFFFFF, InfectionOrigin::Indigenous, Infection::Kind::Molineaux);
                 SimTime now = UnittestUtil::clock().ts0();
                 
-                while( !infection->update(rng, 1.0 /*no external immunity*/, now, 71.43 /*adult body mass in kg to get 5l blood volume*/) ){
+                while( !infection_update(*infection, rng, 1.0 /*no external immunity*/, now, 71.43 /*adult body mass in kg to get 5l blood volume*/) ){
                     dens.push_back( infection->getDensity() );
                     now = now + sim::oneDay();
                 }

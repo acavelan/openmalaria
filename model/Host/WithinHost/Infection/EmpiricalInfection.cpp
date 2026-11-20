@@ -69,10 +69,10 @@ static double sampleSubPatentValue(LocalRng& rng, double mu, double sigma, doubl
 
 
 Infection* createEmpiricalInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
-    return new Infection (ctx, rng, protID, origin, Infection::Kind::Empirical);
+    return infection_new (ctx, rng, protID, origin, Infection::Kind::Empirical);
 }
 Infection* checkpointedEmpiricalInfection (RunContext& ctx, istream& stream) {
-    return new Infection (ctx, stream, Infection::Kind::Empirical);
+    return infection_new_checkpointed (ctx, stream, Infection::Kind::Empirical);
 }
 
 

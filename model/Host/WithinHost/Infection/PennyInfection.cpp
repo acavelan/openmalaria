@@ -146,11 +146,11 @@ const double Omega=0.00025;
 //@}
 
 Infection* createPennyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
-    return new Infection (ctx, rng, protID, origin, Infection::Kind::Penny);
+    return infection_new (ctx, rng, protID, origin, Infection::Kind::Penny);
 }
 
 Infection* checkpointedPennyInfection (RunContext& ctx, istream& stream) {
-    return new Infection (ctx, stream, Infection::Kind::Penny);
+    return infection_new_checkpointed (ctx, stream, Infection::Kind::Penny);
 }
 
 void infection_init_penny(RunContext& ctx) {

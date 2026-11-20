@@ -83,30 +83,34 @@ struct Infection final {
     /// The run this infection belongs to (clock accessed as ctx.clock).
     RunContext& ctx;
 
+    /// Which model this infection runs (scenario-derived; never checkpointed —
+    /// the checkpointing factory function pointer carries the kind across a
+    /// resume).
+    Kind kind;
+
     /// Pre-erythrocytic latent period (instantiated in WHFalciparum.cpp)
     inline static void init( SimTime latentP ){
         s_latentP = latentP;
     }
 
-    /// Create a new infection. growthRateMultiplier is only used by Empirical.
-    Infection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin, Kind kind,
-              double growthRateMultiplier = 1.0);
-    /// For checkpointing (don't use for anything else)
-    Infection(RunContext& ctx, istream& stream, Kind kind);
-    ~Infection ();
-
-    /** Update: calculate new density. Call this once per day (Dummy/Empirical/
-     * Molineaux/Penny; never for Descriptive).
-     *
-     * @param survivalFactor Density multiplier to introduce drug & vaccine effects
-     * @param now The simulation time. Use this instead of ctx.clock.ts1().
-     * @param body_mass Body mass of host in kg
-     * @returns True when the infection goes extinct. */
-    bool update( LocalRng& rng, double survivalFactor, SimTime now, double body_mass );
+    /// Shared-field init only: kind-specific construction (which may draw from
+    /// rng) is infection_new's / infection_new_checkpointed's job
+    /// (Infection.cpp). Pass placeholder genotype/origin when reading a
+    /// checkpoint: date/densities/genotype/origin are overwritten from the
+    /// stream immediately after.
+    Infection(RunContext& ctx, uint32_t genotype, int origin, Kind kind) :
+        ctx(ctx),
+        kind(kind),
+        m_startDate(this->ctx.clock.nowOrTs0()),
+        m_density(0.0),
+        m_cumulativeExposureJ(0.0),
+        m_genotype(genotype),
+        m_origin(origin)
+    {}
 
     /** Returns true when age reaches the pre-determined duration (i.e. when
      * this infection terminates). Descriptive only; the other kinds have no
-     * Descriptive payload and self-terminate in update() instead. */
+     * Descriptive payload and self-terminate in infection_update() instead. */
     bool expired () {
         return ctx.clock.ts0() > m_startDate + descriptive->duration;
     }
@@ -168,7 +172,7 @@ struct Infection final {
     /// Checkpointing
     template<class S>
     void operator& (S& stream) {
-        checkpoint (stream);
+        infection_checkpoint (*this, stream);
     }
 
     /// IC50^slope per drug type, if sampled (PkPd cache). Never serialised;
@@ -185,8 +189,6 @@ struct Infection final {
     static const size_t v = 50;
     // taus: used for the variantTranscending and variantSpecific array, 4 Molineaux time steps = 8 days
     static const size_t taus = 4;
-
-    void checkpoint (ostream& stream);
 
     /// Date of inoculation of infection (start of liver stage)
     /// This is the step of inoculation (ts0()).
@@ -205,8 +207,6 @@ struct Infection final {
     uint32_t m_genotype;
 
     int m_origin;
-
-    Kind m_kind;
 
     // ——— Molineaux: variant row type (payload below) ———
     struct Variant {
@@ -280,6 +280,25 @@ struct Infection final {
     std::unique_ptr<PennyData> penny;              // set by Kind::Penny
     std::unique_ptr<std::map<size_t, double>> kn;  // PkPd cache, see Kn()
 };
+
+// ——— Shared dispatch (Infection.cpp) ———
+/// Create a new infection. growthRateMultiplier is only used by Empirical.
+Infection* infection_new(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin,
+                         Infection::Kind kind, double growthRateMultiplier = 1.0);
+/// For checkpointing (don't use for anything else)
+Infection* infection_new_checkpointed(RunContext& ctx, istream& stream, Infection::Kind kind);
+
+/** Update: calculate new density. Call this once per day (Dummy/Empirical/
+ * Molineaux/Penny; never for Descriptive).
+ *
+ * @param survivalFactor Density multiplier to introduce drug & vaccine effects
+ * @param now The simulation time. Use this instead of ctx.clock.ts1().
+ * @param body_mass Body mass of host in kg
+ * @returns True when the infection goes extinct. */
+bool infection_update(Infection& inf, LocalRng& rng, double survivalFactor, SimTime now, double body_mass);
+
+/// Checkpoint write-out (what Infection::operator& forwards to)
+void infection_checkpoint(Infection& inf, ostream& stream);
 
 // ——— Descriptive free functions (DescriptiveInfection.cpp) ———
 /// 5-day time step check; loads densities.csv matrix + parameters (per run)

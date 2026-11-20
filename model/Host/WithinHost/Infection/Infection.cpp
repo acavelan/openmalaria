@@ -24,73 +24,66 @@
 
 namespace OM { namespace WithinHost {
 
+using Kind = Infection::Kind;
+
 // ———  construction  ———
 
-Infection::Infection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin, Kind kind,
-        double growthRateMultiplier) :
-    ctx(ctx),
-    m_startDate(this->ctx.clock.nowOrTs0()),
-    m_density(0.0),
-    m_cumulativeExposureJ(0.0),
-    m_genotype(genotype),
-    m_origin(origin),
-    m_kind(kind)
-{
+Infection* infection_new(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin,
+        Infection::Kind kind, double growthRateMultiplier) {
+    Infection* inf = new Infection(ctx, genotype, origin, kind);
     switch( kind ){
         case Kind::Descriptive:
             // Descriptive samples its duration here; RNG draw point is
-            // kind-conditional (was the ctor init list; nothing draws between
-            // construction and this call).
-            infection_ctor_descriptive(*this, rng);
+            // kind-conditional (was the ctor init list; nothing else draws
+            // between construction and this case).
+            infection_ctor_descriptive(*inf, rng);
             assert( ctx.clock.one_TS() == 5 );
             break;
         case Kind::Dummy:
-            m_density = 16;	// increased by DH to avoid zeros in initialKappa
+            inf->m_density = 16;	// increased by DH to avoid zeros in initialKappa
             break;
         case Kind::Empirical:
-            infection_ctor_empirical(*this, rng, growthRateMultiplier);
+            infection_ctor_empirical(*inf, rng, growthRateMultiplier);
             break;
         case Kind::Molineaux:
-            infection_ctor_molineaux(*this, rng);
+            infection_ctor_molineaux(*inf, rng);
             break;
         case Kind::Penny:
-            infection_ctor_penny(*this, rng);
+            infection_ctor_penny(*inf, rng);
             break;
     }
+    return inf;
 }
 
-Infection::Infection (RunContext& ctx, istream& stream, Kind kind) :
-    ctx(ctx),
-    m_startDate(sim::never()),
-    m_kind(kind)
-{
-    m_startDate & stream;
-    m_density & stream;
-    m_cumulativeExposureJ & stream;
-    m_genotype & stream;
-    m_origin & stream;
+Infection* infection_new_checkpointed(RunContext& ctx, istream& stream, Infection::Kind kind) {
+    // the shared fields streamed below are overwritten before any use
+    Infection* inf = new Infection(ctx, 0, 0, kind);
+    inf->m_startDate & stream;
+    inf->m_density & stream;
+    inf->m_cumulativeExposureJ & stream;
+    inf->m_genotype & stream;
+    inf->m_origin & stream;
     switch( kind ){
-        case Kind::Descriptive: read_descriptive(*this, stream); break;
+        case Kind::Descriptive: read_descriptive(*inf, stream); break;
         case Kind::Dummy: break;
-        case Kind::Empirical: read_empirical(*this, stream); break;
-        case Kind::Molineaux: read_molineaux(*this, stream); break;
-        case Kind::Penny: read_penny(*this, stream); break;
+        case Kind::Empirical: read_empirical(*inf, stream); break;
+        case Kind::Molineaux: read_molineaux(*inf, stream); break;
+        case Kind::Penny: read_penny(*inf, stream); break;
     }
+    return inf;
 }
-
-Infection::~Infection() {}
 
 // ———  time-step update  ———
 
-bool Infection::update( LocalRng& rng, double survivalFactor, SimTime now, double body_mass ){
-    SimTime bsAge = now - m_startDate - s_latentP;	// age of post-latent-period blood stage
+bool infection_update( Infection& inf, LocalRng& rng, double survivalFactor, SimTime now, double body_mass ){
+    SimTime bsAge = now - inf.m_startDate - Infection::s_latentP;	// age of post-latent-period blood stage
     if( bsAge < sim::zero() )
         return false;	// latent period (liver stage) — don't do anything
-    switch( m_kind ){
-        case Kind::Dummy: return update_density_dummy (*this, rng, survivalFactor, bsAge, body_mass);
-        case Kind::Empirical: return update_density_empirical (*this, rng, survivalFactor, bsAge, body_mass);
-        case Kind::Molineaux: return update_density_molineaux (*this, rng, survivalFactor, bsAge, body_mass);
-        case Kind::Penny: return update_density_penny (*this, rng, survivalFactor, bsAge, body_mass);
+    switch( inf.kind ){
+        case Kind::Dummy: return update_density_dummy (inf, rng, survivalFactor, bsAge, body_mass);
+        case Kind::Empirical: return update_density_empirical (inf, rng, survivalFactor, bsAge, body_mass);
+        case Kind::Molineaux: return update_density_molineaux (inf, rng, survivalFactor, bsAge, body_mass);
+        case Kind::Penny: return update_density_penny (inf, rng, survivalFactor, bsAge, body_mass);
         default:
             assert( false );  // Descriptive is updated via determine_densities_descriptive()
             return false;
@@ -99,18 +92,18 @@ bool Infection::update( LocalRng& rng, double survivalFactor, SimTime now, doubl
 
 // ———  checkpointing  ———
 
-void Infection::checkpoint (ostream& stream) {
-    m_startDate & stream;
-    m_density & stream;
-    m_cumulativeExposureJ & stream;
-    m_genotype & stream;
-    m_origin & stream;
-    switch( m_kind ){
-        case Kind::Descriptive: checkpoint_descriptive (*this, stream); break;
+void infection_checkpoint (Infection& inf, ostream& stream) {
+    inf.m_startDate & stream;
+    inf.m_density & stream;
+    inf.m_cumulativeExposureJ & stream;
+    inf.m_genotype & stream;
+    inf.m_origin & stream;
+    switch( inf.kind ){
+        case Kind::Descriptive: checkpoint_descriptive (inf, stream); break;
         case Kind::Dummy: break;
-        case Kind::Empirical: checkpoint_empirical (*this, stream); break;
-        case Kind::Molineaux: checkpoint_molineaux (*this, stream); break;
-        case Kind::Penny: checkpoint_penny (*this, stream); break;
+        case Kind::Empirical: checkpoint_empirical (inf, stream); break;
+        case Kind::Molineaux: checkpoint_molineaux (inf, stream); break;
+        case Kind::Penny: checkpoint_penny (inf, stream); break;
     }
 }
 

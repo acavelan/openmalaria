@@ -153,11 +153,11 @@ const double case_specific_data[] = {
 // ———  static (non-class-member) code  ———
 
 Infection* createMolineauxInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
-    return new Infection (ctx, rng, protID, origin, Infection::Kind::Molineaux);
+    return infection_new (ctx, rng, protID, origin, Infection::Kind::Molineaux);
 }
 
 Infection* checkpointedMolineauxInfection (RunContext& ctx, istream& stream) {
-    return new Infection (ctx, stream, Infection::Kind::Molineaux);
+    return infection_new_checkpointed (ctx, stream, Infection::Kind::Molineaux);
 }
 
 void infection_init_molineaux( RunContext& ctx, const Parameters& parameters ){
