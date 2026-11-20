@@ -183,7 +183,7 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
         double immSurvFact = immunitySurvivalFactor(immTick, (*inf)->cumulativeExposureJ());
         double bsvFactor = anyVac ? human.vaccine_factor(interventions::Vaccine::BSV, opt_vaccine_genotype? (*inf)->genotype() : 0) : 1.0;
 
-        (*inf)->determineDensities(rng, imm_h_ref(), infStepMaxDens, immSurvFact, _innateImmSurvFact, bsvFactor);
+        determine_densities_descriptive(**inf, rng, imm_h_ref(), infStepMaxDens, immSurvFact, _innateImmSurvFact, bsvFactor);
 
         if (bugfix_max_dens)
             infStepMaxDens = std::max(infStepMaxDens, timeStepMaxDensity);

@@ -105,7 +105,7 @@ void WHInterface::init( RunContext& ctx, const OM::Parameters& parameters, const
             opt_penny_whm = true;
             Infection::initPenny(ctx);
         } else {
-            Infection::initDescriptive( ctx, parameters );      // 5-day time step check
+            infection_init_descriptive( ctx, parameters );      // 5-day time step check
         }
         opt_common_whm = opt_dummy_whm || opt_empirical_whm
                 || opt_molineaux_whm || opt_penny_whm;
