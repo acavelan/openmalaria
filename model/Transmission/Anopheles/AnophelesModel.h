@@ -299,9 +299,6 @@ public:
     inline double getInitPartialEIR() const{ return partialInitEIR[ctx.clock.moduloYearSteps(ctx.clock.ts0())] / initAvail; }
     //@}
 
-    /// Intermediatary from vector model equations used to calculate EIR
-    //@}
-
 
     ///@brief Functions called to deploy interventions
     //@{
