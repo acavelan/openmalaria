@@ -115,7 +115,8 @@ struct HumanDeployParams {
 
 /// Old TimedHumanDeployment filter bounds (read from XML at load).
 struct TimedHumanParams {
-    static TimedHumanParams read( RunContext& ctx, const scnXml::MassDeployment& mass,
+    static TimedHumanParams read( RunContext& ctx, SimTime date,
+        const scnXml::MassDeployment& mass,
         shared_ptr<const HumanIntervention> intervention,
         ComponentId subPop, bool complement );
 
@@ -309,6 +310,7 @@ inline void TimedDeployment::deploy( RunContext& ctx, std::vector<Host::Human>& 
         Transmission::TransmissionModel& transmission )
 {
     switch( kind ) {
+
     case TimedDeploymentKind::DUMMY: break;
     case TimedDeploymentKind::HUMAN:
         timed_human_deploy( ctx, population, std::get<TimedHumanParams>(p) ); break;
@@ -337,6 +339,21 @@ inline void TimedDeployment::deploy( RunContext& ctx, std::vector<Host::Human>& 
         timed_deploy_change_eir( ctx, transmission, std::get<ChangeEirDeployParams>(p) ); break;
     default: throw SWITCH_DEFAULT_EXCEPTION;
     }
+}
+
+/// Builders (TimedDeployment declares move/copy ops, so isn't brace-constructible).
+inline TimedDeployment timed_deployment( SimTime date, TimedDeploymentKind kind ) {
+    TimedDeployment td;
+    td.date = date;
+    td.kind = kind;
+    return td;
+}
+
+template <class P>
+inline TimedDeployment timed_deployment( SimTime date, TimedDeploymentKind kind, P&& payload ) {
+    TimedDeployment td = timed_deployment( date, kind );
+    td.p = std::forward<P>(payload);
+    return td;
 }
 
 /// PRINT_INTERVENTIONS listing; texts byte-identical to the old print_details.

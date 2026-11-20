@@ -74,16 +74,16 @@ void InterventionManager::deploy(RunContext& ctx, vector<Host::Human>& populatio
 
     // deploy timed interventions
     SimTime now = ctx.clock.interv_date();
-    while (ctx.ext->timed[ctx.ext->nextTimed]->date <= now)
+    while (ctx.ext->timed[ctx.ext->nextTimed].date <= now)
     {
         if (util::CommandLine::option(util::CommandLine::VERBOSE))
         {
             cout << "deploy::" << now << "::Timed";
-            ctx.ext->timed[ctx.ext->nextTimed]->print_details(cout);
+            print_timed_details(cout, ctx.ext->timed[ctx.ext->nextTimed]);
             cout << endl;
         }
 
-        ctx.ext->timed[ctx.ext->nextTimed]->deploy(ctx, population, transmission);
+        ctx.ext->timed[ctx.ext->nextTimed].deploy(ctx, population, transmission);
         ctx.ext->nextTimed += 1;
     }
 
