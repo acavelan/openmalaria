@@ -156,7 +156,7 @@ void run(RunContext& ctx, Population &population, TransmissionModel &transmissio
         Host::HostScratch scratch;   // EIR out-vectors, reused across humans/ticks
         for (Host::Human& human : population.humans)
         {
-            if (human.getDOB() + ctx.clock.max_human_age >= humanWarmupLength) // this is last time of possible update
+            if (human.cols->dob[human.row] + ctx.clock.max_human_age >= humanWarmupLength) // this is last time of possible update
                 Host::update(ctx, human, transmission, scratch);
         }
        

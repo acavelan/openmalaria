@@ -122,14 +122,6 @@ public:
         latestReport.flush();
     }
 
-    inline const Episode &getLatestReport () const{
-        return latestReport;
-    }
-    
-    inline const Episode::State &getLatestState () const{
-        return latestState;
-    }
-    
     /** Time of the last treatment (sim::never() if never treated): SoA
      * column t_last_treatment (old member; accessors keep read/write syntax). */
     SimTime& t_last_treatment() const { return cols->t_last_treatment[row]; }

@@ -47,7 +47,7 @@ double LSTMDrug::drugFactor_oneComp(LocalRng& rng, WithinHost::Infection *inf, d
     double neg_elim_rate = neg_elim_sample * pow(body_mass, typeData->neg_m_exp);
     
     const LSTMDrugPD& drugPD = typeData->getPD(inf->genotype());
-    const double Kn = drugPD.IC50_pow_slope(rng, typeData->getIndex(), inf);
+    const double Kn = drugPD.IC50_pow_slope(rng, typeData->index, inf);
     
     double time = 0.0;
     typedef pair<double,double> TimeConc;

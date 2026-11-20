@@ -307,22 +307,6 @@ namespace OM { namespace util {
 
     public:
     /*
-    * Returns a bitset representing the model options used by the named "base"
-    * model.
-    *
-    * Note: at present the base model sets values that are not considered "default".
-    * This is because there are default model options which are often not desired,
-    * but are turned on in the absence of anything in the input suggesting they should
-    * be turned off for legacy (i.e. backwards compatibility) reasons.
-    */
-    static std::bitset<NUM_OPTIONS> getBaseModelOptions()
-    {
-        // The "base" model is very simple
-        bitset<NUM_OPTIONS> allOptionsOff;
-        return allOptionsOff;
-    }
-
-    /*
     * Returns a bitset representing the default model options used when no named
     * model is selected.
     */

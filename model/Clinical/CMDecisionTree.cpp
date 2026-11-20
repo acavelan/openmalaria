@@ -107,7 +107,7 @@ void walk( const FlatTree& t, DTExecCtx& e, uint32_t n )
             return;
         }
         case DTK_Uncomplicated: {
-            const Clinical::Episode& latest = e.human.clinicalModel->getLatestReport();
+            const Clinical::Episode& latest = e.human.clinicalModel->latestReport;
             const SimTime memory = static_cast<SimTime>( nd.aux );
             const bool recent = ((e.pgState & Episode::SICK)
                                     && !(e.pgState & Episode::COMPLICATED))
