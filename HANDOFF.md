@@ -41,11 +41,21 @@ functions (7f).
       GetModelName, setHadEvent/setHadRelapse). →18268.
 - [x] C4 folds round 2 (PkPd/Drug, WithinHost/Pathogenesis) + scan round 2
       (numDrugTypes, NvOguess, dead fwd decls ×2, dead test struct). →18261.
-- [ ] C5 read-pass remainder + wrappers/overloads sweep
-- [ ] C6 final: full T1 a+b seeds 1-10 (63), bench median-of-3, PERF.md row 7g,
-      cloc table, report.
+- [x] C5 Population accessors (getSize/getRecentBirths/resetRecentBirths →
+      public size/recentBirths, 14 sites). Read-pass remainder + wrapper sweep:
+      all candidates kept with reasons (see keep-proofs). →18248.
+- [x] C6 dangling doxygen block (AnophelesModel.h, comment-only) + final gates:
+      ctest 52/52, unittest .OK!, T1 a+b seeds 1-10 = 63/63 on final binary,
+      bench median 12.17 s (no regression), PERF.md row 7g. DONE.
 
 ## Method / proof tooling
+- Trap (cost an hour): pre-rewrite paths (Environment.h, DailyDate.*,
+  Scenario.cpp, Clinical/CohortTreatment.*, Clinical/Morbidity.*, Vivax/*,
+  VectorBio/*, mon/NaturalScreens.*) do NOT exist in this repo — that code was
+  folded into model/xml/*.cpp, model/core/, Host/, Transmission/ in p7b-p7f.
+  sed/grep on them silently no-op. Resolve paths with `find model` first.
+  (Also: the old DailyDate type itself is gone from the new tree — renamed in
+  an earlier phase; its helpers survive.)
 - /tmp/opencode/orphan.sh + two inline python scans (decl-identifier vs
   whole-tree occurrence count, comments stripped): function defs (.cpp),
   header decls, header inline defs, member fields, type names.
