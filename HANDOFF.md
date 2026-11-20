@@ -169,3 +169,8 @@ order of side-effecting calls all preserved explicitly.
   observable); vectorModel brace wrappers flattened; subPop-read lambda shared by
   continuous+timed; bounds-not-met msg blocks one-lined (deterrent third-check
   quirk a.PF+a.HF preserved verbatim); VaccineLimits nonneg helper.
+- healthSystem.cpp 668->643 (-25): set_access_probabilities<HS> merges the
+  ImmediateOutcomes/DecisionTree5Day duplicate blocks; set_liver_stage merges the
+  two liverStageDrug blocks; getHealthSystemACRByName one-lined. String-literal
+  multiset audited against baseline per file: only 2->1 counts from the shared
+  helpers, zero text changes. Gate: ctest 52/52, unittest OK, T1 tier-a 53/53.
