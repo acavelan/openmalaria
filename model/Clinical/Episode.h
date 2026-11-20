@@ -69,8 +69,6 @@ public:
         
         //NEED_ANTIBIOTIC     = 0x40,         ///< Flag indicates a non-malaria fever requires (antibiotic) treatment
         
-        MORBIDITY_MASK      = 0x7F,         ///< Mask coving all above states
-        
         // Flags for outcome reporting:
         EVENT_IN_HOSPITAL   = 0x400,        ///< Indicates recovery/sequelae/death event occurred in hospital − only set on one of these events (ImmediateOutcomes only)
         DIRECT_DEATH        = 0x1000,       ///< Used for reporting death (from COMPLICATED sickness)
@@ -81,12 +79,12 @@ public:
     };
     
     explicit Episode(RunContext& ctx) :
-            rctx(&ctx),
             time(sim::never()),
             surveyPeriod(mon::NOT_USED),
             ageGroup(0),
             cohortSet(0),
-            state(NONE)
+            state(NONE),
+            rctx(&ctx)
     {
         healthSystemMemoryFix = util::ModelOptions::option (util::HEALTH_SYSTEM_MEMORY_FIX);
     };

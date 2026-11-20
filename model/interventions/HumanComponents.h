@@ -33,7 +33,6 @@ namespace Host {
     class Human;
 }
 namespace interventions {
-    class VaccineComponent;
     using util::LocalRng;
 
 // ———  sub-population removal  ———

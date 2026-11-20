@@ -105,28 +105,6 @@ public:
      * Unclear whether using this at the same time as comorbidity parameters
      * makes any sense. */
     static AgeGroupInterpolator MF_need_antibiotic;
-    
-    // Note on memory usage: Pathogenesis::State is and enum (an int), so we
-    // have a vtable followed by 3 ints, a double and a list. Alignment probably
-    // wastes some space.
-    /// Current state of sickness
-    Episode::State pgState;
-
-    /** Set to when a bout should start. If ctx.clock.ts0() equals this, a bout
-     * is started (UC & severe behaviour different).
-     *
-     * Note: medications are not delayed by this. */
-    SimTime caseStartTime = sim::never();
-
-    /** The individual recovers when ctx.clock.ts0() >= timeOfRecovery,
-     * assuming they didn't die. */
-    SimTime timeOfRecovery = sim::never();
-
-    /// Time at which last treatment was recieved (for second-case considerations).
-    SimTime timeLastTreatment = sim::never();
-
-    /// Total parasite density at last time step (used during a bout).
-    double previousDensity;
 };
 
 

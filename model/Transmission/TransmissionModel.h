@@ -109,25 +109,21 @@ public:
     TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode,
         vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
         vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
-        map<string, size_t> speciesIndexList, int populationSize);
+        map<string, size_t> speciesIndexList);
 
     /// Non-vector constructor (was NonVectorModel; defined in xml/entomology.cpp).
     TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode,
-        const scnXml::Entomology &entoData, const scnXml::NonVector &nonVectorData, int eipDuration);
+        const scnXml::NonVector &nonVectorData, int eipDuration);
 
 protected:
     /// The run this model belongs to (clock accessed as ctx.clock).
     RunContext& ctx;
 
-    /// Reads all entomological parameters from the input datafile.
-    /// @param entoData input configuration for model
-    /// @param nGenotypes number of genotypes transmission model is using
-    TransmissionModel(RunContext& ctx, vector<double> initialisationEIR, int interventionMode, size_t nGenotypes, Kind kind,
+    TransmissionModel(RunContext& ctx, vector<double> initialisationEIR, int interventionMode, Kind kind,
         vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
         vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
         map<string, size_t> speciesIndexList)
         : ctx(ctx)
-        , kind(kind)
         , initialisationEIR(std::move(initialisationEIR))
         , simulationMode(forcedEIR)
         , interventionMode(interventionMode)
@@ -151,6 +147,7 @@ protected:
         , species(std::move(speciesList))
         , emergenceRateEstimators(std::move(emergenceRateEstimatorsList))
         , speciesIndex(std::move(speciesIndexList))
+        , kind(kind)
     {
         // parity: order — vector kind only: seeding LocalRng from master_RNG
         // consumes master draws (Xoshiro seeds via 4 gen_u64); the non-vector
@@ -634,9 +631,6 @@ private:
     void ctsCbAlpha(const vector<Host::Human> &population, ostream &stream);
     void ctsCbP_B(const vector<Host::Human> &population, ostream &stream);
     void ctsCbP_CD(const vector<Host::Human> &population, ostream &stream);
-    void ctsNetInsecticideContent(const vector<Host::Human> &population, ostream &stream);
-    void ctsIRSInsecticideContent(const vector<Host::Human> &population, ostream &stream);
-    void ctsIRSEffects(const vector<Host::Human> &population, ostream &stream);
     void ctsCbResAvailability(ostream &stream);
     void ctsCbResRequirements(ostream &stream);
 

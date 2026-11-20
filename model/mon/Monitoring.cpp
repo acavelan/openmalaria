@@ -171,8 +171,7 @@ void writeMeasure(RunContext& ctx, ostream& stream, Writer writeRow, size_t surv
 {
     const OutMeasure& om = store.output;
     const size_t surveyStart = survey * store.size();
-    const size_t reportCount = std::visit([](const auto& reports) { return reports.size(); }, store.reports);
-    assert(reportCount >= surveyStart + store.size());
+    assert(std::visit([](const auto& reports) { return reports.size(); }, store.reports) >= surveyStart + store.size());
     const bool bySpecies = om.dims & Dim::Species;
     const bool byDrug = om.dims & Dim::Drug;
     const int ageGroupAdd = om.dims & Dim::Age ? 1 : 0;

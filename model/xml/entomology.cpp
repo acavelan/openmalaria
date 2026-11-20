@@ -89,7 +89,7 @@ TransmissionModel *createNonVectorModel(RunContext& ctx, const scnXml::Entomolog
     vector<double> initialisationEIR;
     initialisationEIR.assign(ctx.clock.steps_per_year, 0.0);
 
-    return new TransmissionModel(ctx, initialisationEIR, interventionMode, entoData, nonVectorData, eipDuration);
+    return new TransmissionModel(ctx, initialisationEIR, interventionMode, nonVectorData, eipDuration);
 }
 
 bool anophelesCompare(const scnXml::AnophelesParams &a1, const scnXml::AnophelesParams &a2)
@@ -336,7 +336,7 @@ Anopheles::AnophelesModel *createAnophelesModel(RunContext& ctx, size_t i, const
     // Initial guess of the proportion of mosquitoes which are infected, o: O_v(t) = o*N_v(t). Only used as a starting value.
     double propInfected = 0.078;
 
-    anophModel->initialise(i, mosqParams);
+    anophModel->initialise(mosqParams);
     anophModel->initAvailability(i, nhhs, populationSize);
     anophModel->initEIR(initEIR365, FSCoeffic, EIRRotateAngle, propInfectious, propInfected);
 
@@ -389,7 +389,7 @@ TransmissionModel *createVectorModel(RunContext& ctx, const scnXml::Entomology &
     // Note: in forcedEIR mode species/emergenceRateEstimators are not needed
     // anymore (we have initialisationEIR), but interventions still use them.
 
-    return new TransmissionModel(ctx, initialisationEIR, interventionMode, std::move(species), std::move(emergenceRateEstimators), speciesIndex, populationSize);
+    return new TransmissionModel(ctx, initialisationEIR, interventionMode, std::move(species), std::move(emergenceRateEstimators), speciesIndex);
 }
 
 TransmissionModel *createTransmissionModel(RunContext& ctx, const scnXml::Entomology &entoData, int populationSize)
@@ -424,8 +424,8 @@ TransmissionModel *createTransmissionModel(RunContext& ctx, const scnXml::Entomo
     return model;
 }
 
-TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode, const scnXml::Entomology &entoData, const scnXml::NonVector &nonVectorData, int eipDuration)
-        : TransmissionModel(ctx, std::move(initEIR), interventionMode, 1 /*this model doesn't support multiple genotypes*/, Kind::NonVector, {}, {}, {})
+TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode, const scnXml::NonVector &nonVectorData, int eipDuration)
+        : TransmissionModel(ctx, std::move(initEIR), interventionMode, Kind::NonVector, {}, {}, {})
     {
         nSpore = sim::fromDays(eipDuration);
         laggedKappa.resize(ctx.clock.inSteps(nSpore) + 1, 0.0);
