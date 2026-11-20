@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+// p8-files: header fold rejected — ClinicalModel.cpp resolves the
+// ClinicalModel<->EventScheduler/CM5DayCommon include cycle; bodies stay here.
 #include "RunContext.h"
 #include "Clinical/ClinicalModel.h"
 #include "Clinical/CM5DayCommon.h"

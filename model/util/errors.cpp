@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+// p8-files: bodies stay out of util/errors.h — that header is in nearly every TU;
+// inlining error paths here would pay for it modelwide.
 #include "util/errors.h"
 #include <ostream>
 #include <iostream>

@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+// p8-files: Genotypes.h rides the RunContext.h cone (modelwide); the XML init +
+// sampling bodies stay here (demography rule: wide cones keep cpp bodies).
 #include "Host/WithinHost/Genotypes.h"
 #include "util/random.h"
 #include "util/errors.h"

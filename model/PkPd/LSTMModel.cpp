@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+// p8-files: LSTMModel.h spans the whole PkPd+clinical read surface; the
+// update/medicate bodies stay here (wide-cone rule).
 #include "PkPd/LSTMDrugType.h"
 #include "PkPd/LSTMDrug.h"
 #include "PkPd/LSTMModel.h"

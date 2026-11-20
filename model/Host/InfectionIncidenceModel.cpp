@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+// p8-files: InfectionIncidenceModel.h sits in the Human/WH chain; the per-Kind
+// incidence formula bodies stay here (wide-cone rule).
 #include "RunContext.h"
 #include "Host/InfectionIncidenceModel.h"
 #include "Host/Human.h"
