@@ -37,17 +37,21 @@ namespace OM {
 namespace WithinHost {
 using namespace util;
 
-// static class variables (see description in header file):
-double Infection::meanLogParasiteCount[numDurations][numDurations];
-double Infection::sigma0sq;
-double Infection::xNuStar;
+// Descriptive model statics: file scope (this TU is the only reader/writer);
+// re-initialised per run by infection_init_descriptive (TwoRunsSuite tripwire):
+/* A triangular matrix: meanLogParasiteCount[i][j] is the
+ * Mean Log Parasite Count for age i (in time steps) of an infection which
+ * lasts j days. Indices with i>j are unused. */
+static double meanLogParasiteCount[numDurations][numDurations];
+static double sigma0sq;       ///< Sigma0^2 from AJTM p.9 eq. 13
+static double xNuStar;        ///< XNuStar in AJTM p.9 eq. 13
 
 bool bugfix_max_dens = true, bugfix_innate_max_dens = true;
 
 
 // ———  static init/clear ———
 
-void Infection::initDescriptive (RunContext& ctx, const Parameters& parameters) {
+void infection_init_descriptive (RunContext& ctx, const Parameters& parameters) {
     // Error checks
     if( ctx.clock.one_TS() != 5 ){
         // To support non-5-day time-step models, either different data would
@@ -118,7 +122,7 @@ void Infection::initDescriptive (RunContext& ctx, const Parameters& parameters) 
 
 // ———  non-static init  ———
 
-SimTime Infection::infectionDuration(RunContext& ctx, LocalRng& rng) {
+SimTime infection_duration_descriptive(RunContext& ctx, LocalRng& rng) {
     // Forgive the excess precision; it just avoids having to update all expected results
     double dur_mean = 5.1300001144409179688;
     double dur_sigma = 0.80000001192092895508;
@@ -135,8 +139,18 @@ SimTime Infection::infectionDuration(RunContext& ctx, LocalRng& rng) {
 }
 
 
+// ———  construction  ———
+
+// Ctor hook for Kind::Descriptive: the duration draw keeps the slot the member
+// ctor's init list held — nothing else draws between construction and here.
+void infection_ctor_descriptive(Infection& inf, LocalRng& rng) {
+    inf.descriptive.duration = infection_duration_descriptive(inf.ctx, rng);
+}
+
+
 // ———  time-step updates  ———
-void Infection::determineDensities(
+void determine_densities_descriptive(
+        Infection& inf,
         LocalRng& rng,
         double cumulativeh,
         double &timeStepMaxDensity,
@@ -146,20 +160,20 @@ void Infection::determineDensities(
 {
     // Age of patent blood stage infection. Note: liver stage is fixed at one
     // 5-day time step and prepatent blood stage is latentp - 1 time steps.
-    SimTime infage = ctx.clock.ts0() - m_startDate - s_latentP;
+    SimTime infage = inf.ctx.clock.ts0() - inf.m_startDate - Infection::s_latentP;
     if ( infage < sim::zero()) {
-        m_density = 0.0;
+        inf.m_density = 0.0;
         if (bugfix_max_dens) timeStepMaxDensity = 0.0;
     }else{
         timeStepMaxDensity = 0.0;
         
-        int32_t infAge = min( ctx.clock.inSteps(infage), maxDurationTS );
-        int32_t infDur = min( ctx.clock.inSteps(m_duration), maxDurationTS );
-        m_density=max (meanLogParasiteCount[infAge][infDur], 0.0);
+        int32_t infAge = min( inf.ctx.clock.inSteps(infage), maxDurationTS );
+        int32_t infDur = min( inf.ctx.clock.inSteps(inf.descriptive.duration), maxDurationTS );
+        inf.m_density=max (meanLogParasiteCount[infAge][infDur], 0.0);
         
         // The expected parasite density in the non naive host (AJTM p.9 eq. 9)
         // Note that in published and current implementations Dx is zero.
-        m_density = m_density * immSurvFact;
+        inf.m_density = inf.m_density * immSurvFact;
         
         //Perturb m_density using a lognormal
         double varlog = sigma0sq / (1.0 + (cumulativeh / xNuStar));
@@ -172,31 +186,31 @@ void Infection::determineDensities(
         */
         if (stdlog > 0.0000001) {
             // Calculate the expected density on the day of sampling:
-            double meanlog = m_density - stdlog*stdlog / 2.0;
+            double meanlog = inf.m_density - stdlog*stdlog / 2.0;
             // parity: order — local RNG stream: draw call order fixes stream state
-            m_density = rng.log_normal(meanlog, stdlog);
+            inf.m_density = rng.log_normal(meanlog, stdlog);
             // Calculate additional samples for T-1 days (T=days per step):
             if( true /*ctx.clock.one_TS() > 1, always true for this model*/ ){
-                timeStepMaxDensity = rng.max_multi_log_normal (m_density,
-                        ctx.clock.one_TS() - 1, meanlog, stdlog);
+                timeStepMaxDensity = rng.max_multi_log_normal (inf.m_density,
+                        inf.ctx.clock.one_TS() - 1, meanlog, stdlog);
             } else {
-                timeStepMaxDensity = m_density;
+                timeStepMaxDensity = inf.m_density;
             }
         }
-        if (timeStepMaxDensity > maxDens && notPrintedMDWarning){
-            cerr << "TSMD hit limit:\t" << m_density << ",\t" << timeStepMaxDensity << endl;
-            notPrintedMDWarning = false;
+        if (timeStepMaxDensity > maxDens && inf.descriptive.notPrintedMDWarning){
+            cerr << "TSMD hit limit:\t" << inf.m_density << ",\t" << timeStepMaxDensity << endl;
+            inf.descriptive.notPrintedMDWarning = false;
         }
-        m_density = min(m_density, maxDens);
+        inf.m_density = min(inf.m_density, maxDens);
         timeStepMaxDensity = min(timeStepMaxDensity, maxDens);
         
         //Compute the proportion of parasites remaining after innate blood stage effect
-        m_density *= innateImmSurvFact;
+        inf.m_density *= innateImmSurvFact;
         
         //Include here the effect of blood stage vaccination
-        m_density *= bsvFactor;
+        inf.m_density *= bsvFactor;
         
-        m_cumulativeExposureJ += ctx.clock.one_TS() * m_density;
+        inf.m_cumulativeExposureJ += inf.ctx.clock.one_TS() * inf.m_density;
     }
     
     if (bugfix_innate_max_dens) timeStepMaxDensity *= innateImmSurvFact;
@@ -206,13 +220,13 @@ void Infection::determineDensities(
 
 // ———  checkpointing  ———
 
-void Infection::read_Descriptive (istream& stream) {
-    m_duration & stream;
-    notPrintedMDWarning & stream;
+void read_descriptive (Infection& inf, istream& stream) {
+    inf.descriptive.duration & stream;
+    inf.descriptive.notPrintedMDWarning & stream;
 }
-void Infection::checkpoint_Descriptive (ostream& stream) {
-    m_duration & stream;
-    notPrintedMDWarning & stream;
+void checkpoint_descriptive (Infection& inf, ostream& stream) {
+    inf.descriptive.duration & stream;
+    inf.descriptive.notPrintedMDWarning & stream;
 }
 
 }

@@ -1,222 +1,103 @@
----
+# Phase 7f HANDOFF — Infection slim-struct + per-kind free functions (branch `p7f-infection` off tag `p7e-green` = b9f7c22a)
 
-## MERGE STATE (2026-11-20, mid-7c)
-Branch reality: `p7c-vectorize` chain + `p7d-pgo` were merged into **`rewrite`** (HEAD 4d00b34e+).
-The first merge pass clobbered the 7c rows in PERF.md/HANDOFF — restored in this
-commit; verify `grep -c "7c-" PERF.md` > 0 after any future merge. Second agent owns
-branch `p7d-pgo` + bench core **c3** + `/tmp/opencode/om-bench-p7d/`; I own c5 +
-`/tmp/opencode/om-bench`. Their A2true (11.15 on p7b-green) and my a2p (11.02 incl.
-C3) cross-confirm PGO ≈ −6.9 %. pgodata-p7d/ (repo root, untracked) = their profile
-corpus — keep.
-
-# Phase 7c HANDOFF — comparison memo, ISA pricing, SoA-sweep vectorization, LOC sweep (branch `p7c-vectorize` off tag `p7b-green` = 0c895755)
-
-Crash-recovery file. Update EVERY green commit. Work order: 7c-A memo (done),
-7c-B ISA experiment (done), 7c-C vectorize the SoA sweeps (the user's explicit ask),
-7c-D LOC sweep (dead code/wrappers/duplication/xml/ compaction), 7c-E final gate +
-report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
+User-approved readability refactor (user vetoed re-litigating the 4b merged
+god-class shape): `Infection` becomes a SLIM SHARED STRUCT + per-kind state
+payloads + FREE FUNCTIONS (iv/vac/ComponentConfig pattern). NAMESPACING ONLY:
+formula bodies move verbatim, RNG draw points/order frozen, checkpoint wire
+order per kind identical (bytes kept), error strings verbatim, `// parity:`
+comments travel.
 
 ## Environment
-- Gate build: `build-p7c/` = Release `-DCMAKE_CXX_FLAGS=-ffp-contract=off`
-  `-DOM_BOXTEST_BINARY=ON`. `cmake --build build-p7c -j16`. unittest from
-  `build-p7c/unittest/` → `./unittest` (".OK!", 94 cases). ctest: `cd build-p7c && ctest -j16` (52).
-- Perf build (lever baseline): `build-p7c-a2/` = exact p7b-a2 recipe (Release
-  `-ffp-contract=off -flto=auto -fprofile-use -fprofile-correction -Wno-missing-profile`,
-  tests OFF). Verified this session: bench 11.98 (raw 11.96–12.00) — yardstick reproduces.
-- `build-p7c-a2n/` = a2 + `-march=native -mtune=native` — 7c-B record, KEEP, do not adopt.
-- T1 reference: `/tmp/opencode/om-ref/A0/openMalaria` + recipe.json (hash-checked by runner).
-  `python3 util/parity.py --old /tmp/opencode/om-ref/A0/openMalaria --new <bin>
-  --recipe /tmp/opencode/om-ref/A0/recipe.json --tiers a -j16` (53, ~17 s);
-  `--tiers b --seeds 1-10 -j16` (10, ~35 s). Never run benches concurrently with parity/ctest.
-- BENCH: **MUST `cd /tmp/opencode/om-bench` first** (XSD symlink lives there; bench.sh does NOT
-  cd — running it elsewhere = instant validation error = "0.00" lines, trap hit once this
-  session). `./bench.sh <bin> /home/razlock/git/fork/util/example/example_scenario.xml` =
-  1 discard + 5× `/usr/bin/time -f %U`, taskset -c 5. Noise floor max(1.0%, 2×MAD).
-- perf events work at paranoid=2 via `cpu_core/…​/u` pmu prefix (`perf stat -e
-  instructions,cycles,branches,branch-misses` — hybrid atom events show "<not counted>",
-  harmless). `perf record -F 999` for software sampling.
+- Gate build: `build-p7f/` = Release `-O3 -DNDEBUG -ffp-contract=off`
+  `-DOM_BOXTEST_BINARY=ON`. `cmake --build build-p7f -j16`.
+- unittest: run from `build-p7f/unittest/` (`./unittest` → ".OK!", 94 cases;
+  fixture files live next to the binary).
+- ctest: `cd build-p7f && ctest -j16` (52).
+- T1: `python3 util/parity.py --old /tmp/opencode/om-ref/A0/openMalaria --new
+  build-p7f/openMalaria --recipe /tmp/opencode/om-ref/A0/recipe.json --tiers a
+  -j16` (53); `--tiers b --seeds 1-4` (4). parity.py resolves
+  `scenario_current.xsd` via `<repo>/schema`, `<repo>/test`, then
+  `<repo>/build/schema` — `build/` here is the OLD real build dir left in place
+  on purpose (p7e gates ran against its schema copy; do not delete).
+- Bench (final only): `cd /tmp/opencode/om-bench && ./bench.sh <abs-bin>
+  /home/razlock/git/fork/util/example/example_scenario.xml` — taskset -c 5,
+  1 discard + 5× %U CPU-s; never concurrent with other load.
+- Baseline stamp (p7e-green, build-p7f): ctest 52/52, unittest .OK!, tier-a
+  53/53. cloc code LOC: model 18,417; unittest 3,794; Infection/ dir 1,091
+  (1,891 total lines).
 
-## Current yardsticks (this branch, HEAD green at p7b-green = 0c895755)
-| binary | CPU-s | vs frozen baseline-A2 11.34 | note |
-|---|---|---|---|
-| gate A0-class (build-p7c) | 12.47 | — | p7b stamp |
-| **build-p7c-a2 (lever baseline)** | **11.98** (n=20 MAD .010) | **0.947** | C3 code re-measure same-session: **11.835** (11.81–11.88) |
-| build-p7c-a2n (native) | 12.12 MAD .010 | 0.936 | +1.17 % slower, T1 63/63 clean — NOT adopted (ISA edge priced; phase-8 may flip, build dir kept) |
-| **build-p7c-a2p (PGO, real)** | **11.02** (n=20, 10.98–11.09) | **0.972** | two-pass in-dir profiles; T1 a+b 63/63 bit-clean; **new yardstick** |
+## Design (locked)
+- `struct Infection` — public data, no friends (7.2b precedent "payloads
+  public, friends dead"). Shared fields: kind, ctx, m_startDate, m_density,
+  m_cumulativeExposureJ, m_genotype, m_origin, s_latentP (static, shared),
+  payloads descriptive/empirical/molineaux/penny/kn (public unique_ptrs).
+- DescriptiveData{duration,notPrintedMDWarning} payload joins the phase-5 trio;
+  Descriptive statics (meanLogParasiteCount, sigma0sq, xNuStar), Empirical
+  _* statics and Penny immune_threshold_gamma/update_density_gamma move to
+  file scope of their owning TUs (grep-verified: no external readers; all
+  init_* re-run per scenario load → per-run re-init preserved; TwoRunsSuite is
+  the tripwire).
+- Kn() stays SHARED on the struct: callers are LSTMDrugType.cpp:59-63 and
+  LSTMDrugConversion.cpp:174-186 (PkPd LSTMDrug path); PkPd is unavailable for
+  Descriptive (treatPkPd_descriptive throws) but live for ALL FOUR Common
+  kinds → multi-kind → shared. Lazy unique_ptr kept (phase-5 allocation fix).
+- Naming: shared dispatch keeps `infection_` prefix (infection_new,
+  infection_new_checkpointed, infection_update, infection_checkpoint,
+  infection_init_<kind>, infection_ctor_<kind>, infection_duration_descriptive);
+  per-kind hooks are verb-first free functions (update_density_<kind>,
+  read_<kind>, checkpoint_<kind>, determine_densities_descriptive). Declarations
+  in Infection.h. TU-only helpers (getInflatedDensity, sigma_noise,
+  sampleSubPatentValue, getClonalSummation, getVariantSpecificSummation) become
+  file-local statics in their kind TU.
+- Trivial accessors (getDensity, cumulativeExposureJ, clearImmunity,
+  bloodStage, isHrp2Deficient, genotype(), origin(), expired(), seqDensity(),
+  Kn(), operator&) stay inline members of the struct — zero WH churn.
+- Ctor draw point: shared ctor keeps NO RNG draw (nowOrTs0() is a pure getter);
+  Descriptive duration draw moves into `case Kind::Descriptive:` of the
+  infection_new switch (infection_ctor_descriptive →
+  infection_duration_descriptive draw is that case's FIRST and only RNG action;
+  the assert before it never draws). Checkpoint reader for Descriptive
+  allocates its payload before reading duration+notPrintedMDWarning (wire
+  order unchanged: those two last, after the 5 shared fields).
+- Commit ladder: 1) class→struct public + friends deleted; 2) Descriptive;
+  3) Dummy+Empirical; 4) Molineaux+Penny; 5) shared ctor/update/checkpoint
+  dispatch flip + m_kind→kind + header shrink + suites; 6) final gate + PERF
+  row + close. Every commit: build + ctest 52 + unittest 94 + tier-a 53;
+  tier-b seeds 1-4 after Descriptive and Molineaux commits; full a+b at final.
 
 ## Status
-- [x] branch `p7c-vectorize` off `p7b-green`; builds build-p7c / -a2 / -a2n configured+green
-- [x] 7c-A: `census/antigravity_comparison.md` — staircase table (bars NOT comparable:
-      wall-mix+startup vs CPU-s, ISA asymmetry, 1e-6 text vs bit-exact parity), per-lever
-      adoption table, the four "only works at 1e-6" flags (hand-LU solver, tbv multiply
-      reorder, hand-rolled CDFs, value-changing bug fixes), ISA pricing (from 7c-B).
-- [x] 7c-B ISA: a2n bit-clean (63/63, 0 FMA emissions) but **−1.17 % SLOWER** (IPC 3.53→3.45,
-      −1.05 % instr / +1.28 % cycles) ⇒ NOT proposed; plan's -march ban costs nothing here.
-      PERF row 7c-B. This prices the biggest bundled ingredient of their 1.20→1.46 step.
-- [x] **AUDIT (7c-B, source-verified): the p7b "A2/P-go" yardstick binary never consumed
-      profile data.** `-fprofile-use` resolves `.gcda` beside each object (probe:
-      `-Wmissing-profile` names it); none existed in build-p7b-a2; om-pgo holds only
-      `#…​build-p7b-pgogen#…​`-encoded names; `-Wno-missing-profile` silenced everything.
-      ⇒ "PGO collapsed 1.087→1.003" (row 7b-A) was never actually tested. Fix mechanism
-      probe-verified: rename profile files to the new build-dir encoding + `-fprofile-dir=DIR`.
-      PGO on the current tree gets re-priced properly in 7c-E (plan: build-p7c-pgogen corpus
-      on HEAD → rename → build-p7c-a2p with -fprofile-dir → T1 tier-b + bench).
-- [x] 7c-C: SoA sweep vectorization — **C3 KEPT** (immunitySurvivalFactor host-tick hoist,
-      −1.04 % = 11.85, commit c367570c). C1 pyrogen-hoist, C2 age-sweep hoist, C6 vectorUpdate
-      two-pass staging all measured sub-floor ⇒ reverted+logged (PERF 7c-C rows). Vec-info
-      evidence: hot TUs already run 126 auto-vectorized loops, default cost model reports zero
-      missed; rest blocked by control flow / clobbering libm+recordStat = phase-8/9 territory.
-      Pre-phase-8 bit-exact vectorization is exhausted.
-- [x] 7c-PGO (was scheduled 7c-E): two-pass in-dir PGO re-price DONE — a2p **11.02, −6.9 %**
-      vs C3-a2, T1 a+b 63/63 bit-clean, consumption proven (see PERF 7c-PGO). a2p = new
-      yardstick; gate build stays profile-free. Fix for the p7b trap: NEVER separate
-      pgogen/use build dirs — same dir, swap flags, gcda stay beside objects.
-- [x] 7c-C-P: SoA "why not faster" PROFILE DONE (PERF §7c-C-P, table for final report):
-      IPC 3.48 / LLC-miss 0.14 % / LL-miss 0.01 % — layout WORKS, run is issue-bound; SoA
-      lanes ≈25 % of CPU, bit-exact levers already ≈−5 % total; blockers are dgemm 21 %,
-      libm/GSL 12 %, pyrogen serial recurrence ≈6 % (all shape-blind, phase-8). Slab-arena
-      hypothesis (iv/vac scatter) measured and rejected.
-- [x] 7c-Da: dead-code sweep −22 LOC (commit f1f7ab10). C6 RESTORED per ruling (1fbf788a).
-- [x] 7c-D2: dedup sweep −36 (LSTM checkpoint pairs templated). Dup scan otherwise empty
-      after 7 phases. **xml/ compaction deliberately deferred** — reviewed, already dense,
-      forced cut = risky config-path churn, zero perf (rationale in PERF 7c-Db).
-      7c-D total: 18,675→18,617 (−58); branch net vs p7b-green: **−29**.
-- [ ] 7c-E: final gate (T1 a+b 63/63, ctest, unittest, cloc table, benches incl. a2p,
-      perf top-5, PERF 7c-F scoreboard, report, HANDOFF close)
+- [x] setup: branch, build-p7f green (52/52, .OK!, 53/53), this HANDOFF
+- [x] C1 struct flip 6d1f0189 (public struct, friend blocks + MolineauxInfectionSuite/
+      PennyInfectionSuite/UnittestUtil friend decls dead)
+- [x] C2 Descriptive 64149ea0 (payload + statics→file scope + free fns + call sites)
+- [x] C3 Dummy+Empirical 48b4e469
+- [x] C4 Molineaux+Penny b0f16140
+- [x] C5 shared dispatch flip ddce7ebc (infection_new/update/checkpoint), kind rename
+- [x] C6 final: T1 a+b 63/63, cloc table, bench, PERF row 7f, report
+- [x] perf-fix 6f025ebb: bench found +2.3 % regression (heap DescriptiveData
+      payload: 2nd malloc/infection + dependent load per tick in expired());
+      fixed by embedding the 12-byte payload by value. Re-bench ≈12.17 vs
+      ≈12.24 (≤1 % band); T1 re-run green after fix.
 
-## 7c-C work notes (vectorize the sweeps — the user's explicit ask)
-- Pattern target: pass-1 stage elementwise quantities into flat run-owned scratch
-  (HostScratch [host] and [host×genotype] f64 slabs, capacity reused never shrunk),
-  pass-2 SCALAR ordered reduce (no reassociation — phase 8 owns reductions going SIMD).
-- Elementwise-only loops: contiguous scratch, __restrict/local buffers, no early return
-  in the map lane, no / or libm in the hot lane. `-fopt-info-vec-optimized` must show
-  the intended loops; per-loop `// vec-blocked: needs phase-8 break` where not fixable.
-- Hot chain to grep in the vec-missed report: Host::update stages,
-  calculateEIR_vector/vectorUpdate, probTransmissionToMosquito_*, updateKappa,
-  immunitySurvivalFactor/updateImmuneStatus, Descriptive updateDensity, iv_update.
-- Per-structure commits, measure on build-p7c-a2 rebuild (same recipe = 11.98 baseline),
-  keep only >floor wins, revert+log the rest.
+### Close-out (7f final)
+- Final gate on 6f025ebb: ctest 52/52, unittest .OK! (94), T1 tiers a+b
+  seeds 1-10 = 63/63 bit-identical.
+- LOC (cloc code): model 18,417 → 18,421 (+4); Infection dir 1,091 → 1,095
+  (+4); header 417 → 402 lines. Readability refactor — LOC-neutral by design.
+- Bench (taskset c5, median user-s, interleaved): p7e ≈12.15-12.16,
+  p7f ≈12.23-12.25 → +0.5 % residual, perf-attributable to inline/layout
+  shift only (determine_densities_descriptive 4.33→4.65 %, update_descriptive
+  4.00→4.32 %); accepted (<1 % band).
 
-- [x] 7c-E: FINAL GATE GREEN — gate build T1 a+b 63/63, ctest 52/52, unittest OK; a2p (final
-      tree, fresh two-pass profiles) also 63/63 + ctest + unittest. Perf: dgemm 21.15 % top
-      (phase-8 flip intact). Scoreboard row 7c-F. **Phase 7c CLOSED.**
-
-## Gates log
-- (setup) 3 builds configured; gate build: ctest 52/52 ✓, unittest .OK! ✓; a2 bench 11.98
-  (raw 11.96–12.00) = yardstick reproduced.
-- (7c-B) a2n: objdump 0 FMA; parity tier-a 53/53; tier-b s1–10 10/10; bench 12.12 MAD .010
-  (raw 12.10–12.13); perf stat −1.05 % instr, +1.28 % cycles. Verdict: not adopted, logged.
-- (7c-C3) commit c367570c: gate ctest 52/52, unittest OK, tier-a 53/53; a2 11.85 (n=20).
-- (7c-C1/C2/C6) each measured sub-floor on a2 n=20 ⇒ reverted, logged in PERF 7c-C. Final
-  tree = HEAD c367570c; a2 same-session re-measure 11.835 (n=20, raw 11.81–11.88). Vec-info
-  artifacts: /tmp/opencode/vec_all.txt.
-- (7c-PGO) a2p two-pass: pass-1 corpus ctest 52/52 + unittest + example seeds 1–4; pass-2
-  clean rebuild 0 profile warnings; ctest 52/52, unittest OK, T1 tier-a 53/53 + tier-b s1–10
-  10/10; bench n=20 median 11.02 (10.98–11.09). KEPT as yardstick.
-- (7c-Da) dead −22 LOC: gate green (first attempt caught by build fail — case-sensitive
-  deadscan nearly killed `setHadEvent` callers; unittest-run-from-repo-cwd trap logged).
-- (C6 restore, user ruling 1) 1fbf788a: tier-a 53/53; loaded interleave 11.98 vs a2g 12.04.
-- (7c-C-P) perf stat/record + cachegrind/callgrind (tiny pop=10 scenario) + p5 callgrind A/B:
-  artifacts /tmp/opencode/{cg_a2g_d.out,cg7c_curr.out,cg7c_p5.out,p7c_rec.data}; PERF §7c-C-P.
-- (7c-Db) LSTM checkpoint templating −36 LOC: ctest incl. checkpoint goldens, tier-a 53/53.
-- (7c-E) final: gate build T1 a+b **63/63**; a2p rebuilt fresh two-pass on final tree (81 gcda,
-  0 profile warnings) → ctest 52/52, unittest OK, T1 **63/63**; a2p-vs-a2 interleaved −5.9 %;
-  final perf record: dgemm 21.15 % top. Ledger 7c-F. NOTE: first p7d merge clobbered 7c rows
-  in PERF/HANDOFF — restored in cc3f23ba; re-check after merges.
-
-## Traps (inherited, all live, + new)
-- NEW: benches only from `/tmp/opencode/om-bench` cwd; never overlap bench with any other load.
-  Bench core = **c5 only** (second agent owns c3 + `/tmp/opencode/om-bench-p7d`). Min 3 reps;
-  ±1 % = "unknown"; if spread is wide or load avg >1 ⇒ RE-RUN or A/B-interleave vs a2g and
-  compare in-window (session-to-session absolute numbers are NOT comparable).
-  Scenario = absolute `/home/razlock/git/fork/util/example/example_scenario.xml` (bare/wrong
-  name ⇒ all-0.00 lines, same symptom as wrong cwd). `unittest` must run from
-  `build-p7c/unittest/` (fixture CSVs sit next to the binary; elsewhere = 16 file-not-found).
-- NEW: PGO cross-build-dir reuse requires the rename+`-fprofile-dir` dance (see AUDIT above);
-  "no warning" ≠ "profile used" — verify with `-Wmissing-profile` probe before believing any
-  A2 number.
-- set_row REBIND on any column shape change; m_rng ctor-draw rule (draw point frozen);
-  TwoRunsSuite+RngGoldens tripwires.
-- -ffp-contract=off always in gated binaries; NEVER -ffast-math/-march=native in GATE builds
-  (a2n experiment is USER-class, T1-proven, not adopted); NO FP reassociation (phase 8).
-  Vectorization = elementwise maps only; every += accumulator stays scalar.
-- Checkpoints may break freely (re-bless from A0 ref in same commit + round-trip smoke).
-- Untracked PROMPT.md/email = user files, leave alone.
-- SHARED BRANCH: second agent lands commits (7e-* xml compaction, p7d benching on c3) while
-  I work — ALWAYS re-check `git log -3` + rebuild + re-gate immediately before any gate claim;
-  my binary mtime must beat HEAD time. a2p needs full two-pass redo after tree settles
-  (incremental = gcda coverage-mismatch on changed TUs; p7d traps 1-3 apply).
+## Traps (inherited + new)
+- -ffp-contract=off always in gated builds; NO reassociation (phase 8 owns it).
+- m_rng draw-order rule: the Descriptive duration draw, SlotAllocatorSuite
+  state-word goldens ("genotype draw + duration draw") and RngGoldens are the
+  tripwires; TwoRunsSuite catches statics-reset mistakes.
+- unittest must run from build-p7f/unittest/.
+- Scenario load calls Infection::init(latentP) + exactly one init_<kind>
+  (model/xml/scenario.cpp:97-141) — keep call order on the free-fn retype.
+- Checkpoints: bytes kept this phase (12/12a goldens stay green) — format may
+  break per user ruling but this phase buys nothing from it.
 - ≤5 fix iterations per divergence, then revert+log.
-## 7d addendum — INDEPENDENT PGO RE-TEST (branch `p7d-pgo` off `p7b-green` = 0c895755; worktree `/home/razlock/.local/share/opencode/worktree/3fb2ad/p7d-pgo`)
-
-Verdict: **7b's "PGO collapsed to 1.003" was an un-measurement — that pass-2 built
-LTO-only.** True PGO on p7b-green: **11.15 CPU-s** (A1-LTO 11.98, A0-class 12.23;
-c3-pinned, median-of-5, MAD ≤ .010; A0 re-bench after A2 reproduced 12.23 — no drift).
-Flags lever = 1.097× vs A0. A2true T1 63/63 bit-clean ⇒ yardstick candidate stamped
-`/tmp/opencode/om-ref/A2true/{openMalaria,recipe.json}` (sha256 1df91b2c…).
-PERF.md row `7d-A-amended` carries the correction; 7b history rows untouched.
-
-Environment (mine, do not reuse others'):
-- `build-p7d-a0` = A0 gate (Release `-ffp-contract=off` `-DOM_BOXTEST_BINARY=ON`) — ctest 52/52, unittest 94 green.
-- `build-p7d-lto` = A1 = A0-class + `-flto=auto`, tests OFF.
-- `build-p7d-gen` = **BOTH PGO passes (single dir, flag-flip)**: pass-1 `-fprofile-abs-path -fprofile-generate=/home/razlock/git/fork/pgodata-p7d` (tests ON, corpus run), then same dir reconfigured `-fprofile-abs-path -fprofile-use=/home/razlock/git/fork/pgodata-p7d -fprofile-correction` (tests OFF). The bin there is A2true. `pgodata-p7d` (81 gcda) is the profile corpus — keep if A2true must be rebuilt.
-- `build-p7d-a2` = cross-dir pass-2 dead end (evidence: 9,407 `-Werror=coverage-mismatch` from path-keyed generated schema sources). Do not resurrect; single-dir flip is the only recipe that loads profiles cleanly here.
-- Bench: `/tmp/opencode/om-bench-p7d/bench3.sh` (taskset **-c 3**; 7c owns c5; runs from that dir — XSD symlinks live there, same trap as om-bench).
-- `ln -sfn build-p7d-a0 build` in this worktree: parity.py wants `<repo>/build/schema/scenario_current.xsd` for tier-a (box scenarios point at `scenario_current.xsd`).
-
-PGO wiring traps (each cost an experiment — do not re-learn):
-1. gcda flat names in `-fprofile-*=dir` are keyed on the **absolute object path**; a different build dir never finds them (microtest: `dirA`-generated gcda invisible to `dirB` compile, even with abs-path + same =dir).
-2. Generated `schema/*.cpp` live **inside the build dir** → their gcov location identity contains the build-dir path → cross-dir pass-2 = coverage-mismatch storm. Hence: single dir, flip flags, full rebuild (`rm -rf` first — flag change alone does not force Makefile recompiles).
-3. Never build pass-2 with `-Wno-missing-profile`; missing-profile warnings are the ONLY symptom of a dead profile (that's how 7b shipped LTO-only believing it was PGO). Verify loading instead: gcda count + clean log + inline-dump control (see PERF 7d-A-amended; control artifacts `/tmp/opencode/p7d-ctl/{lto-link,pgo-link}/`).
-
-Corpus that produced the 81 gcda (keep representative of the benchmark): gen-build ctest 52 (all box scenarios exercise checkpoint stop/resume) + unittest 94 + example@2000 `--seed 1..4` + scenarioVecFullTest ×2 + example@2000 seed 1 `--checkpoint-stop` then `--checkpoint` resume (run from a dir holding the XSD).
-
-## 7e addendum — model/xml LOC compaction (branch p7e-xmlcompact, gate build build-p7e = A0-class)
-Baseline (p7e off rewrite HEAD 8f132bc4): model/xml 4287 code LOC, model 18617.
-Gate: build-p7e/ (Release -O3 -DNDEBUG -ffp-contract=off -DOM_BOXTEST_BINARY=ON),
-`ln -sfn build-p7e build` for parity XSD. Baseline verified green: ctest 52/52,
-unittest .OK!, T1 tier-a 53/53.
-Strategy: file-local static/lambda helpers merging the verbatim-duplicated reader
-idioms (no shared kit header — nothing big enough repeats cross-file); dead glue
-deleted only with grep proof. Error strings/order, RNG draw order, evaluation
-order of side-effecting calls all preserved explicitly.
-- interventions.cpp 1236->1100 (-136): component dispatch if-init; changeHS/changeEIR
-  timed-deploy loops merged (try/catch per entry kept); #if 0 R_0 block deleted;
-  read_propUse/set_protected/per_species merge ITN/IRS/GVI triples; nhh_slot merges
-  the 5 present/range/set blocks (resize-before-if kept: operator[] insertion is
-  observable); vectorModel brace wrappers flattened; subPop-read lambda shared by
-  continuous+timed; bounds-not-met msg blocks one-lined (deterrent third-check
-  quirk a.PF+a.HF preserved verbatim); VaccineLimits nonneg helper.
-- healthSystem.cpp 668->643 (-25): set_access_probabilities<HS> merges the
-  ImmediateOutcomes/DecisionTree5Day duplicate blocks; set_liver_stage merges the
-  two liverStageDrug blocks; getHealthSystemACRByName one-lined. String-literal
-  multiset audited against baseline per file: only 2->1 counts from the shared
-  helpers, zero text changes. Gate: ctest 52/52, unittest OK, T1 tier-a 53/53.
-- entomology.cpp 460->435 (-25): averageEIR overloads share averageEIR_seq;
-  both changeEIRIntervention variants share fill_intervention_eir (cerr variant
-  kept via flag; minEIR hoist in the non-vector variant is unobservable since
-  EIRDaily has minOccurs=1); four initVectorInterv range-check+set blocks ->
-  set_interv_decay (resizes kept at call sites before present(); sugar slot's
-  seekingDeathRateIncrease tag quirk and "intrevention" typo verbatim);
-  duplicate include + empty forcedEIR if-block removed. Gate: 52/52, OK, 53/53.
-- util.cpp 396->373 (-23): Emax present/validation blocks via need/chk lambdas
-  (message bytes + check order unchanged); require1DayTS single-bit bitset loop
-  -> direct CLINICAL_EVENT_SCHEDULER check (msg identical); empty 1-day-TS
-  branch inverted away. Gate: 52/52, OK, 53/53.
-- monitoring.cpp 251->242 (-9): dead extern Continuous block deleted (all state
-  now bound from ctx.ext-> inside Continuous::init; grep proof: names only
-  referenced via those locals) + duplicate using internal::SurveyDate. Same gates.
-- pharmacology.cpp 311->301 (-10): phenotype-name if/else repeated 3x -> one
-  lazy pheno_name lambda (still evaluated only at the original use points).
-  Gate: 52/52, OK, 53/53.
-- HumanInterventionComponents.h 229->226 (-3): conditions ctor delegates to the
-  components ctor (identical operation order). Gate: 52/52, OK, 53/53.
-- scenario.cpp 485->481 + vivax.cpp 119->108 + new latentP.h 9 (net -6): the
-  byte-identical latentP read/try/catch block shared via read_latentP; hand-rolled
-  contains() template -> std::find. Latent literals moved verbatim. Same gates.
-- healthSystem.cpp 643->642 (-1): duplicate PathogenesisModel.h include.
-FINAL 7e-F: model/xml 4287->4049 (-238), model 18617->18379. Final gate on HEAD:
-ctest 52/52, unittest .OK!, T1 tiers a+b 63/63 bit-identical; runtime sanity
-12.20 s vs A0 12.29 s (load-phase-only layer, binary outputs identical). Honest
-call: the 2,600-LOC xml budget is unreachable without behavior-changing risk —
-what remains is unique per-reader code with per-element error texts. PERF row 7e-F.
+- Untracked PROMPT.md/email/pgodata-p7d/ = user files, leave alone.

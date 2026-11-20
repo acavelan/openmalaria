@@ -28,11 +28,11 @@
  * DescriptiveInfection::initParameters() (now init(const Parameters&)),
  * UnittestUtil::Infection_init() (removed), the default ctor
  * DescriptiveInfection() (now requires rng/genotype/origin) and the removed
- * gsl::setUp/tearDown (old RNG bootstrap). determineDensities() remains
+ * gsl::setUp/tearDown (old RNG bootstrap). determine_densities_descriptive() remains
  * untested (many inputs, 2 outputs — needs full Human scaffolding; see
  * T2FixtureManifest.md).
  * 
- * What is pinned here is the small pure function infectionDuration()
+ * What is pinned here is the small pure function infection_duration_descriptive()
  * (DescriptiveInfection.cpp:128): log-normal draw over hard-coded params plus
  * integer time-step rounding — a T2 fixture over the RNG primitive layer,
  * goldens generated with the same adapter as rng_dist_v50.csv.
@@ -55,7 +55,7 @@ public:
         UnittestUtil::initTime( 5 );
     }
     
-    /// infectionDuration() over a fixed stream: per draw, the returned
+    /// infection_duration_descriptive() over a fixed stream: per draw, the returned
     /// infection duration and the 4 post-draw Xoshiro256P state words.
     /// Values generated 2026-11-19 with golden-gen/RngGoldenAdapter.h (GCC
     /// 16.2.1, GSL 2.8, -O2 -ffp-contract=off), mirroring the hard-coded
@@ -80,7 +80,7 @@ public:
         
         LocalRng rng(3, 4);  // Xoshiro256P(3, 4, default, default) — util/xoshiro.h:38
         for (size_t i = 0; i < sizeof(GOLDEN)/sizeof(GOLDEN[0]); ++i) {
-            SimTime dur = Infection::infectionDuration( UnittestUtil::ctx(), rng );
+            SimTime dur = infection_duration_descriptive( UnittestUtil::ctx(), rng );
             TS_ASSERT_EQUALS( dur, sim::fromDays(GOLDEN[i].days) - UnittestUtil::clock().one_TS() );
             
             // state words after this draw, via the model's own checkpoint API

@@ -43,8 +43,8 @@ public:
         m_rng.seed(1095, 721347520444481703);
         UnittestUtil::initTime(1);
         UnittestUtil::Infection_init_latentP_and_NaN ();
-        Infection::initPenny(UnittestUtil::ctx());
-        infection = new Infection (UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous, Infection::Kind::Penny);    // pkpdID (value) isn't important since we're not using drug model here
+        infection_init_penny(UnittestUtil::ctx());
+        infection = infection_new (UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous, Infection::Kind::Penny);    // pkpdID (value) isn't important since we're not using drug model here
     }
     void tearDown () {
         delete infection;
@@ -83,7 +83,7 @@ public:
         int iterations=0;
         SimTime now = UnittestUtil::clock().ts0();
         do{
-            extinct = infection->update(m_rng, 1.0, now, numeric_limits<double>::quiet_NaN());
+            extinct = infection_update(*infection, m_rng, 1.0, now, numeric_limits<double>::quiet_NaN());
             int ageDays = (now - infection->m_startDate - infection->s_latentP);
             while( ageDays < 0 ) ageDays += infection->delta_V; // special case encountered by unit test
             ETS_ASSERT_LESS_THAN( iterations, cirDens.size() );

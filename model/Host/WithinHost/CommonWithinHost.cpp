@@ -208,7 +208,7 @@ void WHInterface::update_common(Host::Human &human, LocalRng& rng, int &nNewInfs
                 const double bsvFactor = anyVac ? human.vaccine_factor(interventions::Vaccine::BSV, opt_vaccine_genotype? (*inf)->genotype() : 0) : 1.0;
                 const double survivalFactor = bsvFactor * _innateImmSurvFact * immFactor * drugFactor;
                 // update, may result in termination of infection:
-                expires = (*inf)->update(rng, survivalFactor, now, body_mass);
+                expires = infection_update(**inf, rng, survivalFactor, now, body_mass);
             }
             
             if( expires ){
