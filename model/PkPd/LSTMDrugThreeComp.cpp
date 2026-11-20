@@ -143,7 +143,7 @@ double LSTMDrug::drugFactor_threeComp(LocalRng& rng, WithinHost::Infection *inf,
     p.na = na;  p.nb = nb;      p.ng = ng;      p.nka = nka;
     const LSTMDrugPD& pd = typeData->getPD(inf->genotype());
     p.n = pd.slope();   p.V = pd.max_killing_rate();
-    p.Kn = pd.IC50_pow_slope(rng, typeData->getIndex(), inf);
+    p.Kn = pd.IC50_pow_slope(rng, typeData->index, inf);
     
     double time = 0.0;  // time since start of day
     double totalFactor = 1.0;   // survival factor for whole day

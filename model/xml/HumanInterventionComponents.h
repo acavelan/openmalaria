@@ -248,7 +248,7 @@ void deploy_component( RunContext& ctx, const ComponentConfig& c, Human& human,
     case Component::CM_DT: { const DecisionTreeParams& p = std::get<DecisionTreeParams>(c.data);
         Clinical::DTExecCtx ec( ctx, human,
                 sim::inYears(human.age(ctx.clock.nowOrTs1())),
-                human.clinicalModel->getLatestState() );
+                human.clinicalModel->latestState );
         Clinical::CMDTOut out = Clinical::exec_decision_tree(p.tree, ec);
         if( out.treated ){
             mon::recordDeploy(mon::measure("nMDAs"), mon::measure("nCtsMDA"), human, method);

@@ -81,9 +81,6 @@ public:
 
     inline uint32_t getCohortSet() const;
 
-    /** Return date of birth */
-    SimTime getDOB() const;
-
     /** Return true if dead, false otherwise */
     bool isDead() const;
 
@@ -216,10 +213,6 @@ inline bool Human::isInSubPop( interventions::ComponentId id ) const {
 
 inline uint32_t Human::getCohortSet() const { 
     return cols->cohort_set[row]; 
-}
-
-inline SimTime Human::getDOB() const {
-    return cols->dob[row];
 }
 
 inline bool Human::isDead() const {

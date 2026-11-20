@@ -626,10 +626,8 @@ public:
     /// multiplier used to calculate a positive EIR value where the measured value is zero
     const double min_EIR_mult = 0.01;
 
-    //! Variance of Infection Rate according to fielddata
-    const double totalInfectionrateVariance = 1.0;
-
-    const int nYearsWarmupData = 5;
+    //! Variance of Infection Rate according to fielddata == 1.0 (totalInfectionrateVariance
+    //! member removed by audit sweep; the formula using it is documented in InfectionIncidenceModel.cpp)
 
     //! The duration of sporogony in time steps (doesn't need checkpointing)
     SimTime nSpore = sim::never();
