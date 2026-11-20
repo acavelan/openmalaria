@@ -23,7 +23,7 @@
 #ifndef Hmod_util_ModelOptions
 #define Hmod_util_ModelOptions
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/ModelNameProvider.h"
 #include <bitset>
 #include <optional>
@@ -305,7 +305,7 @@ namespace OM { namespace util {
     static void init(const SimClock& clock, xsd::cxx::tree::optional<scnXml::OptionSet, false>& optionsElt,
                             util::ModelNameProvider mnp);
 
-    private:
+    public:
     /*
     * Returns a bitset representing the model options used by the named "base"
     * model.
@@ -315,13 +315,29 @@ namespace OM { namespace util {
     * but are turned on in the absence of anything in the input suggesting they should
     * be turned off for legacy (i.e. backwards compatibility) reasons.
     */
-    static std::bitset<NUM_OPTIONS> getBaseModelOptions();
+    static std::bitset<NUM_OPTIONS> getBaseModelOptions()
+    {
+        // The "base" model is very simple
+        bitset<NUM_OPTIONS> allOptionsOff;
+        return allOptionsOff;
+    }
 
     /*
     * Returns a bitset representing the default model options used when no named
     * model is selected.
     */
-    static std::bitset<NUM_OPTIONS> getLegacyDefaultModelOptions();
+    static std::bitset<NUM_OPTIONS> getLegacyDefaultModelOptions()
+    {
+        bitset<NUM_OPTIONS> defaultOptSet;
+        // Kept for legacy reasons.  That is, when an input XML does not specify a model name
+        // and does not set these model options to false, they are turned on *for backwards
+        // compatibility*.
+        defaultOptSet.set (MAX_DENS_CORRECTION);
+        defaultOptSet.set (INNATE_MAX_DENS);
+        defaultOptSet.set (INDIRECT_MORTALITY_FIX);
+        defaultOptSet.set (HEALTH_SYSTEM_MEMORY_FIX);
+        return defaultOptSet;
+    }
 
 	// Reset opts to default. Used by unit tests.
         static inline void reset() {
@@ -334,9 +350,7 @@ namespace OM { namespace util {
         }
         
 	// The model options
-	static std::bitset<NUM_OPTIONS> options;
-	
-	friend class ::UnittestUtil;	// Note: class is in base namespace
+	inline static std::bitset<NUM_OPTIONS> options;
     };
 } }
 #endif

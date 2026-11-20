@@ -21,6 +21,7 @@
  */
 
 #include "core/RunContext.h"
+#include "util/checkpoint.h"
 #include "Clinical/ClinicalModel.h"
 #include "Clinical/CM5DayCommon.h"
 

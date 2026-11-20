@@ -23,7 +23,7 @@
 #ifndef Hmod_AnophelesModelSuite
 #define Hmod_AnophelesModelSuite
 
-#include "Global.h"
+#include "Clock.h"
 #include "configured/TestPaths.h"	// from config; but must be included from the build dir
 #include <cxxtest/TestSuite.h>
 #include "ExtraAsserts.h"

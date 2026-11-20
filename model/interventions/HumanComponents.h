@@ -23,7 +23,7 @@
 #ifndef Hmod_interventions_HumanComponents
 #define Hmod_interventions_HumanComponents
 
-#include "Global.h"
+#include "Clock.h"
 #include "interventions/Interfaces.h"
 #include "util/sampler.h"
 #include "util/DecayFunction.h"

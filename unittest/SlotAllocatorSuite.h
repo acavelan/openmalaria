@@ -125,24 +125,24 @@ public:
         for (int i = 0; i < 4; ++i) TS_ASSERT_EQUALS( st[i], GOLD_CTOR[i] );
         
         // below the cap: one import consumes the pinned draw sequence
-        UnittestUtil::setNumInfs( wh, 20 );
+        wh.numInfs = 20;
         wh.importInfection( rng );
         stateWords( rng, st );
         static const uint64_t GOLD_IMPORT[4] = {
             0xf408399cc420592dULL, 0xd738b0d0bd0f8b2cULL,
             0x5975fa34f30b8ea9ULL, 0xba402e971e1dca0dULL };
         for (int i = 0; i < 4; ++i) TS_ASSERT_EQUALS( st[i], GOLD_IMPORT[i] );
-        TS_ASSERT_EQUALS( UnittestUtil::getNumInfs( wh ), 21 );
+        TS_ASSERT_EQUALS( wh.numInfs, 21 );
         
         // at the cap: nothing at all — state words identical, no increment
         // (order-independent: relative to the state we just measured)
-        UnittestUtil::setNumInfs( wh, 21 );
+        wh.numInfs = 21;
         uint64_t before[4];
         stateWords( rng, before );
         wh.importInfection( rng );
         stateWords( rng, st );
         for (int i = 0; i < 4; ++i) TS_ASSERT_EQUALS( st[i], before[i] );
-        TS_ASSERT_EQUALS( UnittestUtil::getNumInfs( wh ), 21 );
+        TS_ASSERT_EQUALS( wh.numInfs, 21 );
     }
 };
 

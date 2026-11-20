@@ -27,7 +27,7 @@
 // callers live in this file). Declarations for the member entry points stay
 // in the PkPd headers (scnXml forward-declared).
 
-#include "Global.h"
+#include "Clock.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "PkPd/Drug/LSTMDrugType.h"

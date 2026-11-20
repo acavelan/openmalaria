@@ -21,6 +21,7 @@
  */
 
 #include "PkPd/Drug/LSTMDrugType.h"
+#include "util/checkpoint.h"
 #include "PkPd/Drug/LSTMDrug.h"
 #include "PkPd/LSTMModel.h"
 #include "PkPd/LSTMMedicate.h"

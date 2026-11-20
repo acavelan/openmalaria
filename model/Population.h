@@ -23,7 +23,7 @@
 #ifndef Hmod_Population
 #define Hmod_Population
 
-#include "Global.h"
+#include "Clock.h"
 #include "PopulationAgeStructure.h"
 #include "Host/Human.h"
 

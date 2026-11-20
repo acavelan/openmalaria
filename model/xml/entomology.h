@@ -27,7 +27,7 @@
 #ifndef Hmod_xml_entomology
 #define Hmod_xml_entomology
 
-#include "Global.h"
+#include "Clock.h"
 #include "schema/interventions.h"
 
 #include <string>

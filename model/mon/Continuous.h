@@ -23,7 +23,7 @@
 #ifndef Hmod_Output_Continuous
 #define Hmod_Output_Continuous
 
-#include "Global.h"
+#include "Clock.h"
 #include <string>
 #include "Population.h"
 #include "Host/Human.h"

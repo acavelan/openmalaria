@@ -34,7 +34,7 @@
 #ifndef OM_INTERVENTIONS_DEPLOYMENTS_H
 #define OM_INTERVENTIONS_DEPLOYMENTS_H
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "util/errors.h"
 #include "Population.h"

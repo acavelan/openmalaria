@@ -21,6 +21,7 @@
  */
 
 #include "core/RunContext.h"
+#include "util/checkpoint.h"
 #include "core/RunExtensions.h"
 #include "mon/Continuous.h"
 #include "util/errors.h"

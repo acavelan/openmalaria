@@ -23,7 +23,7 @@
 #ifndef Hmod_OM_util_timeConversions
 #define Hmod_OM_util_timeConversions
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 
 namespace OM {

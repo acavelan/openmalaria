@@ -21,6 +21,7 @@
  */
 
 #include "core/RunExtensions.h"
+#include "util/checkpoint.h"
 #include "core/RunContext.h"
 #include "Population.h"
 #include "mon/Continuous.h"

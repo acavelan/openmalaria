@@ -21,6 +21,7 @@
  */
 
 #include "Host/WithinHost/Infection/Infection.h"
+#include "util/checkpoint.h"
 
 namespace OM { namespace WithinHost {
 

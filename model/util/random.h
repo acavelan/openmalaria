@@ -37,7 +37,7 @@
  * are stable across platforms and releases, allowing reproducibility.
  */
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/errors.h"
 #include <set>
 #include <gsl/gsl_rng.h>
@@ -249,14 +249,14 @@ struct RNG {
     }
     //@}
     
-private:
+public:
+    /// Engine state. Public by design: cross-RNG seeding (above) and state
+    /// comparison read it directly; no friend needed.
     T m_rng;
-    
+private:
     // Hooks for GSL distributions
     gsl_rng_type m_gsl_type;
     gsl_rng m_gsl_gen;
-    
-    template<class> friend class RNG;
 };
 
 typedef RNG<Xoshiro256P> LocalRng;

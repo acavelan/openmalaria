@@ -23,7 +23,7 @@
 #ifndef Hmod_UtilVectors
 #define Hmod_UtilVectors
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/errors.h"
 #include "util/checkpoint_containers.h"
 

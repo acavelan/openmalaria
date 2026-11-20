@@ -23,7 +23,7 @@
 #ifndef H_OM_mon_init
 #define H_OM_mon_init
 
-#include "Global.h"
+#include "Clock.h"
 
 namespace scnXml {
 class Scenario;

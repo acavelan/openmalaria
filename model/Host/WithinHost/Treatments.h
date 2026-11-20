@@ -23,7 +23,7 @@
 #ifndef Hmod_WithinHost_Treatments
 #define Hmod_WithinHost_Treatments
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "interventions/Interfaces.h"
 
@@ -50,10 +50,8 @@ struct TreatmentId{
     
     /// Default constructor: construct to an initial value. Don't pass this value to WHInterface::treatment()!
     TreatmentId() : id(numeric_limits<uint32_t>::max()) {}
-private:
     explicit TreatmentId(uint32_t id) : id(id) {}
     uint32_t id;
-    friend class Treatments;
 };
 
 /**
@@ -106,8 +104,6 @@ private:
     Treatments( RunContext& ctx, const scnXml::TreatmentOption& elt );
     
     SimTime timeLiver, timeBlood;
-    
-    friend class ::UnittestUtil;
 };
 
 }

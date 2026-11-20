@@ -23,12 +23,15 @@
 #ifndef OM_UTIL_SPECIES_INDEX_CHECKER
 #define OM_UTIL_SPECIES_INDEX_CHECKER
 
-#include "Global.h"
+#include "Clock.h"
 
+#include <cstdint>
+#include <map>
 #include <set>
+#include <string>
 
 namespace OM { namespace util {
-using std::set;
+using std::map; using std::set; using std::string;
 
 /** Checks keys exist and that all are used. Fails with an xml_scenario_error
  * and a suitable error message. */

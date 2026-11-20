@@ -26,8 +26,10 @@
 #ifndef Hmod_util_DocumentLoader
 #define Hmod_util_DocumentLoader
 
-#include "Global.h"
+#include "Clock.h"
+#include "util/errors.h"
 #include <schema/scenario.h>
+#include <fstream>
 #include <string>
 #include <memory>
 
@@ -37,7 +39,24 @@ namespace OM
     {
         static const int SCHEMA_VERSION = 50;
 
-        std::unique_ptr<scnXml::Scenario> loadScenario(std::string lXmlFile);
+        inline std::unique_ptr<scnXml::Scenario> loadScenario(std::string lXmlFile)
+        {
+            std::ifstream fileStream(lXmlFile.c_str(), ios::binary);
+            if (!fileStream.good())
+            {
+                std::string msg = "Error: unable to open " + lXmlFile;
+                throw util::xml_scenario_error(msg);
+            }
+            std::unique_ptr<scnXml::Scenario> scenario = scnXml::parseScenario (fileStream);
+            fileStream.close ();
+            const int scenarioVersion = scenario->getSchemaVersion();
+            if (scenarioVersion < SCHEMA_VERSION) {
+                std::cerr<<"Warning: "<<lXmlFile<<" uses an old schema version (latest is "<<SCHEMA_VERSION<<")."<<endl;
+            }
+            else if (scenarioVersion > SCHEMA_VERSION)
+                throw util::xml_scenario_error ("Error: new schema version unsupported");
+            return scenario;
+        }
     }
 }
 

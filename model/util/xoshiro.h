@@ -80,14 +80,6 @@ public:
     uint32_t gen_u32();
     double gen_double();
 
-    friend bool operator==(const Xoshiro256P& lhs, const Xoshiro256P& rhs);
-    friend bool operator!=(const Xoshiro256P& lhs, const Xoshiro256P& rhs);
-
-//     template<typename CharT, typename Traits>
-//     friend std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& os, const Xoshiro256P& rng);
-// 
-//     template<typename CharT, typename Traits>
-//     friend std::basic_istream<CharT, Traits>& operator>>(std::basic_istream<CharT, Traits>& is, Xoshiro256P& rng);
 
     void binary_checkpoint(ostream& stream) {
         stream.write (reinterpret_cast<char*>(&s[0]), sizeof(s));
@@ -101,7 +93,7 @@ public:
     static constexpr uint64_t min() { return std::numeric_limits<uint64_t>::min(); }
     static constexpr uint64_t max() { return std::numeric_limits<uint64_t>::max(); }
 
-private:
+public:
     void generate_block();
     void chacha_core();
 
@@ -112,7 +104,6 @@ private:
 // inline Xoshiro256P::Xoshiro256P(Sseq& seq) {
 //     seed(seq);
 // }
-// 
 // template<class Sseq>
 // inline void Xoshiro256P::seed(Sseq& seq) {
 //     seq.generate(s, s + 4);
@@ -170,29 +161,22 @@ inline bool operator!=(const Xoshiro256P& lhs, const Xoshiro256P& rhs) { return 
 //     // Serialize.
 //     for (int i = 0; i < 4; ++i) os << rng.s[i] << space;
 //     os << rng.ctr;
-// 
 //     // Sestore old state.
 //     os.flags(flags);
 //     os.fill(fill);
-// 
 //     return os;
 // }
-// 
 // template<typename CharT, typename Traits>
 // inline std::basic_istream<CharT, Traits>& operator>>(std::basic_istream<CharT, Traits>& is, Xoshiro256P& rng) {
 //     typedef typename std::basic_istream<CharT, Traits> ::ios_base ios_base;
-// 
 //     // Save old flags and set ours.
 //     auto flags = is.flags();
 //     is.flags(ios_base::dec);
-// 
 //     // Deserialize.
 //     for (int i = 0; i < 10; ++i) is >> rng.keysetup[i];
 //     is >> rng.ctr;
-// 
 //     // Restore old flags.
 //     is.flags(flags);
-// 
 //     return is;
 // }
 

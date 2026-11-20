@@ -23,7 +23,7 @@
 #ifndef OM_INTERVENTIONS_INTERFACES
 #define OM_INTERVENTIONS_INTERFACES
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "mon/Monitoring.h"
 #include "interventions/ComponentId.h"

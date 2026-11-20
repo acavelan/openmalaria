@@ -23,7 +23,7 @@
 #ifndef Hmod_humans_HostColumns
 #define Hmod_humans_HostColumns
 
-#include "Global.h"
+#include "Clock.h"
 #include "interventions/ComponentId.h"
 #include "util/random.h"
 #include <limits>

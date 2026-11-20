@@ -23,7 +23,7 @@
 #ifndef Hmod_ESCaseManagement
 #define Hmod_ESCaseManagement
 
-#include "Global.h"
+#include "Clock.h"
 #include "Clinical/CMDecisionTree.h"    // needed for ESDecisionMap
 #include "Host/WithinHost/WHInterface.h"
 namespace scnXml { class HSEventScheduler; }
@@ -31,6 +31,9 @@ namespace scnXml { class HSEventScheduler; }
 namespace OM { namespace Clinical {
 using WithinHost::WHInterface;
 
+// Compiled case-management decision trees; set by the health-system reader
+// (xml/healthSystem.cpp) at scenario load. inline ⇒ one entity across TUs.
+inline const FlatTree *escm_uncomplicated = 0, *escm_complicated = 0;
 
 /** Tracks clinical status (sickness), does case management for new events,
  * medicates treatment, determines patient recovery, death and sequelae.
@@ -42,7 +45,13 @@ public:
     static void setHealthSystem (RunContext& ctx, const scnXml::HSEventScheduler& esData);
     
     static CMDTOut execute( RunContext& ctx, Host::Human& human,
-        double ageYears, Episode::State pgState );
+        double ageYears, Episode::State pgState ) {
+        assert (pgState & Episode::SICK);
+        const FlatTree& tree = (pgState & Episode::COMPLICATED) ?
+            *escm_complicated : *escm_uncomplicated;
+        DTExecCtx ec( ctx, human, ageYears, pgState );
+        return exec_decision_tree( tree, ec );
+    }
 };
 
 } }

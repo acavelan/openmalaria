@@ -23,10 +23,13 @@
 #ifndef OM_util_checkpoint_containers
 #define OM_util_checkpoint_containers
 
-#ifndef Hmod_Global
-#error "Please include Global.h first."
-// otherwise "using ..." declaration in Global.h won't work
-#endif
+#include "util/checkpoint.h"
+#include <list>
+#include <map>
+#include <memory>
+#include <set>
+#include <utility>
+#include <vector>
 
 /** Provides some extra functions. See checkpoint.h. */
 namespace OM {
@@ -35,12 +38,12 @@ namespace checkpoint {
     ///@brief Operator& for smart pointers
     //@{
     template<class T>
-    void operator& (unique_ptr<T> & x, ostream& stream) {
+    void operator& (std::unique_ptr<T> & x, std::ostream& stream) {
         (*x) & stream;
     }
 
     template<class T>
-    void operator& (unique_ptr<T>& x, istream& stream) {
+    void operator& (std::unique_ptr<T>& x, std::istream& stream) {
         (*x) & stream;
     }
     //@}
@@ -48,13 +51,13 @@ namespace checkpoint {
     ///@brief Operator& for stl containers
     //@{
     template<class U, class V, class S>
-    void operator& (pair<U,V> x, S& stream) {
+    void operator& (std::pair<U,V> x, S& stream) {
         x.first & stream;
         x.second & stream;
     }
     
     template<class T>
-    void operator& (vector<T>& x, ostream& stream) {
+    void operator& (std::vector<T>& x, std::ostream& stream) {
         x.size() & stream;
         for (T& y : x) {
             y & stream;
@@ -62,7 +65,7 @@ namespace checkpoint {
     }
 
     template<class T>
-    void operator& (vector<T>& x, istream& stream) {
+    void operator& (std::vector<T>& x, std::istream& stream) {
         size_t l;
         l & stream;
         validateListSize (l);
@@ -74,7 +77,7 @@ namespace checkpoint {
 
     /// Version of above taking an element to initialize each element from.
     template<class T>
-    void checkpoint (vector<T>& x, istream& stream, T templateInstance) {
+    void checkpoint (std::vector<T>& x, std::istream& stream, T templateInstance) {
         size_t l;
         l & stream;
         validateListSize (l);
@@ -85,14 +88,14 @@ namespace checkpoint {
     }
     
     template<class T>
-    void operator& (list<T> x, ostream& stream) {
+    void operator& (std::list<T> x, std::ostream& stream) {
         x.size() & stream;
         for (T& y : x) {
             y & stream;
         }
     }
     template<class T>
-    void operator& (list<T>& x, istream& stream) {
+    void operator& (std::list<T>& x, std::istream& stream) {
         size_t l;
         l & stream;
         validateListSize (l);
@@ -126,20 +129,20 @@ namespace checkpoint {
         }
     }
     
-    void operator& (const set<interventions::ComponentId>&x, ostream& stream);
-    void operator& (set<interventions::ComponentId>& x, istream& stream);
+    void operator& (const std::set<interventions::ComponentId>&x, std::ostream& stream);
+    void operator& (std::set<interventions::ComponentId>& x, std::istream& stream);
     
-    void operator& (const map<string,double>& x, ostream& stream);
-    void operator& (map<string, double >& x, istream& stream);
+    void operator& (const std::map<std::string,double>& x, std::ostream& stream);
+    void operator& (std::map<std::string, double >& x, std::istream& stream);
     
-    void operator& (const map<double,double>& x, ostream& stream);
-    void operator& (map<double, double>& x, istream& stream);
+    void operator& (const std::map<double,double>& x, std::ostream& stream);
+    void operator& (std::map<double, double>& x, std::istream& stream);
     
-    void operator& (const map<interventions::ComponentId,SimTime>& x, ostream& stream);
-    void operator& (map<interventions::ComponentId,SimTime>& x, istream& stream);
+    void operator& (const std::map<interventions::ComponentId,SimTime>& x, std::ostream& stream);
+    void operator& (std::map<interventions::ComponentId,SimTime>& x, std::istream& stream);
     
-    void operator& (const multimap<double,double>& x, ostream& stream);
-    void operator& (multimap<double, double>& x, istream& stream);
+    void operator& (const std::multimap<double,double>& x, std::ostream& stream);
+    void operator& (std::multimap<double, double>& x, std::istream& stream);
     //@}
     
 } } }   // end of namespaces

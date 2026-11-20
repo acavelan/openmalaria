@@ -21,6 +21,7 @@
  */
 
 #include "core/RunExtensions.h"
+#include "util/checkpoint.h"
 #include "mon/Monitoring.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Clinical/ClinicalModel.h"

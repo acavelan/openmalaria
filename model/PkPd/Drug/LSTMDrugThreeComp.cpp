@@ -25,6 +25,7 @@
 // implemented in the Monolix software", Julie Bertrand and France Mentré, Sept
 // 2008. From page 37, in particular equation (1.72) p44.
 #include "PkPd/Drug/LSTMDrug.h"
+#include "util/checkpoint.h"
 #include "PkPd/Drug/LSTMDrugType.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/errors.h"
@@ -55,7 +56,7 @@ void LSTMDrug::updateCached(double body_mass) const{
     const double r2 = 2.0 * sqrt(rt);
     
     const double phi = acos(-q / (rt * r2)) * third;
-    const double pi23 = (2.0 / 3.0) * PI;
+    const double pi23 = (2.0 / 3.0) * 3.14159265358979323846;
     
     // negative alpha, beta, gamma:
     na = r2 * cos(phi) - at;

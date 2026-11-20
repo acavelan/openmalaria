@@ -23,7 +23,8 @@
 #ifndef Hmod_AnophelesModel
 #define Hmod_AnophelesModel
 
-#include "Global.h"
+#include "Clock.h"
+#include "util/checkpoint.h"
 #include "core/RunContext.h"
 #include "Transmission/PerHost.h"
 #include "util/SimpleDecayingValue.h"

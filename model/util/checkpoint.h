@@ -23,17 +23,11 @@
 #ifndef OM_util_checkpoint
 #define OM_util_checkpoint
 
-#ifndef Hmod_Global
-#error "Please include Global.h not checkpoint.h directly."
-// otherwise "using ..." declaration in Global.h won't work
-#endif
-
 #include <iostream>
 #include <vector>
 #include <list>
 #include <map>
 #include <set>
-using namespace std;
 
 namespace OM {
 namespace interventions{
@@ -49,10 +43,10 @@ namespace checkpoint {
     /** Perform important checks on checkpoint file format.
      *
      * Call at beginning of read/write. */
-    void header (ostream& stream);
-    void header (istream& stream);	///< ditto
+    void header (std::ostream& stream);
+    void header (std::istream& stream);	///< ditto
     
-  /** For checking the number of elements in a list is sensible when loading
+  /** For checking the number of elements in a std::list is sensible when loading
    * checkpoints.
    *
    * While loading checkpoints, if memory is allocated in a loop using a
@@ -69,47 +63,47 @@ namespace checkpoint {
     
     ///@brief Operator& for simple data-types
     //@{
-    void operator& (bool x, ostream& stream);
-    void operator& (bool& x, istream& stream);
+    void operator& (bool x, std::ostream& stream);
+    void operator& (bool& x, std::istream& stream);
     
-    void operator& (signed char x, ostream& stream);
-    void operator& (signed char& x, istream& stream);
+    void operator& (signed char x, std::ostream& stream);
+    void operator& (signed char& x, std::istream& stream);
     
-    void operator& (short x, ostream& stream);
-    void operator& (short& x, istream& stream);
+    void operator& (short x, std::ostream& stream);
+    void operator& (short& x, std::istream& stream);
     
-    void operator& (int x, ostream& stream);
-    void operator& (int& x, istream& stream);
+    void operator& (int x, std::ostream& stream);
+    void operator& (int& x, std::istream& stream);
     
-    void operator& (long x, ostream& stream);
-    void operator& (long& x, istream& stream);
+    void operator& (long x, std::ostream& stream);
+    void operator& (long& x, std::istream& stream);
     
-    void operator& (long long x, ostream& stream);
-    void operator& (long long& x, istream& stream);
+    void operator& (long long x, std::ostream& stream);
+    void operator& (long long& x, std::istream& stream);
     
-    void operator& (unsigned char x, ostream& stream);
-    void operator& (unsigned char& x, istream& stream);
+    void operator& (unsigned char x, std::ostream& stream);
+    void operator& (unsigned char& x, std::istream& stream);
     
-    void operator& (unsigned short x, ostream& stream);
-    void operator& (unsigned short& x, istream& stream);
+    void operator& (unsigned short x, std::ostream& stream);
+    void operator& (unsigned short& x, std::istream& stream);
     
-    void operator& (unsigned int x, ostream& stream);
-    void operator& (unsigned int& x, istream& stream);
+    void operator& (unsigned int x, std::ostream& stream);
+    void operator& (unsigned int& x, std::istream& stream);
     
-    void operator& (unsigned long x, ostream& stream);
-    void operator& (unsigned long& x, istream& stream);
+    void operator& (unsigned long x, std::ostream& stream);
+    void operator& (unsigned long& x, std::istream& stream);
     
-    void operator& (unsigned long long x, ostream& stream);
-    void operator& (unsigned long long& x, istream& stream);
+    void operator& (unsigned long long x, std::ostream& stream);
+    void operator& (unsigned long long& x, std::istream& stream);
     
-    void operator& (float x, ostream& stream);
-    void operator& (float& x, istream& stream);
+    void operator& (float x, std::ostream& stream);
+    void operator& (float& x, std::istream& stream);
     
-    void operator& (double x, ostream& stream);
-    void operator& (double& x, istream& stream);
+    void operator& (double x, std::ostream& stream);
+    void operator& (double& x, std::istream& stream);
     
-    void operator& (long double x, ostream& stream);
-    void operator& (long double& x, istream& stream);
+    void operator& (long double x, std::ostream& stream);
+    void operator& (long double& x, std::istream& stream);
     //@}
     
     /** @brief Operator& for pointers
@@ -126,9 +120,14 @@ namespace checkpoint {
     
     /** @brief Operator& for std::string */
     //@{
-    void operator& (string x, ostream& stream);
-    void operator& (string& x, istream& stream);
+    void operator& (std::string x, std::ostream& stream);
+    void operator& (std::string& x, std::istream& stream);
     //@}
     
 } } }	// end of namespaces
+
+// The old Global.h contract, kept next to the declarations instead: model
+// code (namespace OM) uses checkpoint operators and helpers unqualified.
+namespace OM { using namespace util::checkpoint; }
+
 #endif
