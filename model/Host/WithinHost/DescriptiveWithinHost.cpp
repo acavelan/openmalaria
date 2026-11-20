@@ -111,7 +111,7 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
         // If opt_vaccine_genotype is true the infection is discarded with probability 1-vaccineFactor
         if( opt_vaccine_genotype )
         {
-            double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
+            double vaccineFactor = human.vaccine_factor( interventions::Vaccine::PEV, genotype );
             // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if(vaccineFactor == 1.0 || human.rng().bernoulli(vaccineFactor))
                 infections.push_back(new Infection (ctx, rng, genotype, InfectionOrigin::Introduced, Infection::Kind::Descriptive));
@@ -129,7 +129,7 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
         // If opt_vaccine_genotype is true the infection is discarded with probability 1-vaccineFactor
         if( opt_vaccine_genotype )
         {
-            double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
+            double vaccineFactor = human.vaccine_factor( interventions::Vaccine::PEV, genotype );
             // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if(vaccineFactor == 1.0 || human.rng().bernoulli(vaccineFactor))
                 infections.push_back(new Infection (ctx, rng, genotype, InfectionOrigin::Indigenous, Infection::Kind::Descriptive));
@@ -169,7 +169,7 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
         // See MAX_DENS_CORRECTION in DescriptiveInfection.cpp.
         double infStepMaxDens = timeStepMaxDensity;
         double immSurvFact = immunitySurvivalFactor(ageInYears, (*inf)->cumulativeExposureJ());
-        double bsvFactor = human.vaccine.getFactor(interventions::Vaccine::BSV, opt_vaccine_genotype? (*inf)->genotype() : 0);
+        double bsvFactor = human.vaccine_factor(interventions::Vaccine::BSV, opt_vaccine_genotype? (*inf)->genotype() : 0);
 
         (*inf)->determineDensities(rng, imm_h_ref(), infStepMaxDens, immSurvFact, _innateImmSurvFact, bsvFactor);
 

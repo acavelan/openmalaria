@@ -42,8 +42,14 @@ unittest 3,794 LOC; `interventions/` dir 2,837 LOC (cloc); p6 bench **12.58s** m
    HumanVectorInterventionComponent now carries NO per-host API (makeHumanPart/
    asITN/asIRS virtuals deleted); hasActiveInterv = kind+deploy scan, no registry.
    Wire = NEW uniform record layout (wire free; resume bit-verified vs A0, see gates).
-   [ ] 7.2a-ii vaccine: PerHumanVaccine/PerEffectPerHumanVaccine → record column
-   (Human::vaccine member + 12 getFactor sites + its wire).
+   [x] 7.2a-ii vaccine: PerHumanVaccine/PerEffectPerHumanVaccine DEAD.
+   `vac` column (vector<vector<VacRecord>>: id, num_doses, time_last,
+   per_genotype_eff, decay-ptr+factor); `interventions::vaccinate/
+   vaccine_factor/vac_checkpoint` free fns (Vaccine.cpp, VaccineComponent
+   friends them); Human::vaccine member gone, 12 `human.vaccine.getFactor`
+   sites → `human.vaccine_factor(type, genotype=0)` method (Human.cpp one-liner).
+   Draw order kept: first dose het BEFORE per-genotype beta draws; getFactor
+   product = insertion order (parity c); age = ts1()−time_last.
    [ ] 7.2b config-side HumanInterventionComponent tree flatten (deploy switch).
 3. [ ] 7.3 ITN 3-state columns NEVER/ACTIVE/DISCARDED + §9 scalars; draw order EXACT
    (1 shared NormalSample → hole/rip/insecticide-decay (0 extra draws), attrition age
@@ -51,12 +57,18 @@ unittest 3,794 LOC; `interventions/` dir 2,837 LOC (cloc); p6 bench **12.58s** m
    n_holes*rip_rate>0; IRS order = insecticide THEN het_sample).
 4. [ ] 7.4 copula g per (host, subPop-id — NOT component) → column (replaces
    `copulaGaussianSamples` std::map; iteration/wire order was ComponentId-ascending).
-5. [ ] 7.5 zero intervention checkpoint bytes: delete `checkpointIntervs` from
-   PerHost::operator& + PerHostInterventionData wire fns (wire NOT frozen — user ruling;
-   scenario 12/12a goldens may re-bless from A0 in same commit if they move — expected
-   NO change: 12/12a have no per-host intervention state and the wire removal is
-   symmetric). HostView gains `iv` ref (+mon §9; deviation OK with rationale).
-   Delete HumanInterventionComponent class tree + per-timestep per-entity scans.
+5. [ ] 7.5 zero intervention checkpoint bytes — **USER DIRECTIVE 2026-11-20 (overrides
+   earlier wording): interventions NEVER need checkpointing. Firm invariant, not something
+   to verify.** Reason: checkpoint happens after warmup, before any intervention, so at
+   checkpoint time no per-host intervention effects exist; on restore interventions are
+   re-applied by event replay. Anything per-host-intervention on the wire is DEAD WEIGHT →
+   DELETE its serialization outright, no compat effort: `iv_checkpoint` + `vac_checkpoint`
+   calls, the `copulaGaussianSamples` wire entry, `PerHumanVaccine::checkpoint` (already
+   gone). Nothing else in the phase spends a fix-iteration defending intervention wire bytes.
+   Green is SEMANTIC only: scenario 12/12a two-run goldens still resume matching + ONE
+   round-trip smoke test (same commit, documented). HostView gains `iv` ref (+mon §9;
+   deviation OK with rationale). Delete HumanInterventionComponent class tree +
+   per-timestep per-entity scans.
 6. [ ] 7.6 FINAL GATE: T1 a+b 63/63 seeds 1-10, ctest 52/52, unittest 94/94, bench +
    ITN-heavy secondary (`/usr/bin/time -f %U` VecFull or LifeNet old vs new), cloc,
    census refresh, PERF row 7, report (kind tables, LOC by substep, phase-8 handoff).
@@ -107,7 +119,16 @@ unittest 3,794 LOC; `interventions/` dir 2,837 LOC (cloc); p6 bench **12.58s** m
   do NOT "fix").
 
 ## Gates log
-- (7.2a-i, this commit) per-host vector-intervention state → `iv` record column.
+- (7.2a-ii, this commit) vaccine → `vac` record column. Deleted
+  PerHumanVaccine/PerEffectPerHumanVaccine + Human::vaccine member +
+  possiblyVaccinate/getFactor methods; Human::vaccine_factor method wraps
+  interventions::vaccine_factor free fn (Vaccine.cpp; VaccineComponent
+  friends the four vac free fns). 12 call sites renamed
+  human.vaccine.getFactor→human.vaccine_factor. Draw order kept verbatim
+  (het-sample-before-efficacy on first dose; ts1()-based age; insertion-order
+  product). build clean; unittest 94/94; ctest 52/52; T1 a 53/53 (incl.
+  scenarioPEV/BSV/TBV canaries); T1 b 1-4 4/4.
+- (7.2a-i, earlier commit) per-host vector-intervention state → `iv` record column.
   Deleted: HumanITN/HumanIRS/HumanGVI/PerHostInterventionData + makeHumanPart/
   asITN/asIRS virtuals + PerHost::deployComponent/checkpointIntervs (−589 lines,
   model 18,895→18,854). New: HostColumns IvRecord+iv (append_row/erase_at mirrored),

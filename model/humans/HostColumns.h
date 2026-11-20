@@ -58,6 +58,20 @@ struct IvRecord {
     double decay_factor = 0.0;             // per-human het sample of decay
 };
 
+/** Per-human vaccine dose record (old PerEffectPerHumanVaccine): one per
+ * vaccine COMPONENT deployed on this human, insertion order = the order
+ * vaccine_factor multiplies effects in (parity: c; redeploy updates the
+ * matching record in place, never reorders). */
+struct VacRecord {
+    VacRecord() : id( std::numeric_limits<size_t>::max() ) {}
+    interventions::ComponentId id;
+    uint32_t num_doses = 0;                // doses administered (EPI-schedule guard)
+    SimTime time_last = sim::never();      // time of last vaccination
+    std::vector<double> per_genotype_eff;  // efficacy at last deployment (undecayed)
+    const util::DecayFunction* decay = nullptr;  // component config (never owned)
+    double decay_factor = 0.0;             // per-human het sample (sampled once)
+};
+
 /** Persistent per-host SoA columns (plan §7 row 6 pinned list; owner module,
  * passed by reference, never global).
  *
@@ -110,6 +124,9 @@ struct HumanColumns {
     /// Vector-intervention deployment records (old PerHost::activeComponents
     /// polymorphic list; history order — see IvRecord).
     std::vector<std::vector<IvRecord>> iv;
+    /// Vaccine dose records (old Human::vaccine PerHumanVaccine::effects list;
+    /// insertion order — see VacRecord).
+    std::vector<std::vector<VacRecord>> vac;
 
     /** Add a row for a newly constructed Human, at the exact moment of its old
      * member inits: rng is copy-seeded from `master` HERE (RNG RULE); dob set;
@@ -138,6 +155,7 @@ struct HumanColumns {
         rel_avail_het.push_back( std::numeric_limits<double>::signaling_NaN() );
         outside_trans.push_back( 0u );
         iv.emplace_back();
+        vac.emplace_back();
         return rng.size() - 1;
     }
 
@@ -166,6 +184,7 @@ struct HumanColumns {
         rel_avail_het.erase( rel_avail_het.begin() + r );
         outside_trans.erase( outside_trans.begin() + r );
         iv.erase( iv.begin() + r );
+        vac.erase( vac.begin() + r );
     }
 };
 
