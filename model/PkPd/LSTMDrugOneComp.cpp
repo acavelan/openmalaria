@@ -22,7 +22,6 @@
 
 // LSTMDrug OneComp kind (was LSTMDrugOneComp; hierarchy collapsed phase 4b)
 #include "PkPd/LSTMDrug.h"
-#include "util/checkpoint.h"
 #include "PkPd/LSTMDrugType.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/errors.h"
@@ -102,13 +101,6 @@ void LSTMDrug::updateConcentration_oneComp( double body_mass ){
         concentration = 0.0;
     }
 }
-
-template<class S> void LSTMDrug::checkpoint_oneComp(S& stream){
-    concentration & stream;
-    neg_elim_sample & stream;
-}
-template void LSTMDrug::checkpoint_oneComp(std::ostream&);
-template void LSTMDrug::checkpoint_oneComp(std::istream&);
 
 }
 }

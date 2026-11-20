@@ -111,21 +111,6 @@ void LSTMDrug::updateConcentration (double body_mass) {
     }
 }
 
-void LSTMDrug::checkpoint (istream& stream) {
-    switch (kind) {
-    case Kind::OneComp: checkpoint_oneComp (stream); break;
-    case Kind::ThreeComp: checkpoint_threeComp (stream); break;
-    case Kind::Conversion: checkpoint_conversion (stream); break;
-    }
-}
-void LSTMDrug::checkpoint (ostream& stream) {
-    switch (kind) {
-    case Kind::OneComp: checkpoint_oneComp (stream); break;
-    case Kind::ThreeComp: checkpoint_threeComp (stream); break;
-    case Kind::Conversion: checkpoint_conversion (stream); break;
-    }
-}
-
 bool comp(pair<double,double> lhs, pair<double,double> rhs){
     return lhs.first < rhs.first;
 }

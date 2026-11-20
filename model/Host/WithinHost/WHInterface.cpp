@@ -1,5 +1,4 @@
 #include "Host/WithinHost/WHInterface.h"
-#include "util/checkpoint.h"
 #include "core/RunExtensions.h"
 #include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
@@ -197,30 +196,6 @@ InfectionOrigin WHInterface::getInfectionOrigin() const{
 }
 
 // -----  Checkpointing  -----
-
-void WHInterface::checkpoint (istream& stream) {
-    numInfs & stream;
-
-    if (numInfs > SlotAllocator::MAX_INFECTIONS)
-        throw util::checkpoint_error("numInfs: " + to_string(numInfs));
-    
-    switch( m_kind ){
-    case Kind::Vivax: checkpoint_vivax( stream ); break;
-    case Kind::Common: checkpoint_common( stream ); break;
-    case Kind::Descriptive: checkpoint_descriptive( stream ); break;
-    case Kind::Mock: throw util::unimplemented_exception( "not needed in unit test" );
-    }
-}
-void WHInterface::checkpoint (ostream& stream) {
-    numInfs & stream;
-    
-    switch( m_kind ){
-    case Kind::Vivax: checkpoint_vivax( stream ); break;
-    case Kind::Common: checkpoint_common( stream ); break;
-    case Kind::Descriptive: checkpoint_descriptive( stream ); break;
-    case Kind::Mock: throw util::unimplemented_exception( "not needed in unit test" );
-    }
-}
 
 }
 }

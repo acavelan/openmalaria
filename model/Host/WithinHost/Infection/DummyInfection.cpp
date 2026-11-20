@@ -34,13 +34,9 @@ namespace OM { namespace WithinHost {
 Infection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
     return infection_new (ctx, rng, protID, origin, Infection::Kind::Dummy);
 }
-Infection* checkpointedDummyInfection (RunContext& ctx, istream& stream) {
-    return infection_new_checkpointed (ctx, stream, Infection::Kind::Dummy);
-}
 
 void infection_init_dummy (RunContext& ctx) {
     ctx.ext->createInfection = &createDummyInfection;
-    ctx.ext->checkpointedInfection = &checkpointedDummyInfection;
 }
 
 bool update_density_dummy( Infection& inf, LocalRng& rng, double survivalFactor, SimTime, double ){

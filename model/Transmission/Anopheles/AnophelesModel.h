@@ -24,7 +24,6 @@
 #define Hmod_AnophelesModel
 
 #include "Clock.h"
-#include "util/checkpoint.h"
 #include "core/RunContext.h"
 #include "Transmission/PerHost.h"
 #include "util/SimpleDecayingValue.h"
@@ -385,67 +384,6 @@ public:
     void summarize( RunContext& ctx, size_t species )const;
     //@}
     
-    void checkpoint (istream& stream){ (*this) & stream; }
-    void checkpoint (ostream& stream){ (*this) & stream; }
-
-    /// Checkpointing
-    //Note: below comments about what does and doesn't need checkpointing are ignored here.
-    template<class S>
-    void operator& (S& stream) {
-        mosq.seekingDeathRate & stream;
-        mosq.seekingDuration & stream;
-        mosq.probMosqSurvivalOvipositing & stream;
-        // transmission & stream;
-        seekingDeathRateIntervs & stream;
-        probDeathOvipositingIntervs & stream;
-        partialEIR_i & stream;
-        partialEIR_l & stream;
-        EIRRotateAngle & stream;
-        FSCoeffic & stream;
-        forcedS_v & stream;
-        initNvFromSv & stream;
-        initOvFromSv & stream;
-        emergenceReduction & stream;
-        // interventionSurvival & stream;
-        // EmergenceModel
-        mosqEmergeRate & stream;
-        quinquennialS_v & stream;
-        initNv0FromSv & stream;
-        initSvFromEIR & stream;
-        // (*emergence) & stream;
-        // MosqTransmission
-        mosq.restDuration & stream;
-        mosq.EIPDuration & stream;
-        N_v_length & stream;
-        P_A & stream;
-        P_df & stream;
-        P_dif_i & stream;
-        P_dif_l & stream;
-        P_dff & stream;
-        N_v & stream;
-        O_v_i & stream;
-        O_v_l & stream;
-        S_v_i & stream;
-        S_v_l & stream;
-        P_Amu & stream;
-        P_A1 & stream;
-        P_Ah & stream;
-        //TODO: do we actually need to checkpoint these next three?
-        fArray & stream;
-        ftauArray & stream;
-        uninfected_v & stream;
-        timeStep_N_v0 & stream;
-        // SimpleMPD kind (was SimpleMPDAnophelesModel::operator&; wire order frozen)
-        if (simpleMPD) {
-            simpleMPD->quinquennialOvipositing & stream;
-            simpleMPD->developmentDuration & stream;
-            simpleMPD->probPreadultSurvival & stream;
-            simpleMPD->fEggsLaidByOviposit & stream;
-            simpleMPD->invLarvalResources & stream;
-            simpleMPD->nOvipositingDelayed & stream;
-        }
-    }
-
     MosquitoParams mosq;
 
     // sum_i N_i * α_i for i in NHH types: total availability of non-human hosts

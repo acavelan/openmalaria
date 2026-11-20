@@ -21,7 +21,6 @@
  */
 
 #include "core/RunContext.h"
-#include "util/checkpoint.h"
 #include "core/RunExtensions.h"
 #include "mon/Continuous.h"
 #include "util/errors.h"
@@ -36,33 +35,6 @@ namespace OM {
     namespace mon {
     namespace Continuous {
         using util::xml_scenario_error;
-
-        void checkpoint (RunContext& ctx, ostream& stream){
-            auto& streamOffset = ctx.ext->ctsStreamOffset;
-            if( ctx.ext->ctsPeriod == sim::zero() )
-                return;	// output disabled
-
-            streamOffset & stream;
-        }
-        void checkpoint (RunContext& ctx, istream& stream){
-            auto& ctsOStream = ctx.ext->ctsOStream;
-            auto& streamOffset = ctx.ext->ctsStreamOffset;
-            if( ctx.ext->ctsPeriod == sim::zero() )
-                return;	// output disabled
-
-            /* We attempt to resume output correctly after a reload by recording
-            * the last position, and relocating there.
-            * 
-            * (Keeping results in memory until end of sim would be another,
-            * slightly safer, option, but loses real-time output.) */
-            streamOffset & stream;
-            // We skip back to the last write-point, so anything written after the
-            // last checkpoint will be repeated:
-            ctsOStream.seekp( streamOffset, ios_base::beg );
-
-            if( ctsOStream.fail() )
-                throw util::checkpoint_error ("Continuous: resume error (bad pos/file)");
-        }
 
         void registerCallback (RunContext& ctx, string optName, string titles, function<void(ostream&)> f){
             auto& registered = ctx.ext->ctsRegistered;

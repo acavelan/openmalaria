@@ -62,8 +62,7 @@ public:
     SimClock clock;
     /** Master RNG. // parity: order — constructed here (0, 0), matching the
      * old global's construction; the percentile-stream seed depends on it;
-     * run_simulation reseeds from --seed/Iseed after validation; checkpointed
-     * in model/checkpoint.cpp. */
+     * run_simulation reseeds from --seed/Iseed after validation. */
     util::MasterRng master_RNG{0, 0};
     /// Genotype registry (built by Genotypes::init during scenario load).
     WithinHost::Genotypes genotypes;
@@ -78,7 +77,6 @@ public:
     RunExtensions* ext = nullptr;
     /// Demography / target age-structure state (PopulationAgeStructure.h).
     AgeStructureState age;
-    /// Intervention states saved for checkpoints (checkpoint read/write).
 };
 
 }

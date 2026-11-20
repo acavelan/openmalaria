@@ -24,7 +24,6 @@
 #define Hmod_LSTMDrug
 
 #include "Clock.h"
-#include "util/checkpoint_containers.h"
 #include "util/random.h"
 
 namespace OM {
@@ -93,21 +92,11 @@ public:
      * @param body_mass Weight of patient in kg */
     void updateConcentration (double body_mass);
     
-    /// Checkpointing (wire bytes frozen per kind: doses, then kind's fields)
-    template<class S>
-    void operator& (S& stream) {
-        doses & stream;
-        checkpoint(stream);
-    }
-
 private:
-    void checkpoint (istream& stream);
-    void checkpoint (ostream& stream);
 
     // ---- OneComp kind (behaviour defined in LSTMDrugOneComp.cpp) ----
     double drugFactor_oneComp(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const;
     void updateConcentration_oneComp(double body_mass);
-    template<class S> void checkpoint_oneComp(S& stream);
 
     // ---- ThreeComp kind (LSTMDrugThreeComp.cpp) ----
     inline double conc() const{
@@ -117,7 +106,6 @@ private:
     double calculateFactor_fC(const Params_fC& p, double duration) const;
     double drugFactor_threeComp(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const;
     void updateConcentration_threeComp(double body_mass);
-    template<class S> void checkpoint_threeComp(S& stream);
 
     // ---- Conversion kind (LSTMDrugConversion.cpp) ----
     double getParentConcentration() const;
@@ -127,7 +115,6 @@ private:
     void setKillingParameters(LocalRng& rng, Params_convFactor& p, WithinHost::Infection *inf) const;
     double drugFactor_conversion(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const;
     void updateConcentration_conversion(double body_mass);
-    template<class S> void checkpoint_conversion(S& stream);
     
     Kind kind;
     /// Always links a drug instance to its drug-type data (Conversion kind:

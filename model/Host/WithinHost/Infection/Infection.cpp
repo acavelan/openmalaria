@@ -21,7 +21,6 @@
  */
 
 #include "Host/WithinHost/Infection/Infection.h"
-#include "util/checkpoint.h"
 
 namespace OM { namespace WithinHost {
 
@@ -56,24 +55,6 @@ Infection* infection_new(RunContext& ctx, LocalRng& rng, uint32_t genotype, int 
     return inf;
 }
 
-Infection* infection_new_checkpointed(RunContext& ctx, istream& stream, Infection::Kind kind) {
-    // the shared fields streamed below are overwritten before any use
-    Infection* inf = new Infection(ctx, 0, 0, kind);
-    inf->m_startDate & stream;
-    inf->m_density & stream;
-    inf->m_cumulativeExposureJ & stream;
-    inf->m_genotype & stream;
-    inf->m_origin & stream;
-    switch( kind ){
-        case Kind::Descriptive: read_descriptive(*inf, stream); break;
-        case Kind::Dummy: break;
-        case Kind::Empirical: read_empirical(*inf, stream); break;
-        case Kind::Molineaux: read_molineaux(*inf, stream); break;
-        case Kind::Penny: read_penny(*inf, stream); break;
-    }
-    return inf;
-}
-
 // ———  time-step update  ———
 
 bool infection_update( Infection& inf, LocalRng& rng, double survivalFactor, SimTime now, double body_mass ){
@@ -92,20 +73,5 @@ bool infection_update( Infection& inf, LocalRng& rng, double survivalFactor, Sim
 }
 
 // ———  checkpointing  ———
-
-void infection_checkpoint (Infection& inf, ostream& stream) {
-    inf.m_startDate & stream;
-    inf.m_density & stream;
-    inf.m_cumulativeExposureJ & stream;
-    inf.m_genotype & stream;
-    inf.m_origin & stream;
-    switch( inf.kind ){
-        case Kind::Descriptive: checkpoint_descriptive (inf, stream); break;
-        case Kind::Dummy: break;
-        case Kind::Empirical: checkpoint_empirical (inf, stream); break;
-        case Kind::Molineaux: checkpoint_molineaux (inf, stream); break;
-        case Kind::Penny: checkpoint_penny (inf, stream); break;
-    }
-}
 
 } }

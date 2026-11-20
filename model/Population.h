@@ -47,10 +47,8 @@ public:
     void update();
 
     /** Checkpoint (read) */
-    void checkpoint(istream& stream);
 
     /** Checkpoint (write) */
-    void checkpoint(ostream& stream);
 
     /** The simulated human hosts */
 RunContext& ctx;

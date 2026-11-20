@@ -1490,25 +1490,4 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
     }
 }
 
-void InterventionManager::loadFromCheckpoint(RunContext& ctx, vector<Host::Human> &population, Transmission::TransmissionModel &transmission)
-{
-    SimTime date = ctx.clock.interv_date();
-    // We need to re-deploy changeHS and changeEIR interventions, but nothing
-    // else. ctx.ext->nextTimed should be zero so we can go through all past interventions.
-    // Only redeploy those which happened before this time step.
-    assert(ctx.ext->nextTimed == 0);
-    while (ctx.ext->timed[ctx.ext->nextTimed].date < date)
-    {
-        TimedDeployment &deployment = ctx.ext->timed[ctx.ext->nextTimed];
-        if (replayed_on_restore(deployment.kind))   // flat-kind seam (was virtual)
-        {
-            // Note: neither changeHS nor changeEIR interventions care what the
-            // current time step is when they are deployed, so we don't need to
-            // tell them the deployment date.
-            deployment.deploy(ctx, population, transmission);
-        }
-        ctx.ext->nextTimed += 1;
-    }
-}
-
 } }

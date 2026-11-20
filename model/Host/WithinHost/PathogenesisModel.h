@@ -24,7 +24,6 @@
 #define Hmod_PathogenesisModel
 
 #include "Clock.h"
-#include "util/checkpoint.h"
 #include "Parameters.h"
 #include "Host/WithinHost/State.h"
 #include "util/random.h"
@@ -74,14 +73,6 @@ public:
      * Only the pyrogen-threshold kinds (Pyrogen, Predet) have anything to add
      * to the summary (parity: old PyrogenPathogenesis::summarize). */
     void summarize (const Host::Human& human);
-
-    /// Checkpointing (wire format per old concrete kind, frozen):
-    /// Mueller: comorbidity factor; Pyrogen/Predet: + pyrogenic threshold.
-    template<class S>
-    void operator& (S& stream) {
-        _comorbidityFactor & stream;
-        if( kind != Kind::Mueller ) _pyrogenThres & stream;
-    }
 
     /// Read parameters (parity: old MuellerPathogenesis::init /
     /// PyrogenPathogenesis::init; called from PathogenesisModel::init in xml).

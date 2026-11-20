@@ -33,7 +33,6 @@ set (OM_CXXTEST_HEADERS
   #AnophelesModelSuite.h needs updating for vector model changes
   ExtraAsserts.h	# must appear after at least some of the above
   LSTMPkPdSuite.h
-  CheckpointSuite.h
   DummyInfectionSuite.h
   EmpiricalInfectionSuite.h
   InfectionImmunitySuite.h

@@ -21,7 +21,6 @@
  */
 
 #include "core/RunExtensions.h"
-#include "util/checkpoint.h"
 #include "core/RunContext.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/PathogenesisModel.h"
@@ -33,7 +32,6 @@
 #include "util/ModelOptions.h"
 #include "util/errors.h"
 #include "util/StreamValidator.h"
-#include "util/checkpoint_containers.h"
 #include "util/UnitParse.h"
 
 #include <cmath>
@@ -307,35 +305,6 @@ void WHInterface::updateImmuneStatus() {
 
 
 // -----  Checkpointing  -----
-
-void WHInterface::checkpoint_falciparum (istream& stream) {
-    _innateImmSurvFact & stream;
-    imm_h_ref() & stream;
-    imm_Y_ref() & stream;
-    imm_Y_lag_ref() & stream;
-    totalDensity & stream;
-    hrp2Density & stream;
-    timeStepMaxDensity & stream;
-    m_y_lag_i & stream;
-    m_y_lag_l & stream;
-    (*pathogenesisModel) & stream;
-    treatExpiryLiver & stream;
-    treatExpiryBlood & stream;
-}
-void WHInterface::checkpoint_falciparum (ostream& stream) {
-    _innateImmSurvFact & stream;
-    imm_h_ref() & stream;
-    imm_Y_ref() & stream;
-    imm_Y_lag_ref() & stream;
-    totalDensity & stream;
-    hrp2Density & stream;
-    timeStepMaxDensity & stream;
-    m_y_lag_i & stream;
-    m_y_lag_l & stream;
-    (*pathogenesisModel) & stream;
-    treatExpiryLiver & stream;
-    treatExpiryBlood & stream;
-}
 
 }
 }

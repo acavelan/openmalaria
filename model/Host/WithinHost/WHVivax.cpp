@@ -21,7 +21,6 @@
  */
 
 #include "core/RunContext.h"
-#include "util/checkpoint.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
@@ -31,7 +30,6 @@
 #include "mon/Monitoring.h"
 #include "util/random.h"
 #include "util/errors.h"
-#include "util/checkpoint_containers.h"
 #include "util/UnitParse.h"
 #include "util/CommandLine.h"
 #include "util/sampler.h"
@@ -159,28 +157,6 @@ VivaxBrood::~VivaxBrood(){
         cout << "Brood terminated" << endl;
     }
 #endif
-}
-
-void VivaxBrood::checkpoint( ostream& stream ){
-    releaseDates & stream;
-    bloodStageClearDate & stream;
-    primaryHasStarted & stream;
-    relapseHasStarted & stream;
-	relapsebHasStarted & stream;
-    hadEvent & stream;
-    hadRelapse & stream;
-	origin & stream;
-}
-VivaxBrood::VivaxBrood( RunContext& ctx, istream& stream ) : ctx(ctx) {
-    (void)ctx;
-    releaseDates & stream;
-    bloodStageClearDate & stream;
-    primaryHasStarted & stream;
-    relapseHasStarted & stream;
-	relapsebHasStarted & stream;
-    hadEvent & stream;
-    hadRelapse & stream;
-	origin & stream;
 }
 
 
@@ -493,36 +469,6 @@ bool WHInterface::treatSimple_vivax( Host::Human& human, SimTime timeLiver, SimT
 
 
 // ———  boring stuff: checkpointing and set-up  ———
-
-void WHInterface::checkpoint_vivax(istream& stream){
-    size_t len;
-    len & stream;
-    for( size_t i = 0; i < len; ++i ){
-        vivaxInfections.push_back( VivaxBrood( ctx, stream ) );
-    }
-    noPQ & stream;
-    int morbidity_i;
-    morbidity_i & stream;
-    morbidity = static_cast<Pathogenesis::State>( morbidity_i );
-    cum_prim_inf_ref() & stream;
-    treatExpiryLiverVivax & stream;
-    treatExpiryBloodVivax & stream;
-    pEvent & stream;
-    pFirstRelapseEvent & stream;
-}
-void WHInterface::checkpoint_vivax(ostream& stream){
-    vivaxInfections.size() & stream;
-    for( auto it = vivaxInfections.begin(); it != vivaxInfections.end(); ++it ){
-        it->checkpoint( stream );
-    }
-    noPQ & stream;
-    static_cast<int>( morbidity ) & stream;
-    cum_prim_inf_ref() & stream;
-    treatExpiryLiverVivax & stream;
-    treatExpiryBloodVivax & stream;
-    pEvent & stream;
-    pFirstRelapseEvent & stream;
-}
 
 char const*const not_impl = "feature not available in Vivax model";
 void WHInterface::treatPkPd_vivax(size_t schedule, size_t dosages, double age, double delay_d){

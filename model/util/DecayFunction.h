@@ -24,7 +24,6 @@
 #define Hmod_DecayFunction
 
 #include <limits>
-#include "util/checkpoint.h"
 #include <memory>
 
 #include "Clock.h"
@@ -135,8 +134,6 @@ public:
 
     /** Checkpoint a sampled copy, recreating it from this configured function.
      * Wire format frozen: bool present + double hetFactor. */
-    void checkpointSample(const unique_ptr<DecayFunction>& sample, ostream& stream) const;
-    void checkpointSample(unique_ptr<DecayFunction>& sample, istream& stream) const;
 
 private:
     /// The formula switch: one case per Kind (was one virtual per subclass).

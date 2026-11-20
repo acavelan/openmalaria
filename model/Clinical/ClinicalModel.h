@@ -125,12 +125,6 @@ public:
         return latestState;
     }
     
-    /// Checkpointing
-    template<class S>
-    void operator& (S& stream) {
-        checkpoint (stream);
-    }
-
     /** Time of the last treatment (sim::never() if never treated): SoA
      * column t_last_treatment (old member; accessors keep read/write syntax). */
     SimTime& t_last_treatment() const { return cols->t_last_treatment[row]; }
@@ -144,8 +138,6 @@ public:
     ClinicalModel (RunContext& ctx, double tSF, Kind kind);
 
 protected:
-    void checkpoint (istream& stream);
-    void checkpoint (ostream& stream);
 
 public:
     /// Per-human State (public: the kind's update free function
@@ -215,10 +207,6 @@ public:
     /** Initialise parameters. */
     static void init( RunContext& ctx, const Parameters& parameters );
     static void preMainSimInit();
-
-    /// Static checkpointing
-    static void staticCheckpoint(istream& stream);
-    static void staticCheckpoint(ostream& stream);
 
     static void reportRisk(size_t index, bool isDoomed);
     

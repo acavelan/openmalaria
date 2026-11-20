@@ -21,7 +21,6 @@
  */
 
 #include "Host/WithinHost/Genotypes.h"
-#include "util/checkpoint.h"
 #include "util/random.h"
 #include "util/errors.h"
 #include "util/vectors.h"
@@ -102,19 +101,6 @@ double Genotypes::initialFreq( size_t genotype ) const {
 
 
 // ———  checkpointing  ———
-
-void Genotypes::staticCheckpoint( Genotypes& state, ostream& stream ){
-    int t = state.current_mode;
-    t & stream;
-}
-void Genotypes::staticCheckpoint( Genotypes& state, istream& stream ){
-    int t;
-    t & stream;
-    state.current_mode = static_cast<SampleMode>(t);
-    assert( state.current_mode == SAMPLE_FIRST ||
-        state.current_mode == SAMPLE_INITIAL ||
-        state.current_mode == SAMPLE_TRACKING );
-}
 
 }
 }

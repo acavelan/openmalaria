@@ -27,7 +27,6 @@
 #define Hmod_interventions_ComponentId
 
 #include "Clock.h"
-#include "util/checkpoint.h"
 #include <limits>
 
 namespace OM { namespace interventions {
@@ -56,9 +55,6 @@ namespace Component { enum Type {
  * from an integer (which could be mis-use). */
 struct ComponentId{
     explicit inline ComponentId( size_t id ) : id(id) {}
-    explicit inline ComponentId( istream& stream ){ id & stream; }
-    inline void operator& (istream& stream) { id & stream; }
-    inline void operator& (ostream& stream) const{ id & stream; }
     inline bool operator== (const ComponentId that) const{ return id == that.id; }
     inline bool operator< (const ComponentId that) const{ return id < that.id; }
     

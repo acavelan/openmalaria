@@ -21,7 +21,6 @@
  */
 
 #include "core/RunContext.h"
-#include "util/checkpoint.h"
 #include "core/RunExtensions.h"
 #include "Host/Human.h"
 #include "Host/InfectionIncidenceModel.h"
@@ -225,55 +224,6 @@ void Human::updateCohortSet()
         }else{
             ++k;
         }
-    }
-}
-
-void Human::checkpoint(istream &stream)
-{
-    perHostTransmission & stream;
-    infIncidence & stream;
-    withinHostModel & stream;
-    clinicalModel & stream;
-    rng().checkpoint(stream);
-    cols->dob[row] & stream;
-    // vac records not on the wire: interventions carry zero checkpoint bytes
-    // (restore re-applies by event replay; checkpoint is pre-intervention).
-    cols->mon_age_group[row] & stream;
-    cols->cohort_set[row] & stream;
-    cols->next_cts_dist[row] & stream;
-    // old subPopExp map wire: count, then (id,expiry) in ascending-id order
-    auto& spans = cols->cohorts[row];
-    size_t n;
-    n & stream;
-    util::checkpoint::validateListSize( n );
-    spans.clear();
-    for( size_t i = 0; i < n; ++i ) {
-        ComponentId id( stream );
-        SimTime expiry;
-        expiry & stream;
-        spans.push_back( make_pair( id, expiry ) );
-    }
-}
-
-void Human::checkpoint(ostream &stream)
-{
-    perHostTransmission & stream;
-    infIncidence & stream;
-    withinHostModel & stream;
-    clinicalModel & stream;
-    rng().checkpoint(stream);
-    cols->dob[row] & stream;
-    // vac records not on the wire: interventions carry zero checkpoint bytes
-    // (restore re-applies by event replay; checkpoint is pre-intervention).
-    cols->mon_age_group[row] & stream;
-    cols->cohort_set[row] & stream;
-    cols->next_cts_dist[row] & stream;
-    auto const& spans = cols->cohorts[row];
-    size_t n = spans.size();
-    n & stream;
-    for( auto const& span : spans ) {
-        span.first & stream;
-        span.second & stream;
     }
 }
 

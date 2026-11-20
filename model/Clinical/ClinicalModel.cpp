@@ -21,7 +21,6 @@
  */
 
 #include "core/RunContext.h"
-#include "util/checkpoint.h"
 #include "Clinical/ClinicalModel.h"
 #include "Clinical/CM5DayCommon.h"
 
@@ -141,39 +140,6 @@ void ClinicalModel::updateInfantDeaths( SimTime age ){
 }
 
 
-void ClinicalModel::checkpoint (istream& stream) {
-    latestReport & stream;
-    doomed & stream;
-    if (kind == Kind::EventScheduler) {
-        // wire bytes parity: old ClinicalEventScheduler::checkpoint
-        int s;
-        s & stream;
-        esPgState = Episode::State(s);
-        es_case_start() & stream;
-        es_time_recovery() & stream;
-        es_time_treatment() & stream;
-        es_prev_density() & stream;
-    } else {
-        // wire bytes parity: old CM5DayCommon::checkpoint
-        t_last_treatment() & stream;
-        m_treatmentSeekingFactor & stream;
-    }
-}
-void ClinicalModel::checkpoint (ostream& stream) {
-    latestReport & stream;
-    doomed & stream;
-    if (kind == Kind::EventScheduler) {
-        esPgState & stream;
-        es_case_start() & stream;
-        es_time_recovery() & stream;
-        es_time_treatment() & stream;
-        es_prev_density() & stream;
-    } else {
-        t_last_treatment() & stream;
-        m_treatmentSeekingFactor & stream;
-    }
-}
-
 
 
 // ——— infant mortality ———
@@ -195,15 +161,6 @@ void InfantMortality::init( RunContext& ctx, const OM::Parameters& parameters ){
 void InfantMortality::preMainSimInit() {
     std::fill(infantDeaths.begin(), infantDeaths.end(), 0);
     std::fill(infantIntervalsAtRisk.begin(), infantIntervalsAtRisk.end(), 0);
-}
-
-void InfantMortality::staticCheckpoint(istream& stream) {
-    infantDeaths & stream;
-    infantIntervalsAtRisk & stream;
-}
-void InfantMortality::staticCheckpoint (ostream& stream) {
-    infantDeaths & stream;
-    infantIntervalsAtRisk & stream;
 }
 
 void InfantMortality::reportRisk(size_t index, bool isDoomed) {

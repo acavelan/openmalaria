@@ -21,7 +21,6 @@
  */
 
 #include "core/RunExtensions.h"
-#include "util/checkpoint.h"
 #include "core/RunContext.h"
 #include "Population.h"
 #include "mon/Continuous.h"
@@ -122,27 +121,6 @@ void Population::update()
         humans.push_back( Host::Human (ctx, ctx.clock.ts1(), cols) );
         ++cumPop;
     }
-}
-
-void Population::checkpoint(istream& stream)
-{
-    size & stream;
-    recentBirths & stream;
-
-    for(size_t i = 0; i < size && !stream.eof(); ++i) {
-        humans.push_back( Host::Human (ctx, sim::zero(), cols) );
-        humans.back().checkpoint(stream);
-    }
-    if (humans.size() != size)
-        throw util::checkpoint_error("Population: out of data (read " + to_string(humans.size()) + " humans)");
-}
-
-void Population::checkpoint(ostream& stream)
-{
-    size & stream;
-    recentBirths & stream;
-    for(Host::Human &human : humans)
-        human.checkpoint(stream);
 }
 
 void registerContinousPopulationCallbacks(RunContext& ctx)

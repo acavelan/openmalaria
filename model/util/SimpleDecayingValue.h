@@ -71,11 +71,6 @@ public:
     
     /** Checkpointing: only checkpoint parameters which change after initial
      * set-up. */
-    template<class S>
-    void operator& (S& stream) {
-        if (decay) decay->checkpointSample(het, stream);
-        deploy_t & stream;
-    }
     
 private:
     /** Description of decay of effects on emergence. */

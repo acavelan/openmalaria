@@ -24,13 +24,11 @@
 #define Hmod_PerHost
 
 #include "Clock.h"
-#include "util/checkpoint.h"
 #include "core/RunContext.h"
 #include "Host/HostColumns.h"  // leaf: SoA columns owned by Population (IvRecord)
 #include "interventions/ComponentId.h"  // leaf: Component::Type + ComponentId only
 #include "util/AgeGroupInterpolation.h"
 #include "util/sampler.h"
-#include "util/checkpoint_containers.h"
 
 #include "util/random.h"
 
@@ -218,22 +216,6 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
      * will always return false). */
     bool hasActiveInterv( interventions::Component::Type type ) const;
     
-    /// Checkpointing
-    template<class S>
-    void operator& (S& stream) {
-        anoph_ento_raw() & stream;
-        anoph_ento_avail() & stream;
-        anoph_prob_biting() & stream;
-        anoph_prob_resting() & stream;
-        rel_avail_het() & stream;
-        outside_trans() & stream;
-        // 7.4: copulaGaussianSamples moved to the copula_g column (and its
-        // wire entry deleted: interventions carry zero checkpoint bytes —
-        // user invariant; restore re-applies via event replay).
-        // iv records not on the wire: interventions carry zero checkpoint
-        // bytes (restore re-applies by event replay; checkpoint is
-        // pre-intervention — user invariant).
-    }
     //@}
     
     /** Species availability rate of human to mosquitoes: per-species

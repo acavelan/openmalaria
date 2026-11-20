@@ -70,10 +70,6 @@ void WHInterface::dtorDescriptive() {
 
 // -----  Simple infection adders/removers  -----
 
-void WHInterface::loadInfection_descriptive(istream& stream) {
-    infections.push_back(infection_new_checkpointed(ctx, stream, Infection::Kind::Descriptive));
-}
-
 // clearInfections() and clearImmunity_falciparum() are shared with the Common
 // kind (identical code, defined in CommonWithinHost.cpp).
 
@@ -317,19 +313,6 @@ bool WHInterface::summarize_descriptive( Host::Human& human )const{
 
 
 // -----  Data checkpointing  -----
-
-void WHInterface::checkpoint_descriptive (istream& stream) {
-    checkpoint_falciparum (stream);
-    for(int i=0; i<numInfs; ++i) {
-        loadInfection_descriptive(stream);  // create infections from the stream
-    }
-    assert( numInfs == static_cast<int>(infections.size()) );
-}
-void WHInterface::checkpoint_descriptive (ostream& stream) {
-    checkpoint_falciparum (stream);
-    for(Infection* inf : infections)
-        *inf & stream;
-}
 
 char const*const not_impl = "feature not available with the \"descriptive\" within-host model";
 void WHInterface::treatPkPd_descriptive(size_t schedule, size_t dosages, double age, double delay_d){

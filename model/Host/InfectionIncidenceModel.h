@@ -24,7 +24,6 @@
 #define Hmod_InfectionIncidence
 
 #include "Clock.h"
-#include "util/checkpoint.h"
 #include "Transmission/PerHost.h"
 #include "util/random.h"
 
@@ -72,19 +71,6 @@ public:
       ctsNewInfections = 0;
   }
   //@}
-  
-  /// Checkpointing (per-human State; wire format frozen)
-  template<class S>
-  void operator& (S& stream) {
-      m_pInfected & stream;
-      m_cumulativeEIRa & stream;
-  }
-  
-  /// Static checkpointing
-  template<class S>
-  static void staticCheckpoint (S& stream){
-      ctsNewInfections & stream;
-  }
   
 protected:
   /// Create a new model

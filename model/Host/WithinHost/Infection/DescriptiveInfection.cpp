@@ -21,7 +21,6 @@
  */
 
 #include "core/RunContext.h"
-#include "util/checkpoint.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/random.h"
 #include "util/CommandLine.h"
@@ -220,15 +219,6 @@ void determine_densities_descriptive(
 
 
 // ———  checkpointing  ———
-
-void read_descriptive (Infection& inf, istream& stream) {
-    inf.descriptive.duration & stream;
-    inf.descriptive.notPrintedMDWarning & stream;
-}
-void checkpoint_descriptive (Infection& inf, ostream& stream) {
-    inf.descriptive.duration & stream;
-    inf.descriptive.notPrintedMDWarning & stream;
-}
 
 }
 }

@@ -88,14 +88,6 @@ namespace Host {
             }
         }
         
-        /// Checkpointing
-        template<class S>
-        void operator& (S& stream) {
-            using namespace OM::util::checkpoint;
-            // period and rate are set from XML and not changed
-            lastIndex & stream;
-        }
-        
     private:
         SimTime period = sim::never();
         uint32_t lastIndex;

@@ -35,37 +35,6 @@ namespace OM { namespace util {
 #define OM_SV_FILE "StreamValidator"
 const char OM_SV_HEAD[5] = "OMSV";
 
-// These operators overload against others in the checkpoint namespace.
-// Putting these in the same namespace is an easy solution, if not very standard.
-namespace checkpoint {
-    // Versions of checkpoint operator for deque, but with increased max
-    // length. They also write length as a 32-bit unsigned integer; in theory
-    // size_t could be used for checkpointing but that's not really necessary.
-    template<class T>
-    void operator& (deque<T> x, ostream& stream) {
-        // Write size as a uint32_t for cross-platform compatibility; first
-        // check size isn't greater than what a 32-bit uint can represent.
-        uint32_t size32 = x.size();
-        size_t size_check = size32;
-        if( size_check != x.size() )
-            throw TRACED_EXCEPTION_DEFAULT( "stream too long!" );
-        size32 & stream;       // write 32-bit unsigned int (size_t is platform dependent!)
-        foreach (T& y, x) {
-            y & stream;
-        }
-    }
-    template<class T>
-    void operator& (deque<T>& x, istream& stream) {
-        uint32_t size32;
-        size32 & stream; // read uint32_t, not whatever size_t is
-        validateListSize (size32, 100000000L);
-        x.resize( size32 );
-        foreach (T& y, x) {
-            y & stream;
-        }
-    }
-}
-
 void StreamValidatorType::saveStream() {
     if( storeMode ){
 	ofstream f_str( OM_SV_FILE, ios::out | ios::binary );
@@ -118,20 +87,6 @@ void StreamValidatorType::handle( SVType value ){
 	}
 	++readIt;
     }
-}
-
-void StreamValidatorType::checkpoint ( istream& cp_str ){
-    storeMode & cp_str;
-    stream & cp_str;
-    size_t dist;
-    dist & cp_str;
-    readIt = stream.begin() + dist;
-}
-void StreamValidatorType::checkpoint ( ostream& cp_str ) const{
-    storeMode & cp_str;
-    stream & cp_str;
-    size_t dist = readIt - stream.begin();
-    dist & cp_str;
 }
 
 StreamValidatorType StreamValidator;

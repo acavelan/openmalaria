@@ -42,8 +42,8 @@
 #include "Clinical/ClinicalModel.h"
 
 #include "Host/NeonatalMortality.h"
-#include "checkpoint.h"
 #include "core/RunExtensions.h"
+#include "Transmission/transmission.h"
 
 #include <cerrno>
 
@@ -149,8 +149,6 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
 {
     ensure_extensions( ctx );
 
-    bool startedFromCheckpoint;
-
     SimTime estEndTime, endTime;
 
     util::set_gsl_handler();
@@ -223,84 +221,52 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
     humanWarmupLength = sim::fromYearsI( static_cast<int>(ceil(sim::inYears(humanWarmupLength))) );
 
     // ———  End of static data initialisation  ———
-    string checkpointFileName = util::CommandLine::getCheckpointName();
 
-    if(checkpointFileName == "")
-        checkpointFileName = "checkpoint";
-
-    if(util::CommandLine::option(util::CommandLine::CHECKPOINT))
-    {
-        ifstream checkpointFile(checkpointFileName,ios::in);
-        startedFromCheckpoint = checkpointFile.is_open();
-        if(startedFromCheckpoint == false)
-            errno = 0; // Cleanup errno if file doesn't exist
-    }
-    else
-        startedFromCheckpoint = false;
-    
     estEndTime = humanWarmupLength + (ctx.clock.end_date - ctx.clock.start_date) + ctx.clock.one_TS();
     assert( estEndTime + sim::never() < sim::zero() );
 
-    if (startedFromCheckpoint)
+    mon::Continuous::init(ctx, scenario->getMonitoring());
+    population->createInitialHumans();
+    transmission->init2(population->humans);
+
+    /** Calculate ento availability percentiles **/
+    Transmission::PerHostAnophParams::calcAvailabilityPercentiles(ctx);
+
+    /** Warm-up phase:
+     * Run the simulation using the equilibrium inoculation rates over one
+     * complete lifespan (ctx.clock.max_human_age) to reach immunological
+     * equilibrium in all age classes. Don't report any events. */
+    endTime = humanWarmupLength;
+    run(ctx, *population, *transmission, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "Warmup");
+
+    /** Transmission init phase:
+     * Fit the emergence rate to the input EIR */
+    SimTime iterate = transmission->initIterate();
+    while(iterate > sim::zero())
     {
-        mon::Continuous::init(ctx, scenario->getMonitoring(), true);
-        readCheckpoint(ctx, checkpointFileName, endTime, estEndTime, *population, *transmission);
-
-        /** Calculate ento availability percentiles **/
-        Transmission::PerHostAnophParams::calcAvailabilityPercentiles(ctx);
+        endTime = endTime + iterate;
+        // adjust estimation of final time step: end of current period + length of main phase
+        estEndTime = endTime + (ctx.clock.end_date - ctx.clock.start_date) + ctx.clock.one_TS();
+        run(ctx, *population, *transmission, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "EIR Calibration");
+        iterate = transmission->initIterate();
     }
-    else
-    {
-        mon::Continuous::init(ctx, scenario->getMonitoring(), false);
-        population->createInitialHumans();
-        transmission->init2(population->humans);
-        
-        /** Calculate ento availability percentiles **/
-        Transmission::PerHostAnophParams::calcAvailabilityPercentiles(ctx);
 
-        /** Warm-up phase: 
-         * Run the simulation using the equilibrium inoculation rates over one
-         * complete lifespan (ctx.clock.max_human_age) to reach immunological
-         * equilibrium in all age classes. Don't report any events. */
-        endTime = humanWarmupLength;
-        run(ctx, *population, *transmission, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "Warmup");
-
-        /** Transmission init phase:
-         * Fit the emergence rate to the input EIR */
-        SimTime iterate = transmission->initIterate();
-        while(iterate > sim::zero())
-        {
-            endTime = endTime + iterate;
-            // adjust estimation of final time step: end of current period + length of main phase
-            estEndTime = endTime + (ctx.clock.end_date - ctx.clock.start_date) + ctx.clock.one_TS();
-            run(ctx, *population, *transmission, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "EIR Calibration");
-            iterate = transmission->initIterate();
-        }
-
-        /** Main phase:
-         * This procedure starts with the current state of the simulation 
-         * It continues updating assuming:
-         * (i)         the default (exponential) demographic model
-         * (ii)        the entomological input defined by the EIRs in intEIR()
-         * (iii)       the intervention packages defined in Intervention()
-         * (iv)        the survey times defined in Survey() */
-        // reset endTime and estEndTime to their exact value after initIterate()
-        estEndTime = endTime = endTime + (ctx.clock.end_date - ctx.clock.start_date) + ctx.clock.one_TS();
-        ctx.clock.interv = sim::zero();
-        Host::InfectionIncidenceModel::preMainSimInit();
-        Clinical::InfantMortality::preMainSimInit();
-        ctx.genotypes.preMainSimInit();
-        population->recentBirths = 0;
-        transmission->summarize(ctx); // Only to reset TransmissionModel::inoculationsPerAgeGroup
-        mon::initMainSim(ctx);
-
-        if(util::CommandLine::option (util::CommandLine::CHECKPOINT))
-        {
-            writeCheckpoint(ctx, startedFromCheckpoint, checkpointFileName, endTime, estEndTime, *population, *transmission);
-            if( util::CommandLine::option (util::CommandLine::CHECKPOINT_STOP) )
-                throw util::cmd_exception ("Checkpoint test: checkpoint written", util::Error::None);
-        }
-    }
+    /** Main phase:
+     * This procedure starts with the current state of the simulation
+     * It continues updating assuming:
+     * (i)         the default (exponential) demographic model
+     * (ii)        the entomological input defined in intEIR()
+     * (iii)       the intervention packages defined in Intervention()
+     * (iv)        the survey times defined in Survey() */
+    // reset endTime and estEndTime to their exact value after initIterate()
+    estEndTime = endTime = endTime + (ctx.clock.end_date - ctx.clock.start_date) + ctx.clock.one_TS();
+    ctx.clock.interv = sim::zero();
+    Host::InfectionIncidenceModel::preMainSimInit();
+    Clinical::InfantMortality::preMainSimInit();
+    ctx.genotypes.preMainSimInit();
+    population->recentBirths = 0;
+    transmission->summarize(ctx); // Only to reset TransmissionModel::inoculationsPerAgeGroup
+    mon::initMainSim(ctx);
 
     // Main phase loop
     run(ctx, *population, *transmission, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "Intervention period");

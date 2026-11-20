@@ -41,9 +41,6 @@ public:
   /// Initialisation
   static void init( RunContext& ctx, const scnXml::Clinical& clinical );
   
-  static void staticCheckpoint (istream& stream);
-  static void staticCheckpoint (ostream& stream);
-  
   /** Called for each birth; returns true if infant dies due to mother's
    * infection. */
   static bool eventNeonatalMortality(LocalRng& rng);

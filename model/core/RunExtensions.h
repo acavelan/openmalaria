@@ -55,8 +55,6 @@ struct RunExtensions {
     /// Within-host infection factory, set by the active model's init.
     WithinHost::Infection* (*createInfection)
         (RunContext&, util::LocalRng&, uint32_t, int) = nullptr;
-    WithinHost::Infection* (*checkpointedInfection)
-        (RunContext&, std::istream&) = nullptr;
     /// Unittest backend for WithinHost::WHInterface Kind::Mock (installed by
     /// unittest/WHMock.cpp; null in production, where Kind::Mock is never
     /// created). Same fn-pointer-table idiom as createInfection above.

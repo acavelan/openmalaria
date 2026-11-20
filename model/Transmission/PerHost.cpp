@@ -26,7 +26,6 @@
 #include "Host/Human.h"
 #include "interventions/IvState.h"
 #include "util/errors.h"
-#include "util/checkpoint.h"
 
 namespace OM {
 namespace Transmission {

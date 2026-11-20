@@ -25,7 +25,6 @@
 // implemented in the Monolix software", Julie Bertrand and France Mentré, Sept
 // 2008. From page 37, in particular equation (1.72) p44.
 #include "PkPd/LSTMDrug.h"
-#include "util/checkpoint.h"
 #include "PkPd/LSTMDrugType.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/errors.h"
@@ -219,28 +218,6 @@ void LSTMDrug::updateConcentration_threeComp (double body_mass) {
         concABC = 0.0;
     }
 }
-
-template<class S> void LSTMDrug::checkpoint_threeComp(S& stream){
-    concA & stream;
-    concB & stream;
-    concC & stream;
-    concABC & stream;
-    elim_sample & stream;
-    k12 & stream;
-    k21 & stream;
-    k13 & stream;
-    k31 & stream;
-    nka & stream;
-    last_bm & stream;
-    na & stream;
-    nb & stream;
-    ng & stream;
-    A & stream;
-    B & stream;
-    C & stream;
-}
-template void LSTMDrug::checkpoint_threeComp(std::ostream&);
-template void LSTMDrug::checkpoint_threeComp(std::istream&);
 
 }
 }

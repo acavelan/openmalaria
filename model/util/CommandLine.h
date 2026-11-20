@@ -42,10 +42,6 @@ namespace OM { namespace util {
 			VERBOSE,
 		/// Show progress
 			PROGRESS,
-	    /// Forces checkpointing just before starting the main phase.
-			CHECKPOINT,
-	    /// Exit after writing checkpoint
-			CHECKPOINT_STOP,
 	    /** Do initialisation and error checks, but don't run simulation. */
 			SKIP_SIMULATION,
             /** Compress main survey output. */
@@ -97,12 +93,7 @@ namespace OM { namespace util {
 			return ctsoutName;
 		}
 
-     /** Get the name of the checkpoint file. */
-		static inline string getCheckpointName (){
-			return checkpointFileName;
-		}
-
-    /** RNG seed override from --seed (>=0), or -1 when the scenario's
+     /** RNG seed override from --seed (>=0), or -1 when the scenario's
      * <computationParameters iseed> should be used. */
 		static inline int getSeedOverride (){
 			return seedOverride;
@@ -119,14 +110,8 @@ namespace OM { namespace util {
 	* to achieve the desired result. */
 		static string parse (int argc, char* argv[]);
 
-	/** @brief Checkpointing.
-	*
-	* Not really required; more to confirm things are expected. */
-		static void staticCheckpoint (istream& stream);
-	static void staticCheckpoint (ostream& stream);	///< ditto
-	
 private:
-	// Static parameters: don't require checkpointing (set by parse())
+	// Static parameters: set by parse()
 	static bitset<NUM_OPTIONS> options;	// boolean options
 	static string resourcePath;
 	
@@ -134,7 +119,6 @@ private:
 	static string outputName;
 	static OutputFormat outputFormat;
 	static string ctsoutName;
-	static string checkpointFileName;
 	static int seedOverride;
 };
 } }
