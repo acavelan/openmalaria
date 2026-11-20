@@ -388,3 +388,70 @@ p8-structure deletes files p8ckpt edits → delete/modify + contextual conflicts
 **Rulings on Human/HostColumns/Population (user-approved, final — do not re-litigate):**
 - Human→Population merge: REJECTED. Human is the SoA row-handle facade (typed accessors over HumanColumns + row-object identity, doB/rng/infIncidence/withinHostModel/clinicalModel members), not a data blob. Include graph: Human.h is a widely-used leaf read by ~26 TUs; Population.h is an 11-TU consumer that includes Human.h — merging Human into Population would bloat every Human reader with population/demography internals for zero LOC gain. The SoA question doesn't remove the handle: callers name per-human behaviour (ageYears, rng, infect…), not column indices.
 - HostColumns.h → owning container's header (Population.h holds the only `HumanColumns cols` member): REJECTED by include-cycle, verified: HostColumns.h is included by Human.h, WHInterface.h, PerHost.h, HumanComponents.h, IvState.h, Vaccine.h + Population.h; Population.h includes Human.h, so the merged header would require Human.h -> Population.h -> Human.h. The vocabulary a row-handle and column-readers below Population consume cannot live in the container header above them. HostColumns.h stays the deliberate leaf it is (3 records, ~116 LOC, trivial includes) — matching the ComponentId.h leaf rule.
+
+---
+
+# P8-poly HANDOFF — Infection + WHInterface Kind-dispatch -> real class hierarchies (branch `p8-poly` off `rewrite` HEAD = p8-files green 11c0f585)
+
+User order: convert the two model-option variant families to true classes.
+Laws honoured: formula bodies VERBATIM (user veto on reassociation; only
+`this->`/`inf.` re-qualifiers and payload-struct absorption); RNG draw points
+AND order unchanged (draws moved into derived ctors at the exact old stream
+slots; base ctors draw nothing); checkpoint module stays free-function — kind
+tag + `static_cast`, no serialization decls in classes; resume ctor order kept
+base -> WHFalciparum -> concrete; ALL variants kept (deletion vetoed);
+CalcNvO untouched; mock hooks re-homed via installer pattern.
+
+## Environment
+- Worktree `/tmp/opencode/p8poly`, build `build-poly/` = Release `-O3 -DNDEBUG
+  -ffp-contract=off -DOM_BOXTEST_BINARY=ON`; ignored symlink `build ->
+  build-poly` REQUIRED (parity.py XSD trap). Commits `--no-gpg-sign`.
+- Gates per commit: build 0 err; `cd build-poly && ctest -j12` (64);
+  `cd build-poly/unittest && ./unittest` (".OK!"); T1
+  `python3 util/parity.py --old /tmp/opencode/om-ref/A0/openMalaria --new
+  build-poly/openMalaria --recipe /tmp/opencode/om-ref/A0/recipe.json --tiers a`
+  (53) + tier-b seeds 1-4 on dispatch commits; final a + b seeds 1-10 = 63/63.
+
+## Commits
+| commit | scope | model code LOC / files |
+|---|---|---|
+| baseline 11c0f585 | | 17,192 / 115 |
+| `12461d2c` | Infection: base (update/expired/clear virtuals, `const Kind kind`, factory) + Dummy/Descriptive/Empirical/Molineaux/Penny classes; payload structs absorbed by value (per-infection mallocs die); per-kind TUs; checkpoint static_cast switch; unittest suites re-homed | 17,192 / 115 |
+| `c9732f64` | WHInterface: abstract base (common wire block + virtual treatment()) -> WHFalciparum (infections list/pkpd) -> WHCommon/WHDescriptive; WHVivax : base; all Kind-switches deleted; checkpoint per-kind static_casts; unittest WHMock became a class (hooks unchanged: installer still re-homes ctx.whMock + the hook table; the mock's non-hook methods keep the old `unimplemented_exception("not needed in unit test")` branches) | 17,078 / 115 |
+
+## Design notes (read before extending)
+- Base classes carry ONLY what the checkpoint wire writes for every kind;
+  kind-specific state lives in the derived class that reads it. Checkpoint
+  `static_cast` is justified by the stored kind tag (same rule that made the
+  old union/`inf.X` accesses safe).
+- WH ctor layering = wire order: base ctor (no draws) -> WHFalciparum ctor
+  (falciparum immunity draws) -> concrete ctor (own draws). Do not reorder.
+- The model side has ZERO mock code: `WHInterface::init` (scenario.cpp)
+  selects production variants only. The unittest mock is `WHMock final :
+  WHInterface` in unittest/WHMock.cpp; makeWHMock installs the hook table on
+  ctx.whMock and returns the mock — treatment()/treatSimple()/treatPkPd()/
+  getTotalDensity()/diagnosticResult() go through the hooks, every other
+  virtual throws unimplemented_exception (old Mock branches verbatim).
+  `treatment()` is virtual on the base for exactly this (prod body shared by
+  Falciparum+Vivax; Mock overrides with the hook).
+- InfectionImmunitySuite uses `WHDescriptive*` directly (setParams ->
+  WHFalciparum::setParams); SlotAllocatorSuite constructs WHDescriptive.
+
+## PERF (measured, closed)
+BENCH (taskset -c 5, %U, example_scenario@popSize2000, warmup discarded,
+10 INTERLEAVED reps, same window both arms): p7g median **12.21 s** (MAD
+0.03) vs p8-poly median **12.36 s** (MAD 0.02) = **+1.3%** — inside the
+≤ +1.5% expectation. An interim +27% reading was a measurement artifact
+(arms measured in different windows during parallel -j12 parity load); the
+static-dispatch attribution experiment was void for the same reason. Full
+table + retraction: BENCH_p8poly.md.
+
+## Second wave (LSTMDrug, ClinicalModel): NOT started — deliberate stop
+Both are still flat Kind classes (headers unchanged since the pragma sweep).
+Given the open +27% perf question above, converting two more families before
+the orchestrator rules on the perf finding would compound the same TU-split
+effect for unknown gain. Pattern is proven twice (12461d2c, c9732f64): base =
+wire/common state, derived = kind payloads, ctor layering = old stream order,
+checkpoint static_casts on the kind tag. Anchors for whoever picks it up:
+model/PkPd/LSTMDrug.{h,cpp} (freeLSTMDrug* = the dtor bodies),
+model/Clinical/ClinicalModel.{h,cpp} (Kind ctor + treatment-episode guard).
