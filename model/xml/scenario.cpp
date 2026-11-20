@@ -42,7 +42,6 @@
 #include "util/CommandLine.h"
 #include "util/ModelOptions.h"
 #include "util/ModelNameProvider.h"
-#include "mon/init.h"
 #include "util/UnitParse.h"
 #include "util/errors.h"
 #include "xml/latentP.h"

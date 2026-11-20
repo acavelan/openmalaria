@@ -36,7 +36,6 @@
 #include "xml/XMLChecker.h"
 
 #include "mon/Continuous.h"
-#include "mon/init.h"
 #include "mon/Monitoring.h"
 
 #include "interventions/InterventionManager.h"

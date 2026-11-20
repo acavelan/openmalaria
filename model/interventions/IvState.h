@@ -31,7 +31,7 @@
 #define Hmod_interventions_IvState
 
 #include "Clock.h"
-#include "humans/HostColumns.h"  // IvRecord
+#include "Host/HostColumns.h"  // IvRecord
 
 namespace OM {
 class RunContext;

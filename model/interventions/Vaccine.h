@@ -24,7 +24,7 @@
 #define Hmod_interventions_Vaccine
 
 #include "interventions/HumanComponents.h"
-#include "humans/HostColumns.h"  // VacRecord
+#include "Host/HostColumns.h"  // VacRecord
 namespace scnXml
 {
     class VaccineDescription;
@@ -80,7 +80,7 @@ public:
     /** Until the monitoring system is updated, only one type of vaccination
      * delivery can be reported. This is whichever is first configured. */
 
-    // per-human state is the VacRecord column (humans/HostColumns.h); these
+    // per-human state is the VacRecord column (Host/HostColumns.h); these
     // free functions (below) read it and the registries:
 };
 
