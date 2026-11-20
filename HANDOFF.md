@@ -23,6 +23,7 @@ to merge files that belong".
 
 | # | merge | files Δ | gates |
 |---|---|---|---|
+| G11 | Host/WithinHost/State.h -> PathogenesisModel.h (class B: the Pathogenesis::State enum + StatePair live in the Pathogenesis namespace the model file declares — pre-7g they were one directory; 4 includers repointed; no new includes reach the 37-TU cone beyond Parameters.h/random.h which it already had via WHInterface/Infection.h) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 + T1b 1-4 |
 | G10 | run.h -> RunContext.h (class B: run_simulation is the run-core entry declared beside the context it takes; decl-only, +10 LOC to the lean header, no new includes) | -1 | build, ctest 64/64 (TwoRunsSuite), unittest .OK!, T1a 53/53 |
 | G9 | PkPd: LSTMTreatments.h -> LSTMMedicate.h (class B: the loader declaration for exactly the registry LSTMMedicate.h defines — Schedule/DosageTable/TreatmentRegistry + LSTMTreatments::init read as one 'drug course config' file; decl-only, scnXml fwd-decl kept at global scope) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 |
 | G8 | PkPd: LSTMDrugOneComp/ThreeComp/Conversion.cpp -> LSTMDrug.cpp (class A cpp->cpp: all four files are the body of the ONE LSTMDrug final class, split by Kind when the old hierarchy collapsed; every variant equation + both GSL workspaces verbatim, per-file include sets unioned; LSTMDrug.h cone is 59 TU, so bodies stay out of headers) | -3 | build, ctest 64/64, unittest .OK! (LSTMPkPd/PkPdCompliance suites), T1a 53/53 + T1b 1-4 |
