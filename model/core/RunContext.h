@@ -191,9 +191,10 @@ public:
     ~RunContext();      // out-of-line: deletes ext (incomplete type here)
     
     SimClock clock;
-    /** Master RNG. (0, 0) matches the old global's construction — the
-     * percentile-stream seed depends on it; run_simulation reseeds from
-     * --seed/Iseed after validation. */
+    /** Master RNG. // parity: order — constructed here (0, 0), matching the
+     * old global's construction; the percentile-stream seed depends on it;
+     * run_simulation reseeds from --seed/Iseed after validation; checkpointed
+     * in model/checkpoint.cpp. */
     util::MasterRng master_RNG{0, 0};
     /// Genotype registry (built by Genotypes::init during scenario load).
     WithinHost::Genotypes genotypes;
