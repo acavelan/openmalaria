@@ -147,7 +147,12 @@ void checkpoint(checkpoint::Archive& a, Infection& inf) {
 namespace PkPd {
 
 void checkpoint(checkpoint::Archive& a, LSTMDrug& drug) {
-    a.enumerated(drug.kind);
+    // Wire tag = class built by DrugRegistry::createInstance (kind comes from
+    // the same non-checkpointed drug-type config); the tag is the proof for
+    // the per-kind down-casts (p8-poly rule; no serialisation decls on the
+    // classes). Read value discarded: the factory already built the same kind.
+    LSTMDrug::Kind kind = drug.kind;
+    a.enumerated(kind);
     { // pair isn't trivially copyable: element-wise
         uint64_t n = drug.doses.size();
         a.value(n);
@@ -168,40 +173,46 @@ void checkpoint(checkpoint::Archive& a, LSTMDrug& drug) {
     }
     a.value(drug.vol_dist);
     switch (drug.kind) {
-    case LSTMDrug::Kind::OneComp:
-        a.value(drug.concentration);
-        a.value(drug.neg_elim_sample);
+    case LSTMDrug::Kind::OneComp: {
+        auto& v = static_cast<LSTMDrugOneComp&>(drug);
+        a.value(v.concentration);
+        a.value(v.neg_elim_sample);
         break;
-    case LSTMDrug::Kind::ThreeComp:
-        a.value(drug.concA);
-        a.value(drug.concB);
-        a.value(drug.concC);
-        a.value(drug.concABC);
-        a.value(drug.elim_sample);
-        a.value(drug.k12);
-        a.value(drug.k21);
-        a.value(drug.k13);
-        a.value(drug.k31);
-        a.value(drug.nka);
-        a.value(drug.last_bm);
-        a.value(drug.na);
-        a.value(drug.nb);
-        a.value(drug.ng);
-        a.value(drug.A);
-        a.value(drug.B);
-        a.value(drug.C);
+    }
+    case LSTMDrug::Kind::ThreeComp: {
+        auto& v = static_cast<LSTMDrugThreeComp&>(drug);
+        a.value(v.concA);
+        a.value(v.concB);
+        a.value(v.concC);
+        a.value(v.concABC);
+        a.value(v.elim_sample);
+        a.value(v.k12);
+        a.value(v.k21);
+        a.value(v.k13);
+        a.value(v.k31);
+        a.value(v.nka);
+        a.value(v.last_bm);
+        a.value(v.na);
+        a.value(v.nb);
+        a.value(v.ng);
+        a.value(v.A);
+        a.value(v.B);
+        a.value(v.C);
         break;
-    case LSTMDrug::Kind::Conversion:
-        a.value(drug.qtyG);
-        a.value(drug.qtyP);
-        a.value(drug.qtyM);
-        a.value(drug.nkP_sample);
-        a.value(drug.nconv_sample);
-        a.value(drug.nkM_sample);
-        a.value(drug.vol_dist_metabolite);
-        a.value(drug.nka);
-        a.value(drug.last_bm);
+    }
+    case LSTMDrug::Kind::Conversion: {
+        auto& v = static_cast<LSTMDrugConversion&>(drug);
+        a.value(v.qtyG);
+        a.value(v.qtyP);
+        a.value(v.qtyM);
+        a.value(v.nkP_sample);
+        a.value(v.nconv_sample);
+        a.value(v.nkM_sample);
+        a.value(v.vol_dist_metabolite);
+        a.value(v.nka);
+        a.value(v.last_bm);
         break;
+    }
     }
 }
 

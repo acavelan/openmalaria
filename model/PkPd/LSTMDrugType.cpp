@@ -101,16 +101,17 @@ LSTMDrugType& DrugRegistry::get(size_t index) { return drugTypes.at(index); }
 const vector<size_t>& DrugRegistry::getDrugsInUse() const { return drugsInUse; }
 
 unique_ptr<LSTMDrug> DrugRegistry::createInstance(LocalRng& rng, size_t index) {
+    // One create-line per variant; the drug type's XML structure selects it
+    // (same selection the old Kind switch made at construction).
     LSTMDrugType& typeData = drugTypes[index];
     if (typeData.conversion_rate) {
-        LSTMDrugType& metaboliteData = drugTypes[typeData.metabolite];
-        return unique_ptr<LSTMDrug>(new LSTMDrug(LSTMDrug::Kind::Conversion, typeData, &metaboliteData, rng));
+        return unique_ptr<LSTMDrug>(new LSTMDrugConversion(typeData, &drugTypes[typeData.metabolite], rng));
     } else if (typeData.k12) {
         // k21 is set when k12 is set; k13 and k31 may be set
-        return unique_ptr<LSTMDrug>(new LSTMDrug(LSTMDrug::Kind::ThreeComp, typeData, 0, rng));
+        return unique_ptr<LSTMDrug>(new LSTMDrugThreeComp(typeData, rng));
     } else {
         // none of k12/k21/k13/k31 should be set in this case
-        return unique_ptr<LSTMDrug>(new LSTMDrug(LSTMDrug::Kind::OneComp, typeData, 0, rng));
+        return unique_ptr<LSTMDrug>(new LSTMDrugOneComp(typeData, rng));
     }
 }
 
