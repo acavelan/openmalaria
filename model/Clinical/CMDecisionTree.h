@@ -73,7 +73,7 @@ struct DTBranch { double key; uint32_t child; };
 
 /** A decision tree compiled from XML into a flat node array plus side tables.
  * Built once per health-system load by compile_decision_tree() (xml layer);
- * owned by RunExtensions::decision_trees for the run's lifetime. Contains no
+ * owned by RunContext::decision_trees for the run's lifetime. Contains no
  * per-run host state, so it is never checkpointed (parity: was:
  * CMDecisionTree.cpp statics, likewise not checkpointed).
  *
@@ -136,7 +136,7 @@ struct DTExecCtx {
  * drug/cohort/diagnostic names to ids, precomputing cumulative-p keys (in
  * map<double> numeric order, with tie-drop and identical-leaf-run folding)
  * and validating all constraints that the old node classes checked in their
- * constructors. Owned by ctx.ext->decision_trees; identical content compiled
+ * constructors. Owned by (*ctx.decision_trees); identical content compiled
  * twice is stored twice (the old decision-library dedup only saved memory).
  * @param isUC see the old CMDecisionTree::create docs: false rejects caseType. */
 const FlatTree& compile_decision_tree( RunContext& ctx,

@@ -22,7 +22,6 @@
 
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/checkpoint.h"
-#include "RunExtensions.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -78,8 +77,8 @@ Infection* checkpointedEmpiricalInfection (RunContext& ctx, istream& stream) {
 
 
 void infection_init_empirical(RunContext& ctx){
-    ctx.ext->createInfection = &createEmpiricalInfection;
-    ctx.ext->checkpointedInfection = &checkpointedEmpiricalInfection;
+    ctx.createInfection = &createEmpiricalInfection;
+    ctx.checkpointedInfection = &checkpointedEmpiricalInfection;
     
   // alpha1 corresponds to 1 day before first patent, alpha2 2 days before first patent etc.
   _alpha1=0.2647;

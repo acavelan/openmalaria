@@ -21,7 +21,6 @@
  */
 
 #include "Host/WithinHost/Infection/Infection.h"
-#include "RunExtensions.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/ModelOptions.h"
 
@@ -39,8 +38,8 @@ Infection* checkpointedDummyInfection (RunContext& ctx, istream& stream) {
 }
 
 void infection_init_dummy (RunContext& ctx) {
-    ctx.ext->createInfection = &createDummyInfection;
-    ctx.ext->checkpointedInfection = &checkpointedDummyInfection;
+    ctx.createInfection = &createDummyInfection;
+    ctx.checkpointedInfection = &checkpointedDummyInfection;
 }
 
 bool update_density_dummy( Infection& inf, LocalRng& rng, double survivalFactor, SimTime, double ){

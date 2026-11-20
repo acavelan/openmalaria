@@ -55,7 +55,7 @@ namespace {
 /// (contract (g): store order is deterministic). NaN-safe: compares bits.
 void captureMonStores(OM::RunContext& ctx, std::vector<uint64_t>& out)
 {
-    for (const OM::mon::internal::MeasureStore& store : ctx.ext->monitoring.stores) {
+    for (const OM::mon::internal::MeasureStore& store : (*ctx.monitoring).stores) {
         out.push_back(uint64_t(INT64_MAX) + 1 + static_cast<uint64_t>(store.output.measure));
         out.push_back(store.size());
         std::visit([&out](const auto& reports) {

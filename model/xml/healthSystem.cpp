@@ -28,7 +28,6 @@
 // Host/NeonatalMortality.cpp and Host/WithinHost/Treatments.cpp. State stays
 // defined in the original files (extern re-declared below).
 
-#include "RunExtensions.h"
 #include "Clock.h"
 #include "RunContext.h"
 #include "Parameters.h"
@@ -112,8 +111,8 @@ void PathogenesisModel::init( RunContext& ctx, const Parameters& parameters, con
 
 TreatmentId Treatments::addTreatment( RunContext& ctx, const scnXml::TreatmentOption& desc ){
     Treatments treatment( ctx, desc );
-    TreatmentId id( ctx.ext->whTreatments.size() );
-    ctx.ext->whTreatments.push_back( std::move(treatment) );
+    TreatmentId id( ctx.whTreatments->size() );
+    ctx.whTreatments->push_back( std::move(treatment) );
     return id;
 }
 
@@ -569,7 +568,7 @@ const FlatTree& compile_decision_tree( RunContext& ctx,
     // owned for the run (frees at end of run, like the old decision_library).
     // The old dedup-by-equality is gone: identical content compiled twice
     // behaves identically, dedup only saved memory.
-    ctx.ext->decision_trees.push_back( std::move( tree ) );
+    ctx.decision_trees->push_back( std::move( tree ) );
     return r;
 }
 

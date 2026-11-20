@@ -197,7 +197,7 @@ private:
  * shared P. falciparum model used by the Dummy/Empirical/Molineaux/Penny
  * infection models) and Descriptive (the original descriptive model). Kind
  * ::Mock is only reachable from unit tests (see unittest/WHMock.h; the
- * behaviour lives in a hook table on RunExtensions).
+ * behaviour lives in a hook table on RunContext (RunContext::WHMockHooks)).
  *
  * Method definitions are split per kind over WHFalciparum.cpp (shared
  * P. falciparum immunity code), CommonWithinHost.cpp, DescriptiveWithinHost.cpp

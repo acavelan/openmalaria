@@ -24,7 +24,6 @@
 #include "util/checkpoint.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "RunExtensions.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/PathogenesisModel.h"
@@ -116,7 +115,7 @@ void WHInterface::importInfection_common(LocalRng& rng){
         // should use initial frequencies to select genotypes.
         vector<double> weights( 0 );        // zero length: signal to use initial frequencies
         uint32_t genotype = ctx.genotypes.sampleGenotype(rng, weights);
-        infections.push_back(ctx.ext->createInfection(ctx, rng, genotype, WithinHost::InfectionOrigin::Imported));
+        infections.push_back(ctx.createInfection(ctx, rng, genotype, WithinHost::InfectionOrigin::Imported));
     }
     assert( numInfs == static_cast<int>(infections.size()) );
 }
@@ -145,12 +144,12 @@ void WHInterface::update_common(Host::Human &human, LocalRng& rng, int &nNewInfs
             double vaccineFactor = human.vaccine_factor( interventions::Vaccine::PEV, genotype );
             // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if(vaccineFactor == 1.0 || human.rng().bernoulli(vaccineFactor))
-                infections.push_back(ctx.ext->createInfection (ctx, rng, genotype, InfectionOrigin::Introduced));
+                infections.push_back(ctx.createInfection (ctx, rng, genotype, InfectionOrigin::Introduced));
             else
                 nNewInfsDiscarded++;
         }
         else if (opt_vaccine_genotype == false)
-            infections.push_back(ctx.ext->createInfection (ctx, rng, genotype, InfectionOrigin::Introduced));
+            infections.push_back(ctx.createInfection (ctx, rng, genotype, InfectionOrigin::Introduced));
     }
     // Update nNewInfs, this is the number that will be reported in Human
     nNewInfs_i -= nNewInfsDiscarded;
@@ -166,12 +165,12 @@ void WHInterface::update_common(Host::Human &human, LocalRng& rng, int &nNewInfs
             double vaccineFactor = human.vaccine_factor( interventions::Vaccine::PEV, genotype );
             // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if(vaccineFactor == 1.0 || human.rng().bernoulli(vaccineFactor))
-                infections.push_back(ctx.ext->createInfection (ctx, rng, genotype, InfectionOrigin::Indigenous));
+                infections.push_back(ctx.createInfection (ctx, rng, genotype, InfectionOrigin::Indigenous));
             else
                 nNewInfsDiscarded++;
         }
         else if (opt_vaccine_genotype == false)
-            infections.push_back(ctx.ext->createInfection (ctx, rng, genotype, InfectionOrigin::Indigenous));
+            infections.push_back(ctx.createInfection (ctx, rng, genotype, InfectionOrigin::Indigenous));
     }
     // Update nNewInfs, this is the number that will be reported in Human
     nNewInfs_l -= nNewInfsDiscarded;
@@ -367,7 +366,7 @@ void WHInterface::checkpoint_common (istream& stream) {
     hetMassMultiplier & stream;
     pkpdModel.checkpoint(ctx, stream);
     for(int i = 0; i < numInfs; ++i) {
-        infections.push_back (ctx.ext->checkpointedInfection (ctx, stream));
+        infections.push_back (ctx.checkpointedInfection (ctx, stream));
     }
     assert( numInfs == static_cast<int>(infections.size()) );
 }

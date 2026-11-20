@@ -21,7 +21,6 @@
  */
 
 #include "RunContext.h"
-#include "RunExtensions.h"
 #include "interventions/ITN.h"
 #include "util/random.h"
 #include "util/errors.h"

@@ -22,7 +22,6 @@
 
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/checkpoint.h"
-#include "RunExtensions.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -162,8 +161,8 @@ Infection* checkpointedMolineauxInfection (RunContext& ctx, istream& stream) {
 }
 
 void infection_init_molineaux( RunContext& ctx, const Parameters& parameters ){
-    ctx.ext->createInfection = &createMolineauxInfection;
-    ctx.ext->checkpointedInfection = &checkpointedMolineauxInfection;
+    ctx.createInfection = &createMolineauxInfection;
+    ctx.checkpointedInfection = &checkpointedMolineauxInfection;
     
     multi_factor_gamma = util::ModelOptions::option( util::PARASITE_REPLICATION_GAMMA );
     

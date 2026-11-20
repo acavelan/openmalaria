@@ -21,7 +21,7 @@
  */
 
 // Note: this file is included by several sources (InterventionManager.cpp,
-// xml/interventions.cpp and RunExtensions.h). All definitions here must
+// xml/interventions.cpp and run.cpp). All definitions here must
 // stay inline/template or header-only.
 
 // Phase 7.1: the polymorphic TimedDeployment class tree is gone — one flat

@@ -28,7 +28,6 @@
 // below). Declarations for the moved entry points stay in the original
 // headers (scnXml forward-declared).
 
-#include "RunExtensions.h"
 #include "Clock.h"
 #include "RunContext.h"
 #include "Parameters.h"
@@ -405,7 +404,7 @@ Diagnostic::Diagnostic( const Parameters& parameters, const scnXml::Diagnostic& 
 }
 
 void diagnostics::init( RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario ){
-    auto& diagnostic_set = ctx.ext->diagnostic_set;
+    auto& diagnostic_set = ctx.diagnostic_set;
     diagnostic_set.clear(); // compatibility with unit tests
     
     if(scenario.getDiagnostics().present()){
@@ -422,7 +421,7 @@ void diagnostics::init( RunContext& ctx, const Parameters& parameters, const scn
     if( util::ModelOptions::option( util::VIVAX_SIMPLE_MODEL ) ){
         // So far the implemented Vivax code does not produce parasite
         // densities, thus this diagnostic model cannot be used.
-        ctx.ext->monitoring_diagnostic = &make_deterministic(ctx, numeric_limits<double>::quiet_NaN() );
+        ctx.monitoring_diagnostic = &make_deterministic(ctx, numeric_limits<double>::quiet_NaN() );
     }else if( surveys.getDetectionLimit().present() ){
         if( surveys.getDiagnostic().present() ){
             throw util::xml_scenario_error( "monitoring/surveys: do not "
@@ -450,7 +449,7 @@ void diagnostics::init( RunContext& ctx, const Parameters& parameters, const scn
             densitybias = parameters[Parameter::DENSITY_BIAS_NON_GARKI];
         }
         double detectionLimit = surveys.getDetectionLimit().get() * densitybias;
-        ctx.ext->monitoring_diagnostic = &make_deterministic(ctx, detectionLimit );
+        ctx.monitoring_diagnostic = &make_deterministic(ctx, detectionLimit );
     }else{
         if( !surveys.getDiagnostic().present() ){
             throw util::xml_scenario_error( "monitoring/surveys: require "
@@ -460,10 +459,10 @@ void diagnostics::init( RunContext& ctx, const Parameters& parameters, const scn
             throw util::xml_scenario_error( "Use of GARKI_DENSITY_BIAS is not "
                 "appropriate when monitoring/surveys/diagnostic is used." );
         }
-        ctx.ext->monitoring_diagnostic = &get(ctx, surveys.getDiagnostic().get() );
+        ctx.monitoring_diagnostic = &get(ctx, surveys.getDiagnostic().get() );
     }
     
-    if( ctx.ext->monitoring_diagnostic->uses_hrp2 ){
+    if( ctx.monitoring_diagnostic->uses_hrp2 ){
         throw util::xml_scenario_error( "the diagnostic used for "
             "monitoring may not use HRP2 as its mechanism" );
     }

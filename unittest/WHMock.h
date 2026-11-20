@@ -27,8 +27,8 @@ struct WHMockState {
 /**
  * Create a Kind::Mock within-host model for a human (see
  * UnittestUtil::setHumanWH), installing fresh state and the hook table on
- * ctx.ext. Returns the model; the state is readable via
- * ctx.ext->whMock->state.
+ * RunContext::whMock. Returns the model; the state is readable via
+ * ctx.whMock->state.
  */
 unique_ptr<WithinHost::WHInterface> makeWHMock(RunContext& ctx);
 

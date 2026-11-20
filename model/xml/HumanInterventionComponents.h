@@ -50,7 +50,7 @@ using WithinHost::diagnostics;
 
 // Components sort into standard type-rank order (contract b).
 static void sort_components( RunContext& ctx, std::vector<ComponentId>& components ){
-    auto kind = [&ctx]( ComponentId id ){ return ctx.ext->humanComponents[id.id].kind; };
+    auto kind = [&ctx]( ComponentId id ){ return (*ctx.humanComponents)[id.id].kind; };
     /** Sort components according to a standard order.
      *
      * The point of this is to make results repeatable even when users change
@@ -66,7 +66,7 @@ static void sort_components( RunContext& ctx, std::vector<ComponentId>& componen
 }
 static ComponentId component_id( RunContext& ctx, const std::string& textId ){
     ComponentId id = InterventionManager::getComponentId( ctx, textId );
-    if( id.id >= ctx.ext->humanComponents.size() )
+    if( id.id >= ctx.humanComponents->size() )
         throw util::base_exception( "invalid component id" );  // used before defined
     return id;
 }
@@ -108,7 +108,7 @@ void HumanIntervention::deploy( RunContext& ctx, Human& human, mon::Deploy::Meth
     }
     
     for( ComponentId id : components ) {
-        const ComponentConfig& component = ctx.ext->humanComponents[id.id];
+        const ComponentConfig& component = (*ctx.humanComponents)[id.id];
         // we must report first, since it can change cohort and sub-population
         // which may affect what deployment does (at least in the case of reporting deployments)
         human.addToCohort(id, component.duration);
@@ -258,7 +258,7 @@ void deploy_component( RunContext& ctx, const ComponentConfig& c, Human& human,
         }
         break; }
     case Component::PEV: case Component::BSV: case Component::TBV:
-        if( vaccinate( ctx, human, c.id, vaccLimits ) && ctx.ext->vaccineReportComponent == c.id ){
+        if( vaccinate( ctx, human, c.id, vaccLimits ) && ctx.vaccineReportComponent == c.id ){
             mon::recordDeploy(mon::measure("nMassVaccinations"), mon::measure("nEPIVaccinations"), human, method);
         }
         if (method == mon::Deploy::TREAT)

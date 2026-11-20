@@ -29,7 +29,6 @@
 #include "Clock.h"
 #include "util/ModelOptions.h"
 
-#include "RunExtensions.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
 #include "PkPd/LSTMModel.h"
@@ -258,7 +257,6 @@ public:
     static const SimClock& clock() { return ctx().clock; }
 
     static void initTime(int daysPerStep){
-        ensure_extensions( ctx() );
         dummyXML::model.setModelOptions(dummyXML::modelOpts);
         dummyXML::modelParams.setInterval( daysPerStep );
         dummyXML::model.setParameters(dummyXML::modelParams);

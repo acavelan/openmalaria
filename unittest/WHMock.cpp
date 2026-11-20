@@ -21,7 +21,6 @@
  */
 
 #include "WHMock.h"
-#include "RunExtensions.h"
 #include "Host/WithinHost/Diagnostic.h"
 
 using namespace std;
@@ -58,14 +57,14 @@ bool diagnosticResult(const void*, LocalRng& rng, const WithinHost::Diagnostic& 
     return diagnostic.isPositive( rng, state->totalDensity, numeric_limits<double>::quiet_NaN() );
 }
 
-RunExtensions::WHMockHooks hooks = { nullptr, &treatment, &treatSimple, &treatPkPd, &getTotalDensity, &diagnosticResult };
+RunContext::WHMockHooks hooks = { nullptr, &treatment, &treatSimple, &treatPkPd, &getTotalDensity, &diagnosticResult };
 }
 
 unique_ptr<WithinHost::WHInterface> makeWHMock(RunContext& ctx){
     delete state;
     state = new WHMockState();
     hooks.state = state;
-    ctx.ext->whMock = &hooks;
+    ctx.whMock = &hooks;
     LocalRng rng(0, 0);   // unused: the Mock kind's constructor draws nothing
     return unique_ptr<WithinHost::WHInterface>(
         new WithinHost::WHInterface( ctx, rng, 1.0, WithinHost::WHInterface::Kind::Mock ));
