@@ -178,6 +178,16 @@ HumanDeployParams HumanDeployParams::read( RunContext&, const scnXml::Deployment
         return d;
     }
 
+    /// max/minAvailability present-reads + range check, shared by the timed and
+    /// continuous human deployment readers (getMax before getMin, same message
+    /// and check position as the former duplicated blocks).
+    template<class Elt>
+    static void read_avail_limits(const Elt& elt, SimTime& mn, SimTime& mx){
+        if( elt.getMaxAvailability().present() ) mx = elt.getMaxAvailability().get();
+        if( elt.getMinAvailability().present() ) mn = elt.getMinAvailability().get();
+        if( mn < sim::zero() || mx < mn ) throw util::xml_scenario_error(min_avail_err);
+    }
+
     TimedHumanParams TimedHumanParams::read( RunContext& ctx, SimTime date,
                    const scnXml::MassDeployment& mass,
                    shared_ptr<const HumanIntervention> intervention,
@@ -197,14 +207,7 @@ HumanDeployParams HumanDeployParams::read( RunContext&, const scnXml::Deployment
         if( th.minAge < sim::zero() || th.maxAge < th.minAge )
             throw util::xml_scenario_error(min_avail_err);
 
-        if( mass.getMaxAvailability().present() )
-            th.maxAvailability = mass.getMaxAvailability().get();
-
-        if( mass.getMinAvailability().present() )
-            th.minAvailability = mass.getMinAvailability().get();
-            
-        if( th.minAvailability < sim::zero() || th.maxAvailability < th.minAvailability )
-            throw util::xml_scenario_error(min_avail_err);
+        read_avail_limits( mass, th.minAvailability, th.maxAvailability );
         return th;
     }
 
@@ -236,14 +239,7 @@ HumanDeployParams HumanDeployParams::read( RunContext&, const scnXml::Deployment
             msg << sim::inYears(ctx.clock.max_human_age);
             throw util::xml_scenario_error( msg.str() );
         }
-        if( elt.getMaxAvailability().present() )
-            c.maxAvailability = elt.getMaxAvailability().get();
-
-        if( elt.getMinAvailability().present() )
-            c.minAvailability = elt.getMinAvailability().get();
-            
-        if( c.minAvailability < sim::zero() || c.maxAvailability < c.minAvailability )
-            throw util::xml_scenario_error(min_avail_err);
+        read_avail_limits( elt, c.minAvailability, c.maxAvailability );
         return c;
     }
 
@@ -805,34 +801,23 @@ void ITNParams::ITNAnopheles::init(
         assert (elt.getTwoStageDeterrency().present());
         relAttractiveness.initTwoStage(elt.getTwoStageDeterrency().get(), maxInsecticide, holeIndexMax, holeIndexMaxPresent);
     }
-    if (elt.getPreprandialKillingEffect().present()) {
-        preprandialKillingEffect.init(elt.getPreprandialKillingEffect().get(),
-                                      maxInsecticide,
-                                      "ITN.description.anophelesParams.preprandialKillingFactor",
-                                      false);
-    } else {
-        assert (elt.getPreprandialKillingEffectLogit().present());
-        if (!holeIndexMax) {
-            throw util::xml_scenario_error("ITN.description.anophelesParams: holeIndexMax required when using logit killing effect");
+    // pre/postprandial killing: identical ladders (same holeIndexMax message),
+    // differing only in target/accessor/name — present()/get() call order kept.
+    auto init_kill = [&](factors::SurvivalFactor& target, const auto& eltOpt, const auto& logitOpt, const char* eltName) {
+        if (eltOpt.present()) {
+            target.init(eltOpt.get(), maxInsecticide, eltName, false);
+        } else {
+            assert (logitOpt.present());
+            if (!holeIndexMax) {
+                throw util::xml_scenario_error("ITN.description.anophelesParams: holeIndexMax required when using logit killing effect");
+            }
+            target.initLogit(logitOpt.get(), holeIndexMax, false);
         }
-        preprandialKillingEffect.initLogit(elt.getPreprandialKillingEffectLogit().get(),
-                                           holeIndexMax,
-                                           false);
-    }
-    if (elt.getPostprandialKillingEffect().present()) {
-        postprandialKillingEffect.init(elt.getPostprandialKillingEffect().get(),
-                                       maxInsecticide,
-                                       "ITN.description.anophelesParams.postprandialKillingFactor",
-                                       false);
-    } else {
-        assert (elt.getPostprandialKillingEffectLogit().present());
-        if (!holeIndexMax) {
-            throw util::xml_scenario_error("ITN.description.anophelesParams: holeIndexMax required when using logit killing effect");
-        }
-        postprandialKillingEffect.initLogit(elt.getPostprandialKillingEffectLogit().get(),
-                                            holeIndexMax,
-                                            false);
-    }
+    };
+    init_kill(preprandialKillingEffect, elt.getPreprandialKillingEffect(), elt.getPreprandialKillingEffectLogit(),
+              "ITN.description.anophelesParams.preprandialKillingFactor");
+    init_kill(postprandialKillingEffect, elt.getPostprandialKillingEffect(), elt.getPostprandialKillingEffectLogit(),
+              "ITN.description.anophelesParams.postprandialKillingFactor");
     if (elt.getFecundityReduction().present()) {
         relFecundityEffect.init(elt.getFecundityReduction().get(),
                                 maxInsecticide,
