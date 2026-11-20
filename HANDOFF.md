@@ -24,6 +24,7 @@ to merge files that belong".
 | # | merge | files Δ | gates |
 |---|---|---|---|
 | G1 | util/SpeciesIndexChecker.cpp -> .h (both methods inline; std:: ostringstream qualification only) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 |
+| G2 | util/DecayFunction.cpp -> .h (formula switch + sampler inlined; bodies verbatim except std:: qualifications) | -1 | build, ctest 64/64 (incl. T2 DecayFunctionSuite), unittest .OK!, T1a 53/53 |
 
 ## Rejected (belonging/TU tests)
 - errors.cpp(118 LOC/67 TU), Genotypes.cpp(68/59), Diagnostic.cpp(54/58),
