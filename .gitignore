@@ -19,3 +19,4 @@ lib
 .opencode/skills/performance-patterns/
 .opencode/skills/cpp-performance/
 .opencode/skills/test-driven-development/
+build*/
