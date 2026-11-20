@@ -43,7 +43,7 @@ public:
         m_rng.seed(1095, 721347520444481703);
         UnittestUtil::initTime(1);
         UnittestUtil::Infection_init_latentP_and_NaN ();
-        Infection::initPenny(UnittestUtil::ctx());
+        infection_init_penny(UnittestUtil::ctx());
         infection = new Infection (UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous, Infection::Kind::Penny);    // pkpdID (value) isn't important since we're not using drug model here
     }
     void tearDown () {

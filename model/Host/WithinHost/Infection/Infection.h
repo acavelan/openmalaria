@@ -88,12 +88,6 @@ struct Infection final {
         s_latentP = latentP;
     }
 
-    ///@name Static (shared) init — call the one for the model in use
-    //@{
-    static void initMolineaux(RunContext& ctx, const OM::Parameters& parameters);
-    static void initPenny(RunContext& ctx);
-    //@}
-
     /// Create a new infection. growthRateMultiplier is only used by Empirical.
     Infection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin, Kind kind,
               double growthRateMultiplier = 1.0);
@@ -214,18 +208,6 @@ struct Infection final {
 
     Kind m_kind;
 
-    // ——— ctor bodies and per-kind update/checkpoint, defined in the kind's TU ———
-    void ctorBody_Molineaux(LocalRng& rng);
-    void ctorBody_Penny(LocalRng& rng);
-    bool updateDensity_Molineaux(LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
-    bool updateDensity_Penny(LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
-    void read_Molineaux(istream& stream);
-    void read_Penny(istream& stream);
-    void checkpoint_Molineaux(ostream& stream);
-    void checkpoint_Penny(ostream& stream);
-
-    // ——— Dummy state: none ———
-
     // ——— Molineaux: variant row type (payload below) ———
     struct Variant {
         // Initialise all variables to 0
@@ -246,12 +228,6 @@ struct Infection final {
     static const int delta_C=7;
     // delta_V := delay to variant specific antibody response in R_V^x (days) (value 6.3572 round to 6)
     static const int delta_V=6;
-
-    static bool immune_threshold_gamma;
-    static bool update_density_gamma;
-
-    double getClonalSummation(int ageDays);
-    double getVariantSpecificSummation(LocalRng& rng, int ageDays);
 
     // ——— Per-kind cold state, one heap payload per kind (phase-5 perf fix) ———
     // The profiled hot loop (determine_densities_descriptive,
@@ -355,6 +331,22 @@ void infection_ctor_empirical(Infection& inf, LocalRng& rng, double growthRateMu
 bool update_density_empirical(Infection& inf, LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
 void read_empirical(Infection& inf, istream& stream);
 void checkpoint_empirical(Infection& inf, ostream& stream);
+
+// ——— Molineaux free functions (MolineauxInfection.cpp) ———
+void infection_init_molineaux(RunContext& ctx, const OM::Parameters& parameters);
+/// New-infection hook: mi[] + Pc_star/Pm_star draws (payload first).
+void infection_ctor_molineaux(Infection& inf, LocalRng& rng);
+bool update_density_molineaux(Infection& inf, LocalRng& rng, double survival_factor, SimTime age_BS, double body_mass);
+void read_molineaux(Infection& inf, istream& stream);
+void checkpoint_molineaux(Infection& inf, ostream& stream);
+
+// ——— Penny free functions (PennyInfection.cpp) ———
+void infection_init_penny(RunContext& ctx);
+/// New-infection hook: immune-threshold draws (payload first).
+void infection_ctor_penny(Infection& inf, LocalRng& rng);
+bool update_density_penny(Infection& inf, LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
+void read_penny(Infection& inf, istream& stream);
+void checkpoint_penny(Infection& inf, ostream& stream);
 
 /// Create a dummy infection (used directly by unit test).
 Infection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin);

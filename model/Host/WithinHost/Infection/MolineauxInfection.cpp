@@ -160,7 +160,7 @@ Infection* checkpointedMolineauxInfection (RunContext& ctx, istream& stream) {
     return new Infection (ctx, stream, Infection::Kind::Molineaux);
 }
 
-void Infection::initMolineaux( RunContext& ctx, const Parameters& parameters ){
+void infection_init_molineaux( RunContext& ctx, const Parameters& parameters ){
     ctx.ext->createInfection = &createMolineauxInfection;
     ctx.ext->checkpointedInfection = &checkpointedMolineauxInfection;
     
@@ -196,15 +196,18 @@ void Infection::initMolineaux( RunContext& ctx, const Parameters& parameters ){
         }
     }
     
-   for( size_t i = 0; i < v; i++ ){
+   for( size_t i = 0; i < Infection::v; i++ ){
        qPow[i] = pow(q, static_cast<double>(i+1));
    }
 }
 
 // ———  Molineaux: initialisation  ———
 
-void Infection::ctorBody_Molineaux(LocalRng& rng) {
-    molineaux = std::make_unique<MolineauxData>();
+void infection_ctor_molineaux(Infection& inf, LocalRng& rng) {
+    inf.molineaux = std::make_unique<Infection::MolineauxData>();
+    auto* molineaux = inf.molineaux.get();   // alias: body below verbatim
+    constexpr size_t v = Infection::v;
+    constexpr size_t taus = Infection::taus;
     for( size_t i = 0; i < v; i++ ){
         // Molineaux paper, equation 11
         if( multi_factor_gamma ){
@@ -260,10 +263,16 @@ Infection::Variant::Variant () :
 
 // ———  Molineaux: density updates  ———
 
-bool Infection::updateDensity_Molineaux( LocalRng&, double survival_factor, SimTime age_BS, double body_mass ){
+bool update_density_molineaux( Infection& inf, LocalRng&, double survival_factor, SimTime age_BS, double body_mass ){
     // bsAge : age of blood stage; 0 implies initial density (0.1; time t=0 in
     // paper, t=1 in MP's Matlab code), age 2 days is after first update step
     // survivalFactor : probabilty of merozoites surviving drugs, inter-infection immunity and vaccines
+    // aliases: the equation block below is verbatim from the member function
+    auto& m_density = inf.m_density;
+    auto& m_cumulativeExposureJ = inf.m_cumulativeExposureJ;
+    auto* molineaux = inf.molineaux.get();
+    constexpr size_t v = Infection::v;
+    constexpr size_t taus = Infection::taus;
     
     double blood_volume = blood_vol_per_kg * body_mass;
     double elim_dens = elim_parasites / blood_volume;   // 50 / 5e6 = 5e-5
@@ -392,8 +401,11 @@ bool Infection::updateDensity_Molineaux( LocalRng&, double survival_factor, SimT
 
 // ———  Molineaux: checkpointing  ———
 
-void Infection::read_Molineaux (istream& stream) {
-    molineaux = std::make_unique<MolineauxData>();
+void read_molineaux (Infection& inf, istream& stream) {
+    inf.molineaux = std::make_unique<Infection::MolineauxData>();
+    auto* molineaux = inf.molineaux.get();
+    constexpr size_t v = Infection::v;
+    constexpr size_t taus = Infection::taus;
     molineaux->Sm_summation & stream;
     for(size_t i=0;i<v;i++) {
         molineaux->mi[i] & stream;
@@ -406,7 +418,10 @@ void Infection::read_Molineaux (istream& stream) {
     molineaux->Pm_star & stream;
 }
 
-void Infection::checkpoint_Molineaux (ostream& stream) {
+void checkpoint_molineaux (Infection& inf, ostream& stream) {
+    auto* molineaux = inf.molineaux.get();
+    constexpr size_t v = Infection::v;
+    constexpr size_t taus = Infection::taus;
     molineaux->Sm_summation & stream;
     for(size_t i=0;i<v;i++) {
         molineaux->mi[i] & stream;

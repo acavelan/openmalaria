@@ -100,10 +100,10 @@ void WHInterface::init( RunContext& ctx, const OM::Parameters& parameters, const
             infection_init_empirical(ctx);    // 1-day time step check
         } else if (util::ModelOptions::option (util::MOLINEAUX_WITHIN_HOST_MODEL)) {
             opt_molineaux_whm = true;
-            Infection::initMolineaux( ctx, parameters );
+            infection_init_molineaux( ctx, parameters );
         } else if (util::ModelOptions::option (util::PENNY_WITHIN_HOST_MODEL)) {
             opt_penny_whm = true;
-            Infection::initPenny(ctx);
+            infection_init_penny(ctx);
         } else {
             infection_init_descriptive( ctx, parameters );      // 5-day time step check
         }

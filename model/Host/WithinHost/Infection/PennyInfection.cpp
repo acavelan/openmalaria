@@ -103,9 +103,14 @@ const double exp_negRho_V=exp(-rho_V);
 const double lambda_V=4.2119; 
 const double prob_lambda_V = 1.0 / lambda_V;
 
-/* distribution model paramters */
-bool Infection::immune_threshold_gamma = false;
-bool Infection::update_density_gamma = false;
+/* distribution model paramters: file scope (this TU sole reader/writer;
+ * reset per run by infection_init_penny) */
+static bool immune_threshold_gamma = false;
+static bool update_density_gamma = false;
+
+// TU-local helpers (bodies below)
+static double getClonalSummation(Infection& inf, int ageDays);
+static double getVariantSpecificSummation(Infection& inf, LocalRng& rng, int ageDays);
 
 /* Parameters to assign infection dependent parameters */
 const double mu_Y=3.9700;
@@ -148,7 +153,7 @@ Infection* checkpointedPennyInfection (RunContext& ctx, istream& stream) {
     return new Infection (ctx, stream, Infection::Kind::Penny);
 }
 
-void Infection::initPenny(RunContext& ctx) {
+void infection_init_penny(RunContext& ctx) {
     ctx.ext->createInfection = &createPennyInfection;
     ctx.ext->checkpointedInfection = &checkpointedPennyInfection;
 
@@ -165,8 +170,11 @@ void Infection::initPenny(RunContext& ctx) {
     }
 }
 
-void Infection::ctorBody_Penny(LocalRng& rng) {
-    penny = std::make_unique<PennyData>();
+void infection_ctor_penny(Infection& inf, LocalRng& rng) {
+    inf.penny = std::make_unique<Infection::PennyData>();
+    auto* penny = inf.penny.get();   // alias: body below verbatim
+    constexpr int delta_C = Infection::delta_C;
+    constexpr int delta_V = Infection::delta_V;
     penny->variantSpecificSummation = 0;
     penny->clonalSummation = 0;
     // assign infection dependent immune thresholds
@@ -194,7 +202,12 @@ void Infection::ctorBody_Penny(LocalRng& rng) {
 }
 
 
-bool Infection::updateDensity_Penny( LocalRng& rng, double survivalFactor, SimTime bsAge, double ){
+bool update_density_penny( Infection& inf, LocalRng& rng, double survivalFactor, SimTime bsAge, double ){
+    // aliases: the equation block below is verbatim from the member function
+    auto* penny = inf.penny.get();
+    auto& m_density = inf.m_density;
+    constexpr int delta_C = Infection::delta_C;
+    constexpr int delta_V = Infection::delta_V;
     int ageDays = bsAge;       // lazy
     if( bsAge == sim::zero() ){
         // assign initial densities (Y circulating, X sequestered)
@@ -235,13 +248,13 @@ bool Infection::updateDensity_Penny( LocalRng& rng, double survivalFactor, SimTi
         double R_Ny = (1.0-psi_N) / (1.0 + base_Npow) + psi_N;
         
         // clonal immunity
-        double base_C = getClonalSummation(ageDays)/penny->threshold_C;
+        double base_C = getClonalSummation(inf, ageDays)/penny->threshold_C;
         double base_Cpow = pow(base_C,kappa_C);
         double R_Cx = (1.0-beta_C) / (1.0 + base_Cpow) + beta_C;
         double R_Cy = (1.0-psi_C) / (1.0 + base_Cpow) + psi_C;
         
         // variant specific immunity
-        double base_V = getVariantSpecificSummation(rng, ageDays)/penny->threshold_V;
+        double base_V = getVariantSpecificSummation(inf, rng, ageDays)/penny->threshold_V;
         double R_Vx = (1.0-beta_V) / (1.0 + pow(base_V,kappa_V)) + beta_V;
         
         // cirDensity: circulating density of circulating at t
@@ -290,13 +303,15 @@ bool Infection::updateDensity_Penny( LocalRng& rng, double survivalFactor, SimTi
     }
     
     // used for immunity across infections
-    m_cumulativeExposureJ += m_density;
+    inf.m_cumulativeExposureJ += m_density;
     
     // if we haven't already exited this funciton, the infection is not extinct (so return false)
     return false;
 }
 
-double Infection::getVariantSpecificSummation(LocalRng& rng, int ageDays) {
+static double getVariantSpecificSummation(Infection& inf, LocalRng& rng, int ageDays) {
+    auto* penny = inf.penny.get();
+    constexpr int delta_V = Infection::delta_V;
     // check if new dominant variant has arrived
     // parity: order — local RNG stream: draw call order fixes stream state
     bool newVarDominant = rng.bernoulli(prob_lambda_V);
@@ -315,7 +330,9 @@ double Infection::getVariantSpecificSummation(LocalRng& rng, int ageDays) {
     return penny->variantSpecificSummation;
 }
 
-double Infection::getClonalSummation(int ageDays) {
+static double getClonalSummation(Infection& inf, int ageDays) {
+    auto* penny = inf.penny.get();
+    constexpr int delta_C = Infection::delta_C;
     //The effective exposure is computed by adding in the delta_C-day lagged parasite density 
     //and decaying the previous value for the effective exposure with decay parameter rho_C
     size_t index = mod_nn(ageDays, delta_C);
@@ -325,8 +342,11 @@ double Infection::getClonalSummation(int ageDays) {
 }
 
 
-void Infection::read_Penny (istream& stream) {
-    penny = std::make_unique<PennyData>();
+void read_penny (Infection& inf, istream& stream) {
+    inf.penny = std::make_unique<Infection::PennyData>();
+    auto* penny = inf.penny.get();
+    constexpr int delta_C = Infection::delta_C;
+    constexpr int delta_V = Infection::delta_V;
     for(int i=0; i<delta_C; ++i){
         penny->cirDensities[i] & stream;
     }
@@ -340,7 +360,10 @@ void Infection::read_Penny (istream& stream) {
     penny->clonalSummation & stream;
 }
 
-void Infection::checkpoint_Penny (ostream& stream) {
+void checkpoint_penny (Infection& inf, ostream& stream) {
+    auto* penny = inf.penny.get();
+    constexpr int delta_C = Infection::delta_C;
+    constexpr int delta_V = Infection::delta_V;
     for(int i=0; i<delta_C; ++i){
         penny->cirDensities[i] & stream;
     }
