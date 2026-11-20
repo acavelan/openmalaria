@@ -29,8 +29,9 @@ report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
 | binary | CPU-s | vs frozen baseline-A2 11.34 | note |
 |---|---|---|---|
 | gate A0-class (build-p7c) | 12.47 | — | p7b stamp |
-| **build-p7c-a2 (lever baseline)** | **11.98 MAD .010** | **0.947** | re-measured 7c-B |
-| build-p7c-a2n (native) | 12.12 MAD .010 | 0.936 | +1.17 % slower, T1 63/63 clean — NOT adopted |
+| **build-p7c-a2 (lever baseline)** | **11.98** (n=20 MAD .010) | **0.947** | C3 code re-measure same-session: **11.835** (11.81–11.88) |
+| build-p7c-a2n (native) | 12.12 MAD .010 | 0.936 | +1.17 % slower, T1 63/63 clean — NOT adopted (ISA edge priced; phase-8 may flip, build dir kept) |
+| **build-p7c-a2p (PGO, real)** | **11.02** (n=20, 10.98–11.09) | **0.972** | two-pass in-dir profiles; T1 a+b 63/63 bit-clean; **new yardstick** |
 
 ## Status
 - [x] branch `p7c-vectorize` off `p7b-green`; builds build-p7c / -a2 / -a2n configured+green
@@ -50,11 +51,15 @@ report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
       PGO on the current tree gets re-priced properly in 7c-E (plan: build-p7c-pgogen corpus
       on HEAD → rename → build-p7c-a2p with -fprofile-dir → T1 tier-b + bench).
 - [x] 7c-C: SoA sweep vectorization — **C3 KEPT** (immunitySurvivalFactor host-tick hoist,
-      −1.04 % = 11.85, commit 5125841b). C1 pyrogen-hoist, C2 age-sweep hoist, C6 vectorUpdate
+      −1.04 % = 11.85, commit c367570c). C1 pyrogen-hoist, C2 age-sweep hoist, C6 vectorUpdate
       two-pass staging all measured sub-floor ⇒ reverted+logged (PERF 7c-C rows). Vec-info
       evidence: hot TUs already run 126 auto-vectorized loops, default cost model reports zero
       missed; rest blocked by control flow / clobbering libm+recordStat = phase-8/9 territory.
       Pre-phase-8 bit-exact vectorization is exhausted.
+- [x] 7c-PGO (was scheduled 7c-E): two-pass in-dir PGO re-price DONE — a2p **11.02, −6.9 %**
+      vs C3-a2, T1 a+b 63/63 bit-clean, consumption proven (see PERF 7c-PGO). a2p = new
+      yardstick; gate build stays profile-free. Fix for the p7b trap: NEVER separate
+      pgogen/use build dirs — same dir, swap flags, gcda stay beside objects.
 - [ ] 7c-D: LOC sweep (≥-50 LOC deletions = own commit, gate + tier-a each)
 - [ ] 7c-E: final gate (T1 a+b 63/63, ctest, unittest, cloc table, benches incl. a2p,
       perf top-5, PERF 7c-F scoreboard, report, HANDOFF close)
@@ -77,10 +82,13 @@ report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
   (raw 11.96–12.00) = yardstick reproduced.
 - (7c-B) a2n: objdump 0 FMA; parity tier-a 53/53; tier-b s1–10 10/10; bench 12.12 MAD .010
   (raw 12.10–12.13); perf stat −1.05 % instr, +1.28 % cycles. Verdict: not adopted, logged.
-- (7c-C3) commit 5125841b: gate ctest 52/52, unittest OK, tier-a 53/53; a2 11.85 (n=20).
+- (7c-C3) commit c367570c: gate ctest 52/52, unittest OK, tier-a 53/53; a2 11.85 (n=20).
 - (7c-C1/C2/C6) each measured sub-floor on a2 n=20 ⇒ reverted, logged in PERF 7c-C. Final
-  tree = HEAD 5125841b; a2 same-session re-measure 11.835 (n=20, raw 11.81–11.88). Vec-info
+  tree = HEAD c367570c; a2 same-session re-measure 11.835 (n=20, raw 11.81–11.88). Vec-info
   artifacts: /tmp/opencode/vec_all.txt.
+- (7c-PGO) a2p two-pass: pass-1 corpus ctest 52/52 + unittest + example seeds 1–4; pass-2
+  clean rebuild 0 profile warnings; ctest 52/52, unittest OK, T1 tier-a 53/53 + tier-b s1–10
+  10/10; bench n=20 median 11.02 (10.98–11.09). KEPT as yardstick.
 
 ## Traps (inherited, all live, + new)
 - NEW: benches only from `/tmp/opencode/om-bench` cwd; never overlap bench with any other load.
