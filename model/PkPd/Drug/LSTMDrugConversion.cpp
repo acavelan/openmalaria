@@ -280,7 +280,7 @@ void LSTMDrug::updateConcentration_conversion( double body_mass ){
     }
 }
 
-void LSTMDrug::checkpoint_conversion(ostream& stream){
+template<class S> void LSTMDrug::checkpoint_conversion(S& stream){
     qtyG & stream;
     qtyP & stream;
     qtyM & stream;
@@ -289,15 +289,8 @@ void LSTMDrug::checkpoint_conversion(ostream& stream){
     nconv_sample & stream;
     nkM_sample & stream;
 }
-void LSTMDrug::checkpoint_conversion(istream& stream){
-    qtyG & stream;
-    qtyP & stream;
-    qtyM & stream;
-    nka & stream;
-    nkP_sample & stream;
-    nconv_sample & stream;
-    nkM_sample & stream;
-}
+template void LSTMDrug::checkpoint_conversion(std::ostream&);
+template void LSTMDrug::checkpoint_conversion(std::istream&);
 
 }
 }
