@@ -60,9 +60,6 @@ WHInterface::~WHInterface(){
     }
 }
 
-WHInterface::WHInterface(WHInterface&&) = default;
-
-
 // -----  Kind dispatch  -----
 //
 // The Kind::Mock branch calls through the hook table on RunContext (installed by

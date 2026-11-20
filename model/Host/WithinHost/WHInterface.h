@@ -251,8 +251,6 @@ public:
     
     WHInterface(const WHInterface&) = delete;
     WHInterface& operator= (const WHInterface&) = delete;
-    // Out-of-line (defaulted) so PathogenesisModel can stay incomplete here.
-    WHInterface(WHInterface&&);
     WHInterface& operator=(WHInterface&&) = delete;    // ctx reference member
 
     //@}
