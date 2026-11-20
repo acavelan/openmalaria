@@ -38,7 +38,7 @@
  */
 
 #include <cxxtest/TestSuite.h>
-#include "Host/SlotAllocator.h"
+#include "Host/WithinHost/SlotAllocator.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "util/ModelOptions.h"

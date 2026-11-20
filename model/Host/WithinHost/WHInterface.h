@@ -26,7 +26,7 @@
 #include "Clock.h"
 #include "RunContext.h"
 #include "Host/HostColumns.h"
-#include "Host/SlotAllocator.h"
+#include "Host/WithinHost/SlotAllocator.h"
 #include "util/random.h"
 #include "util/sampler.h"
 #include "util/errors.h"
@@ -353,7 +353,7 @@ public:
     InfectionOrigin getInfectionOrigin() const;
 
     /** The maximum number of infections a human can have: owned by
-     * SlotAllocator (model/Host/SlotAllocator.h), the single clamp
+     * SlotAllocator (model/Host/WithinHost/SlotAllocator.h), the single clamp
      * owner; see its comment for the two RNG-visible modes. */
 
 public:	// simple data + per-kind fragments (test suites and WH models touch these directly)
