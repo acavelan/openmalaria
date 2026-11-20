@@ -94,6 +94,13 @@ def check (name):
     if not om (["-o", "out.bin", "--ctsout", "cts.txt", "--resume", "ck2.trunc"]):
         return "%s: truncated checkpoint accepted" % name
 
+    # bumped format version must be rejected cleanly
+    bad=open (os.path.join (simDir, "ck2"), "rb").read()
+    open (os.path.join (simDir, "ck2.ver"), "wb").write (
+        bad[:4] + struct.pack ("<I", 99) + bad[8:])
+    if not om (["-o", "out.bin", "--ctsout", "cts.txt", "--resume", "ck2.ver"]):
+        return "%s: wrong format version accepted" % name
+
     rc=om (["-o", "out.bin", "--ctsout", "cts.txt", "--resume", "ck2"])
     if rc: return "%s: final resume failed (rc %d)" % (name, rc)
 
