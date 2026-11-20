@@ -67,15 +67,27 @@ comments travel.
 
 ## Status
 - [x] setup: branch, build-p7f green (52/52, .OK!, 53/53), this HANDOFF
-- [ ] C1 struct flip (public struct, friend blocks + MolineauxInfectionSuite/
+- [x] C1 struct flip 6d1f0189 (public struct, friend blocks + MolineauxInfectionSuite/
       PennyInfectionSuite/UnittestUtil friend decls dead)
-- [ ] C2 Descriptive (payload + statics→file scope + free fns + call sites)
-- [ ] C3 Dummy+Empirical
-- [ ] C4 Molineaux+Penny
-- [ ] C5 shared dispatch flip (infection_new/update/checkpoint), kind rename
-- [ ] C6 final: T1 a+b 63/63, cloc table, bench median-of-3, PERF row 7f,
-      report (field layout, statics verdict, Kn placement, ctor-draw proof,
-      phase-8 handoff note)
+- [x] C2 Descriptive 64149ea0 (payload + statics→file scope + free fns + call sites)
+- [x] C3 Dummy+Empirical 48b4e469
+- [x] C4 Molineaux+Penny b0f16140
+- [x] C5 shared dispatch flip ddce7ebc (infection_new/update/checkpoint), kind rename
+- [x] C6 final: T1 a+b 63/63, cloc table, bench, PERF row 7f, report
+- [x] perf-fix 6f025ebb: bench found +2.3 % regression (heap DescriptiveData
+      payload: 2nd malloc/infection + dependent load per tick in expired());
+      fixed by embedding the 12-byte payload by value. Re-bench ≈12.17 vs
+      ≈12.24 (≤1 % band); T1 re-run green after fix.
+
+### Close-out (7f final)
+- Final gate on 6f025ebb: ctest 52/52, unittest .OK! (94), T1 tiers a+b
+  seeds 1-10 = 63/63 bit-identical.
+- LOC (cloc code): model 18,417 → 18,421 (+4); Infection dir 1,091 → 1,095
+  (+4); header 417 → 402 lines. Readability refactor — LOC-neutral by design.
+- Bench (taskset c5, median user-s, interleaved): p7e ≈12.15-12.16,
+  p7f ≈12.23-12.25 → +0.5 % residual, perf-attributable to inline/layout
+  shift only (determine_densities_descriptive 4.33→4.65 %, update_descriptive
+  4.00→4.32 %); accepted (<1 % band).
 
 ## Traps (inherited + new)
 - -ffp-contract=off always in gated builds; NO reassociation (phase 8 owns it).
