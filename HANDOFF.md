@@ -152,3 +152,20 @@ PGO wiring traps (each cost an experiment — do not re-learn):
 3. Never build pass-2 with `-Wno-missing-profile`; missing-profile warnings are the ONLY symptom of a dead profile (that's how 7b shipped LTO-only believing it was PGO). Verify loading instead: gcda count + clean log + inline-dump control (see PERF 7d-A-amended; control artifacts `/tmp/opencode/p7d-ctl/{lto-link,pgo-link}/`).
 
 Corpus that produced the 81 gcda (keep representative of the benchmark): gen-build ctest 52 (all box scenarios exercise checkpoint stop/resume) + unittest 94 + example@2000 `--seed 1..4` + scenarioVecFullTest ×2 + example@2000 seed 1 `--checkpoint-stop` then `--checkpoint` resume (run from a dir holding the XSD).
+
+## 7e addendum — model/xml LOC compaction (branch p7e-xmlcompact, gate build build-p7e = A0-class)
+Baseline (p7e off rewrite HEAD 8f132bc4): model/xml 4287 code LOC, model 18617.
+Gate: build-p7e/ (Release -O3 -DNDEBUG -ffp-contract=off -DOM_BOXTEST_BINARY=ON),
+`ln -sfn build-p7e build` for parity XSD. Baseline verified green: ctest 52/52,
+unittest .OK!, T1 tier-a 53/53.
+Strategy: file-local static/lambda helpers merging the verbatim-duplicated reader
+idioms (no shared kit header — nothing big enough repeats cross-file); dead glue
+deleted only with grep proof. Error strings/order, RNG draw order, evaluation
+order of side-effecting calls all preserved explicitly.
+- interventions.cpp 1236->1100 (-136): component dispatch if-init; changeHS/changeEIR
+  timed-deploy loops merged (try/catch per entry kept); #if 0 R_0 block deleted;
+  read_propUse/set_protected/per_species merge ITN/IRS/GVI triples; nhh_slot merges
+  the 5 present/range/set blocks (resize-before-if kept: operator[] insertion is
+  observable); vectorModel brace wrappers flattened; subPop-read lambda shared by
+  continuous+timed; bounds-not-met msg blocks one-lined (deterrent third-check
+  quirk a.PF+a.HF preserved verbatim); VaccineLimits nonneg helper.
