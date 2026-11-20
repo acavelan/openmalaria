@@ -24,8 +24,8 @@
 #define OM_INTERVENTIONS_IRS
 
 #include "core/RunContext.h"
+#include "interventions/ComponentId.h"
 #include "util/DecayFunction.h"
-#include "Transmission/VectorIntervention.h"
 namespace scnXml
 {
     class IRSDescription;
@@ -39,25 +39,14 @@ namespace interventions {
     using util::DecayFunction;
     using util::NormalSampler;
     using util::LocalRng;
-    using Transmission::PerHostInterventionData;
 
-class IRSComponent : public Transmission::HumanVectorInterventionComponent {
+// IRS component parameters (phase 7.2b: plain Component payload struct —
+// cf. ITNParams). Members public: read by the iv_* record functions.
+struct IRSParams {
 public:
-    IRSComponent( RunContext& ctx, ComponentId id, const scnXml::IRSDescription& elt,
+    IRSParams( RunContext& ctx, ComponentId id, const scnXml::IRSDescription& elt,
         const map<string,size_t>& species_name_map );
     
-    virtual void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const;
-    
-    virtual Component::Type componentType() const;
-    
-    virtual void print_details( std::ostream& out )const;
-    
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(RunContext& ctx, LocalRng& rng) const;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( RunContext& ctx, istream& stream, ComponentId ) const;
-    
-    const IRSComponent* asIRSComponent() const override { return this; }
-    
-private:
     /** Per mosquito-species parameters for extended IRS model. */
     class IRSAnopheles {
     public:
@@ -143,8 +132,6 @@ private:
         SurvivalFactor _preprandialKillingEffect;
         SurvivalFactor _postprandialKillingEffect;
         SurvivalFactor _fecundityEffect;
-        
-        friend class HumanIRS;
     };
     
     double sampleInitialInsecticide(LocalRng& rng) const;
@@ -156,52 +143,6 @@ private:
     
     // This is sparse vector: only indexes corresponding to a IRS component are used
     // No memory management
-    
-    friend class HumanIRS;
-};
-
-/** Extended IRS model by OB and original model.
- * 
- * Each instance describes the effects of indoor residual spraying.
- */
-class HumanIRS : public PerHostInterventionData {
-public:
-    HumanIRS( RunContext& ctx, LocalRng& rng, const IRSComponent& params );
-    HumanIRS( RunContext& ctx, istream& stream, ComponentId id );
-    
-    virtual void redeploy(LocalRng& rng, const Transmission::HumanVectorInterventionComponent& params);
-    
-    /// Get remaining insecticide content based on initial amount and decay.
-    inline double getInsecticideContent(const IRSComponent& params)const{
-        SimTime age = ctx.clock.nowOrTs1() - deployTime;  // implies age 1 TS on first use
-        double effectSurvival = insecticideDecayHet->eval( age );
-        return initialInsecticide * effectSurvival;
-    }
-    
-    /// Call once per time step to update holes
-    virtual void update(Host::Human& human);
-    
-    /// Get deterrency. See ComponentParams::effect for a more detailed description.
-    virtual double relativeAttractiveness(size_t speciesIndex) const;
-    /// Get killing effect on mosquitoes before they've eaten.
-    /// See ComponentParams::effect for a more detailed description.
-    virtual double preprandialSurvivalFactor(size_t speciesIndex) const;
-    /// Get killing effect on mosquitoes after they've eaten.
-    /// See ComponentParams::effect for a more detailed description.
-    virtual double postprandialSurvivalFactor(size_t speciesIndex) const;
-    /// Get the mosquito fecundity multiplier (1 for no effect).
-    virtual double relFecundity(size_t speciesIndex) const;
-    
-protected:
-    virtual void checkpoint( ostream& stream );
-    
-private:
-    // this is sampled for each deployment: initial insecticide content doesn't
-    // depend on handling by the recipient
-    double initialInsecticide;	// units: mg/m²
-    
-    // this parameter is sampled on first deployment, but never resampled for the same human:
-    unique_ptr<DecayFunction> insecticideDecayHet;
 };
 
 } }

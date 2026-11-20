@@ -132,8 +132,11 @@ public:
     /** Set the column row index (Population-only; see Population::update). */
     void set_row( size_t r );
 
-    /** Vaccines */
-    interventions::PerHumanVaccine vaccine;
+    /** Vaccine factor: one minus the (decayed) efficacy, multiplied over this
+     * human's dose records of the given vaccine type in insertion order
+     * (1 for no effect, 0 for full effect). Interventions/Vaccine.cpp. */
+    double vaccine_factor( interventions::Vaccine::Types type,
+                           uint32_t genotype = 0 ) const;
 
     /** Monitoring age group (column row; accessor keeps read/write syntax). */
     inline uint16_t& monitoringAgeGroup();

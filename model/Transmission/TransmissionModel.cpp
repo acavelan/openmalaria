@@ -444,7 +444,7 @@ void TransmissionModel::vectorUpdate_vector(const vector<Host::Human> &populatio
             sigma_df[s] += df;
             for (size_t g = 0; g < nGenotypes; ++g)
             {
-                const double tbvFac = human.vaccine.getFactor(interventions::Vaccine::TBV, opt_vaccine_genotype? g : 0);
+                const double tbvFac = human.vaccine_factor(interventions::Vaccine::TBV, opt_vaccine_genotype? g : 0);
                 sigma_dif_i[s][g] += df * probTransmission_i[g] * tbvFac;
                 sigma_dif_l[s][g] += df * probTransmission_l[g] * tbvFac;
             }

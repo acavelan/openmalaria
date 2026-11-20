@@ -64,11 +64,6 @@ public:
      * Unlike with vaccines, missing one schedule doesn't preclude the next. */
     static void deploy(RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission);
     
-    /** Get a constant reference to a component class with a certain index.
-     * 
-     * @throws util::base_exception if the index is out-of-range */
-    static const HumanInterventionComponent& getComponent( RunContext& ctx, ComponentId id );
-    
     /** Get a numeric ComponentId from the textual identifier used in the XML.
      * 
      * If textId is unknown, an xml_scenario_error is thrown. */

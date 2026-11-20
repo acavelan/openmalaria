@@ -45,12 +45,6 @@ void InterventionManager::checkpoint (RunContext& ctx, std::ostream& stream) {
     ctx.ext->importedInfections & stream;
 }
 
-const HumanInterventionComponent& InterventionManager::getComponent( RunContext& ctx, ComponentId id ){
-    if( id.id >= ctx.ext->humanComponents.size() )
-        throw util::base_exception( "invalid component id" );
-    return *ctx.ext->humanComponents[id.id];
-}
-
 ComponentId InterventionManager::getComponentId(RunContext& ctx, const string textId)
 {
     auto it = ctx.ext->identifierMap.find(textId);
@@ -74,16 +68,16 @@ void InterventionManager::deploy(RunContext& ctx, vector<Host::Human>& populatio
 
     // deploy timed interventions
     SimTime now = ctx.clock.interv_date();
-    while (ctx.ext->timed[ctx.ext->nextTimed]->date <= now)
+    while (ctx.ext->timed[ctx.ext->nextTimed].date <= now)
     {
         if (util::CommandLine::option(util::CommandLine::VERBOSE))
         {
             cout << "deploy::" << now << "::Timed";
-            ctx.ext->timed[ctx.ext->nextTimed]->print_details(cout);
+            print_timed_details(cout, ctx.ext->timed[ctx.ext->nextTimed]);
             cout << endl;
         }
 
-        ctx.ext->timed[ctx.ext->nextTimed]->deploy(ctx, population, transmission);
+        ctx.ext->timed[ctx.ext->nextTimed].deploy(ctx, population, transmission);
         ctx.ext->nextTimed += 1;
     }
 

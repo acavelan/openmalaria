@@ -67,84 +67,11 @@ namespace Vaccine{
     enum Types { PEV, BSV, TBV, NumVaccineTypes };
 }
 
-/** Per vaccine effect (type), per human details. */
-class PerEffectPerHumanVaccine {
-public:
-    //Note: this constructor is only for checkpointing
-    PerEffectPerHumanVaccine();
-    
-    /// Checkpointing
-    template<class S>
-    void operator& (S& stream) {
-        component & stream;
-        numDosesAdministered & stream;
-        timeLastDeployment & stream;
-        perGenotypeInitialEfficacy & stream;
-    }
-    
-private:
-    PerEffectPerHumanVaccine( LocalRng& rng, ComponentId id, const VaccineComponent& params );
-    
-    /// The het sample needs the run's parameter registry (ctx)
-    void checkpointHet( RunContext& ctx, ostream& stream );
-    void checkpointHet( RunContext& ctx, istream& stream );
-    
-    ComponentId component;      // id of component (for finding parameters)
-    // Type of vaccine
-    /** Number of vaccine doses this individual has received.
-     *
-     * If an individual misses one EPI (continuous) vaccine dose, it's
-     * intentional that they also miss following EPI doses (unless a timed mass
-     * vaccination reintroduces them to the EPI schedule). */
-    uint32_t numDosesAdministered;
-    /// Time of last vaccination with this vaccine type
-    SimTime timeLastDeployment = sim::never();
-    /// Efficacy at last deployment (undecayed)
-    vector<double> perGenotypeInitialEfficacy;
-    unique_ptr<util::DecayFunction> hetSample;
-
-    
-    friend class PerHumanVaccine;
-};
-
-/** Per-human vaccine code. */
-class PerHumanVaccine {
-public:
-    RunContext* ctx = nullptr;  ///< set by the owning Human ctor
-public:
-    PerHumanVaccine() {}
-    
-    /** Get one minus the efficacy of the vaccine (1 for no effect, 0 for full effect). */
-    double getFactor( Vaccine::Types type, uint32_t genotype = 0) const;
-    
-    /** Vaccinate unless the passed VaccineLimits specify not to.
-     * 
-     * @returns true when the vaccine is administered */
-    bool possiblyVaccinate( Host::Human& human, ComponentId componentId,
-                           interventions::VaccineLimits vaccLimits );
-
-#if 0
-    /// Hack for R_0 experiment: make current human the infection source
-    inline void specialR_0(){
-        // At this point special TBV should have been given to everyone but the PEV to no-one
-        effects[R_0_PEV].initialEfficacy = 1.0;
-        effects[R_0_TBV].initialEfficacy = 0.0;
-    }
-#endif
-    
-    /// Checkpointing
-    template<class S>
-    void checkpoint (RunContext& ctx, S& stream) {
-        using namespace OM::util::checkpoint;
-        effects & stream;
-        for( auto& e : effects ) e.checkpointHet( ctx, stream );
-    }
-
-private:
-    /// Details for each deployed vaccine for this human
-    typedef std::vector<PerEffectPerHumanVaccine> EffectList;
-    EffectList effects;
-};
+/** Per vaccine effect (type), per human details.
+ * Phase 7.2a-ii: PerEffectPerHumanVaccine and PerHumanVaccine are gone —
+ * per-human state is the VacRecord column (humans/HostColumns.h), read by
+ * Human::vaccine_factor and written by interventions::vaccinate
+ * (interventions/Vaccine.cpp). */
 
 }
 }

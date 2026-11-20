@@ -1,195 +1,196 @@
-# Phase 6 HANDOFF — SoA sidecar + SlotAllocator + Host::update 7 fns (branch `p6-soa` off `p5-green`)
+# Phase 7 HANDOFF — interventions rewrite (branch `p7-interventions` off `p6-green` merge 9c077bc8)
 
-Crash-recovery file. Update EVERY green commit. Baseline p5-green: model **18,657** / unittest 3,760 LOC; A0 bench 12.33s, p5 bench **12.51s** mad .010 (residual +1.5%; target ≤12.33). Full phase-5 handoff: `git show p5-green:HANDOFF.md`.
+Crash-recovery file. Update EVERY green commit. Baseline p6: model **18,895** /
+unittest 3,794 LOC; `interventions/` dir 2,837 LOC (cloc); p6 bench **12.58s** mad
+.010 (A0 12.33s). Full phase-6 handoff: `git show 4ce2157d:HANDOFF.md` (p6 6.5).
 
-## Environment
-- Build: `build-p6/` = Release `-ffp-contract=off` `-DOM_BOXTEST_BINARY=ON` (configured).
-- unittest MUST run from `build-p6/unittest/` → `./unittest` (94 tests since 6.1: +SlotAllocatorSuite×3). ctest: `cd build-p6 && ctest -j16` (52).
-- T1 tier-a: `python3 util/parity.py --old /tmp/opencode/om-ref/A0/openMalaria --new build-p6/openMalaria --recipe /tmp/opencode/om-ref/A0/recipe.json --tiers a -j16` (53). Tier-b: `--tiers b --seeds 1-10` (per-cluster duty: 1-4).
-- bench: `sh /tmp/opencode/om-bench/bench.sh /home/razlock/git/fork/build-p6/openMalaria TAG` (ABSOLUTE path!).
-- perf: events BLOCKED (paranoid=2) — `perf record -e task-clock -F 3997` only.
+## Environment (REBUILT 2026-11-20 — /tmp was wiped once; recreate same way)
+- Build: `build-p7/` = Release `-DCMAKE_CXX_FLAGS=-ffp-contract=off`
+  `-DOM_BOXTEST_BINARY=ON`. `cmake --build build-p7 -j16`.
+- unittest MUST run from `build-p7/unittest/` → `./unittest` (94). ctest:
+  `cd build-p7 && ctest -j16` (52).
+- T1 reference A0 = baseline commit `cfc3c8e0` built Release+`-ffp-contract=off`:
+  `git worktree add /tmp/opencode/om-ref-src cfc3c8e0` + cmake-build → copy binary
+  to `/tmp/opencode/om-ref/A0/openMalaria`; regenerate `/tmp/opencode/om-ref/A0/recipe.json`
+  with the 4 keys parity.py::check_recipe probes (compiler, gsl, gsl_so_sha256,
+  machine; extra keys are informational). Rebuilt + verified: tier-a 53/53 old==new
+  at p6 code, so the A0 rebuild is trustworthy.
+- T1 tier-a: `python3 util/parity.py --old /tmp/opencode/om-ref/A0/openMalaria
+  --new build-p7/openMalaria --recipe /tmp/opencode/om-ref/A0/recipe.json --tiers a -j16` (53).
+  Tier-b: `--tiers b --seeds 1-4` per cluster, 1-10 at final.
+- bench.sh at /tmp/opencode/om-bench/bench.sh was LOST with /tmp — reconstruct per
+  PERF.md §"CPU-s" before the final gate: `/usr/bin/time -f %U`, taskset-pinned,
+  example_scenario popSize 2000 iseed 1, median-of-5, warmup/main split. p6 = 12.58s.
+- Checkpoint smoke idiom (run.py mechanism, verified): in a dir with
+  `scenario_current.xsd -> schema/scenario_50.xsd`: run
+  `BIN --resource-path test --scenario SC --output-format bin --output output.bin --checkpoint-stop`
+  TWICE — run 1 writes checkpoint(+marker `checkpoint`)+stops, run 2 auto-resumes and
+  writes output.bin. compareBin old vs new. scenario12/12a lack ITNs, so 2ITNs smoke above
+  is the per-host-wire canary until 7.5 deletes it.
+- perf events BLOCKED (paranoid=2). Untracked PROMPT.md/email = user files, leave.
 
-## Steps (order = plan)
-1. [x] 6.1 SlotAllocator — single clamp owner `model/infections/SlotAllocator.h`
-   (constexpr MAX_INFECTIONS=21 + try_import/clamp_new/free_slots/clamp_count);
-   replaced sites: CommonWithinHost import+update, DescriptiveWithinHost import+
-   update, InfectionIncidenceModel.cpp numNewInfections clamp, WHInterface.cpp
-   checkpoint validation; WHInterface.h member constant DELETED. T2 suite
-   `unittest/SlotAllocatorSuite.h` (mode-A golden words + at-cap 0-draw rel. pin
-   + clamp table). NOTE goldens are FULL-SUITE-CONTEXT fixed (registration order
-   frozen; --abort-on-fail) — ctor consumes exactly 1 draw, below-cap import +1.
-   UnittestUtil gained setNumInfs/getNumInfs/resetModelOptions (friend).
-2. [ ] 6.2 columns — `model/humans/HostColumns.h` struct, ONE vector per
-   pinned column; owned by `Population` as member `cols`; zero globals.
-   [x] cluster a (rng): `HumanColumns{ vector<LocalRng> rng; erase_at(r) }`;
-   Human gained `cols`/`row` + accessor `rng()` (old `human.rng` syntax kept
-   as `human.rng()`); ctor appends its row and copy-seeds the rng IN THE CTOR
-   BODY at the old member-init slot (census fact 1 — T1-proven). Population
-   mirrors erase (cols.erase_at) + renumber pass after the erase loop;
-   push_back rows are correct by construction. UnittestUtil gained testCols().
-   `Human` gains `HumanColumns* cols; size_t row;` (ctor appends its row EXACTLY
-   where it constructs today — rng column appends `LocalRng(ctx.master_RNG)`
-   IN PLACE of the old member init: same ctor point = same master consumption,
-   census fact 1/N5; RNG move-ctor self-fixes its gsl self-pointers, verified).
-   Submodel classes that host migrated members (PerHost, WHInterface,
-   ClinicalModel) store `HumanColumns* cols; size_t row;` bound by the Human ctor;
-   Population is the ONLY place that changes vector size (createInitialHumans /
-   update erase+push_back / checkpoint read) — after the erase loop it MUST
-   renumber (`humans[i].set_row(i)` incl. submodels) and mirror every
-   erase/push into cols. Tests build standalone Humans via UnittestUtil::createHuman
-   — give it an overload taking cols& (or keep static mini-columns there).
-   Cluster order: rng → dob/death/monAgeGroup/nextCtsDist/cohort (bitmask u32 +
-   sparse (id,expiry) pairs; replace std::map with per-row sorted vector<pair> —
-   iteration order ComponentId-ascending is preserved, mon order safe) →
-   [x] cluster b (dob, death, cohort_set u32 + cohorts sparse pairs,
-   mon_age_group u16, next_cts_dist u32): old Human members DELETED;
-   accessors keep syntax (monitoringAgeGroup()/nextCtsDist() new;
-   mon::updateAgeGroup takes uint16_t&). Wire replicated byte-shape for
-   cohorts: count(size_t) then (id as size_t, expiry int) ascending — read via
-   ComponentId(stream). death column never()⇔alive, NOT on wire (old `dead`
-   wasn't either). mon field size_t→u16 shrinks the wire (legal: write/read
-   symmetric; cp files not byte-frozen vs p5).
-   [x] cluster c (immunity): columns imm_h/imm_Y/imm_Y_lag (f64) + cum_prim_inf
-   (u32); old WHInterface members DELETED; WHInterface gained public
-   `bind_columns(HumanColumns&, size_t)` + const-callable ref accessors
-   imm_h_ref()/imm_Y_ref()/imm_Y_lag_ref()/cum_prim_inf_ref() (keep
-   read/write syntax; wire goes through the refs, same bytes). Human ctor
-   binds right after createWithinHostModel; Human::set_row RE-BINDS the
-   submodel (see Traps: stale mirror). Standalone WHInterface in tests must
-   bind a mini-column (InfectionImmunitySuite, SlotAllocatorSuite do).
-   [x] cluster d (clinical): columns t_last_treatment + es_case_start/
-   es_time_recovery/es_time_treatment (SimTime, never()) + es_prev_density
-   (f64, NaN); ClinicalModel members DELETED, same bind_columns + const-ref
-   accessors (t_last_treatment() etc.), ctor init-list entries dropped
-   (defaults live in append_row), Human ctor bind + set_row rebind added
-   (now covers withinHostModel AND clinicalModel — grep set_row after each
-   cluster). Wire via refs, per-kind branches unchanged.
-   [x] cluster e (transmission): PerHost members DELETED → columns
-   anoph_ento_raw/anoph_ento_avail/anoph_prob_biting/anoph_prob_resting
-   (nested vector<double> per row, resize happens in initialise exactly where
-   the old member resize ran), rel_avail_het (signaling_NaN default = old ctor
-   tripwire), outside_trans (u8, old bool, same 1-byte wire). PerHost gained
-   bind_columns + const-ref accessors + HostColumns.h include (still leaf —
-   HostColumns pulls only leaves). Human ctor binds BEFORE
-   perHostTransmission.initialise (it writes columns); set_row rebinds.
-   Call-site sed notes: longest-token-first (anophEntoAvailabilityRaw before
-   ...Availability). → 6.3 scratch (EIR_per_genotype_i/l +
-   probTransGenotype_i/l hoist) then 6.4 HostView + 7 free fns.
-   Each cluster: DELETE old member, fix call sites (compiler = checker), tier-a,
-   tier-b 1-4, HANDOFF, commit. Intervention-effect columns stay in PerHost
-   (phase-7 landing zone — do NOT touch polymorphism).
-3. [x] 6.3 scratch (consumer-owned, per-sweep): HostScratch{eir_i,eir_l} in
-   Human.h, owned by the run.cpp host loop, threaded into Host::update
-   (getEIR assign()-overwrites = reuse byte-safe; the early-return path never
-   reads them). updateKappa: probTransGenotype_i/l hoisted to pre-loop locals
-   + assign(N,0.0) per host (same bytes as old vector(N), mirrors the existing
-   vectorUpdate scratch pattern). age_years/availability left (no per-call alloc).
-   OLD text: EIR_per_genotype_i/l stack vectors
-   in Host::update loop + probTransGenotype_i/l in TransmissionModel::updateKappa
-   are per-host reallocations inside clean sweeps (run.cpp loop, updateKappa loop)
-   → hoist into a scratch struct owned by the sweep caller. age_years/availability
-   are recomputed per use, no per-call alloc — leave unless bench shows cost.
-4. [x] 6.4 HostView + 7 free fns: HostView{ctx,human,transmission,scratch}
-   in Human.h (pinned §9 {cols,row,rng,scratch,iv,mon} shrinks in phase 7 as
-   submodels dissolve; cols/row/rng reachable via human). HostScratch gained
-   age0/age1/eir_i/eir_l/eir/nNewInfs_i/l (all written-before-read per host).
-   7 stages host_is_dead → host_update_mon_cohorts → host_calculate_eir →
-   host_sample_new_infections → host_within_host_update → host_clinical_update
-   → host_update_infant_deaths, bodies VERBATIM from old Host::update, driver
-   Host::update assembles the view + age0 and early-returns on dead (order
-   identical). hetSample §9 draw contract verified (3 leading ifs + one
-   else-if chain draw, max 4) + parity annotation added.
-   OLD text (kept for archaeology): §9 order: host_is_dead, host_update_mon_cohorts,
-   host_calculate_eir, host_sample_new_infections, host_within_host_update,
-   host_clinical_update, host_update_infant_deaths) — bodies MOVED verbatim from
-   Host::update (Human.cpp), // parity comments travel. HostView{cols ref, row,
-   rng ref, scratch, ...} per §9. het_sample = Human.cpp hetSample (contract:
-   max 4 draws, 3 leading ifs + else-if chain — verified vs §9, annotate).
-5. [x] 6.5 FINAL GATE: T1 a+b 63/63 (seeds 1-10, 1ccf84f4+docs); ctest 52/52;
-   unittest 94/94; bench p6-final **12.58s mad .010** (+0.56% vs p5 12.51,
-   under floor; +2.0% vs A0 12.33 — layout phase, p8 A2-rebuild budget
-   unchanged); cloc model **18,895** (+238 vs p5), unittest C++ 3,794 (+96);
-   census refresh: draws.sh repair DEFERRED (scanner/annotate bit-rotted on
-   phase-4..6 file moves: order-rows with empty line crash int(); committed
-   CSV restored untouched) — draw-set invariance proven by T1 63/63 +
-   RngGoldens + TwoRunsSuite instead; PERF.md rows 6 + 6-notes written.
-   B/row measured = 303 fixed (+heap spans) vs ≈158 study target: the gap is
-   LocalRng 104B (vs 32B raw-state assumed) + 120B of 5× std::vector headers
-   (cohorts + 4 anoph per-species) — compaction = phase-7/8 decision, T1
-   re-proof required. Phase-7 handoff: HostView gains iv/mon fields as PerHost
-   intervention-effect columns dissolve (landing zone untouched all phase);
-   copulaGaussianSamples map still a PerHost member (copula g per (host,
-   subPop) — §9 pins the shape); Deployments.h/EventScheduler/Population read
-   transmission columns via the *_ref accessors already in place.
+## Plan (order = plan §7 row 7 / §9; each step ends green+committed)
+1. [x] 7.1 flat timed deployments — see Gates log.
+2. [~] 7.2 dense components by type-rank:
+   [x] 7.2a-i per-host VECTOR-intervention state dissolved: HumanITN/HumanIRS/
+   HumanGVI/PerHostInterventionData classes DEAD; `iv` column
+   (`vector<vector<IvRecord>>` in HostColumns, history order = contract c);
+   free fns `iv_deploy/iv_update/iv_*/iv_checkpoint` in interventions/IvState.{h,cpp}
+   (component headers friend them for private params); DecayFunction: `compute` →
+   `compute_with(age,factor)` + public `eval_with(age,factor)` +
+   `sample_het_factor(rng|NormalSample)` (het-clone replacement, bit-identical);
+   HumanVectorInterventionComponent now carries NO per-host API (makeHumanPart/
+   asITN/asIRS virtuals deleted); hasActiveInterv = kind+deploy scan, no registry.
+   Wire = NEW uniform record layout (wire free; resume bit-verified vs A0, see gates).
+   [x] 7.2a-ii vaccine: PerHumanVaccine/PerEffectPerHumanVaccine DEAD.
+   `vac` column (vector<vector<VacRecord>>: id, num_doses, time_last,
+   per_genotype_eff, decay-ptr+factor); `interventions::vaccinate/
+   vaccine_factor/vac_checkpoint` free fns (Vaccine.cpp, VaccineComponent
+   friends them); Human::vaccine member gone, 12 `human.vaccine.getFactor`
+   sites → `human.vaccine_factor(type, genotype=0)` method (Human.cpp one-liner).
+   Draw order kept: first dose het BEFORE per-genotype beta draws; getFactor
+   product = insertion order (parity c); age = ts1()−time_last.
+   [x] 7.2b config-side HumanInterventionComponent tree FLATTENED.
+   `Component{ id, kind, duration, variant<RecruitOnly|Screen|TreatSimple|
+   TreatPKPD|DecisionTree|VaccineParams|ITNParams|IRSParams|GVIParams> }` in new
+   interventions/Components.h (name ComponentConfig — Component::Type is an
+   enum-namespace, clash); `deploy_component`/`print_component` switches in
+   xml/HumanInterventionComponents.h (draw/mon order verbatim; ITN/IRS/GVI:
+   iv_deploy BEFORE recordDeploy). HumanIntervention stores ComponentIds,
+   stable_sort by kind (contract b preserved); registries = payload pointers,
+   filled pass-2 after component loop (append-only vector). Base classes
+   HumanInterventionComponent/HumanVectorInterventionComponent + VectorIntervention.h
+   + asVectorIntervention + getComponent + ALL friend blocks DEAD (payloads
+   public). ITN.h/IRS.h/GVI.h now leaf-ish (no Interfaces include). interventions/
+   = 1,456 code LOC (plan ceiling 1,350–1,550: inside). PRINT_INTERVENTIONS
+   output byte-checked vs A0 (2ITNs + PEV).
+3. [x] 7.3 VERIFIED (no code change — all §9 clauses already hold from 7.2a-i):
+   3-state anchor comment HostColumns.h:40-41 (NEVER=no record, ACTIVE=deploy!=
+   never(), DISCARDED=deploy==never() post-attrition); first-use draws shared
+   NormalSample→hole/rip/decay-het (0 extra)→attrition age (0–1, Constant/Step 0)
+   →initial insecticide (IvState.cpp:88-101, redeploy 53-63 same tail); update =
+   Poisson(holes) if hole_rate>0 then Poisson(rips) if n_holes*rip_rate>0; IRS =
+   insecticide THEN het (IvState.cpp:107-109). Canaries VecFull/LifeNet/2ITNs in
+   tier-a 53/53 (7.2b gates run).
+4. [x] 7.4 copula g → `copula_g` column (std::vector<std::map<ComponentId,double>>,
+   HostColumns; old key WAS subPop-id `d.subPop`, per (host, subPop) as §9 wants).
+   append_row/erase_at mirrored; Deployments.h reads/writes via
+   human.cols->copula_g[human.row]; wire entry deleted outright (dead weight,
+   user invariant — empty at checkpoint by definition anyway).
+5. [x] 7.5 zero intervention checkpoint bytes — **USER DIRECTIVE 2026-11-20 (overrides
+   earlier wording): interventions NEVER need checkpointing. Firm invariant, not something
+   to verify.** Reason: checkpoint happens after warmup, before any intervention, so at
+   checkpoint time no per-host intervention effects exist; on restore interventions are
+   re-applied by event replay. Anything per-host-intervention on the wire is DEAD WEIGHT →
+   DELETED outright: iv_checkpoint calls + both definitions (IvState.{h,cpp}),
+   vac_checkpoint calls + definitions + friends (Human.cpp/Vaccine.{h,cpp}), copula
+   wire entry (7.4). Zero compat effort per directive.
+   DEVIATION (HostView iv/mon): HostView stays {ctx, human, transmission, scratch}.
+   Rationale: zero consumers — iv records reach every consumer via human.cols->iv[row]
+   (iv_update is owned by PerHost::update, pinned §9 transmission-side; effects via
+   iv_* free fns taking the record), monitoring via ctx.ext->monitoring; adding refs
+   nobody reads = dead weight. Deviation clause exercised; §9 accessor-struct exists
+   (phase 6) and covers the intent.
+   Class tree deleted (7.2b); per-timestep scans gone (7.2a-i; remaining
+   hasActiveInterv loops are survey-time report only).
+   GREEN = semantic: ctest 12/12a two-run goldens pass + 2ITNs round-trip smoke
+   (new binary: --checkpoint-stop run, auto-resume run, == fresh single run via
+   compareBin) — all in this commit's gates.
+6. [x] 7.6 FINAL GATE (run by MAIN SESSION after agent session-2 compaction death): T1 a+b 63/63, ctest 52/52, unittest 94/94, bench +
+   ITN-heavy secondary (`/usr/bin/time -f %U` VecFull or LifeNet old vs new), cloc,
+   census refresh, PERF row 7, report (kind tables, LOC by substep, phase-8 handoff).
 
-## Traps (inherited + p6-specific)
-- Compaction read-by-position: inside Population::update's erase loop,
-  Human::row is STALE after any erase (renumber runs after the loop) — read
-  cols[i]/cols.death[i] by POSITION there, never via Human accessors.
-- Submodel row mirrors go stale: any submodel caching (cols,row) via
-  bind_columns MUST be re-bound inside Human::set_row. WHInterface missed it →
-  after the first death + renumber, immunity refs read/write the WRONG host:
-  51/52 ctest failed with small statistical diffs (tier-a still passed — few
-  deaths in those runs). Every future cluster binding (clinical, transmission)
-  adds its rebind to set_row; a death-heavy ctest case is the canary.
-- vector erase() invalidates the end() sentinel (std::map loops didn't): the
-  old `it = v.erase(it)` + cached-end pattern reads past the NEW end →
-  erase(end()) = UB memmove that tramples the heap (root cause of the 6.2b
-  2ITNs/IRS30/Rach5IC SIGSEGVs; index iteration is the fix). Audit any other
-  map→vector loop migrations for this before touching them.
-- m_rng(ctx.master_RNG) CONSTRUCTS-BY-DRAWING — only where old code did. In 6.2
-  the append of the rng row IS the construction moment; never default-then-assign.
-- TwoRunsSuite = ext/statics tripwire — rerun on any RunExtensions change.
-- Error strings byte-identical; `// parity:` comments travel with moved code.
-- Checkpoint: columns keep SEMANTIC round-trip (byte order now free, but
-  scenario 12/12a two-run goldens are the canary — they passed 6.1 unchanged).
-- Human move ops: adding raw ptr/size members keeps move=default fine; if a member
-  gains a user-declared dtor re-declare moves (p5 lesson).
-- PerHost move ops are out-of-line on purpose (p5) — keep.
-- `grep -v LSTMDrug` blind spot still applies.
-- Untracked PROMPT.md/email = user files, leave.
+## Facts found this phase (archaeology, saves a re-read)
+- Timed deploys (7.1, done): flat `TimedDeploymentKind` + variant payload in
+  Deployments.h; deploy bodies verbatim (header inline for human/vector kinds,
+  `timed_deploy_*` in xml/interventions.cpp for HS/EIR/NHH); `check_timed_date` at
+  load keeps old base-ctor throw order; `replayed_on_restore(kind)` seam;
+  builders `timed_deployment(date, kind[, payload])` (struct is move-only, not an
+  aggregate). ChangeHS/EIR payload raw ptrs deleted on deploy; never-deployed = leak
+  at exit (old behaviour preserved deliberately). Sentinel = `{sim::future(), DUMMY}`.
+- PerHost (p7 target, model/Transmission/PerHost.{h,cpp}): members NOW = cols/row ptrs
+  (transmission cols, p6), `copulaGaussianSamples` map, `activeComponents`
+  vector<unique_ptr<PerHostInterventionData>> + static relAvailAge. `update` = virtual
+  loop over activeComponents, called ONLY from `TransmissionModel::calculateEIR_vector`
+  (TransmissionModel.cpp:340). Effect accessors (entoAvailabilityHetVecItv/probMosqBiting/
+  probMosqResting/relMosqFecundity) = ordered FP products over activeComponents —
+  `// parity: c` on the first; order = deploy history (redeploy mutates in place,
+  NEVER reorders). hasActiveInterv(type) loops + getComponent(...).componentType().
+  Wire: PerHost::operator& streams transmission cols + copula map + checkpointIntervs
+  (count + per-component id/wire). initialise = 4 draws/species (ento sample, prob
+  biting, 2× resting) — the het_sample §9 4-draw contract.
+- PerHostInterventionData subclasses live in interventions/{ITN,IRS,GVI}.h(.cpp)
+  (HumanITN/HumanIRS/HumanGVI) + HumanVaccine in Vaccine.h is a Human member, not
+  activeComponents. Deploy chain: HumanIntervention::deploy → component deploy →
+  `PerHost::deployComponent` (matches by component id: redeploy in place, else
+  makeHumanPart push). 2ITNs scenario = two ITN components on one host — history
+  order + multi-instance-per-type must keep working.
+- `human.vaccine.getFactor(TBV/PEV/BSV, genotype)` consumed in TransmissionModel.cpp:447
+  + within-host/incidence sites (~10 total; grep getFactor).
+- Population.cpp `hasActiveInterv` survey callbacks (cts*Coverage) must migrate with
+  the state columns.
+
+## Traps (inherited from p6 — all still live)
+- set_row REBIND: every submodel binding (cols,row) must rebind in Human::set_row;
+  the new iv column follows the same rule (death-heavy ctest = canary; tier-a misses it).
+- Compaction read-by-position inside Population::update erase loop (Human::row stale).
+- m_rng/LocalRng construction consumes master draws — column appends happen exactly at
+  old ctor points. TwoRunsSuite = statics tripwire (rerun on RunExtensions change).
+- Error strings + cerr/cout texts byte-identical (PRINT_INTERVENTIONS, VERBOSE lines,
+  "cum deployment: ..." — all re-proven in 7.1). `// parity:` comments travel.
+- vector erase(end()) UB trap for map→vector migrations (p6 6.2b).
+- Draw-order landmines: copula g cached by subPop id; ITN first-creation uses
+  clock.now(), redeploy uses nowOrTs1(); Screen/DecisionTree components call
+  within-host/clinical code at deploy time (recursion keeps order); TimedHumanDeployment
+  uses anoph_ento_AVAIL sums, ContinuousHumanDeployment uses anoph_ento_RAW (quirk —
+  do NOT "fix").
 
 ## Gates log
-- (6.4, this commit) HostView + 7 §9 free functions (bodies verbatim, driver
-  Host::update order-identical); het_sample contract checked+annotated.
-  build clean; unittest 94/94; ctest 52/52; T1 a 53/53 + b seeds1-4 4/4.
-  bench 12.58s mad .020 (noise band of 6.3; decomposition is structure for
-  phase 7, not a lever — recovery came from 6.2c hoists + 6.3 scratch).
-- (6.3, this commit) HostScratch (run-loop-owned EIR vectors) + updateKappa
-  probTransGenotype hoist (assign-pattern reuse, mirrors vectorUpdate).
-  build clean; unittest 94/94; ctest 52/52; T1 a 53/53 + b seeds1-4 4/4.
-  bench 12.55s mad .010 (+0.3% vs p5).
-- (6.2e, this commit) transmission columns (anoph_ento_raw/avail,
-  anoph_prob_biting/resting nested, rel_avail_het signaling_NaN default,
-  outside_trans u8); PerHost members DELETED, bind_columns + const-ref
-  accessors + leaf HostColumns.h include; Human ctor binds before
-  perHostTransmission.initialise; set_row rebinds all three mirrors
-  (withinHostModel, clinicalModel, perHostTransmission — grep set_row per
-  cluster). ALL §7-pinned columns now migrated. build clean; unittest 94/94;
-  ctest 52/52; T1 a 53/53 + b seeds1-4 4/4.
-- (6.2d, this commit) clinical columns t_last_treatment + es_case_start/
-  es_time_recovery/es_time_treatment (SimTime never()) + es_prev_density (f64
-  NaN); ClinicalModel members DELETED, bind_columns + const-ref accessors;
-  defaults moved into append_row; Human ctor bind + set_row rebind (now also
-  clinicalModel). build clean; unittest 94/94; ctest 52/52; T1 a 53/53 + b
-  seeds1-4 4/4. bench: unchanged codepath cost (deferred to 6.4 batch).
-- PATH CONFUSION (6.2c, resolved): I rebuilt a throwaway /tmp/opencode/build-p6
-  (plain Release, no -ffp-contract=off) after the dir "vanished" — the CANONICAL
-  build is IN-TREE `/home/razlock/git/fork/build-p6` (cache:
-  `-DCMAKE_CXX_FLAGS=-ffp-contract=off`, Release — same A0-class recipe as
-  build-p5). It was never deleted. All gates below run against the in-tree
-  build. If a /tmp build dir is ever needed: same flags + `ln -sf
-  ../../schema/scenario_50.xsd <builddir>/test/scenario_current.xsd`.
-- (6.2c, this commit) immunity cluster: imm_h/imm_Y/imm_Y_lag f64 +
-  cum_prim_inf u32 columns; WHInterface bind_columns + ref accessors; Human
-  ctor bind + set_row rebind (see Traps). build clean; unittest 94/94;
-  ctest 52/52; T1 63/63 (a 53 + b seeds1-10 10). bench 12.66s initially
-  (+1.2%, past 1% floor = per-infection cols-deref chain); FIXED in this
-  commit by hoisting row refs to locals in immunitySurvivalFactor +
-  updateImmuneStatus (bit-identical, 63/63 re-proven) → **12.59s mad .020**
-  (+0.6%, under floor; still 6.2b level, recovery toward ≤12.33 owed by 6.4
-  HostView batching). Model LOC 18,813 (+16 vs 6.2b; p5-green base 18,692).
-  Per-cluster Δ: 6.1 +16, 6.2a +27, 6.2b +62, 6.2c +16 → phase total +121.
-- (6.1, this commit) build clean; unittest 94/94; ctest 52/52; T1 a 53/53; T1 b seeds1-4 4/4. Model LOC 18,673 (+16 vs p5: SlotAllocator struct; WHInterface constant removed). unittest LOC 3,787 (+27: new suite + 3 helpers).
-- (6.2a) rng column; same gates green (see git log e2c87de0).
-- (6.2b, this commit) dob/death/cohort_set+cohorts/mon_age_group/next_cts_dist columns; old members deleted; compaction read-by-position fix; updateCohortSet index-loop fix (see Traps). build clean; unittest 94/94 (run from build-p6/unittest/); ctest 52/52; T1 a 53/53; T1 b seeds1-4 4/4. bench 12.59s mad .010 (+0.08s vs p5 — under 1% gate, recover in 6.3/6.4). Model LOC 18,797. Debug tooling built during the hunt (throwaway): /tmp/opencode/p5dbg (p5 twin w/ prints), /tmp/opencode/build-p6-rwdi (RelWithDebInfo twin), /tmp/opencode/build-p6-asan — p5dbg worktree REMOVED after use; if a hunt recurs: gdb-disable-ASLR + python watchpoint scripts in /tmp/opencode/irs/watch*.py worked where ASan's quarantine lied.
+- (7.5, this commit) zero intervention checkpoint bytes (pure delete, directive):
+  iv_checkpoint/vac_checkpoint calls+definitions+friends gone; PerHost.h and
+  Human.cpp wire entries removed. build clean; unittest 94/94; ctest 52/52
+  (12/12a two-run goldens green); T1 a 53/53; T1 b 1-4 4/4; 2ITNs round-trip
+  smoke: new-bin --checkpoint-stop + auto-resume run == new-bin fresh single
+  run (compareBin OK, /tmp/opencode/p75).
+- (7.4, earlier commit) copula g map (PerHost member) -> copula_g column; wire
+  entry deleted per user invariant. build clean; unittest 94/94; ctest 52/52
+  (incl. GaussianCopulaGamma/Lognormal #45/#46, 12/12a two-runs); T1 a 53/53;
+  T1 b 1-4 4/4.
+- (7.2b, earlier commit) config-side flatten: HumanInterventionComponent class
+  tree (10 classes, 2 base levels) → ComponentConfig{kind, variant payload} +
+  deploy_component/print_component switches. Deleted VectorIntervention.h
+  (asVectorIntervention seam had no callers since 7.2a-i), getComponent, all
+  friend blocks, per-class componentType/print_details. Registries payload
+  ptrs, pass-2 fill. Draw/mon order verbatim incl. iv_deploy-before-report and
+  addToCohort-before-deploy. build clean; unittest 94/94; ctest 52/52; T1 a
+  53/53; T1 b 1-4 4/4; PRINT_INTERVENTIONS stdout diff == A0 (2ITNs, PEV).
+  interventions/ 2,549→1,456 code LOC total since 7.2a start.
+- (7.2a-ii, earlier commit) vaccine → `vac` record column. Deleted
+  PerHumanVaccine/PerEffectPerHumanVaccine + Human::vaccine member +
+  possiblyVaccinate/getFactor methods; Human::vaccine_factor method wraps
+  interventions::vaccine_factor free fn (Vaccine.cpp; VaccineComponent
+  friends the four vac free fns). 12 call sites renamed
+  human.vaccine.getFactor→human.vaccine_factor. Draw order kept verbatim
+  (het-sample-before-efficacy on first dose; ts1()-based age; insertion-order
+  product). build clean; unittest 94/94; ctest 52/52; T1 a 53/53 (incl.
+  scenarioPEV/BSV/TBV canaries); T1 b 1-4 4/4.
+- (7.2a-i, earlier commit) per-host vector-intervention state → `iv` record column.
+  Deleted: HumanITN/HumanIRS/HumanGVI/PerHostInterventionData + makeHumanPart/
+  asITN/asIRS virtuals + PerHost::deployComponent/checkpointIntervs (−589 lines,
+  model 18,895→18,854). New: HostColumns IvRecord+iv (append_row/erase_at mirrored),
+  interventions/IvState.{h,cpp} (deploy/update/4 effects/checkpoint free fns,
+  component classes friend them), DecayFunction eval_with/sample_het_factor.
+  Draw orders moved verbatim (ITN: shared NormalSample→hole/rip/insecticide-het→
+  attrition→clamped insecticide, ctor deployTime=now(), redeploy=nowOrTs1(); IRS:
+  insecticide FIRST then het, per old ctor member-init; GVI: single het).
+  build clean; unittest 94/94; ctest 52/52 (incl. checkpoint two-run suites);
+  T1 a 53/53; T1 b 1-4 4/4; 2ITNs new-binary two-run resume == A0 single run
+  (new uniform record wire round-trips: id,kind,deploy,disposal,n_holes,hole_index,
+  insecticide,hole_rate,rip_rate,factor; decay ptr recovered from registry on load).
+- (7.1, earlier commit) flat TimedDeploymentKind + variant payloads; class tree deleted
+  (TimedDeployment/Derivatives + 5 xml-local classes → read/builders + free deploy
+  fns); RunExtensions timed = value vector; deploy loop + loadFromCheckpoint flat.
+  A0 reference REBUILT from cfc3c8e0 (recipe regenerated; p6-code tier-a 53/53 proves
+  equivalence). build clean; unittest 94/94; ctest 52/52; T1 a 53/53; T1 b seeds1-4
+  4/4; NEW checkpoint+ITN 2-run smoke (2ITNs --checkpoint-stop×2, old vs new)
+  bit-identical. RngGoldenAdapter anchor re-pointed to Deployments.h:195.

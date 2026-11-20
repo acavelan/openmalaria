@@ -35,12 +35,8 @@
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "Host/ImportedInfections.h"
+#include "interventions/Components.h"
 #include "interventions/Deployments.h"
-#include "interventions/GVI.h"
-#include "interventions/HumanComponents.h"
-#include "interventions/IRS.h"
-#include "interventions/ITN.h"
-#include "interventions/Vaccine.h"
 
 #include <map>
 #include <memory>
@@ -83,12 +79,13 @@ struct RunExtensions {
     //     Vaccine/removeAtIds statics) ———
     /// Map of textual identifiers to numeric identifiers for components.
     std::map<std::string, interventions::ComponentId> identifierMap;
-    /// All human intervention components, indexed; owns the components.
-    std::vector<std::unique_ptr<interventions::HumanInterventionComponent>> humanComponents;
+    /// All human intervention components, indexed by ComponentId; owns them
+    /// (append-only: registries below hold stable payload pointers).
+    std::vector<interventions::ComponentConfig> humanComponents;
     /// Continuous interventions, sorted by deployment age (weakly increasing).
     std::vector<interventions::ContinuousHumanDeployment> continuous;
     /// All timed interventions, sorted (time weakly increasing), sentinel last.
-    std::vector<std::unique_ptr<interventions::TimedDeployment>> timed;
+    std::vector<interventions::TimedDeployment> timed;
     uint32_t nextTimed = 0;
     /// Imported infections (not really an intervention; schema association).
     OM::Host::ImportedInfections importedInfections;
@@ -96,10 +93,10 @@ struct RunExtensions {
     std::vector<interventions::ComponentId> removeAtIds[interventions::SubPopRemove::NUM];
     /// Per-type component parameter look-ups by id (not owning: components
     /// are owned by humanComponents).
-    std::vector<interventions::ITNComponent*> itnComponents;
-    std::vector<interventions::IRSComponent*> irsComponents;
-    std::vector<interventions::GVIComponent*> gviComponents;
-    std::vector<interventions::VaccineComponent*> vaccineComponents;
+    std::vector<const interventions::ITNParams*> itnComponents;
+    std::vector<const interventions::IRSParams*> irsComponents;
+    std::vector<const interventions::GVIParams*> gviComponents;
+    std::vector<const interventions::VaccineParams*> vaccineComponents;
     /// Which vaccine component deployment monitoring reports on.
     interventions::ComponentId vaccineReportComponent =
         interventions::ComponentId::wholePop();

@@ -33,6 +33,7 @@
 #include "util/StreamValidator.h"
 #include "Population.h"
 #include "interventions/InterventionManager.h"
+#include "interventions/Vaccine.h"
 #include "mon/Monitoring.h"
 
 namespace OM { namespace Host {
@@ -136,7 +137,6 @@ Human::Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns) :
     withinHostModel->bind_columns( columns, row );
     double iiFactor = infIncidence->getAvailabilityFactor(rng(), 1.0);
     perHostTransmission.ctx = &ctx;
-    vaccine.ctx = &ctx;
     perHostTransmission.bind_columns( columns, row );
     perHostTransmission.initialise (ctx, rng(), het.availabilityFactor * iiFactor);
     clinicalModel = Clinical::ClinicalModel::createClinicalModel(ctx, het.treatmentSeekingFactor);
@@ -150,6 +150,10 @@ void Human::set_row( size_t r ) {
     if( withinHostModel ) withinHostModel->bind_columns( *cols, r );
     if( clinicalModel ) clinicalModel->bind_columns( *cols, r );
     perHostTransmission.bind_columns( *cols, r );
+}
+
+double Human::vaccine_factor( interventions::Vaccine::Types type, uint32_t genotype ) const {
+    return interventions::vaccine_factor( *ctx, cols->vac[row], type, genotype );
 }
 
 namespace {
@@ -231,7 +235,8 @@ void Human::checkpoint(istream &stream)
     clinicalModel & stream;
     rng().checkpoint(stream);
     cols->dob[row] & stream;
-    vaccine.checkpoint(*ctx, stream);
+    // vac records not on the wire: interventions carry zero checkpoint bytes
+    // (restore re-applies by event replay; checkpoint is pre-intervention).
     cols->mon_age_group[row] & stream;
     cols->cohort_set[row] & stream;
     cols->next_cts_dist[row] & stream;
@@ -257,7 +262,8 @@ void Human::checkpoint(ostream &stream)
     clinicalModel & stream;
     rng().checkpoint(stream);
     cols->dob[row] & stream;
-    vaccine.checkpoint(*ctx, stream);
+    // vac records not on the wire: interventions carry zero checkpoint bytes
+    // (restore re-applies by event replay; checkpoint is pre-intervention).
     cols->mon_age_group[row] & stream;
     cols->cohort_set[row] & stream;
     cols->next_cts_dist[row] & stream;

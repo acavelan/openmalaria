@@ -29,6 +29,8 @@
 #include "util/errors.h"
 #include "util/ModelOptions.h"
 #include "util/StreamValidator.h"
+#include "util/checkpoint.h"
+#include "util/checkpoint_containers.h"
 #include "Host/WithinHost/Genotypes.h"
 
 #include <limits>
@@ -39,37 +41,13 @@ namespace interventions {
 using namespace OM::util;
 
 
-const VaccineComponent& VaccineComponent::getParams( RunContext& ctx, ComponentId component ){
+const VaccineParams& VaccineParams::getParams( RunContext& ctx, ComponentId component ){
     auto& params = ctx.ext->vaccineComponents;
     assert( component.id < params.size() && params[component.id] != 0 );
     return *params[component.id];
 }
 
-void VaccineComponent::deploy(RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const
-{
-    bool administered = human.vaccine.possiblyVaccinate( human, id(), vaccLimits );
-    if( administered && ctx.ext->vaccineReportComponent == id() ){
-        mon::recordDeploy(mon::measure("nMassVaccinations"), mon::measure("nEPIVaccinations"), human, method);
-    }
-    assert(type == Vaccine::PEV || type == Vaccine::BSV || type == Vaccine::TBV);
-    if (method == mon::Deploy::TREAT)
-        mon::recordEvent(mon::measure("nTreatDeployments"), human);
-}
-
-Component::Type VaccineComponent::componentType() const
-{
-    if( type == Vaccine::PEV ) return Component::PEV;
-    else if( type == Vaccine::BSV ) return Component::BSV;
-    else if( type == Vaccine::TBV ) return Component::TBV;
-    else throw SWITCH_DEFAULT_EXCEPTION;
-}
-
-void VaccineComponent::print_details(ostream& out) const
-{
-        out << id().id << "\t" << (type == Vaccine::PEV ? "PEV" : (type == Vaccine::BSV ? "BSV" : "TBV"));
-}
-
-double VaccineComponent::getInitialEfficacy (LocalRng& rng, size_t numPrevDoses, uint32_t genotype) const
+double VaccineParams::getInitialEfficacy (LocalRng& rng, size_t numPrevDoses, uint32_t genotype) const
 {
     /* If initialMeanEfficacy.size or more doses have already been given, use
      * the last efficacy. */
@@ -107,71 +85,62 @@ void Vaccine::verifyEnabledForR_0 (){
 }
 #endif
 
-// this is only used for checkpointing; loaded values are unimportant
-PerEffectPerHumanVaccine::PerEffectPerHumanVaccine() :
-    component(ComponentId::wholePop()),
-    numDosesAdministered(0)
+// ———  per-human vaccine state: VacRecord column (old PerHumanVaccine)  ———
+
+double vaccine_factor( RunContext& ctx, const std::vector<VacRecord>& vac,
+                       Vaccine::Types type, uint32_t genotype )
 {
-}
-
-PerEffectPerHumanVaccine::PerEffectPerHumanVaccine( LocalRng& rng, ComponentId id, const VaccineComponent& params ) :
-    component( id ), numDosesAdministered(0)
-{
-    hetSample = params.decayFunc->hetSample(rng);
-}
-
-void PerEffectPerHumanVaccine::checkpointHet( RunContext& ctx, ostream& stream) {
-    VaccineComponent::getParams(ctx, component).decayFunc->checkpointSample(hetSample, stream);
-}
-
-void PerEffectPerHumanVaccine::checkpointHet( RunContext& ctx, istream& stream) {
-    VaccineComponent::getParams(ctx, component).decayFunc->checkpointSample(hetSample, stream);
-}
-
-double PerHumanVaccine::getFactor( Vaccine::Types type, uint32_t genotype) const {
+    // parity: c — records multiply in insertion (deployment) order
     double factor = 1.0;
-    for( EffectList::const_iterator effect = effects.begin(); effect != effects.end(); ++effect ){
-        if( VaccineComponent::getParams(*ctx, effect->component).type == type ){
-            SimTime age = ctx->clock.ts1() - effect->timeLastDeployment;  // implies age 1 TS on first use
-            double decayFactor = effect->hetSample->eval( age );
-            factor *= 1.0 - effect->perGenotypeInitialEfficacy[genotype] * decayFactor;
+    for( const VacRecord& r : vac ){
+        if( VaccineParams::getParams(ctx, r.id).type == type ){
+            SimTime age = ctx.clock.ts1() - r.time_last;  // implies age 1 TS on first use
+            double decayFactor = r.decay->eval_with( age, r.decay_factor );
+            factor *= 1.0 - r.per_genotype_eff[genotype] * decayFactor;
         }
     }
     return factor;
 }
 
-bool PerHumanVaccine::possiblyVaccinate( Host::Human& human,
-        ComponentId componentId, interventions::VaccineLimits vaccLimits )
+bool vaccinate( RunContext& ctx, Host::Human& human,
+                ComponentId componentId, interventions::VaccineLimits vaccLimits )
 {
-    PerEffectPerHumanVaccine* effect = 0;
-    for( EffectList::iterator it = effects.begin(); it != effects.end(); ++it ){
-        if( it->component == componentId ){
-            effect = &*it;
+    auto& vac = human.cols->vac[human.row];
+    VacRecord* record = 0;
+    for( VacRecord& r : vac ){
+        if( r.id == componentId ){
+            record = &r;
             break;
         }
     }
     
-    uint32_t numDosesAdministered = (effect == 0) ? 0 : effect->numDosesAdministered;
+    uint32_t numDosesAdministered = (record == 0) ? 0 : record->num_doses;
     if( numDosesAdministered < vaccLimits.minPrevDoses ||
         numDosesAdministered >= vaccLimits.maxCumDoses )
         return false;   // no vaccination (this replaces the old schedule for continuous doses)
     
-    const VaccineComponent& params = VaccineComponent::getParams( *ctx, componentId );
+    const VaccineParams& params = VaccineParams::getParams( ctx, componentId );
     
-    if( effect == 0 ){
-        effects.push_back( PerEffectPerHumanVaccine( human.rng(), componentId, params ) );
-        effect = &effects.back();
+    if( record == 0 ){
+        // parity: draw order — first dose per component samples the decay het
+        // BEFORE the per-genotype efficacy draws (old PerEffectPerHumanVaccine ctor)
+        VacRecord r;
+        r.id = componentId;
+        r.decay = params.decayFunc.get();
+        r.decay_factor = params.decayFunc->sample_het_factor( human.rng() );
+        vac.push_back( r );
+        record = &vac.back();
     }
     
-    effect->perGenotypeInitialEfficacy.resize(ctx->genotypes.N());
+    record->per_genotype_eff.resize(ctx.genotypes.N());
 
     for(size_t g=0; g<params.perGenotypeInitialMeanEfficacy.size(); g++)
-        effect->perGenotypeInitialEfficacy[g] = params.getInitialEfficacy(human.rng(), numDosesAdministered, g);
+        record->per_genotype_eff[g] = params.getInitialEfficacy(human.rng(), numDosesAdministered, g);
 
-    util::streamValidate(effect->perGenotypeInitialEfficacy);
+    util::streamValidate(record->per_genotype_eff);
     
-    effect->numDosesAdministered = numDosesAdministered + 1;
-    effect->timeLastDeployment = ctx->clock.nowOrTs1();
+    record->num_doses = numDosesAdministered + 1;
+    record->time_last = ctx.clock.nowOrTs1();
     
     return true;
 }

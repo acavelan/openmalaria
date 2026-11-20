@@ -25,7 +25,7 @@
 
 #include "Global.h"
 #include "core/RunContext.h"
-#include "humans/HostColumns.h"  // leaf: SoA columns owned by Population
+#include "humans/HostColumns.h"  // leaf: SoA columns owned by Population (IvRecord)
 #include "interventions/ComponentId.h"  // leaf: Component::Type + ComponentId only
 #include "util/AgeGroupInterpolation.h"
 #include "util/sampler.h"
@@ -41,8 +41,6 @@ namespace Transmission {
 using util::AgeGroupInterpolator;
 using util::LocalRng;
 
-class HumanVectorInterventionComponent;
-class PerHostInterventionData;
 
 /** Stores vector model data applicable between a category of host and a
  * mosquito species: intervention descriptions and model parameters.
@@ -126,23 +124,15 @@ public:
     //@{
 RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoint restore
     PerHost ();
-    /// Out-of-line: unique_ptr<PerHostInterventionData> with an incomplete
-    /// pointee (the intervention bases now live in VectorIntervention.h).
-    /// These are also why the move ops are spelled out (user-declared
-    /// destructor would otherwise suppress them; Population.cpp moves Humans).
-    ~PerHost ();
-    PerHost (PerHost&&);
-    PerHost& operator= (PerHost&&);
+    ~PerHost () = default;
+    PerHost (PerHost&&) = default;
+    PerHost& operator= (PerHost&&) = default;
     void initialise (RunContext& ctx, LocalRng& rng, double availabilityFactor);
     //@}
     
-    /// Call once per time step. Updates net holes.
+    /// Call once per time step. Updates net holes (interventions/IvState.cpp).
     void update(Host::Human& human);
   
-    /// Deploy some intervention component
-    void deployComponent( RunContext& ctx, LocalRng& rng, const HumanVectorInterventionComponent& params );
-    //@}
-    
     /** Calculates the adjustment for body size in exposure to mosquitoes,
      * relative to an average adult.
      * 
@@ -223,9 +213,8 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
     }
     
     /** Get whether the user has any active deployments of interventions of
-     * the given type, where type is one of those interventions deriving the
-     * PerHostInterventionData class (in other cases this will always return
-     * false). */
+     * the given type, where type is one of ITN/IRS/GVI (in other cases this
+     * will always return false). */
     bool hasActiveInterv( interventions::Component::Type type ) const;
     
     /// Checkpointing
@@ -237,8 +226,12 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
         anoph_prob_resting() & stream;
         rel_avail_het() & stream;
         outside_trans() & stream;
-        copulaGaussianSamples & stream;
-        checkpointIntervs( stream );
+        // 7.4: copulaGaussianSamples moved to the copula_g column (and its
+        // wire entry deleted: interventions carry zero checkpoint bytes —
+        // user invariant; restore re-applies via event replay).
+        // iv records not on the wire: interventions carry zero checkpoint
+        // bytes (restore re-applies by event replay; checkpoint is
+        // pre-intervention — user invariant).
     }
     //@}
     
@@ -263,18 +256,7 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
     HumanColumns* cols = nullptr;
     size_t row = 0;
 
-    /** @brief gaussian sample used in the deployment of intervention 
-     * components using the gaussian copula transformation. The factors are 
-     * component specific and are sampled once per human during the first 
-     * deployment attempt. */
-    std::map<interventions::ComponentId, double> copulaGaussianSamples; 
-
 private:
-    void checkpointIntervs( ostream& stream );
-    void checkpointIntervs( istream& stream );
-
-    vector<unique_ptr<PerHostInterventionData>> activeComponents;
-    
     static AgeGroupInterpolator relAvailAge;
 };
 
