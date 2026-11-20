@@ -23,7 +23,7 @@
 #ifndef OM_INTERVENTIONS_IRS
 #define OM_INTERVENTIONS_IRS
 
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "interventions/ComponentId.h"
 #include "util/DecayFunction.h"
 namespace scnXml

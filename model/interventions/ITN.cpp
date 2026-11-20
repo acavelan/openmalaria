@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "core/RunContext.h"
-#include "core/RunExtensions.h"
+#include "RunContext.h"
 #include "interventions/ITN.h"
 #include "util/random.h"
 #include "util/errors.h"

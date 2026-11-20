@@ -24,7 +24,7 @@
 #define Hmod_ClinicalEventSchduler
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Clinical/ClinicalModel.h"
 #include "Clinical/ESCaseManagement.h"
 #include "util/AgeGroupInterpolation.h"

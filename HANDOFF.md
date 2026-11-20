@@ -1,87 +1,108 @@
-# Phase 7g HANDOFF — whole-tree sweep: folds, dead code, accessors (branch `p7g-sweep` off `rewrite` HEAD 1da48376)
+# P8-structure HANDOFF — killed model/core/, relocated SlotAllocator, dissolved RunExtensions (branch `p8-structure` off `rewrite` HEAD bac09107)
 
-User order (verbatim): "Remove empty files, reduce number of files where
-reasonable, kill dead code. Inline more functions. Don't hesitate to make small
-cpp header-only. Clean the folders mess, why do we have both humans and Host
-for example? Plenty of opportunity to reduce code. Make the code easy to
-understand for humans. Aim at having simple structs and simple free functions.
-You are allowed simple classes. getters and setters are not needed most of the
-time. Check the full code and remove code."
+User order (verbatim): "kill the core folder, move outside or in other files if
+that makes sens. The createslot file is also weird, where does it really
+belong? same for runextension... delate"
 
 ## Environment
-- Gate build: `build-p7g/` = Release `-O3 -DNDEBUG -ffp-contract=off`
-  `-DOM_BOXTEST_BINARY=ON`. `cmake --build build-p7g -j16` (~60 s clean).
-- Warnings build (report-only, throwaway): `build-warn/` = same + `-O1
-  -Wall -Wextra -Wunused-function`; log at /tmp/opencode/warn.log.
-- unittest: run from `build-p7g/unittest/` (`./unittest` → ".OK!", 94 cases).
-- ctest: `cd build-p7g && ctest -j12` (52).
+- Gate build: `build-st/` = Release `-O3 -DNDEBUG -ffp-contract=off`
+  `-DOM_BOXTEST_BINARY=ON`. `cmake --build build-st -j16`.
+- Trap (cost a detour): parity.py hardcodes `REPO/build/schema` for the XSD —
+  the worktree needs the ignored symlink `build -> build-st` (`build*/` is
+  gitignored; already created here).
+- unittest: run from `build-st/unittest/` (`./unittest` → ".OK!", 94 cases).
+- ctest: `cd build-st && ctest -j12` (52).
 - T1: `python3 util/parity.py --old /tmp/opencode/om-ref/A0/openMalaria --new
-  build-p7g/openMalaria --recipe /tmp/opencode/om-ref/A0/recipe.json --tiers a
-  -j12` (53); after Infection/Transmission/clinical-touching commits also
-  `--tiers b --seeds 1-4` (4); final `--tiers a` + `--tiers b --seeds 1-10` = 63.
-- Bench (final only): from `/tmp/opencode/om-bench` (XSD symlink dir),
-  taskset -c 5, median-of-3 min, absolute paths, example_scenario.xml@2000.
-  p7f-era ≈12.2 s; >1 % off = investigate; ~13.9 s = external load, discard.
+  build-st/openMalaria --recipe /tmp/opencode/om-ref/A0/recipe.json --tiers a
+  -j12` (53); `--tiers b --seeds 1-10` (10) → final 63/63.
+- NO bench this phase (structural, perf-neutral; nothing smelled slow —
+  ctor now allocates 9 small heap objects up-front, free at this scale).
+- HARD boundary honoured: never touched /tmp/opencode/p8ckpt or
+  /home/razlock/git/fork's checkout. Commits unsigned (`-c
+  commit.gpgsign=false`): gpg pinentry can't run headless.
 
-## Done already (pre-7g, do NOT redo)
-No empty files; small cpps collapsed except xml/demography.cpp (KEEP — schema
-drag); zero friends; no Global.h (checkpoint.h/mod.h carry OM-scope usings,
-order-sensitive); Clock.h owns SimTime+sim+SimClock; Infection = struct+free
-functions (7f).
+## Done — all gates green per step (build 0 err, ctest 52/52, unittest .OK!
+94, T1 tier-a 53/53; steps 2–3 also tier-b seeds 1–4; final a+b seeds 1–10
+= 63/63 on the final binary)
 
-## Steps
-- [x] C1 folder folds: humans/HostColumns.h + infections/SlotAllocator.h →
-      model/Host/ (dirs deleted); mon/init.h → mon/Monitoring.h. 18332→18320.
-- [x] C2 dead-code round 1 (warnings-driven + grep): cts shells ×3, #if 0
-      Vaccine block, ClinicalEventScheduler 5 dead instance members, dead enum
-      labels ×2, vectors::addTo, dead ctor params ×5, dead set-but-unused ×2,
-      -Wreorder ×2, demography comment block. →18282.
-- [x] C3 accessor kill ×11 (getGenotypes, liver/bloodEffect, neg_m_exponent,
-      molecular_weight_ratio, getPartialEIR ×2, getSpeciesIndexMap,
-      GetModelName, setHadEvent/setHadRelapse). →18268.
-- [x] C4 folds round 2 (PkPd/Drug, WithinHost/Pathogenesis) + scan round 2
-      (numDrugTypes, NvOguess, dead fwd decls ×2, dead test struct). →18261.
-- [x] C5 Population accessors (getSize/getRecentBirths/resetRecentBirths →
-      public size/recentBirths, 14 sites). Read-pass remainder + wrapper sweep:
-      all candidates kept with reasons (see keep-proofs). →18248.
-- [x] C6 dangling doxygen block (AnophelesModel.h, comment-only) + final gates:
-      ctest 52/52, unittest .OK!, T1 a+b seeds 1-10 = 63/63 on final binary,
-      bench median 12.17 s (no regression), PERF.md row 7g. DONE.
+| Step | model code LOC / files | Notes |
+|---|---|---|
+| baseline (rewrite HEAD) | 18,248 / 139 | |
+| S1 kill model/core/ | 18,248 / 139 | RunContext.h, run.{h,cpp}, RunExtensions.h → model/ top level (siblings of Clock.h — where run state belongs); sed include/comment `core/` prefixes; guards Hmod_core_* → Hmod_*; GLOB build, zero CMakeLists edits |
+| S2 SlotAllocator | 18,248 / 139 | model/Host/ → model/Host/WithinHost/ — real owner is WHInterface (one allocator per host; Common/Descriptive drive it, InfectionIncidenceModel uses clamp_count) |
+| S3 dissolve RunExtensions | 18,257 / 138 | struct + ext indirection + ensure_extensions() deleted; every field a plain RunContext member; `ctx.ext->X` → `ctx.X` (173 sites, 32 files); RunExtensions.h file deleted |
 
-## Method / proof tooling
-- Trap (cost an hour): pre-rewrite paths (Environment.h, DailyDate.*,
-  Scenario.cpp, Clinical/CohortTreatment.*, Clinical/Morbidity.*, Vivax/*,
-  VectorBio/*, mon/NaturalScreens.*) do NOT exist in this repo — that code was
-  folded into model/xml/*.cpp, model/core/, Host/, Transmission/ in p7b-p7f.
-  sed/grep on them silently no-op. Resolve paths with `find model` first.
-  (Also: the old DailyDate type itself is gone from the new tree — renamed in
-  an earlier phase; its helpers survive.)
-- /tmp/opencode/orphan.sh + two inline python scans (decl-identifier vs
-  whole-tree occurrence count, comments stripped): function defs (.cpp),
-  header decls, header inline defs, member fields, type names.
-- model is a static lib → linker catches nothing; grep occurrence count is the
-  proof, quoted in commit messages.
+Final: **18,257 / 138 (+9 LOC, −1 file)**. Honest note: net is +9, not ≤0.
+Breakdown: RunContext.h 33→99 code LOC (field decls + 9 pointer members + 8
+std includes can't shrink — the data had to move somewhere), run.cpp
+181→215 (ctor/dtor/Treatments::select, +34), RunExtensions.h −70, −29 stray
+include/boilerplate elsewhere. The +34 in run.cpp is the gcc-16.2
+deleter-on-incomplete-type tax; if a later phase un-cycles one of the heavy
+headers, its field becomes a value member and the tax shrinks.
 
-## Do-not-touch / keep-proofs
-- xoshiro.h + contrib/chacha.h verbatim (contract) — chacha_core/generate_block
-  look dead but are copy-mandated.
-- CxxTest suites + test methods (runner codegen finds them); 6 `dont_testMol*`
-  disabled fixtures (suite-deletion veto).
-- slope()/max_killing_rate()/genotype()/origin()/N()/nowOrTs0/1 — readable
-  formula names over raw fields, 7f policy; keep.
-- Human age()/rng()/monitoringAgeGroup() encode SoA column lookups — keep.
-- Kind-dispatch one-liners in WHInterface/ClinicalModel = variant dispatch,
-  variants are user-veto-protected; keep.
-- timed_deploy_* uniform signature (family dispatch) — unused params stay.
-- CalcNvO solver untouched (no-solver-touch rule).
-- Checkpoint wire frozen: VivaxBrood hadEvent/hadRelapse are write-only
-  in-model but wire-streamed — kept as public fields, setters killed.
+## Where everything ended up and why
+- RunContext.h, run.h, run.cpp → `model/` top level: they ARE the run core,
+  siblings of Clock.h; "core/" was a folder of one-off files.
+- RunExtensions.h → deleted; fields dissolved into RunContext.
+- SlotAllocator.h → `model/Host/WithinHost/`: WHInterface owns one per host.
+- `WithinHost::Treatments::select()` → defined in run.cpp (needed complete
+  RunContext + Treatments; declaration stays in Treatments.h).
 
-## Traps
-- -ffp-contract=off always; no reassociation ever (phase 8).
-- mon/Monitoring.h now carries the 3 scenario-load decls (readSurveyDates /
-  initReporting/initCohorts) — defs live in xml/monitoring.cpp; scnXml fwd
-  decls added to Monitoring.h (order-sensitive section: keep near top).
-- Episode/TransmissionModel ctor init-lists reordered to match declaration
-  order (initializers independent) — re-verify when touching either.
-- Untracked PROMPT.md/email/pgodata-p7d/ = user files, leave alone.
+## S3 shape (read before merging p8-checkpoint)
+- RunContext.h gains only 2 non-leaf-risky includes: Diagnostic.h,
+  ComponentId.h (both proven cycle-free leaves). Everything else of the old
+  ext stays behind forward declarations.
+- 9 raw-pointer members (new[]ed in the out-of-line ctor **in old
+  RunExtensions declaration order** = old ensure_extensions order = law):
+  decision_trees, whTreatments, humanComponents, continuous, timed,
+  importedInfections, removeAtIds (`new vector<ComponentId>[SubPopRemove::NUM]`,
+  index syntax unchanged), anophParams, monitoring. ~RunContext deletes them
+  reverse-order (mirrors `delete ext`). All other ex-fields are value members
+  (diagnostic_set, identifierMap, function pointers, whMock, itn/irs/gvi/
+  vaccineComponents, vaccineReportComponent, entoAvailabilityPercentiles,
+  cts* output state, nextTimed).
+- WHMockHooks is now `RunContext::WHMockHooks` (nested); unittest installers
+  (UnittestUtil.h initTime, WHMock.cpp) write ctx() fields directly —
+  ensure_extensions() call removed.
+- Behaviour-neutral fix: `mon::Continuous::update(const RunContext&)` wrote
+  `ctsStreamOffset`/the stream — the ext raw pointer made that legal through a
+  const ref (a const-lie). Signature is now `RunContext&`. T1 unaffected.
+
+## Merge traps vs p8-checkpoint (branch in /tmp/opencode/p8ckpt; resolves in main session)
+p8-structure deletes files p8ckpt edits → delete/modify + contextual conflicts:
+1. `model/core/RunExtensions.h` (their base): DELETED here. Their removal of
+   the factory pointers `createInfection`/`checkpointedInfection` must be
+   re-applied to `model/RunContext.h` (member block, S3-tree lines ~119–122)
+   AND to the RunContext ctor/dtor in `model/run.cpp` (~156–186) AND to the
+   4 Infection/*.cpp init sites (`ctx.createInfection = …;
+   ctx.checkpointedInfection = …;` — DummyInfection.cpp:41-42,
+   EmpiricalInfection.cpp:80-81, MolineauxInfection.cpp:164-165,
+   PennyInfection.cpp:157-158) + the restore read site
+   CommonWithinHost.cpp:369 (`ctx.checkpointedInfection(ctx, stream)`).
+   If restore dies, `checkpointedInfection` (and maybe the whole field)
+   goes; `createInfection` is also read by CommonWithinHost.cpp:118/147/152/
+   168/173 + 2 unittest suites — keep it unless their diff says otherwise.
+2. `model/run.cpp`: both branches rewrite its top half. Their target: the
+   checkpoint file logic in run_simulation (base ~lines 220–300:
+   checkpointFileName / readCheckpoint / writeCheckpoint calls +
+   `#include "checkpoint.h"` line 45). My block: 7 includes replacing
+   RunExtensions.h at line 46 (immediately adjacent — expect a conflict at
+   the include list) and ctor/dtor/select inserted right before
+   run_simulation. Their edits inside run_simulation body should apply
+   cleanly after the sed'd `ctx.ext->` lines are accounted for.
+3. sed'd checkpoint-touch lines p8ckpt patches will miss contextually:
+   InterventionManager.cpp:41/45 `(*ctx.importedInfections) & stream` (was
+   `ctx.ext->importedInfections & stream` — the intervention checkpoint
+   wire; if their branch deletes intervention save/restore, drop these lines
+   entirely), InterventionManager.cpp:67, xml/interventions.cpp:1322,
+   PerHost.cpp:131/135/139, monitoring runtime sites (Monitoring.cpp ~20×
+   `auto& runtime = *ctx.monitoring;` was `ctx.ext->monitoring`).
+4. `unittest/UnittestUtil.h`: ensure_extensions(ctx()) line removed here;
+   any of their fixtures still calling it (their tree) must drop it at merge.
+5. If p8ckpt deletes checkpoint save/restore helpers from checkpoint.cpp,
+   nothing here touches that file — safe.
+
+## Left open / notes
+- `.opencode/skills/openmalaria-rewrite/SKILL.md` target-layout still lists
+  `model/core/` — contract-doc update is the main session's call.
+- PERF.md untouched (main-session ledger). Report the +9 here.

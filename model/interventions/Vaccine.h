@@ -56,7 +56,7 @@ public:
      * @param numPrevDoses The number of prior vaccinations of the individual. */
     double getInitialEfficacy (LocalRng& rng, size_t numPrevDoses, uint32_t genotype ) const;
 
-    /** Look up a component's parameters (registry: ctx.ext->vaccineComponents;
+    /** Look up a component's parameters (registry: ctx.vaccineComponents;
      * filled after all components are read). */
     static const VaccineParams& getParams( RunContext& ctx, ComponentId component );
     

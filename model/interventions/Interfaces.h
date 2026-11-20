@@ -24,7 +24,7 @@
 #define OM_INTERVENTIONS_INTERFACES
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "mon/Monitoring.h"
 #include "interventions/ComponentId.h"
 

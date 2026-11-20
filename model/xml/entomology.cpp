@@ -30,7 +30,7 @@
 // model/xml/entomology.h) and Anopheles/AnophelesModel.cpp.
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Transmission/TransmissionModel.h"
 #include "Transmission/transmission.h"
 #include "Transmission/PerHost.h"

@@ -25,7 +25,7 @@
 
 #include "Clock.h"
 #include "util/checkpoint.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Host/HostColumns.h"  // leaf: SoA columns owned by Population (IvRecord)
 #include "interventions/ComponentId.h"  // leaf: Component::Type + ComponentId only
 #include "util/AgeGroupInterpolation.h"
@@ -57,7 +57,7 @@ public:
     PerHostAnophParams(const PerHostAnophParams&) = delete;
     PerHostAnophParams& operator=(const PerHostAnophParams&) = delete;
 
-    /// Register one species' parameters (registry: ctx.ext->anophParams).
+    /// Register one species' parameters (registry: (*ctx.anophParams)).
     static void init (RunContext& ctx, const scnXml::Mosq& mosq);
     
     /// Get the number of vector species
@@ -76,7 +76,7 @@ public:
     static void setEntoAvailabilityFactor(RunContext& ctx, size_t species, double entoAvailability);
 
     /** Sample the population availability distribution and store its
-     * percentiles in ctx.ext->entoAvailabilityPercentiles. */
+     * percentiles in ctx.entoAvailabilityPercentiles. */
     static void calcAvailabilityPercentiles(RunContext& ctx);
 
     static double getEntoAvailabilityPercentile(RunContext& ctx, int p);
@@ -105,7 +105,7 @@ public:
     util::BetaSampler probMosqSurvivalResting;
     //@}
     
-    // (no per-type data here: the registry lives in RunExtensions)
+    // (no per-type data here: the registry lives in RunContext::anophParams)
 
 };
 

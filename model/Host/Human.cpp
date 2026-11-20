@@ -20,9 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "util/checkpoint.h"
-#include "core/RunExtensions.h"
 #include "Host/Human.h"
 #include "Host/InfectionIncidenceModel.h"
 #include "Clinical/ClinicalModel.h"
@@ -186,7 +185,7 @@ void Human::removeFromCohort(interventions::ComponentId id)
 
 void Human::removeFirstEvent(interventions::SubPopRemove::RemoveAtCode code )
 {
-    const vector<ComponentId>& removeAtList = ctx->ext->removeAtIds[code];
+    const vector<ComponentId>& removeAtList = ctx->removeAtIds[code];
     for( auto it = removeAtList.begin(), end = removeAtList.end(); it != end; ++it ){
         auto& spans = cols->cohorts[row];
         auto expIt = find_cohort( spans, *it );

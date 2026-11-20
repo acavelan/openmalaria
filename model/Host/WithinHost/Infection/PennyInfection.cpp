@@ -22,7 +22,6 @@
 
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/checkpoint.h"
-#include "core/RunExtensions.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -155,8 +154,8 @@ Infection* checkpointedPennyInfection (RunContext& ctx, istream& stream) {
 }
 
 void infection_init_penny(RunContext& ctx) {
-    ctx.ext->createInfection = &createPennyInfection;
-    ctx.ext->checkpointedInfection = &checkpointedPennyInfection;
+    ctx.createInfection = &createPennyInfection;
+    ctx.checkpointedInfection = &checkpointedPennyInfection;
 
     if(util::ModelOptions::option (util::IMMUNE_THRESHOLD_GAMMA)) {
         immune_threshold_gamma = true;

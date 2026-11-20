@@ -20,8 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_Host_SlotAllocator
-#define Hmod_Host_SlotAllocator
+#ifndef Hmod_Host_WithinHost_SlotAllocator
+#define Hmod_Host_WithinHost_SlotAllocator
 
 #include <algorithm>
 

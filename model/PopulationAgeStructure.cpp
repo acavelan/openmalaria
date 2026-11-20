@@ -22,7 +22,7 @@
 
 #include "PopulationAgeStructure.h"
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "util/errors.h"
 
 #include <cmath>

@@ -22,8 +22,8 @@
 
 #include "Clock.h"
 
-#include "core/RunContext.h"
-#include "core/run.h"
+#include "RunContext.h"
+#include "run.h"
 
 #include "util/errors.h"
 #include "util/CommandLine.h"
@@ -31,7 +31,7 @@
 
 using namespace OM;
 
-/// main() — parses the command line, runs the simulation (core/run.cpp),
+/// main() — parses the command line, runs the simulation (run.cpp),
 /// reports errors (error texts and order unchanged from the old main()).
 int main(int argc, char* argv[])
 {
