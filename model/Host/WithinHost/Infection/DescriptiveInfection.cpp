@@ -144,8 +144,7 @@ SimTime infection_duration_descriptive(RunContext& ctx, LocalRng& rng) {
 // Ctor hook for Kind::Descriptive: the duration draw keeps the slot the member
 // ctor's init list held — nothing else draws between construction and here.
 void infection_ctor_descriptive(Infection& inf, LocalRng& rng) {
-    inf.descriptive = std::make_unique<Infection::DescriptiveData>();
-    inf.descriptive->duration = infection_duration_descriptive(inf.ctx, rng);
+    inf.descriptive.duration = infection_duration_descriptive(inf.ctx, rng);
 }
 
 
@@ -169,7 +168,7 @@ void determine_densities_descriptive(
         timeStepMaxDensity = 0.0;
         
         int32_t infAge = min( inf.ctx.clock.inSteps(infage), maxDurationTS );
-        int32_t infDur = min( inf.ctx.clock.inSteps(inf.descriptive->duration), maxDurationTS );
+        int32_t infDur = min( inf.ctx.clock.inSteps(inf.descriptive.duration), maxDurationTS );
         inf.m_density=max (meanLogParasiteCount[infAge][infDur], 0.0);
         
         // The expected parasite density in the non naive host (AJTM p.9 eq. 9)
@@ -198,9 +197,9 @@ void determine_densities_descriptive(
                 timeStepMaxDensity = inf.m_density;
             }
         }
-        if (timeStepMaxDensity > maxDens && inf.descriptive->notPrintedMDWarning){
+        if (timeStepMaxDensity > maxDens && inf.descriptive.notPrintedMDWarning){
             cerr << "TSMD hit limit:\t" << inf.m_density << ",\t" << timeStepMaxDensity << endl;
-            inf.descriptive->notPrintedMDWarning = false;
+            inf.descriptive.notPrintedMDWarning = false;
         }
         inf.m_density = min(inf.m_density, maxDens);
         timeStepMaxDensity = min(timeStepMaxDensity, maxDens);
@@ -222,13 +221,12 @@ void determine_densities_descriptive(
 // ———  checkpointing  ———
 
 void read_descriptive (Infection& inf, istream& stream) {
-    inf.descriptive = std::make_unique<Infection::DescriptiveData>();
-    inf.descriptive->duration & stream;
-    inf.descriptive->notPrintedMDWarning & stream;
+    inf.descriptive.duration & stream;
+    inf.descriptive.notPrintedMDWarning & stream;
 }
 void checkpoint_descriptive (Infection& inf, ostream& stream) {
-    inf.descriptive->duration & stream;
-    inf.descriptive->notPrintedMDWarning & stream;
+    inf.descriptive.duration & stream;
+    inf.descriptive.notPrintedMDWarning & stream;
 }
 
 }
