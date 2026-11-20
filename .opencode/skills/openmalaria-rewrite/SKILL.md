@@ -18,6 +18,12 @@ the plan is the detail. Repo: `/home/razlock/git/fork`, baseline `cfc3c8e0`.
 
 An optimization that does not beat the noise floor (max(1.0%, 2×MAD)) is
 **REVERTED and logged**, never kept on faith. Reverts are ledger rows.
+**Amended 2026-11-20 (user):** the auto-revert applies only to pure
+micro-optimizations with zero structural benefit — a change that makes the
+code more uniform/consistent may be KEPT at sub-floor (state so in its PERF
+row). Minimum 3 bench reps per decision (machine noise); ±1 % = "unknown",
+not "no change". A layout/SoA change is never judged "failed" by one flat
+benchmark: profile first and explain the missing win.
 
 ## Correctness ladder — every edit passes its gate before the next starts
 
