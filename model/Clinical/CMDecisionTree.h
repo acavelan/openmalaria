@@ -29,7 +29,7 @@
 #include "util/errors.h"
 #include <algorithm>
 #include "Host/Human.h"
-#include "Host/WithinHost/State.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Clinical/Episode.h"
 #include "interventions/Interfaces.h"
 #include <cstdint>

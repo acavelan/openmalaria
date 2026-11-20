@@ -24,6 +24,7 @@
 #define Hmod_Output_Continuous
 
 #include "Clock.h"
+#include "RunContext.h"
 #include <string>
 #include "Population.h"
 #include "Host/Human.h"
@@ -71,6 +72,60 @@ namespace Continuous {
 	/// Generate time-step's output. Called at beginning of time step.
         /// Passed population since some callbacks use this to generate output.
 	void update (RunContext& ctx, Population &population);
+
+
+        inline void registerCallback (RunContext& ctx, string optName, string titles, function<void(ostream&)> f){
+            auto& registered = ctx.ctsRegistered;
+            assert(registered.count(optName) == 0); // name clash/registered twice?
+            function<void(const Population&, ostream&)> _f = [f](const Population&, ostream& ostream){ f(ostream); };
+            registered[optName] = {titles, _f};
+        }
+
+        inline void registerCallback (RunContext& ctx, string optName, string titles, function<void(const vector<Host::Human> &, ostream&)> f){
+            auto& registered = ctx.ctsRegistered;
+            assert(registered.count(optName) == 0); // name clash/registered twice?
+            function<void(const Population&, ostream&)> _f = [f](const Population &p, ostream& ostream){ f(p.humans, ostream); };
+            registered[optName] = {titles, _f};
+        }
+
+        inline void registerCallback (RunContext& ctx, string optName, string titles, function<void(Population &, ostream&)> f){
+            auto& registered = ctx.ctsRegistered;
+            assert(registered.count(optName) == 0); // name clash/registered twice?
+            registered[optName] = {titles, f};
+        }
+
+        inline void update (RunContext& ctx, Population &population){
+            auto& ctsOStream = ctx.ctsOStream;
+            auto& toReport = ctx.ctsToReport;
+            const SimTime ctsPeriod = ctx.ctsPeriod;
+            const bool duringInit = ctx.ctsDuringInit;
+            if( ctsPeriod == sim::zero() )
+                return;	// output disabled
+            if( !duringInit ){
+                if( ctx.clock.interv < sim::zero()
+                    || mod_nn(ctx.clock.interv, ctsPeriod) != sim::zero() )
+                    return;
+            } else {
+                if( mod_nn(ctx.clock.now(), ctsPeriod) != sim::zero() )
+                    return;
+                ctsOStream << ctx.clock.inSteps(ctx.clock.now()) << '\t';
+            }
+
+            if( duringInit && ctx.clock.interv < sim::zero() ){
+                ctsOStream << "nan";
+            }else{
+                // NOTE: we could switch this to output dates, but (1) it would be
+                // breaking change and (2) it may be harder to use.
+                ctsOStream << ctx.clock.inSteps(ctx.clock.interv);
+            }
+            for (const auto& report : toReport) std::get<1>(report)(population, ctsOStream);
+
+            // We must flush often to avoid temporarily outputting partial lines
+            // (resulting in incorrect real-time graphs).
+            ctsOStream << '\n' << flush;
+
+            ctx.ctsStreamOffset = ctsOStream.tellp();
+        }
 
 } // namespace Continuous
 } // namespace mon

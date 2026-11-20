@@ -23,6 +23,7 @@ to merge files that belong".
 
 | # | merge | files Δ | gates |
 |---|---|---|---|
+| G12 | mon/Continuous.cpp -> Continuous.h (class A: the 4 live functions — 3 registerCallback overloads + update — inlined into the namespace's header, 14-TU cone; init() already lives xml-side; dead xml_scenario_error using dropped; Monitoring.h merge REJECTED: Continuous.h includes Population.h, pushing it into Monitoring.h's 44-TU cone) | -1 | build, ctest 64/64 (Resume_* compares ctsout), unittest .OK!, T1a 53/53 |
 | G11 | Host/WithinHost/State.h -> PathogenesisModel.h (class B: the Pathogenesis::State enum + StatePair live in the Pathogenesis namespace the model file declares — pre-7g they were one directory; 4 includers repointed; no new includes reach the 37-TU cone beyond Parameters.h/random.h which it already had via WHInterface/Infection.h) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 + T1b 1-4 |
 | G10 | run.h -> RunContext.h (class B: run_simulation is the run-core entry declared beside the context it takes; decl-only, +10 LOC to the lean header, no new includes) | -1 | build, ctest 64/64 (TwoRunsSuite), unittest .OK!, T1a 53/53 |
 | G9 | PkPd: LSTMTreatments.h -> LSTMMedicate.h (class B: the loader declaration for exactly the registry LSTMMedicate.h defines — Schedule/DosageTable/TreatmentRegistry + LSTMTreatments::init read as one 'drug course config' file; decl-only, scnXml fwd-decl kept at global scope) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 |

@@ -25,7 +25,6 @@
 
 #include "Clock.h"
 #include "Parameters.h"
-#include "Host/WithinHost/State.h"
 #include "util/random.h"
 
 namespace scnXml{
@@ -40,6 +39,38 @@ namespace OM {
     namespace WithinHost { namespace Pathogenesis {
 
 using util::LocalRng;
+
+/** Types of sickness; used by case management.
+   *
+   * Most values are flags which can be combined in any form. A few
+   * combinations set follow. */
+  enum State {
+    /* Values here are written in hexadecimal: http://en.wikipedia.org/wiki/Hexadecimal
+     * Many are designed to be "flags", so the value corresponds to a single bit:
+     * http://en.wikipedia.org/wiki/Flag_byte
+     * Max: 0x80000000
+     * (note & | ^ are C++'s binary AND, OR and XOR operators). */
+    NONE		= 0,		///< Not sick
+    
+    // Flags for current state/worst state to report:
+    SICK		= 0x1,		///< Sick (may or may not be from malaria)
+    MALARIA		= 0x2,		///< Malaria sickness
+    SEVERE		= 0x8,		///< Severe malaria case
+    COINFECTION		= 0x4,		///< Malaria with a coinfection
+    COMPLICATED		= 0x20,		///< Flag used to indicate SEVERE and/or COINFECTION
+    
+    // Flags for outcome reporting:
+    STATE_NMF           = SICK, ///< Alias: SICK
+    //STATE_NMF_NEED_AB    = SICK | NEED_ANTIBIOTIC,       ///< Combination: SICK, NEED_ANTIBIOTIC
+    STATE_MALARIA	= SICK | MALARIA,	///< Combination: SICK, MALARIA
+    STATE_SEVERE	= STATE_MALARIA | COMPLICATED | SEVERE,	///< Combination: SICK, MALARIA, COMPLICATED, SEVERE
+    STATE_COINFECTION	= STATE_MALARIA | COMPLICATED | COINFECTION,	///< Combination: SICK, MALARIA, COMPLICATED, COINFECTION
+  };
+  struct StatePair{
+      StatePair() : state(NONE), indirectMortality(false) {}
+      State state;
+      bool indirectMortality;   // implies death a little later on which may not be seen as a malaria death
+  };
 
 /*! Pathogenesis model: one final class, behaviour chosen by DATA (Kind switch
  * — the old Mueller/Pyrogen/Predet subclass trio, incl. the Submodels.h merge,

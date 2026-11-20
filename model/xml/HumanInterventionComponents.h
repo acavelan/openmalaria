@@ -35,7 +35,7 @@
 #include "Host/Human.h"
 #include "Transmission/TransmissionModel.h"
 #include "Host/WithinHost/Diagnostic.h"
-#include "PkPd/LSTMTreatments.h"
+#include "PkPd/LSTMMedicate.h"
 #include "mon/Monitoring.h"
 #include "util/random.h"
 #include <schema/healthSystem.h>

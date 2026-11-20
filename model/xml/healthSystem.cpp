@@ -42,7 +42,7 @@
 #include "Clinical/CM5DayCommon.h"
 #include "Clinical/Episode.h"
 #include "Clinical/EventScheduler.h"
-#include "PkPd/LSTMTreatments.h"
+#include "PkPd/LSTMMedicate.h"
 #include "interventions/Interfaces.h"
 #include "interventions/InterventionManager.h"
 #include "mon/Monitoring.h"

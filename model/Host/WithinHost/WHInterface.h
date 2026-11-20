@@ -32,7 +32,7 @@
 #include "util/errors.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
-#include "Host/WithinHost/State.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Infection/Infection.h"
 
 #include "Parameters.h"

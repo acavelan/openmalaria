@@ -33,7 +33,6 @@
 #include "PkPd/LSTMDrugType.h"
 #include "PkPd/LSTMDrug.h"
 #include "PkPd/LSTMMedicate.h"
-#include "PkPd/LSTMTreatments.h"
 #include "util/errors.h"
 #include "util/CommandLine.h"
 #include <schema/pharmacology.h>

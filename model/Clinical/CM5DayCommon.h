@@ -30,7 +30,7 @@
 #define Hmod_CM5DayCommon
 
 #include "RunContext.h"
-#include "Host/WithinHost/State.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/WHInterface.h"

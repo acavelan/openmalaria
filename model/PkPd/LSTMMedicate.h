@@ -39,6 +39,7 @@ using std::vector;
 using std::map;
 
 class UnittestUtil;
+namespace scnXml { class Treatments; }
 namespace OM { namespace PkPd {
 
 struct Schedule {
@@ -103,6 +104,22 @@ struct TreatmentRegistry {
     map<string,size_t> scheduleNames;
     vector<DosageTable> dosages;
     map<string,size_t> dosagesNames;
+};
+
+/** Information about treatment courses: schedules and dosage tables. * 
+ * A schedule is a list of times to administrer a drug, along with base drug
+ * doses. A dosage table is used to select a multiplier for this base dose
+ * according to age (it is assumed for now that age is the only basis on which
+ * dosages are selected). */
+class LSTMTreatments {
+public:
+    /** Load treatment data from XML into ctx.treatments.
+     * 
+     * Load drug data (LSTMDrugType::init()) first. */
+    static void init (RunContext& ctx, const scnXml::Treatments& data);
+    
+private:
+    LSTMTreatments();  // not constructible
 };
 
 } }
