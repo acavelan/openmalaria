@@ -456,6 +456,23 @@ private:
      * multiplies the actual density (which then affects density on the following
      * time step). */
     double immunitySurvivalFactor (double ageInYears, double cumulativeExposureJ);
+
+    /** Host-tick-constant part of immunitySurvivalFactor: dH and dA depend on
+     * host immunity accumulators and age only, both frozen during an infection
+     * update loop (imm_h_ref/imm_Y_ref are mutated outside it). Computing once
+     * per host tick saves one exp+div per infection; the per-infection remainder
+     * below reproduces the identical IEEE operand sequence ((dY*dH)*dA). */
+    struct ImmSurvTick {
+        bool active;        ///< imm_h > 1.0 (else dH = dY = 1.0)
+        double immY, invY;  ///< dY inputs, per infection
+        double dH, dA;      ///< hoisted host constants
+    };
+    /** Host-side guard (ageInYears/imm_h/imm_Y NaN) throws here — same message;
+     * a NaN abort ends the run either way. */
+    ImmSurvTick immSurvivalTick (double ageInYears);
+    /** Per-infection remainder; guards cumulativeExposureJ like the two-double
+     * overload above. */
+    double immunitySurvivalFactor (const ImmSurvTick& tick, double cumulativeExposureJ);
     
     static void setParams(double cumYStar, double cumHStar, double aM, double dM);   // for unit test only
     //@}

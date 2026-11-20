@@ -152,6 +152,13 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
     // update) vac column and returns exactly 1.0 when it is empty — same value,
     // one check per host instead of one call per infection.
     const bool anyVac = human.has_vaccines();
+    // p7c-C3 hoist: dH/dA/exp of immunitySurvivalFactor are host-tick constants
+    // (updateImmuneStatus above is this tick's last mutation of imm_h/imm_Y;
+    // ageInYears is fixed) — one computation per host tick, same IEEE values
+    // the per-infection call used. Computed on first use so a NaN still throws
+    // at exactly the first infection that reaches the call (original point).
+    WHInterface::ImmSurvTick immTick = {};
+    bool immTickReady = false;
     for(auto inf = infections.begin(); inf != infections.end();) {
         //NOTE: it would be nice to combine this code with that in
         // CommonWithinHost.cpp, but a few changes would be needed:
@@ -172,7 +179,8 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
         // Should be: infStepMaxDens = 0.0, but has some history.
         // See MAX_DENS_CORRECTION in DescriptiveInfection.cpp.
         double infStepMaxDens = timeStepMaxDensity;
-        double immSurvFact = immunitySurvivalFactor(ageInYears, (*inf)->cumulativeExposureJ());
+        if( !immTickReady ) { immTick = immSurvivalTick(ageInYears); immTickReady = true; }
+        double immSurvFact = immunitySurvivalFactor(immTick, (*inf)->cumulativeExposureJ());
         double bsvFactor = anyVac ? human.vaccine_factor(interventions::Vaccine::BSV, opt_vaccine_genotype? (*inf)->genotype() : 0) : 1.0;
 
         (*inf)->determineDensities(rng, imm_h_ref(), infStepMaxDens, immSurvFact, _innateImmSurvFact, bsvFactor);
