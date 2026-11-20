@@ -29,10 +29,6 @@
 #include "Host/WithinHost/Genotypes.h"
 #include "util/random.h"
 
-class UnittestUtil;
-class MolineauxInfectionSuite;
-class PennyInfectionSuite;
-
 namespace OM { namespace WithinHost {
 
 using util::LocalRng;
@@ -76,9 +72,11 @@ const double maxDens = 2000000;
  *
  * Molineaux model: L. Molineaux et al, Parasitology 122 (2001) 379-391.
  * Penny model: Penny et al (2011), within-host dynamics with blood stage
- * vaccines. */
-class Infection final {
-public:
+ * vaccines.
+ *
+ * Public struct (7.2b precedent: payloads public, friends dead): the per-kind
+ * bodies are free functions in the kind's TU (phase 7f). */
+struct Infection final {
     enum class Kind { Descriptive, Dummy, Empirical, Molineaux, Penny };
 
     /// The run this infection belongs to (clock accessed as ctx.clock).
@@ -222,7 +220,6 @@ public:
     // taus: used for the variantTranscending and variantSpecific array, 4 Molineaux time steps = 8 days
     static const size_t taus = 4;
 
-protected:
     void checkpoint (ostream& stream);
 
     /// Date of inoculation of infection (start of liver stage)
@@ -238,16 +235,12 @@ protected:
     /// Pre-erythrocytic latent period (instantiated in WHFalciparum.cpp)
     static SimTime s_latentP;
 
-private:
     /// Genotype of infection (a code; see Genotypes class).
     uint32_t m_genotype;
 
     int m_origin;
 
     Kind m_kind;
-    friend class ::UnittestUtil;   // reads s_latentP and internals
-    friend class ::MolineauxInfectionSuite;
-    friend class ::PennyInfectionSuite;
 
     // ——— ctor bodies and per-kind update/checkpoint, defined in the kind's TU ———
     void ctorBody_Empirical(LocalRng& rng, double growthRateMultiplier);
