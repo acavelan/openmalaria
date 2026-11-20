@@ -30,13 +30,15 @@ def run (args, cwd):
             stdout=subprocess.DEVNULL, stderr=err)
     return ret
 
-def checkpointDay (path):
-    # header: u32 magic, u32 version, u8 phase, then t0 (sim days) at offset 9
+def checkpointClock (path):
+    # header: u32 magic, u32 version, u8 phase, then t0, t1, interv, endTime
+    # (all sim days)
     with open (path, "rb") as f:
-        head=f.read (13)
-    magic, version, phase = struct.unpack ("<IIB", head[:9])
+        head=f.read (25)
+    magic, version = struct.unpack ("<II", head[:8])
     assert magic==0x4B634D4F and version==1, "not a checkpoint"
-    return struct.unpack ("<i", head[9:13])[0]
+    t0, t1, interv, end = struct.unpack ("<iiii", head[9:25])
+    return t0, end
 
 def check (name):
     scenario=os.path.join (testSrcDir, "scenario%s.xml" % name)
@@ -47,8 +49,8 @@ def check (name):
         m=re.search (r'schemaLocation="[^"]* (\S+\.xsd)"', f.read())
     xsd=os.path.abspath (os.path.join (testBuildDir, "..", "schema", m.group(1)))
     assert os.path.isfile (xsd), xsd
-    base=["--scenario", os.path.abspath (scenario), "--seed", "112",
-          "--output-format", "bin"]
+    # scenario's own iseed (not overridden: some solvers are seed-sensitive)
+    base=["--scenario", os.path.abspath (scenario), "--output-format", "bin"]
     src=["--resource-path", testSrcDir]
 
     simDir=tempfile.mkdtemp (prefix="resume-%s-" % name, dir=testBuildDir)
@@ -62,13 +64,27 @@ def check (name):
     rc=om (["-o", "out.bin", "--ctsout", "cts.txt",
             "--save-to", "ck1", "--save-at", "main"])
     if rc: return "%s: save@main failed (rc %d)" % (name, rc)
-    day=checkpointDay (os.path.join (simDir, "ck1"))
+    day, end=checkpointClock (os.path.join (simDir, "ck1"))
 
     # resume to mid-main, checkpoint again, resume again (chain: the resumed
     # run must be able to save and be resumed itself)
     rc=om (["-o", "out.bin", "--ctsout", "cts.txt", "--resume", "ck1",
             "--save-to", "ck2", "--save-at", str (day+50)])
     if rc: return "%s: resume+save@mid-main failed (rc %d)" % (name, rc)
+
+    # late-main save day, chained after the mid-main checkpoint
+    rc=om (["-o", "out.bin", "--ctsout", "cts.txt", "--resume", "ck2",
+            "--save-to", "ck4", "--save-at", str (end-25)])
+    if rc: return "%s: resume+save@late-main failed (rc %d)" % (name, rc)
+    if om (["-o", "out.bin", "--ctsout", "cts.txt", "--resume", "ck4"]):
+        return "%s: late resume failed" % name
+
+    # mid-warmup save day, independent chain (outputs suffixed B)
+    if om (["-o", "outB.bin", "--ctsout", "ctsB.txt",
+            "--save-to", "ck3", "--save-at", str (day//2)]):
+        return "%s: save@mid-warmup failed" % name
+    if om (["-o", "outB.bin", "--ctsout", "ctsB.txt", "--resume", "ck3"]):
+        return "%s: warmup resume failed" % name
 
     # truncated checkpoint must fail cleanly (nonzero exit, no crash)
     with open (os.path.join (simDir, "ck2"), "rb") as f:
@@ -81,7 +97,8 @@ def check (name):
     rc=om (["-o", "out.bin", "--ctsout", "cts.txt", "--resume", "ck2"])
     if rc: return "%s: final resume failed (rc %d)" % (name, rc)
 
-    for a, b in (("full.bin", "out.bin"), ("full_cts.txt", "cts.txt")):
+    for a, b in (("full.bin", "out.bin"), ("full_cts.txt", "cts.txt"),
+                 ("full.bin", "outB.bin"), ("full_cts.txt", "ctsB.txt")):
         fa=os.path.join (simDir, a)
         fb=os.path.join (simDir, b)
         if os.path.isfile (fa) != os.path.isfile (fb):

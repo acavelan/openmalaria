@@ -83,6 +83,6 @@ configure_file (
   ${CMAKE_CURRENT_BINARY_DIR}/resume.py
   @ONLY
 )
-foreach (TEST_NAME NoInterv Vivax Empirical Molineaux Penny)
+foreach (TEST_NAME NoInterv Vivax Empirical Molineaux Penny 1 VecTest Genotypes ExactNv0 SimpleMPDTest HetVecDailyEIR MolPairwise)
     add_test (Resume_${TEST_NAME} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/resume.py ${TEST_NAME})
 endforeach (TEST_NAME)

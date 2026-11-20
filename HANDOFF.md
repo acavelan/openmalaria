@@ -85,8 +85,15 @@ functions, per-subsystem files, ONE orchestrator listing the section order.
 - [x] C4 (partial): magic/version/budget/count checks → clean errors, proven
       in resume.py (truncated) + manual junk/bad-magic/wrong-scenario runs.
       v2 (boost/gzstream) file → magic error (message could name it nicer).
-- [ ] C2 multiple Ds: mid-warmup (proven once manually: NoInterv day 5000
-      IDENTICAL, not yet scripted), post-warmup pre-intervention, late.
+- [x] C2 scripted save days per scenario in resume.py: main-start,
+      mid-main (mainStart+50d, chained), late-main (end-25d, chained),
+      mid-warmup (mainStart/2). Chains exercise resume→save→resume.
+- [x] C3 (no-intervention corpus): Resume_* now 12 — + scenario1 (NonVector
+      EIR branch), VecTest, Genotypes (SAMPLE_TRACKING mode), ExactNv0
+      (exact solver — NOTE: seed-sensitive; resume.py uses the scenario's
+      own iseed, NOT --seed 112), SimpleMPDTest (MPD state),
+      HetVecDailyEIR, MolPairwise (multi-clone variants).
+      Interventions-heavy = still the documented gap (skill law).
 - [ ] C3 corpus: example, DecisionTree(5Day), Vivax, HetVecDailyEIR /
       vector-full (AnophelesModel + ExactNv0), Molineaux/Penny, Empirical,
       interventions-heavy (IvState global + replay), MSAT/Genotypes.
@@ -96,14 +103,19 @@ functions, per-subsystem files, ONE orchestrator listing the section order.
       tier-a clean. PERF.md NOT touched (main-session ledger).
 
 ## Proven round-trips (update every green commit)
-C1 (all byte-identical vs uninterrupted, output.bin + ctsout.txt, seed 112):
-- NoInterv (Descriptive WH + continuous output ~1.5k lines): save@main;
-  save@day5000 (mid-warmup, manual); save@day10000 (mid-main, manual)
-- Vivax (brood restore), Empirical, Molineaux (growing variants — count on
-  wire), Penny: save@main → resume → save@(mainStart+50d) → resume (chain)
+C2/C3 (all byte-identical vs uninterrupted, output.bin AND ctsout.txt,
+scenario default seed): 4 save-day chains each (main-start, mid-main,
+late-main end-25d, mid-warmup) + truncated-file rejection for:
+- NoInterv (Descriptive WH + cts ~1.5k lines), Vivax (broods), Empirical,
+  Molineaux (growing variant counts), Penny
+- 1 (NonVector EIR), VecTest, Genotypes (tracking mode), ExactNv0 (exact
+  emergence estimator), SimpleMPDTest (SimpleMPD state), HetVecDailyEIR,
+  MolPairwise
 - corrupt: truncated → rc73; junk/bad magic → rc73; wrong scenario → rc73
   (measure store count mismatch) — no UB, no output file.
-Gates at C1: build ✓, ctest 57/57, unittest .OK! (93), tier-a 53/53.
+Gates at C1: build ✓, ctest 57/57, unittest .OK!, tier-a 53/53.
+Gates at C2/C3: ctest 64/64, unittest .OK! (model binary byte-identical to
+the C1 parity-verified one — no model/ change, so tier-a not re-run).
 
 ## Known limits (honest partial — extend in C3+)
 - NO interventions section yet (skill law): --resume on a scenario that
