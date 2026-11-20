@@ -39,7 +39,8 @@ reverted+logged if ≤ noise floor (max(1.0%, 2×MAD)). Full p7 handoff: `git sh
       0.912 (true structural cost +9.6%); vs current A0-class 12.47 = flat. PGO lever is DEAD
       on this tree (1.003 vs baseline 1.087) — levers must be real code changes.
 - [x] B1a allocation-churn kill: WH y_lag scratch (malloc 88.2M→5.9M, A2 12.43→12.13 = −2.4% KEEP)
-- [ ] B2 rng compaction (104→32 B); B4 perf hoists; ~~B3~~ VERIFIED-ALREADY-SKIPPED (see PERF 7b-B1a)
+- [x] B2 rng compaction (104→32 B): all gates green but −0.33% < floor ⇒ REVERTED+logged (row 7b-B2)
+- [ ] B4 perf hoists from a2 profile; ~~B3~~ VERIFIED-ALREADY-SKIPPED (see PERF 7b-B1a)
 - [ ] FINAL: T1 a+b 63/63, ctest 52/52, unittest 94/94, cloc, census touch, final report
 - Lever measurement: rebuild lever INTO build-p7b-a2 (profiles from pre-lever tree are fine;
   same flags/dir) AND into build-p7b (gate build) for ctest/unittest/tier-a.
@@ -55,6 +56,9 @@ reverted+logged if ≤ noise floor (max(1.0%, 2×MAD)). Full p7 handoff: `git sh
 - (7b-B1a, this commit) WH y_lag scratch: build clean (gate+a2); ctest 52/52; unittest 94/94;
   T1 tier-a 53/53 (build-p7b) + tier-b s1 (build-p7b-a2); bench 12.13 (MAD .005, one 13.91
   external outlier discarded) vs yardstick 12.43 ⇒ −2.4% KEEP. malloc churn 88.2M→5.9M/run.
+- (7b-B2) rng compaction tried then REVERTED: gates green (ctest 52/52, unittest 94/94 incl.
+  RngGoldens/TwoRunsSuite, clean a2 rebuild), bench 12.09 MAD .010 vs 12.13 = −0.33 % < floor.
+  random.h restored to HEAD; gate+a2 binaries rebuilt back to B1a state.
 
 ## Traps (inherited, all live)
 - set_row REBIND on any column shape change (B2 tripwire; death-heavy ctest catches, tier-a doesn't).
