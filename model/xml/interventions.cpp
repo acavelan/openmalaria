@@ -272,17 +272,14 @@ static void nhh_mods_setup(RunContext& ctx, size_t instance, string intervName,
             Transmission::Anopheles::AnophelesModel* anophModel = vectorModel->species[i].get();
 
             // Resize every effect list first, as before (operator[] insertion of
-            // intervName happens even for absent effects):
-            if (anophModel->reduceNhhAvailability[intervName].size() <= instance)
-                anophModel->reduceNhhAvailability[intervName].resize(instance + 1);
-            if (anophModel->reduceP_B_I[intervName].size() <= instance)
-                anophModel->reduceP_B_I[intervName].resize(instance + 1);
-            if (anophModel->reduceP_C_I[intervName].size() <= instance)
-                anophModel->reduceP_C_I[intervName].resize(instance + 1);
-            if (anophModel->reduceP_D_I[intervName].size() <= instance)
-                anophModel->reduceP_D_I[intervName].resize(instance + 1);
-            if (anophModel->reduceFecundity[intervName].size() <= instance)
-                anophModel->reduceFecundity[intervName].resize(instance + 1);
+            // intervName happens even for absent effects; loop order == former
+            // textual order):
+            for (auto* m : {&anophModel->reduceNhhAvailability, &anophModel->reduceP_B_I, &anophModel->reduceP_C_I,
+                            &anophModel->reduceP_D_I, &anophModel->reduceFecundity}) {
+                auto& slot = (*m)[intervName];
+                if (slot.size() <= instance)
+                    slot.resize(instance + 1);
+            }
 
             nhh_slot(ctx.clock, anophModel->reduceNhhAvailability, intervName, instance,
                      anoph.getAvailabilityReduction(), decay, -numeric_limits<double>::infinity(), 1.0,
