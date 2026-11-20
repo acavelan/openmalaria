@@ -132,6 +132,29 @@ double WHInterface::immunitySurvivalFactor (double ageInYears, double cumulative
     return util::streamValidate( std::min(dY*dH*dA, 1.0) );
 }
 
+WHInterface::ImmSurvTick WHInterface::immSurvivalTick (double ageInYears) {
+    // p7c-C3: hoisted host part of immunitySurvivalFactor (see WHInterface.h).
+    // Each value below equals the per-infection call's operand bit-for-bit.
+    const double imm_h = imm_h_ref(), imm_Y = imm_Y_ref();
+    if (std::isnan(ageInYears) || std::isnan(imm_h) || std::isnan(imm_Y))
+        throw base_exception("nan in immunitySurvivalFactor");
+    ImmSurvTick t;
+    t.active = imm_h > 1.0;
+    t.immY = imm_Y;
+    t.invY = invCumulativeYstar;
+    t.dH = t.active ? 1.0 / (1.0 + (imm_h - 1.0) * invCumulativeHstar) : 1.0;
+    t.dA = 1.0 - alpha_m * exp(-decayM * ageInYears);
+    return t;
+}
+
+double WHInterface::immunitySurvivalFactor (const ImmSurvTick& t, double cumulativeExposureJ) {
+    if (std::isnan(cumulativeExposureJ))
+        throw base_exception("nan in immunitySurvivalFactor");
+    double dY = 1.0;
+    if (t.active) dY = 1.0 / (1.0 + (t.immY - cumulativeExposureJ) * t.invY);
+    return util::streamValidate( std::min(dY*t.dH*t.dA, 1.0) );
+}
+
 // Infectiousness parameters: see AJTMH p.33; tau=1/sigmag**2 
 const double PTM_beta1=1.0;
 const double PTM_beta2=0.46;

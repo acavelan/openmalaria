@@ -416,14 +416,32 @@ void TransmissionModel::calculateEIR_vector(Host::Human &human, double ageYears,
 }
 
 // Every Global::interval days:
+// 7c-C6 (kept per user ruling: uniform stage+reduce shape across the transmission
+// sweeps — same two-pass pattern as calculateEIR_vector/updateKappa — even though
+// the win, −0.56 %, sits in the ±1 % unknown band). Pass 1 writes pure elementwise
+// per-host quantities into reused slabs; pass 2 reduces in host order, SCALAR
+// (operand order = old host-major accumulation ⇒ bit-exact; SIMD reductions are
+// phase 8). Slabs are function-local statics, capacity reused never shrunk
+// (precedent: B1a m_y_lag).
 void TransmissionModel::vectorUpdate_vector(const vector<Host::Human> &population)
 {
     const size_t nGenotypes = ctx.genotypes.N();
+    const size_t nSpec = speciesIndex.size();
+    const size_t nHost = population.size();
+    static std::vector<double> s_avail, s_df, s_fec, s_pti, s_ptl, s_tbv;
+    s_avail.resize(nHost * nSpec);
+    s_df.resize(nHost * nSpec);
+    s_fec.resize(nHost * nSpec);
+    s_pti.resize(nHost * nGenotypes);
+    s_ptl.resize(nHost * nGenotypes);
+    s_tbv.resize(nHost * nGenotypes);
     std::vector<double> probTransmission_i, probTransmission_l;
-    std::vector<double> sum_avail(speciesIndex.size());
-    std::vector<double> sigma_df(speciesIndex.size());
-    std::vector<double> sigma_dff(speciesIndex.size());
-    std::vector<std::vector<double>> sigma_dif_i(speciesIndex.size(), std::vector<double>(nGenotypes)), sigma_dif_l(speciesIndex.size(), std::vector<double>(nGenotypes));
+    std::vector<double> sum_avail(nSpec);
+    std::vector<double> sigma_df(nSpec);
+    std::vector<double> sigma_dff(nSpec);
+    std::vector<std::vector<double>> sigma_dif_i(nSpec, std::vector<double>(nGenotypes)), sigma_dif_l(nSpec, std::vector<double>(nGenotypes));
+
+    size_t h = 0;
     for (const Host::Human &human : population)
     {
         const OM::Transmission::PerHost &host = human.perHostTransmission;
@@ -436,27 +454,46 @@ void TransmissionModel::vectorUpdate_vector(const vector<Host::Human> &populatio
         probTransmission_i.assign(nGenotypes, 0.0);
         probTransmission_l.assign(nGenotypes, 0.0);
         whm.probTransmissionToMosquito(probTransmission_i, probTransmission_l);
+        std::copy(probTransmission_i.begin(), probTransmission_i.end(), &s_pti[h * nGenotypes]);
+        std::copy(probTransmission_l.begin(), probTransmission_l.end(), &s_ptl[h * nGenotypes]);
+        for (size_t g = 0; g < nGenotypes; ++g)
+            s_tbv[h * nGenotypes + g] = anyVac ? human.vaccine_factor(interventions::Vaccine::TBV, opt_vaccine_genotype? g : 0) : 1.0;
 
-        for (size_t s = 0; s < speciesIndex.size(); ++s)
+        for (size_t s = 0; s < nSpec; ++s)
         {
             // NOTE: calculate availability relative to age at end of time step;
             // not my preference but consistent with TransmissionModel::getEIR().
             // TODO: even stranger since probTransmission comes from the previous time step
             const double avail = host.entoAvailabilityFull(s, sim::inYears(human.age(ctx.clock.ts1())));
-            sum_avail[s] += avail;
             const double df = avail * host.probMosqBiting(s) * host.probMosqResting(s);
-            sigma_df[s] += df;
-            for (size_t g = 0; g < nGenotypes; ++g)
+            s_avail[h * nSpec + s] = avail;
+            s_df[h * nSpec + s] = df;
+            s_fec[h * nSpec + s] = df * host.relMosqFecundity(s);
+        }
+        ++h;
+    }
+
+    // pass 2: ordered reductions (same addend sequence as the old host-major loop)
+    for (size_t s = 0; s < nSpec; ++s)
+    {
+        for (h = 0; h < nHost; ++h)
+        {
+            sum_avail[s] += s_avail[h * nSpec + s];
+            sigma_df[s] += s_df[h * nSpec + s];
+            sigma_dff[s] += s_fec[h * nSpec + s];
+        }
+        for (size_t g = 0; g < nGenotypes; ++g)
+        {
+            for (h = 0; h < nHost; ++h)
             {
-                const double tbvFac = anyVac ? human.vaccine_factor(interventions::Vaccine::TBV, opt_vaccine_genotype? g : 0) : 1.0;
-                sigma_dif_i[s][g] += df * probTransmission_i[g] * tbvFac;
-                sigma_dif_l[s][g] += df * probTransmission_l[g] * tbvFac;
+                const double tbv = s_tbv[h * nGenotypes + g];
+                sigma_dif_i[s][g] += s_df[h * nSpec + s] * s_pti[h * nGenotypes + g] * tbv;
+                sigma_dif_l[s][g] += s_df[h * nSpec + s] * s_ptl[h * nGenotypes + g] * tbv;
             }
-            sigma_dff[s] += df * host.relMosqFecundity(s);
         }
     }
 
-    for (size_t s = 0; s < speciesIndex.size(); ++s)
+    for (size_t s = 0; s < nSpec; ++s)
     {
         species[s]->advancePeriod(sum_avail[s], sigma_df[s], sigma_dif_i[s], sigma_dif_l[s], sigma_dff[s], simulationMode == dynamicEIR);
     }

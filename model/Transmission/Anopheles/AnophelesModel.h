@@ -327,9 +327,6 @@ public:
                      double initNvFromSv, double initOvFromSv,
                      const std::vector<double>& forcedS_v);
     
-    /// Helper function for initialisation.
-    void initIterateScale ( double factor );
-    
     /// Emergence rate at start of day d0 (SimpleMPD kind: density-dependent).
     double getEmergenceRate(const SimTime &d0, const std::vector<double>& mosqEmergeRate, double nOvipositing);
 
@@ -359,10 +356,6 @@ public:
     //@{
     void uninfectVectors();
     //@}
-    
-    inline SimTime getEIPDuration() const {
-        return mosq.EIPDuration;
-    }
     
     ///@brief Functions used in reporting
     //@{

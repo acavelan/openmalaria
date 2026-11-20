@@ -136,12 +136,6 @@ struct RNG {
     }
     //@}
     
-    uint64_t gen_seed() {
-        uint64_t low = m_rng;
-        uint64_t high = m_rng;
-        return (high << 32) | low;
-    }
-    
     ///@brief Random number distributions
     //@{
     /** Generate a random number in the range [0,1). */
