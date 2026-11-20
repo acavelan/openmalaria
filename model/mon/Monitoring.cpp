@@ -279,11 +279,11 @@ void writeOutput(RunContext& ctx, const string& filename, ios::openmode mode, Wr
 void updateSurveyNumbers(RunContext& ctx)
 {
     auto& runtime = (*ctx.monitoring);
-    runtime.survNumEvent = NOT_USED;
-    for (size_t i = runtime.surveyIndex; i < runtime.surveyDates.size(); ++i) {
-        runtime.survNumEvent = runtime.surveyDates[i].num;
-        if (runtime.survNumEvent != NOT_USED) break;
-    }
+    // first survey from the cursor that is in use; original loop left NOT_USED
+    // when the scan found none (all-remainers were NOT_USED) — same via ternary
+    const auto it = std::find_if(runtime.surveyDates.begin() + runtime.surveyIndex, runtime.surveyDates.end(),
+        [](const auto& d) { return d.num != NOT_USED; });
+    runtime.survNumEvent = it != runtime.surveyDates.end() ? it->num : NOT_USED;
 }
 
 } // namespace
