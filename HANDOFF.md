@@ -38,10 +38,13 @@ reverted+logged if ≤ noise floor (max(1.0%, 2×MAD)). Full p7 handoff: `git sh
       ⇒ **NEW YARDSTICK A2 = 12.43 CPU-s (MAD .010)**; A1 = 12.37; ratio vs frozen 11.34 =
       0.912 (true structural cost +9.6%); vs current A0-class 12.47 = flat. PGO lever is DEAD
       on this tree (1.003 vs baseline 1.087) — levers must be real code changes.
-- [ ] B1 arena; B2 rng compaction; B3 forcedEIR; B4 perf hoists (each: own commit + PERF row)
+- [x] B1a allocation-churn kill: WH y_lag scratch (malloc 88.2M→5.9M, A2 12.43→12.13 = −2.4% KEEP)
+- [ ] B2 rng compaction (104→32 B); B4 perf hoists; ~~B3~~ VERIFIED-ALREADY-SKIPPED (see PERF 7b-B1a)
 - [ ] FINAL: T1 a+b 63/63, ctest 52/52, unittest 94/94, cloc, census touch, final report
 - Lever measurement: rebuild lever INTO build-p7b-a2 (profiles from pre-lever tree are fine;
   same flags/dir) AND into build-p7b (gate build) for ctest/unittest/tier-a.
+- Alloc probe lives at /tmp/opencode/allocprobe.cpp (+.so, LD_PRELOAD, BT sampling via
+  `sed` the filter line); call-graph perf is BLOCKED (paranoid=2 blocks STACK_USER too).
 
 ## Gates log
 - (stage setup) branch p7b-levers off p7-green 324958dc; env inventory verified
@@ -49,6 +52,9 @@ reverted+logged if ≤ noise floor (max(1.0%, 2×MAD)). Full p7 handoff: `git sh
 - (stage A, this commit) A1: LTO bit-check 2/2 identical; A2: profile-use proven (.text
   +5.3% vs A1, +5 extra inlines on Population.cpp probe), bit-check 2/2 identical; benches
   A1 12.37 MAD .010 / A2 12.43 MAD .010; recipe+A2 binary stamped to /tmp/opencode/om-ref/A2new/.
+- (7b-B1a, this commit) WH y_lag scratch: build clean (gate+a2); ctest 52/52; unittest 94/94;
+  T1 tier-a 53/53 (build-p7b) + tier-b s1 (build-p7b-a2); bench 12.13 (MAD .005, one 13.91
+  external outlier discarded) vs yardstick 12.43 ⇒ −2.4% KEEP. malloc churn 88.2M→5.9M/run.
 
 ## Traps (inherited, all live)
 - set_row REBIND on any column shape change (B2 tripwire; death-heavy ctest catches, tier-a doesn't).
