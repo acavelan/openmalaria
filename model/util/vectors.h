@@ -60,14 +60,6 @@ namespace vectors {
   inline double mean (const vector<double>& vec){
     return sum(vec) / vec.size();
   }
-  
-  /// Add one vector into another (x += y)
-  inline void addTo (vector<double>& x, vector<double>& y){
-    assert( x.size() == y.size() );
-    for( size_t i=0; i<x.size(); ++i ){
-      x[i] += y[i];
-    }
-  }
   //@}
   
   

@@ -66,7 +66,7 @@ double sample_double01 (void *ptr) {
 }
 
 template<class T>
-gsl_rng_type make_gsl_rng_type(T& rng) {
+gsl_rng_type make_gsl_rng_type() {
     return {
         "OM_RNG",		// name
         std::numeric_limits<uint32_t>::max(),
@@ -90,7 +90,7 @@ struct RNG {
     /// are used, 128-bit seeds are recommended to reduce chance of overlapping
     /// sections of RNG output.
     explicit RNG(uint64_t seed, uint64_t stream): m_rng(seed, stream) {
-        m_gsl_type = make_gsl_rng_type(m_rng);
+        m_gsl_type = make_gsl_rng_type<T>();
         m_gsl_gen.type = &m_gsl_type;
         m_gsl_gen.state = reinterpret_cast<void*>(&m_rng);
     }
@@ -98,7 +98,7 @@ struct RNG {
     /// Seed via another RNG
     template<class S>
     explicit RNG(RNG<S>& source): m_rng(source.m_rng) {
-        m_gsl_type = make_gsl_rng_type(m_rng);
+        m_gsl_type = make_gsl_rng_type<T>();
         m_gsl_gen.type = &m_gsl_type;
         m_gsl_gen.state = reinterpret_cast<void*>(&m_rng);
     }

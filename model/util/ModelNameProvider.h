@@ -48,16 +48,9 @@ namespace OM
         * If new named models are added, support for them should be added to
         * this class.
         */
-        class ModelNameProvider
+        struct ModelNameProvider
         {
-        public:
             ModelNameProvider( const scnXml::Model& model );
-
-            ~ModelNameProvider(){}
-
-            ModelNames GetModelName() { return modelInUse; }
-
-        private:
             ModelNames modelInUse = ModelNames::none;
         };
     }

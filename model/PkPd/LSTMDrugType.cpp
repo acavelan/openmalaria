@@ -20,12 +20,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "PkPd/Drug/LSTMDrugType.h"
+#include "PkPd/LSTMDrugType.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/errors.h"
 #include "util/CommandLine.h"
-#include "PkPd/Drug/LSTMDrug.h"
+#include "PkPd/LSTMDrug.h"
 
 #include <cmath>
 #include <iomanip>
@@ -70,10 +70,6 @@ void DrugRegistry::clear()
 {
     drugTypes.clear();
     drugTypeNames.clear();
-}
-
-size_t DrugRegistry::numDrugTypes() const {
-    return drugTypes.size();
 }
 
 // Add index to drugsInUse if not already present. Not fast but doesn't need to be.

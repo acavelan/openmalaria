@@ -46,15 +46,6 @@ public:
      * while keeping the population size and demography distirbution unchanged. */
     void update();
 
-    /** Return the size of the human population */
-    inline size_t getSize() const;
-
-    /** Return the number of recent births */
-    inline int getRecentBirths() const;
-
-    /** Reset the number of recent births to 0 */
-    inline void resetRecentBirths();
-
     /** Checkpoint (read) */
     void checkpoint(istream& stream);
 
@@ -64,15 +55,13 @@ public:
     /** The simulated human hosts */
 RunContext& ctx;
 
-    /** Persistent SoA columns; row i == humans[i] (model/humans/HostColumns.h) */
+    /** Persistent SoA columns; row i == humans[i] (model/Host/HostColumns.h) */
     HumanColumns cols;
 
     vector<Host::Human> humans;
 
-private:
-    /** Size of the human population */
+    /** Size of the human population (fixed; == humans.size()) */
     size_t size = 0;
-    
     /** Births count since last continuous output */
     int recentBirths = 0;
 };
@@ -98,18 +87,6 @@ void ctsMeanAgeAvailEffect (RunContext& ctx, Population &population, ostream& st
 void ctsITNCoverage (Population &population, ostream& stream);
 void ctsIRSCoverage (Population &population, ostream& stream);
 void ctsGVICoverage (Population &population, ostream& stream);
-
-inline size_t Population::getSize() const {
-    return size;
-}
-
-inline int Population::getRecentBirths() const {
-    return recentBirths;
-}
-
-inline void Population::resetRecentBirths() {
-    recentBirths = 0;
-}
 
 }
 #endif

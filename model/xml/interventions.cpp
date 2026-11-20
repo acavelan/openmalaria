@@ -1085,7 +1085,7 @@ static void reg_at( std::vector<const T*>& v, ComponentId id, const T* p ){
     v[id.id] = p;
 }
 
-void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &intervElt, const Population &population,
+void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &intervElt,
                                Transmission::TransmissionModel &transmission)
 {
     ctx.ext->nextTimed = 0;
@@ -1121,7 +1121,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
 
     {
         Transmission::TransmissionModel *vectorModel = transmission.isVector() ? &transmission : nullptr;
-        if (vectorModel != nullptr) species_index_map = vectorModel->getSpeciesIndexMap();
+        if (vectorModel != nullptr) species_index_map = vectorModel->speciesIndex;
     }
 
     if (intervElt.getHuman().present())
@@ -1380,7 +1380,6 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
         {
             typedef scnXml::AddNonHumanHosts::NonHumanHostsSequence SeqT;
             const SeqT &seq = intervElt.getAddNonHumanHosts().get().getNonHumanHosts();
-            size_t instance = 0;
             for (auto it = seq.begin(), end = seq.end(); it != end; ++it)
             {
                 const scnXml::NonHumanHosts2 &elt = *it;
@@ -1394,7 +1393,6 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
                         ctx.ext->timed.push_back(timed_deployment(date, TimedDeploymentKind::ADD_NHH,
                             read_add_nhh(ctx, date, elt.getName(), lifespan, elt.getDescription().getAnopheles(), transmission)));
                     }
-                    instance++;
                 }
             }
         }

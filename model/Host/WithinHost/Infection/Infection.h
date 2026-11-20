@@ -154,7 +154,7 @@ struct Infection final {
     
     /// Get whether the infection is HRP2-deficient
     bool isHrp2Deficient() const {
-        return ctx.genotypes.getGenotypes()[m_genotype].hrp2_deficient;
+        return ctx.genotypes.genotypes[m_genotype].hrp2_deficient;
     }
     
     /** Get the infection's genotype. */
@@ -378,12 +378,12 @@ InfectionOrigin get_infection_origin(const std::list<T*> &infections)
     if(infections.empty())
         return InfectionOrigin::Indigenous;
 
-    int nImported = 0, nIntroduced = 0, nIndigenous = 0;
+    // only >0 tests below matter (all-Imported = neither counter set)
+    int nIntroduced = 0, nIndigenous = 0;
     for( auto inf = infections.begin(); inf != infections.end(); ++inf )
     {
         if((*inf)->origin() == InfectionOrigin::Indigenous) nIndigenous++;
         else if((*inf)->origin() == InfectionOrigin::Introduced) nIntroduced++;
-        else nImported++;
     }
 
     /* The rules are:

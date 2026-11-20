@@ -1,103 +1,87 @@
-# Phase 7f HANDOFF — Infection slim-struct + per-kind free functions (branch `p7f-infection` off tag `p7e-green` = b9f7c22a)
+# Phase 7g HANDOFF — whole-tree sweep: folds, dead code, accessors (branch `p7g-sweep` off `rewrite` HEAD 1da48376)
 
-User-approved readability refactor (user vetoed re-litigating the 4b merged
-god-class shape): `Infection` becomes a SLIM SHARED STRUCT + per-kind state
-payloads + FREE FUNCTIONS (iv/vac/ComponentConfig pattern). NAMESPACING ONLY:
-formula bodies move verbatim, RNG draw points/order frozen, checkpoint wire
-order per kind identical (bytes kept), error strings verbatim, `// parity:`
-comments travel.
+User order (verbatim): "Remove empty files, reduce number of files where
+reasonable, kill dead code. Inline more functions. Don't hesitate to make small
+cpp header-only. Clean the folders mess, why do we have both humans and Host
+for example? Plenty of opportunity to reduce code. Make the code easy to
+understand for humans. Aim at having simple structs and simple free functions.
+You are allowed simple classes. getters and setters are not needed most of the
+time. Check the full code and remove code."
 
 ## Environment
-- Gate build: `build-p7f/` = Release `-O3 -DNDEBUG -ffp-contract=off`
-  `-DOM_BOXTEST_BINARY=ON`. `cmake --build build-p7f -j16`.
-- unittest: run from `build-p7f/unittest/` (`./unittest` → ".OK!", 94 cases;
-  fixture files live next to the binary).
-- ctest: `cd build-p7f && ctest -j16` (52).
+- Gate build: `build-p7g/` = Release `-O3 -DNDEBUG -ffp-contract=off`
+  `-DOM_BOXTEST_BINARY=ON`. `cmake --build build-p7g -j16` (~60 s clean).
+- Warnings build (report-only, throwaway): `build-warn/` = same + `-O1
+  -Wall -Wextra -Wunused-function`; log at /tmp/opencode/warn.log.
+- unittest: run from `build-p7g/unittest/` (`./unittest` → ".OK!", 94 cases).
+- ctest: `cd build-p7g && ctest -j12` (52).
 - T1: `python3 util/parity.py --old /tmp/opencode/om-ref/A0/openMalaria --new
-  build-p7f/openMalaria --recipe /tmp/opencode/om-ref/A0/recipe.json --tiers a
-  -j16` (53); `--tiers b --seeds 1-4` (4). parity.py resolves
-  `scenario_current.xsd` via `<repo>/schema`, `<repo>/test`, then
-  `<repo>/build/schema` — `build/` here is the OLD real build dir left in place
-  on purpose (p7e gates ran against its schema copy; do not delete).
-- Bench (final only): `cd /tmp/opencode/om-bench && ./bench.sh <abs-bin>
-  /home/razlock/git/fork/util/example/example_scenario.xml` — taskset -c 5,
-  1 discard + 5× %U CPU-s; never concurrent with other load.
-- Baseline stamp (p7e-green, build-p7f): ctest 52/52, unittest .OK!, tier-a
-  53/53. cloc code LOC: model 18,417; unittest 3,794; Infection/ dir 1,091
-  (1,891 total lines).
+  build-p7g/openMalaria --recipe /tmp/opencode/om-ref/A0/recipe.json --tiers a
+  -j12` (53); after Infection/Transmission/clinical-touching commits also
+  `--tiers b --seeds 1-4` (4); final `--tiers a` + `--tiers b --seeds 1-10` = 63.
+- Bench (final only): from `/tmp/opencode/om-bench` (XSD symlink dir),
+  taskset -c 5, median-of-3 min, absolute paths, example_scenario.xml@2000.
+  p7f-era ≈12.2 s; >1 % off = investigate; ~13.9 s = external load, discard.
 
-## Design (locked)
-- `struct Infection` — public data, no friends (7.2b precedent "payloads
-  public, friends dead"). Shared fields: kind, ctx, m_startDate, m_density,
-  m_cumulativeExposureJ, m_genotype, m_origin, s_latentP (static, shared),
-  payloads descriptive/empirical/molineaux/penny/kn (public unique_ptrs).
-- DescriptiveData{duration,notPrintedMDWarning} payload joins the phase-5 trio;
-  Descriptive statics (meanLogParasiteCount, sigma0sq, xNuStar), Empirical
-  _* statics and Penny immune_threshold_gamma/update_density_gamma move to
-  file scope of their owning TUs (grep-verified: no external readers; all
-  init_* re-run per scenario load → per-run re-init preserved; TwoRunsSuite is
-  the tripwire).
-- Kn() stays SHARED on the struct: callers are LSTMDrugType.cpp:59-63 and
-  LSTMDrugConversion.cpp:174-186 (PkPd LSTMDrug path); PkPd is unavailable for
-  Descriptive (treatPkPd_descriptive throws) but live for ALL FOUR Common
-  kinds → multi-kind → shared. Lazy unique_ptr kept (phase-5 allocation fix).
-- Naming: shared dispatch keeps `infection_` prefix (infection_new,
-  infection_new_checkpointed, infection_update, infection_checkpoint,
-  infection_init_<kind>, infection_ctor_<kind>, infection_duration_descriptive);
-  per-kind hooks are verb-first free functions (update_density_<kind>,
-  read_<kind>, checkpoint_<kind>, determine_densities_descriptive). Declarations
-  in Infection.h. TU-only helpers (getInflatedDensity, sigma_noise,
-  sampleSubPatentValue, getClonalSummation, getVariantSpecificSummation) become
-  file-local statics in their kind TU.
-- Trivial accessors (getDensity, cumulativeExposureJ, clearImmunity,
-  bloodStage, isHrp2Deficient, genotype(), origin(), expired(), seqDensity(),
-  Kn(), operator&) stay inline members of the struct — zero WH churn.
-- Ctor draw point: shared ctor keeps NO RNG draw (nowOrTs0() is a pure getter);
-  Descriptive duration draw moves into `case Kind::Descriptive:` of the
-  infection_new switch (infection_ctor_descriptive →
-  infection_duration_descriptive draw is that case's FIRST and only RNG action;
-  the assert before it never draws). Checkpoint reader for Descriptive
-  allocates its payload before reading duration+notPrintedMDWarning (wire
-  order unchanged: those two last, after the 5 shared fields).
-- Commit ladder: 1) class→struct public + friends deleted; 2) Descriptive;
-  3) Dummy+Empirical; 4) Molineaux+Penny; 5) shared ctor/update/checkpoint
-  dispatch flip + m_kind→kind + header shrink + suites; 6) final gate + PERF
-  row + close. Every commit: build + ctest 52 + unittest 94 + tier-a 53;
-  tier-b seeds 1-4 after Descriptive and Molineaux commits; full a+b at final.
+## Done already (pre-7g, do NOT redo)
+No empty files; small cpps collapsed except xml/demography.cpp (KEEP — schema
+drag); zero friends; no Global.h (checkpoint.h/mod.h carry OM-scope usings,
+order-sensitive); Clock.h owns SimTime+sim+SimClock; Infection = struct+free
+functions (7f).
 
-## Status
-- [x] setup: branch, build-p7f green (52/52, .OK!, 53/53), this HANDOFF
-- [x] C1 struct flip 6d1f0189 (public struct, friend blocks + MolineauxInfectionSuite/
-      PennyInfectionSuite/UnittestUtil friend decls dead)
-- [x] C2 Descriptive 64149ea0 (payload + statics→file scope + free fns + call sites)
-- [x] C3 Dummy+Empirical 48b4e469
-- [x] C4 Molineaux+Penny b0f16140
-- [x] C5 shared dispatch flip ddce7ebc (infection_new/update/checkpoint), kind rename
-- [x] C6 final: T1 a+b 63/63, cloc table, bench, PERF row 7f, report
-- [x] perf-fix 6f025ebb: bench found +2.3 % regression (heap DescriptiveData
-      payload: 2nd malloc/infection + dependent load per tick in expired());
-      fixed by embedding the 12-byte payload by value. Re-bench ≈12.17 vs
-      ≈12.24 (≤1 % band); T1 re-run green after fix.
+## Steps
+- [x] C1 folder folds: humans/HostColumns.h + infections/SlotAllocator.h →
+      model/Host/ (dirs deleted); mon/init.h → mon/Monitoring.h. 18332→18320.
+- [x] C2 dead-code round 1 (warnings-driven + grep): cts shells ×3, #if 0
+      Vaccine block, ClinicalEventScheduler 5 dead instance members, dead enum
+      labels ×2, vectors::addTo, dead ctor params ×5, dead set-but-unused ×2,
+      -Wreorder ×2, demography comment block. →18282.
+- [x] C3 accessor kill ×11 (getGenotypes, liver/bloodEffect, neg_m_exponent,
+      molecular_weight_ratio, getPartialEIR ×2, getSpeciesIndexMap,
+      GetModelName, setHadEvent/setHadRelapse). →18268.
+- [x] C4 folds round 2 (PkPd/Drug, WithinHost/Pathogenesis) + scan round 2
+      (numDrugTypes, NvOguess, dead fwd decls ×2, dead test struct). →18261.
+- [x] C5 Population accessors (getSize/getRecentBirths/resetRecentBirths →
+      public size/recentBirths, 14 sites). Read-pass remainder + wrapper sweep:
+      all candidates kept with reasons (see keep-proofs). →18248.
+- [x] C6 dangling doxygen block (AnophelesModel.h, comment-only) + final gates:
+      ctest 52/52, unittest .OK!, T1 a+b seeds 1-10 = 63/63 on final binary,
+      bench median 12.17 s (no regression), PERF.md row 7g. DONE.
 
-### Close-out (7f final)
-- Final gate on 6f025ebb: ctest 52/52, unittest .OK! (94), T1 tiers a+b
-  seeds 1-10 = 63/63 bit-identical.
-- LOC (cloc code): model 18,417 → 18,421 (+4); Infection dir 1,091 → 1,095
-  (+4); header 417 → 402 lines. Readability refactor — LOC-neutral by design.
-- Bench (taskset c5, median user-s, interleaved): p7e ≈12.15-12.16,
-  p7f ≈12.23-12.25 → +0.5 % residual, perf-attributable to inline/layout
-  shift only (determine_densities_descriptive 4.33→4.65 %, update_descriptive
-  4.00→4.32 %); accepted (<1 % band).
+## Method / proof tooling
+- Trap (cost an hour): pre-rewrite paths (Environment.h, DailyDate.*,
+  Scenario.cpp, Clinical/CohortTreatment.*, Clinical/Morbidity.*, Vivax/*,
+  VectorBio/*, mon/NaturalScreens.*) do NOT exist in this repo — that code was
+  folded into model/xml/*.cpp, model/core/, Host/, Transmission/ in p7b-p7f.
+  sed/grep on them silently no-op. Resolve paths with `find model` first.
+  (Also: the old DailyDate type itself is gone from the new tree — renamed in
+  an earlier phase; its helpers survive.)
+- /tmp/opencode/orphan.sh + two inline python scans (decl-identifier vs
+  whole-tree occurrence count, comments stripped): function defs (.cpp),
+  header decls, header inline defs, member fields, type names.
+- model is a static lib → linker catches nothing; grep occurrence count is the
+  proof, quoted in commit messages.
 
-## Traps (inherited + new)
-- -ffp-contract=off always in gated builds; NO reassociation (phase 8 owns it).
-- m_rng draw-order rule: the Descriptive duration draw, SlotAllocatorSuite
-  state-word goldens ("genotype draw + duration draw") and RngGoldens are the
-  tripwires; TwoRunsSuite catches statics-reset mistakes.
-- unittest must run from build-p7f/unittest/.
-- Scenario load calls Infection::init(latentP) + exactly one init_<kind>
-  (model/xml/scenario.cpp:97-141) — keep call order on the free-fn retype.
-- Checkpoints: bytes kept this phase (12/12a goldens stay green) — format may
-  break per user ruling but this phase buys nothing from it.
-- ≤5 fix iterations per divergence, then revert+log.
+## Do-not-touch / keep-proofs
+- xoshiro.h + contrib/chacha.h verbatim (contract) — chacha_core/generate_block
+  look dead but are copy-mandated.
+- CxxTest suites + test methods (runner codegen finds them); 6 `dont_testMol*`
+  disabled fixtures (suite-deletion veto).
+- slope()/max_killing_rate()/genotype()/origin()/N()/nowOrTs0/1 — readable
+  formula names over raw fields, 7f policy; keep.
+- Human age()/rng()/monitoringAgeGroup() encode SoA column lookups — keep.
+- Kind-dispatch one-liners in WHInterface/ClinicalModel = variant dispatch,
+  variants are user-veto-protected; keep.
+- timed_deploy_* uniform signature (family dispatch) — unused params stay.
+- CalcNvO solver untouched (no-solver-touch rule).
+- Checkpoint wire frozen: VivaxBrood hadEvent/hadRelapse are write-only
+  in-model but wire-streamed — kept as public fields, setters killed.
+
+## Traps
+- -ffp-contract=off always; no reassociation ever (phase 8).
+- mon/Monitoring.h now carries the 3 scenario-load decls (readSurveyDates /
+  initReporting/initCohorts) — defs live in xml/monitoring.cpp; scnXml fwd
+  decls added to Monitoring.h (order-sensitive section: keep near top).
+- Episode/TransmissionModel ctor init-lists reordered to match declaration
+  order (initializers independent) — re-verify when touching either.
 - Untracked PROMPT.md/email/pgodata-p7d/ = user files, leave alone.

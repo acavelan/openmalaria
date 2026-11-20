@@ -86,24 +86,15 @@ public:
     //@}
     
     /// @brief Non-static methods
-    //@{
-    /** Get the liver stage action.
-     *
-     * 0 implies no action, <0 implies retrospective action, and n>0
-     * implies treatment for next n time steps. */
-    inline SimTime liverEffect()const{ return timeLiver; }
-    /** Get the blood stage action.
-     *
-     * 0 implies no action, <0 implies retrospective action, and n>0
-     * implies treatment for next n time steps. */
-    inline SimTime bloodEffect()const{ return timeBlood; }
     //@}
-    
+
+    /// Liver/blood stage action: 0 = no action, <0 = retrospective action,
+    /// n>0 = treatment for next n time steps.
+    SimTime timeLiver, timeBlood;
+
 private:
     // non-static:
     Treatments( RunContext& ctx, const scnXml::TreatmentOption& elt );
-    
-    SimTime timeLiver, timeBlood;
 };
 
 }

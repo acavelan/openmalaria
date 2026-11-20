@@ -139,7 +139,7 @@ using WithinHost::Genotypes;
 
 // -----  Initialisation of model, done before human warmup  ------
 
-void AnophelesModel::initialise(size_t species, MosquitoParams mosqParams)
+void AnophelesModel::initialise(MosquitoParams mosqParams)
 {
     mosq = mosqParams;
 

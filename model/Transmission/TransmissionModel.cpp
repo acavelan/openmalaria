@@ -129,44 +129,6 @@ void TransmissionModel::ctsCbP_CD(const vector<Host::Human> &population, ostream
         stream << '\t' << total / population.size();
     }
 }
-void TransmissionModel::ctsNetInsecticideContent(const vector<Host::Human> &population, ostream &stream)
-{
-    //     double meanVar = 0.0;
-    //     int n = 0;
-    //     for(const Host::Human &human : population) {
-    //         if( human.perHostTransmission.getITN().timeOfDeployment() >= sim::zero() ){
-    //             ++n;
-    //             meanVar += human.perHostTransmission.getITN().getInsecticideContent(_ITNParams);
-    //         }
-    //     }
-    //     stream << '\t' << meanVar/n;
-}
-void TransmissionModel::ctsIRSInsecticideContent(const vector<Host::Human> &population, ostream &stream)
-{
-    // TODO(monitoring): work out how this applies when multiple IRS effects are allowed
-    //     double totalInsecticide = 0.0;
-    //     for(const Host::Human &human : population) {
-    //         totalInsecticide += human.perHostTransmission.getIRS().getInsecticideContent(_IRSParams);
-    //     }
-    //     stream << '\t' << totalInsecticide / population.size();
-}
-void TransmissionModel::ctsIRSEffects(const vector<Host::Human> &population, ostream &stream)
-{
-    // TODO(monitoring): work out how this applies when multiple IRS effects are allowed
-    //     for( size_t i = 0; i < speciesIndex.size(); ++i ){
-    //         const interventions::IRSAnophelesParams& params = species[i]->getHumanBaseParams().irs;
-    //         double totalRA = 0.0, totalPrePSF = 0.0, totalPostPSF = 0.0;
-    //         for(const Host::Human &human : population) {
-    //             totalRA += human.perHostTransmission.getIRS().relativeAttractiveness(params);
-    //             totalPrePSF += human.perHostTransmission.getIRS().preprandialSurvivalFactor(params);
-    //             totalPostPSF += human.perHostTransmission.getIRS().postprandialSurvivalFactor(params);
-    //         }
-    //         stream << '\t' << totalRA / population.size()
-    //             << '\t' << totalPrePSF / population.size()
-    //             << '\t' << totalPostPSF / population.size();
-    //     }
-}
-
 void TransmissionModel::ctsCbResAvailability(ostream &stream)
 {
     for (size_t i = 0; i < speciesIndex.size(); ++i)
@@ -188,9 +150,8 @@ const string &reverseLookup(const map<string, size_t> &m, size_t i)
 }
 
 TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode, vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
-                         vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList, map<string, size_t> speciesIndexList,
-                         int populationSize)
-    : TransmissionModel(ctx, std::move(initEIR), interventionMode, ctx.genotypes.N(), Kind::Vector,
+                         vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList, map<string, size_t> speciesIndexList)
+    : TransmissionModel(ctx, std::move(initEIR), interventionMode, Kind::Vector,
         std::move(speciesList), std::move(emergenceRateEstimatorsList), std::move(speciesIndexList))
 {
     // set VACCINE_GENOTYPE option
@@ -391,8 +352,8 @@ void TransmissionModel::calculateEIR_vector(Host::Human &human, double ageYears,
         const double ageFactor = host.relativeAvailabilityAge(ageYears);
         for (size_t i = 0; i < speciesIndex.size(); ++i)
         {
-            const vector<double> &partialEIR_i = species[i]->getPartialEIRImported();
-            const vector<double> &partialEIR_l = species[i]->getPartialEIRLocal();
+            const vector<double> &partialEIR_i = species[i]->partialEIR_i;
+            const vector<double> &partialEIR_l = species[i]->partialEIR_l;
 
             assert(EIR_i.size() == partialEIR_i.size());
             assert(EIR_l.size() == partialEIR_l.size());

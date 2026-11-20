@@ -34,6 +34,11 @@
 #include <variant>
 #include <vector>
 
+namespace scnXml {
+class Scenario;
+class Monitoring;
+}
+
 namespace OM { class RunContext;
 namespace Host {
 class Human;
@@ -42,6 +47,12 @@ namespace interventions {
 struct ComponentId;
 }
 namespace mon {
+
+// ----- scenario-load API (definitions: model/xml/monitoring.cpp) -----
+
+SimTime readSurveyDates(RunContext& ctx, const scnXml::Monitoring& monitoring);
+void initReporting(RunContext& ctx, const scnXml::Scenario& scenario);
+void initCohorts(RunContext& ctx, const scnXml::Monitoring& monitoring);
 
 inline constexpr size_t NOT_USED = std::numeric_limits<size_t>::max();
 

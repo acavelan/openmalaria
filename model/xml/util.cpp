@@ -393,7 +393,7 @@ namespace OM { namespace util {
 	// Set options to legacy defaults, then override any given in the XML file:
 	options = getLegacyDefaultModelOptions();
 
-    const util::ModelNames namedModelToUse = mnp.GetModelName();
+    const util::ModelNames namedModelToUse = mnp.modelInUse;
     const bool useNamedModel = namedModelToUse != util::ModelNames::none;
     if (useNamedModel)
     {

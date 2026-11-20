@@ -36,7 +36,6 @@
 #include "xml/XMLChecker.h"
 
 #include "mon/Continuous.h"
-#include "mon/init.h"
 #include "mon/Monitoring.h"
 
 #include "interventions/InterventionManager.h"
@@ -206,7 +205,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
 
     // Depends on transmission model (for species indexes):
     // MDA1D may depend on health system (too complex to verify)
-    interventions::InterventionManager::init(ctx, scenario->getInterventions(), *population, *transmission );
+    interventions::InterventionManager::init(ctx, scenario->getInterventions(), *transmission );
     Clinical::ClinicalModel::setHS( ctx, scenario->getHealthSystem() ); // Depends on interventions, PK/PD (from humanPop)
     mon::initCohorts(ctx,  scenario->getMonitoring() ); // Depends on interventions
 
@@ -291,7 +290,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
         Host::InfectionIncidenceModel::preMainSimInit();
         Clinical::InfantMortality::preMainSimInit();
         ctx.genotypes.preMainSimInit();
-        population->resetRecentBirths();
+        population->recentBirths = 0;
         transmission->summarize(ctx); // Only to reset TransmissionModel::inoculationsPerAgeGroup
         mon::initMainSim(ctx);
 

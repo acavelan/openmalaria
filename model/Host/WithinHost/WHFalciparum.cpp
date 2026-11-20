@@ -24,7 +24,7 @@
 #include "util/checkpoint.h"
 #include "core/RunContext.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/Genotypes.h"
@@ -241,7 +241,7 @@ bool WHInterface::diagnosticResult_falciparum( LocalRng& rng, const Diagnostic& 
 
 void WHInterface::treatment_falciparum( Host::Human& human, TreatmentId treatId ){
     const Treatments& treat = Treatments::select( ctx, treatId );
-    treatSimple( human, treat.liverEffect(), treat.bloodEffect() );
+    treatSimple( human, treat.timeLiver, treat.timeBlood );
     
     // triggered intervention deployments:
     treat.deploy( ctx, human,
