@@ -305,7 +305,7 @@ namespace OM { namespace util {
     static void init(const SimClock& clock, xsd::cxx::tree::optional<scnXml::OptionSet, false>& optionsElt,
                             util::ModelNameProvider mnp);
 
-    private:
+    public:
     /*
     * Returns a bitset representing the model options used by the named "base"
     * model.
@@ -351,8 +351,6 @@ namespace OM { namespace util {
         
 	// The model options
 	inline static std::bitset<NUM_OPTIONS> options;
-	
-	friend class ::UnittestUtil;	// Note: class is in base namespace
     };
 } }
 #endif

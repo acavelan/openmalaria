@@ -667,9 +667,7 @@ public:
     /// Deploy some traps (vector kind only).
     void deployVectorTrap(size_t instance, double number, SimTime lifespan);
 
-    friend class PerHost;
-
-private:
+public:
     // -----  non-vector kind (was NonVectorModel; unused for the Vector kind)  -----
     void changeEIRIntervention_nonVector(const scnXml::NonVector &nonVectorData);
 
