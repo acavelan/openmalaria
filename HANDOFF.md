@@ -96,7 +96,7 @@ unittest 3,794 LOC; `interventions/` dir 2,837 LOC (cloc); p6 bench **12.58s** m
    GREEN = semantic: ctest 12/12a two-run goldens pass + 2ITNs round-trip smoke
    (new binary: --checkpoint-stop run, auto-resume run, == fresh single run via
    compareBin) — all in this commit's gates.
-6. [ ] 7.6 FINAL GATE: T1 a+b 63/63 seeds 1-10, ctest 52/52, unittest 94/94, bench +
+6. [x] 7.6 FINAL GATE (run by MAIN SESSION after agent session-2 compaction death): T1 a+b 63/63, ctest 52/52, unittest 94/94, bench +
    ITN-heavy secondary (`/usr/bin/time -f %U` VecFull or LifeNet old vs new), cloc,
    census refresh, PERF row 7, report (kind tables, LOC by substep, phase-8 handoff).
 
