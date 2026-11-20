@@ -211,3 +211,6 @@ order of side-effecting calls all preserved explicitly.
   Gate: 52/52, OK, 53/53.
 - HumanInterventionComponents.h 229->226 (-3): conditions ctor delegates to the
   components ctor (identical operation order). Gate: 52/52, OK, 53/53.
+- scenario.cpp 485->481 + vivax.cpp 119->108 + new latentP.h 9 (net -6): the
+  byte-identical latentP read/try/catch block shared via read_latentP; hand-rolled
+  contains() template -> std::find. Latent literals moved verbatim. Same gates.
