@@ -44,13 +44,11 @@ using Anopheles::AnophelesModel;
 
 void TransmissionModel::ctsCbN_v0(ostream &stream)
 {
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << species[i]->getLastN_v0();
+    for (auto &s : species) stream << '\t' << s->getLastN_v0();
 }
 void TransmissionModel::ctsCbVecStat(Anopheles::VecStat vs, ostream &stream)
 {
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << species[i]->getLastVecStat(vs);
+    for (auto &s : species) stream << '\t' << s->getLastVecStat(vs);
 }
 namespace {
 /// Mean over the population of a per-host term: left fold in host order, the
@@ -84,22 +82,18 @@ void TransmissionModel::ctsCbP_CD(const vector<Host::Human> &population, ostream
 }
 void TransmissionModel::ctsCbResAvailability(ostream &stream)
 {
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << species[i]->getResAvailability();
+    for (auto &s : species) stream << '\t' << s->getResAvailability();
 }
 void TransmissionModel::ctsCbResRequirements(ostream &stream)
 {
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << species[i]->getResRequirements();
+    for (auto &s : species) stream << '\t' << s->getResRequirements();
 }
 
 const string &reverseLookup(const map<string, size_t> &m, size_t i)
 {
-    for (auto it = m.begin(); it != m.end(); ++it)
-    {
-        if (it->second == i) return it->first;
-    }
-    throw TRACED_EXCEPTION_DEFAULT("reverseLookup: key not found"); // shouldn't ever happen
+    auto it = std::find_if(m.begin(), m.end(), [i](const auto &p) { return p.second == i; });
+    if (it == m.end()) throw TRACED_EXCEPTION_DEFAULT("reverseLookup: key not found"); // shouldn't ever happen
+    return it->first;
 }
 
 TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode, vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
@@ -181,8 +175,7 @@ void TransmissionModel::init2_vector(const vector<Host::Human> &population)
 
 void TransmissionModel::scaleEIR_vector(double factor)
 {
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-        species[i]->scaleEIR(factor);
+    for (auto &s : species) s->scaleEIR(factor);
     vectors::scale(initialisationEIR, factor);
     annualEIR = vectors::sum(initialisationEIR);
 }
@@ -259,7 +252,6 @@ void TransmissionModel::calculateEIR_vector(Host::Human &human, double ageYears,
         EIR_i.assign(1, 0.0);
         EIR_l.assign(1, 0.0);
 
-        assert(simulationMode == forcedEIR);
         for (size_t i = 0; i < speciesIndex.size(); ++i)
         {
             /* Calculates EIR per individual (hence N_i == 1).
@@ -275,7 +267,6 @@ void TransmissionModel::calculateEIR_vector(Host::Human &human, double ageYears,
     }
     else
     {
-        assert(simulationMode == dynamicEIR);
         EIR_i.assign(ctx.genotypes.N(), 0.0);
         EIR_l.assign(ctx.genotypes.N(), 0.0);
         const double ageFactor = host.relativeAvailabilityAge(ageYears);
@@ -396,10 +387,7 @@ const string vec_mode_err = "vector interventions can only be used in "
 void TransmissionModel::deployVectorPopInterv(size_t instance)
 {
     if (interventionMode != dynamicEIR) { throw xml_scenario_error(vec_mode_err); }
-    for (auto it = species.begin(); it != species.end(); ++it)
-    {
-        (*it)->deployVectorPopInterv(m_rng, instance);
-    }
+    for (auto &s : species) s->deployVectorPopInterv(m_rng, instance);
 }
 void TransmissionModel::deployVectorTrap(size_t instance, double number, SimTime lifespan)
 {
@@ -413,8 +401,7 @@ void TransmissionModel::deployVectorTrap(size_t instance, double number, SimTime
 
 void TransmissionModel::uninfectVectors_vector()
 {
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-        species[i]->uninfectVectors();
+    for (auto &s : species) s->uninfectVectors();
 }
 
 void TransmissionModel::summarize_vector(RunContext& ctx)
