@@ -560,50 +560,24 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
 
     map<string, Nhh> currentNhh = nhhInstances;
 
-    for (auto it = reduceNhhAvailability.begin(); it != reduceNhhAvailability.end(); ++it)
+    // The five reduce maps below all applied the same multiply to a different Nhh
+    // field. Hoisted find (the existence test was decay-invariant) keeps the exact
+    // multiply sequence: map key order, then per-key vector order.
+    auto applyReduces = [&](map<string,vector<util::SimpleDecayingValue>> &reduces, double Nhh::* field)
     {
-        for (const auto &decay : it->second)
+        for (const auto &reduce : reduces)
         {
-            if (currentNhh.count(it->first) != 0) // Check that the non-human hosts still exist
-                currentNhh[it->first].avail_i *= 1.0 - decay.current_value(ctx.clock.ts0());
+            auto nhh = currentNhh.find(reduce.first);
+            if (nhh == currentNhh.end()) continue; // Check that the non-human hosts still exist
+            for (const auto &decay : reduce.second)
+                nhh->second.*field *= 1.0 - decay.current_value(ctx.clock.ts0());
         }
-    }
-
-    for (auto it = reduceP_B_I.begin(); it != reduceP_B_I.end(); ++it)
-    {
-        for (const auto &decay : it->second)
-        {
-            if (currentNhh.count(it->first) != 0) // Check that the non-human hosts still exist
-                currentNhh[it->first].P_B_I *= 1.0 - decay.current_value(ctx.clock.ts0());
-        }
-    }
-
-    for (auto it = reduceP_C_I.begin(); it != reduceP_C_I.end(); ++it)
-    {
-        for (const auto &decay : it->second)
-        {
-            if (currentNhh.count(it->first) != 0) // Check that the non-human hosts still exist
-                currentNhh[it->first].P_C_I *= 1.0 - decay.current_value(ctx.clock.ts0());
-        }
-    }
-
-    for (auto it = reduceP_D_I.begin(); it != reduceP_D_I.end(); ++it)
-    {
-        for (const auto &decay : it->second)
-        {
-            if (currentNhh.count(it->first) != 0) // Check that the non-human hosts still exist
-                currentNhh[it->first].P_D_I *= 1.0 - decay.current_value(ctx.clock.ts0());
-        }
-    }
-
-    for (auto it = reduceFecundity.begin(); it != reduceFecundity.end(); ++it)
-    {
-        for (const auto &decay : it->second)
-        {
-            if (currentNhh.count(it->first) != 0) // Check that the non-human hosts still exist
-                currentNhh[it->first].rel_fecundity *= 1.0 - decay.current_value(ctx.clock.ts0());
-        }
-    }
+    };
+    applyReduces(reduceNhhAvailability, &Nhh::avail_i);
+    applyReduces(reduceP_B_I, &Nhh::P_B_I);
+    applyReduces(reduceP_C_I, &Nhh::P_C_I);
+    applyReduces(reduceP_D_I, &Nhh::P_D_I);
+    applyReduces(reduceFecundity, &Nhh::rel_fecundity);
 
     for (auto it = currentNhh.begin(); it != currentNhh.end(); ++it)
     {
