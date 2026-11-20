@@ -28,7 +28,6 @@
 #include "util/random.h"
 
 namespace OM {
-namespace checkpoint { class Archive; }
     class Parameters;
 namespace Host {
     class Human;
@@ -66,14 +65,6 @@ public:
   static void init(RunContext& ctx, const Parameters& parameters);
   /// Create a new instance (Kind selected from the model options)
   static InfectionIncidenceModel* createModel (RunContext& ctx);
-  
-  /// Checkpoint the run-modified infection counter
-  /// (model/checkpoint/statics.cpp).
-  static void staticCheckpoint (checkpoint::Archive& a);
-
-  /// Save/restore this instance's wire state
-  /// (model/checkpoint/humans.cpp).
-  void checkpoint (checkpoint::Archive& a);
   
   /// Reset summary outputs at beginning of main simulation
   static inline void preMainSimInit() {
@@ -135,7 +126,7 @@ public:
    */
   void reportNumNewInfections(Human& human, int newNumInfections_i, int newNumInfections_l);
   
-protected:
+public:  // run state; wire in checkpoint/humans.cpp + statics.cpp
   /// Calculates the expected number of infections, excluding vaccine effects.
   /// Kind switch: one case per old-subclass formula.
   double getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost& phTrans);

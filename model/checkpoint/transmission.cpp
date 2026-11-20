@@ -36,15 +36,15 @@ namespace OM {
 using checkpoint::Archive;
 
 namespace util {
-void SimpleDecayingValue::checkpoint (checkpoint::Archive& a) {
-    a.value (deploy_t);
+void checkpoint (checkpoint::Archive& a, SimpleDecayingValue& sdv) {
+    a.value (sdv.deploy_t);
     // het = per-deployment RNG sample of the decay curve. Deployments are
     // replayed by interventions at restore; sampled clones aren't on the
     // wire yet (ponytail: extend with a hetFactor payload when a species
     // intervention needs round-tripping, see HANDOFF limits).
-    bool hasSample = het != nullptr;
+    bool hasSample = sdv.het != nullptr;
     a.boolean (hasSample);
-    if (a.reading() && hasSample && het == nullptr)
+    if (a.reading() && hasSample && sdv.het == nullptr)
         throw checkpoint::checkpoint_error (
             "checkpoint: sampled decay deployment not yet supported");
 }
@@ -61,110 +61,110 @@ void ckSdvVector (Archive& a, std::vector<util::SimpleDecayingValue>& v) {
     if (a.reading() && n != v.size())
         throw checkpoint::checkpoint_error (
             "species intervention count mismatch");
-    for (auto& sdv : v) sdv.checkpoint (a);
+    for (auto& sdv : v) util::checkpoint (a, sdv);
 }
 } // namespace
 
-void AnophelesModel::checkpoint (Archive& a) {
+void checkpoint (Archive& a, AnophelesModel& m) {
     // --- per-species dynamics state (order mirrors the old v2 wire) ---
-    a.value (mosq.seekingDeathRate);
-    a.value (mosq.seekingDuration);
-    a.value (mosq.probMosqSurvivalOvipositing);
-    ckSdvVector (a, seekingDeathRateIntervs);
-    ckSdvVector (a, probDeathOvipositingIntervs);
-    a.vector (partialEIR_i);
-    a.vector (partialEIR_l);
-    a.value (EIRRotateAngle);
-    a.vector (FSCoeffic);
-    a.vector (forcedS_v);
-    a.value (initNvFromSv);
-    a.value (initOvFromSv);
-    ckSdvVector (a, emergenceReduction);
-    a.vector (mosqEmergeRate);
-    a.vector (quinquennialS_v);
-    a.value (initNv0FromSv);
-    a.value (initSvFromEIR);
-    a.value (mosq.restDuration);
-    a.value (mosq.EIPDuration);
-    a.value (N_v_length);
-    a.vector (P_A);
-    a.vector (P_df);
-    a.vector (P_dif_i);
-    a.vector (P_dif_l);
-    a.vector (P_dff);
-    a.vector (N_v);
-    a.vector (O_v_i);
-    a.vector (O_v_l);
-    a.vector (S_v_i);
-    a.vector (S_v_l);
-    a.vector (P_Amu);
-    a.vector (P_A1);
-    a.vector (P_Ah);
-    a.vector (fArray);
-    a.vector (ftauArray);
-    a.vector (uninfected_v);
-    a.value (timeStep_N_v0);
-    bool mpd = simpleMPD != nullptr;
+    a.value (m.mosq.seekingDeathRate);
+    a.value (m.mosq.seekingDuration);
+    a.value (m.mosq.probMosqSurvivalOvipositing);
+    ckSdvVector (a, m.seekingDeathRateIntervs);
+    ckSdvVector (a, m.probDeathOvipositingIntervs);
+    a.vector (m.partialEIR_i);
+    a.vector (m.partialEIR_l);
+    a.value (m.EIRRotateAngle);
+    a.vector (m.FSCoeffic);
+    a.vector (m.forcedS_v);
+    a.value (m.initNvFromSv);
+    a.value (m.initOvFromSv);
+    ckSdvVector (a, m.emergenceReduction);
+    a.vector (m.mosqEmergeRate);
+    a.vector (m.quinquennialS_v);
+    a.value (m.initNv0FromSv);
+    a.value (m.initSvFromEIR);
+    a.value (m.mosq.restDuration);
+    a.value (m.mosq.EIPDuration);
+    a.value (m.N_v_length);
+    a.vector (m.P_A);
+    a.vector (m.P_df);
+    a.vector (m.P_dif_i);
+    a.vector (m.P_dif_l);
+    a.vector (m.P_dff);
+    a.vector (m.N_v);
+    a.vector (m.O_v_i);
+    a.vector (m.O_v_l);
+    a.vector (m.S_v_i);
+    a.vector (m.S_v_l);
+    a.vector (m.P_Amu);
+    a.vector (m.P_A1);
+    a.vector (m.P_Ah);
+    a.vector (m.fArray);
+    a.vector (m.ftauArray);
+    a.vector (m.uninfected_v);
+    a.value (m.timeStep_N_v0);
+    bool mpd = m.simpleMPD != nullptr;
     a.boolean (mpd);
-    if (a.reading() && mpd && !simpleMPD)
+    if (a.reading() && mpd && !m.simpleMPD)
         throw checkpoint::checkpoint_error (
             "checkpoint has MPD state; scenario doesn't enable MPD");
     if (mpd) {
-        a.vector (simpleMPD->quinquennialOvipositing);
-        a.value (simpleMPD->developmentDuration);
-        a.value (simpleMPD->probPreadultSurvival);
-        a.value (simpleMPD->fEggsLaidByOviposit);
-        a.vector (simpleMPD->invLarvalResources);
-        a.vector (simpleMPD->nOvipositingDelayed);
+        a.vector (m.simpleMPD->quinquennialOvipositing);
+        a.value (m.simpleMPD->developmentDuration);
+        a.value (m.simpleMPD->probPreadultSurvival);
+        a.value (m.simpleMPD->fEggsLaidByOviposit);
+        a.vector (m.simpleMPD->invLarvalResources);
+        a.vector (m.simpleMPD->nOvipositingDelayed);
     }
 }
 
-void EmergenceRateEstimator::checkpoint (Archive& a) {
-    a.value (scaleFactor);
-    a.value (shiftAngle);
-    a.boolean (rotated);
-    a.boolean (scaled);
+void checkpoint (Archive& a, EmergenceRateEstimator& e) {
+    a.value (e.scaleFactor);
+    a.value (e.shiftAngle);
+    a.boolean (e.rotated);
+    a.boolean (e.scaled);
 }
 
 } // namespace Anopheles
 
-void TransmissionModel::checkpoint (Archive& a) {
-    a.rng (m_rng);
-    a.value (initIterations);
-    a.value (meanAvail);
+void checkpoint (Archive& a, TransmissionModel& tm) {
+    a.rng (tm.m_rng);
+    a.value (tm.initIterations);
+    a.value (tm.meanAvail);
     // --- shared state (both kinds) ---
-    a.value (simulationMode);
-    a.value (interventionMode);
-    a.vector (initialisationEIR);
-    a.vector (laggedKappa);
-    a.value (annualEIR);
-    a.value (_annualAverageKappa);
-    a.value (_sumAnnualKappa);
-    a.value (tsAdultEIR);
-    a.value (tsAdultEIR_i);
-    a.value (tsAdultEIR_l);
-    a.value (surveyInputEIR);
-    a.value (surveyInputEIR_i);
-    a.value (surveyInputEIR_l);
-    a.value (surveySimulatedEIR);
-    a.value (surveySimulatedEIR_i);
-    a.value (surveySimulatedEIR_l);
-    a.value (lastSurveyTime);
-    a.value (adultAge);
-    a.value (numTransmittingHumans);
-    if (kind == Kind::Vector) {
-        uint64_t n = species.size();
+    a.value (tm.simulationMode);
+    a.value (tm.interventionMode);
+    a.vector (tm.initialisationEIR);
+    a.vector (tm.laggedKappa);
+    a.value (tm.annualEIR);
+    a.value (tm._annualAverageKappa);
+    a.value (tm._sumAnnualKappa);
+    a.value (tm.tsAdultEIR);
+    a.value (tm.tsAdultEIR_i);
+    a.value (tm.tsAdultEIR_l);
+    a.value (tm.surveyInputEIR);
+    a.value (tm.surveyInputEIR_i);
+    a.value (tm.surveyInputEIR_l);
+    a.value (tm.surveySimulatedEIR);
+    a.value (tm.surveySimulatedEIR_i);
+    a.value (tm.surveySimulatedEIR_l);
+    a.value (tm.lastSurveyTime);
+    a.value (tm.adultAge);
+    a.value (tm.numTransmittingHumans);
+    if (tm.kind == TransmissionModel::Kind::Vector) {
+        uint64_t n = tm.species.size();
         a.value (n);
-        if (a.reading() && n != species.size())
-            throw checkpoint::checkpoint_error ("species count mismatch");
-        for (auto& s : species) s->checkpoint (a);
-        if (a.reading() && n != emergenceRateEstimators.size())
+        if (a.reading() && n != tm.species.size())
+            throw checkpoint::checkpoint_error ("tm.species count mismatch");
+        for (auto& s : tm.species) Anopheles::checkpoint (a, *s);
+        if (a.reading() && n != tm.emergenceRateEstimators.size())
             throw checkpoint::checkpoint_error ("estimator count mismatch");
-        for (auto& e : emergenceRateEstimators) e->checkpoint (a);
+        for (auto& e : tm.emergenceRateEstimators) Anopheles::checkpoint (a, *e);
     } else {
-        a.value (nSpore);
-        a.vector (interventionEIR);
-        a.vector (initialKappa);
+        a.value (tm.nSpore);
+        a.vector (tm.interventionEIR);
+        a.vector (tm.initialKappa);
     }
 }
 
@@ -174,7 +174,7 @@ namespace checkpoint {
 
 void ckTransmission (Archive& a, RunContext&,
         Transmission::TransmissionModel& transmission) {
-    transmission.checkpoint (a);
+    Transmission::checkpoint (a, transmission);
 }
 
 } // namespace checkpoint

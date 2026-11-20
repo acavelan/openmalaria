@@ -27,7 +27,6 @@
 #include "util/random.h"
 
 namespace OM {
-namespace checkpoint { class Archive; }
 namespace WithinHost {
     class Infection;
 }
@@ -59,9 +58,6 @@ public:
     /// Get the drug type's index.
     size_t getIndex() const;
 
-    /// Save/restore wire state (model/checkpoint/humans.cpp).
-    void checkpoint (checkpoint::Archive& a);
-    
     /** Indicate a new medication this time step.
      *
      * Stores (time, qty) pair in the doses container.
@@ -120,6 +116,7 @@ private:
     double drugFactor_conversion(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const;
     void updateConcentration_conversion(double body_mass);
     
+public:  // run state; wire in checkpoint/humans.cpp
     Kind kind;
     /// Always links a drug instance to its drug-type data (Conversion kind:
     /// typeData = parent, metaboliteData = metabolite)

@@ -35,7 +35,6 @@ namespace OM { class RunContext; }
 
 namespace OM {
     namespace Host { class Human; }
-    namespace checkpoint { class Archive; }
     namespace WithinHost { namespace Pathogenesis {
 
 using util::LocalRng;
@@ -111,9 +110,6 @@ public:
     static void initMueller( RunContext& ctx, const Parameters& parameters );
     static void initPyrogen( RunContext& ctx, const Parameters& parameters );
 
-    /// Save/restore wire state (model/checkpoint/humans.cpp).
-    void checkpoint (checkpoint::Archive& a);
-
 protected:
     /** Create a PathogenesisModel (_pyrogenThres = initPyroThres for the
      * pyrogenic kinds, per old PyrogenPathogenesis ctor). */
@@ -122,6 +118,7 @@ protected:
     /// Episode probability: one case per Kind (were three virtual overrides).
     double getPEpisode(double timeStepMaxDensity, double totalDensity);
 
+public:
     //! comorbidity factor for heterogeneity
     double _comorbidityFactor;
 
@@ -130,6 +127,7 @@ private:
     void updatePyrogenThres(double totalDensity);
 
     Kind kind;
+public:
     /// Critical density for fever (clinical episodes); Pyrogen and Predet only
     double _pyrogenThres;
 };

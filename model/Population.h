@@ -46,10 +46,6 @@ public:
      * while keeping the population size and demography distirbution unchanged. */
     void update();
 
-    /** Checkpoint (read) */
-
-    /** Checkpoint (write) */
-
     /** The simulated human hosts */
 RunContext& ctx;
 

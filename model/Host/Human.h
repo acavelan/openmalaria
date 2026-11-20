@@ -101,10 +101,6 @@ public:
     /** Remove host from expired cohorts */
     void updateCohortSet();
 
-    /** Checkpoint (read) */
-
-    /** Checkpoint (write) */
-
     /** Contains per-species vector data (VectorModel only). */
     Transmission::PerHost perHostTransmission;
 

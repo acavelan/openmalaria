@@ -54,7 +54,6 @@ class UnittestUtil;
 class InfectionImmunitySuite;
 
 namespace OM {
-namespace checkpoint { class Archive; }
 namespace Host {
     class Human;
 }
@@ -163,9 +162,6 @@ public:
 
     VivaxBrood( RunContext& ctx, LocalRng& rng, int origin, WHInterface *host );
     ~VivaxBrood();
-    /** Save a checkpoint. */
-    /** Create from checkpoint. */
-    
     struct UpdResult{
         UpdResult() : newPrimaryBS(false), newRelapseBS(false), newRelapsebBS(false), newBS(false) {}
         bool newPrimaryBS, newRelapseBS, newRelapsebBS, newBS, isFinished;
@@ -198,10 +194,7 @@ public:
     /** Fully clear liver stage parasites. */
     void treatmentLS();
 
-    /// Save/restore wire state (model/checkpoint/humans.cpp).
-    void checkpoint (checkpoint::Archive& a);
-
-private:
+public:  // run state; wire in checkpoint/humans.cpp
     
     // list of times at which the merozoite and hypnozoites release, ordered by
     // time of release, soonest last (i.e. last element is next one to release)
