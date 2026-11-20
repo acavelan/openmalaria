@@ -90,8 +90,7 @@ class VaccineParams {
 /** Get one minus the (decayed) efficacy of the given vaccine type: product
  * over this human's matching dose records in insertion order (parity: c;
  * 1 for no effect, 0 for full effect). Implements Human::vaccine_factor. */
-inline double vaccine_factor(Context& ctx, const std::vector<VacRecord>& vac, Vaccine::Types type,
-                             uint32_t genotype);
+inline double vaccine_factor(Context& ctx, const std::vector<VacRecord>& vac, Vaccine::Types type, uint32_t genotype);
 
 /** Vaccinate unless the passed VaccineLimits specify not to (draw order:
  * first dose per component takes a decay het sample BEFORE the per-genotype
@@ -135,8 +134,7 @@ inline double VaccineParams::getInitialEfficacy(LocalRng& rng, size_t numPrevDos
 
 // ———  per-human vaccine state: VacRecord column (old PerHumanVaccine)  ———
 
-inline double vaccine_factor(Context& ctx, const std::vector<VacRecord>& vac, Vaccine::Types type,
-                             uint32_t genotype) {
+inline double vaccine_factor(Context& ctx, const std::vector<VacRecord>& vac, Vaccine::Types type, uint32_t genotype) {
     // parity: c — records multiply in insertion (deployment) order
     double factor = 1.0;
     for (const VacRecord& r : vac) {

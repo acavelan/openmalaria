@@ -75,8 +75,7 @@ ClinicalModel::ClinicalModel(Context& ctx, double tSF, const Kind kind)
 
 // parity: guard = old ClinicalModel ctor's Kind::EventScheduler check, verbatim
 // (no RNG draws in any ctor; ctor layering cannot shift the stream).
-CMEventScheduler::CMEventScheduler(Context& ctx, double tSF)
-    : ClinicalModel(ctx, tSF, Kind::EventScheduler) {
+CMEventScheduler::CMEventScheduler(Context& ctx, double tSF) : ClinicalModel(ctx, tSF, Kind::EventScheduler) {
     if (tSF != 1.0) {
         // p(treatment seeking) is part of tree & handled generically, so we
         // don't have a way of modifying it. (parity: old ES ctor)
@@ -107,9 +106,7 @@ void CMEventScheduler::doClinicalUpdate(Human& human, double ageYears, WithinHos
     esClinicalUpdate(*this, ctx, human, ageYears, pg);
 }
 
-SimTime CMEventScheduler::timeOfLastTreatment() const {
-    return es_time_treatment();
-}
+SimTime CMEventScheduler::timeOfLastTreatment() const { return es_time_treatment(); }
 
 bool ClinicalModel::isExistingCase() {
     // If treated in the recent past:

@@ -70,7 +70,7 @@ void clinicalUpdate5Day(ClinicalModel& cm, Context& ctx, Human& human, double ag
             // (This does affect tests.)
             cm.uncomplicatedEvent(human, pgState); // virtual: tree vs immediate
         }
-    } else if (pgState & Episode::SICK) { // sick but not from malaria
+    } else if (pgState & Episode::SICK) {      // sick but not from malaria
         cm.uncomplicatedEvent(human, pgState); // virtual: tree vs immediate
     }
 

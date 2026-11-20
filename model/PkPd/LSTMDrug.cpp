@@ -75,9 +75,7 @@ LSTMDrugOneComp::LSTMDrugOneComp(const LSTMDrugType& type, LocalRng& rng) : LSTM
     neg_elim_sample = -type.sample_elim_rate(rng);
 }
 
-double LSTMDrugOneComp::getConcentration(size_t index) const {
-    return index == typeData->index ? concentration : 0.0;
-}
+double LSTMDrugOneComp::getConcentration(size_t index) const { return index == typeData->index ? concentration : 0.0; }
 
 // TODO: in high transmission, is this going to get called more often than updateConcentration?
 // When does it make sense to try to optimise (avoid doing decay calcuations here)?
@@ -177,9 +175,7 @@ LSTMDrugThreeComp::LSTMDrugThreeComp(const LSTMDrugType& type, LocalRng& rng) : 
     C = numeric_limits<double>::quiet_NaN();
 }
 
-double LSTMDrugThreeComp::getConcentration(size_t index) const {
-    return index == typeData->index ? conc() : 0.0;
-}
+double LSTMDrugThreeComp::getConcentration(size_t index) const { return index == typeData->index ? conc() : 0.0; }
 
 void LSTMDrugThreeComp::updateCached(double body_mass) const {
     if (last_bm == body_mass)

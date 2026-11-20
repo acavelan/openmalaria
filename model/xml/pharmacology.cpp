@@ -176,7 +176,8 @@ LSTMDrugType::LSTMDrugType(Context& ctx, size_t index, const scnXml::PKPDDrug& d
             for (const scnXml::Restriction& restriction : phenotype.getRestriction()) {
                 size_t n = expected_loci.erase(restriction.getOnLocus());
                 if (n == 0)
-                    throw util::xml_scenario_error(mismatch(restriction.getOnLocus(), pheno_name(), first_phenotype_name));
+                    throw util::xml_scenario_error(
+                        mismatch(restriction.getOnLocus(), pheno_name(), first_phenotype_name));
             }
             if (!expected_loci.empty())
                 throw util::xml_scenario_error(mismatch(*expected_loci.begin(), first_phenotype_name, pheno_name()));

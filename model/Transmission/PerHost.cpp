@@ -120,9 +120,7 @@ void PerHostAnophParams::init(Context& ctx, const scnXml::Mosq& mosq) { ctx.anop
 
 size_t PerHostAnophParams::numSpecies(Context& ctx) { return ctx.anophParams->size(); }
 
-const PerHostAnophParams& PerHostAnophParams::get(Context& ctx, size_t species) {
-    return (*ctx.anophParams)[species];
-}
+const PerHostAnophParams& PerHostAnophParams::get(Context& ctx, size_t species) { return (*ctx.anophParams)[species]; }
 
 void PerHostAnophParams::setEntoAvailabilityFactor(Context& ctx, size_t species, double entoAvailability) {
     (*ctx.anophParams)[species].entoAvailabilityFactor = entoAvailability;

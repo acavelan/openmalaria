@@ -71,8 +71,7 @@ static ComponentId component_id(Context& ctx, const std::string& textId) {
         throw util::base_exception("invalid component id"); // used before defined
     return id;
 }
-HumanIntervention::HumanIntervention(Context& ctx,
-                                     const xsd::cxx::tree::sequence<scnXml::Component>& componentList) {
+HumanIntervention::HumanIntervention(Context& ctx, const xsd::cxx::tree::sequence<scnXml::Component>& componentList) {
     components.reserve(componentList.size());
     for (auto it = componentList.begin(), end = componentList.end(); it != end; ++it)
         components.push_back(component_id(ctx, it->getId()));
@@ -94,8 +93,7 @@ HumanIntervention::HumanIntervention(Context& ctx, const xsd::cxx::tree::sequenc
     sort_components(ctx, components);
 }
 
-void HumanIntervention::deploy(Context& ctx, Human& human, mon::Deploy::Method method,
-                               VaccineLimits vaccLimits) const {
+void HumanIntervention::deploy(Context& ctx, Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const {
     for (size_t cond : conditions) {
         // Abort deployment if any condition is false.
         if (!mon::checkCondition(ctx, cond))
@@ -281,9 +279,10 @@ void print_component(std::ostream& out, const ComponentConfig& c) {
     // of that enum). IPT entry reproduces the former ternary's default:
     // "clear immunity" (Component::IPT has no implementation; the old chain
     // fell through to its last branch for it too).
-    static const char* const NAMES[] = {"Recruit only", "Screen", "treatSimple", "treatPKPD", "Decision tree",
-                                        "PEV", "BSV", "TBV", "clear immunity", // IPT: former default fall-through
-                                        "ITN", "IRS", "GVI", "clear immunity"};
+    static const char* const NAMES[] = {
+        "Recruit only", "Screen", "treatSimple", "treatPKPD",      "Decision tree",
+        "PEV",          "BSV",    "TBV",         "clear immunity", // IPT: former default fall-through
+        "ITN",          "IRS",    "GVI",         "clear immunity"};
     out << c.id.id << '\t' << NAMES[c.kind];
 }
 

@@ -84,8 +84,7 @@ void WHFalciparum::setParams(double cumYStar, double cumHStar, double aM, double
 
 // -----  Non-static  -----
 
-WHFalciparum::WHFalciparum(Context& ctx, LocalRng& rng, double comorbidityFactor, Kind kind)
-    : WHInterface(ctx, kind) {
+WHFalciparum::WHFalciparum(Context& ctx, LocalRng& rng, double comorbidityFactor, Kind kind) : WHInterface(ctx, kind) {
     pathogenesisModel.reset(Pathogenesis::PathogenesisModel::createPathogenesisModel(comorbidityFactor));
 
     // NOTE: negating a Gaussian sample with mean 0 is pointless — except that

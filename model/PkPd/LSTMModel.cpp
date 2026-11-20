@@ -41,8 +41,7 @@ namespace PkPd {
 
 // ———  non-static simulation time functions  ———
 
-void LSTMModel::prescribe(Context& ctx, size_t schedule, size_t dosage, double age, double body_mass,
-                          double delay_d) {
+void LSTMModel::prescribe(Context& ctx, size_t schedule, size_t dosage, double age, double body_mass, double delay_d) {
     DosageTable& table = ctx.treatments.dosages[dosage];
     double key = table.useMass ? body_mass : age;
     double doseMult = table.getMultiplier(key);

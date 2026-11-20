@@ -160,8 +160,7 @@ void writeTextRow(ostream& stream, int survey, int column, int measure, double v
 size_t outputAgeGroups(const internal::MeasureStore& store) { return store.nAges == 1 ? 1 : store.nAges - 1; }
 
 template <class Writer>
-void writeMeasure(Context& ctx, ostream& stream, Writer writeRow, size_t survey,
-                  const internal::MeasureStore& store) {
+void writeMeasure(Context& ctx, ostream& stream, Writer writeRow, size_t survey, const internal::MeasureStore& store) {
     const OutMeasure& om = store.output;
     const size_t surveyStart = survey * store.size();
     assert(std::visit([](const auto& reports) { return reports.size(); }, store.reports) >= surveyStart + store.size());

@@ -265,8 +265,7 @@ struct EmpiricalInfection final : Infection {
 
     /// Prepatent-density draws at the old infection_ctor_empirical() slots;
     /// growthRateMultiplier is only used by this variant.
-    EmpiricalInfection(Context& ctx, LocalRng& rng, uint32_t genotype, int origin,
-                       double growthRateMultiplier = 1.0);
+    EmpiricalInfection(Context& ctx, LocalRng& rng, uint32_t genotype, int origin, double growthRateMultiplier = 1.0);
 
     bool update(LocalRng& rng, double survivalFactor, SimTime now, double body_mass) override;
 

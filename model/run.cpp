@@ -96,8 +96,8 @@ void save_and_exit(Context& ctx, Population& population, TransmissionModel& tran
 
 // --save-at DAY (not "main", handled at the main-phase reset): fire once at
 // the first loop boundary at or after the given simulation day.
-void maybe_save(Context& ctx, Population& population, TransmissionModel& transmission, bool mainPhase,
-                SimTime& endTime, SimTime& estEndTime) {
+void maybe_save(Context& ctx, Population& population, TransmissionModel& transmission, bool mainPhase, SimTime& endTime,
+                SimTime& estEndTime) {
     const string spec = util::CommandLine::getSaveName().empty() ? string() : util::CommandLine::getSaveAt();
     if (spec.empty() || spec == "main")
         return;

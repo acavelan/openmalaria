@@ -166,8 +166,7 @@ struct ChangeEirDeployParams {
 // this header must not pull in):
 void timed_deploy_change_hs(Context&, Transmission::TransmissionModel&, ChangeHsDeployParams&);
 void timed_deploy_change_eir(Context&, Transmission::TransmissionModel&, ChangeEirDeployParams&);
-void timed_deploy_add_nhh(Context&, std::vector<Host::Human>&, Transmission::TransmissionModel&,
-                          AddNhhDeployParams&);
+void timed_deploy_add_nhh(Context&, std::vector<Host::Human>&, Transmission::TransmissionModel&, AddNhhDeployParams&);
 void timed_deploy_nhh_mods(Context&, std::vector<Host::Human>&, Transmission::TransmissionModel&,
                            const NhhModsDeployParams&);
 

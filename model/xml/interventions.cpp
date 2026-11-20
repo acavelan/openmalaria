@@ -354,8 +354,8 @@ static AddNhhDeployParams read_add_nhh(Context& ctx, SimTime date, const string&
 
 /// Old TimedAddNonHumanHostsDeployment::deploy body, verbatim (nhhParams is
 /// the old member of the same name).
-void timed_deploy_add_nhh(Context& ctx, vector<Host::Human>& population,
-                          Transmission::TransmissionModel& transmission, AddNhhDeployParams& nhhParams) {
+void timed_deploy_add_nhh(Context& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission,
+                          AddNhhDeployParams& nhhParams) {
     const string& intervName = nhhParams.intervName;
     const SimTime lifespan = nhhParams.lifespan;
     Transmission::TransmissionModel* vectorModel = transmission.isVector() ? &transmission : nullptr;
@@ -1338,8 +1338,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
             for (const scnXml::NonHumanHosts2& elt : seq) {
                 if (elt.getTimed().present()) {
                     for (const scnXml::Deploy2& deploy : elt.getTimed().get().getDeploy()) {
-                        SimTime date =
-                            readDate_steps(ctx.clock, deploy.getTime());
+                        SimTime date = readDate_steps(ctx.clock, deploy.getTime());
                         SimTime lifespan = UnitParse::readDuration(ctx.clock, deploy.getLifespan(), UnitParse::NONE);
                         ctx.timed->push_back(
                             timed_deployment(date, TimedDeploymentKind::ADD_NHH,

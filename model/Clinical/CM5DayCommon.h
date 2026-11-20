@@ -71,8 +71,7 @@ void clinicalUpdate5Day(ClinicalModel& cm, Context& ctx, Human& human, double ag
 /** Called when a severe/complicated (with co-infection) malaria sickness occurs.
  *
  * Note: sets doomed = 4 if patient dies. */
-void severeMalaria(ClinicalModel& cm, Context& ctx, Human& human, Episode::State pgState, double ageYears,
-                   int& doomed);
+void severeMalaria(ClinicalModel& cm, Context& ctx, Human& human, Episode::State pgState, double ageYears, int& doomed);
 
 /**
  * This models case management with 5-day time steps, optionally including
