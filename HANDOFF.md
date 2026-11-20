@@ -377,3 +377,10 @@ p8-structure deletes files p8ckpt edits → delete/modify + contextual conflicts
 - PERF.md untouched (main-session ledger). Report the +9 here.
 
 **8-Q1 dead-weight note (from G16, NOT touched here):** in the engine block now in util/random.h — commented-out `Sseq` ctor/seed + `operator<<`/`>>` blocks, `generate_block()`/`chacha_core()` declarations with no definitions anywhere, and `rotl`'s file-static placement; plus random.h's `<chacha.h>` include + `MasterRng` typedef are only referenced by checkpoint RNG export — prune candidates with proof there.
+
+**Class-design-pass anchors (queued after p8-files; definitions were moved between files here, designs untouched — these are the cohabited sections to split/rework):**
+- `model/Host/WithinHost/Infection/Infection.cpp` — Kind-dispatch ctor/update + the Dummy kind section (was DummyInfection.cpp, G7) in one file.
+- `model/PkPd/LSTMDrug.cpp` — all four Kind bodies (OneComp/ThreeComp/Conversion sections marked `// ———`) + shared ctor (G8); `updateCached`/GSL workspace file-scope state lives here.
+- `model/Clinical/CM5DayCommon.cpp` — DecisionTree5Day + ImmediateOutcomes + shared CM5Day helpers (G3 5-day chain merge); `i`/`l` twin code blocks per kind live in the WH files.
+- `model/Host/WithinHost/WHInterface.h` — VivaxBrood + SlotAllocator (G15) + WHInterface now share one header; brood/allocator design review happens there.
+- `model/Transmission/TransmissionModel.h` — flat Kind-switched class; vector/non-vector halves are comment-marked.
