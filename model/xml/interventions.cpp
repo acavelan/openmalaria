@@ -56,6 +56,13 @@
 using namespace std;
 
 namespace OM {
+
+// UnitParse::readDate with the STEPS fallback (STEPS default is only for
+// backwards compatibility; former per-call comment, now stated once).
+static SimTime readDate_steps(const SimClock& clock, const std::string& str) {
+    return UnitParse::readDate(clock, str, UnitParse::STEPS);
+}
+
 namespace Host {
 
 void ImportedInfections::init(RunContext& ctx, const scnXml::ImportedInfections& iiElt) {
@@ -72,8 +79,7 @@ void ImportedInfections::init(RunContext& ctx, const scnXml::ImportedInfections&
     rate.reserve(tElt.getRate().size());
     try {
         for (const auto& rateElt : tElt.getRate()) {
-            SimTime date = UnitParse::readDate(ctx.clock, rateElt.getTime(),
-                                               UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
+            SimTime date = readDate_steps(ctx.clock, rateElt.getTime());
             // convert to per-time-step, per-person
             double rateVal = rateElt.getValue() * ctx.clock.years_per_step * (1.0 / 1000.0);
             rate.push_back(Rate(date - ctx.clock.start_date, rateVal));
@@ -1058,8 +1064,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& int
     auto timed_clone = [&ctx](const auto& seq, TimedDeploymentKind kind, const char* errPrefix, const auto& mk) {
         for (const auto& it : seq) {
             try {
-                SimTime date = UnitParse::readDate(ctx.clock, it.getTime(),
-                                                   UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
+                SimTime date = readDate_steps(ctx.clock, it.getTime());
                 check_timed_date(ctx, date);
                 ctx.timed->push_back(timed_deployment(date, kind, mk(it)));
             } catch (const util::format_error& e) {
@@ -1198,13 +1203,11 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& int
                     try {
                         SimTime begin = ctx.clock.start_date;
                         if (it2->getBegin().present()) {
-                            begin = UnitParse::readDate(ctx.clock, it2->getBegin().get(),
-                                                        UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
+                            begin = readDate_steps(ctx.clock, it2->getBegin().get());
                         }
                         SimTime end = sim::future();
                         if (it2->getEnd().present()) {
-                            end = UnitParse::readDate(ctx.clock, it2->getEnd().get(),
-                                                      UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
+                            end = readDate_steps(ctx.clock, it2->getEnd().get());
                         }
                         ctx.continuous->push_back(
                             ContinuousHumanDeployment::read(ctx, begin, end, *it2, intervention, subPop, complement));
@@ -1220,8 +1223,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& int
                     multimap<SimTime, const scnXml::MassDeployment*> deployTimes;
                     for (auto it2 = timedIt->getDeploy().begin(), end2 = timedIt->getDeploy().end(); it2 != end2;
                          ++it2) {
-                        SimTime date = UnitParse::readDate(
-                            ctx.clock, it2->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
+                        SimTime date = readDate_steps(ctx.clock, it2->getTime());
 
                         if (it2->getRepeatStep().present() != it2->getRepeatEnd().present()) {
                             throw util::xml_scenario_error("deploy: use of repeatStep or repeatEnd without other");
@@ -1303,8 +1305,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& int
         const scnXml::UninfectVectors& elt = intervElt.getUninfectVectors().get();
         // timed deployments:
         for (const auto& it : elt.getTimedDeployment()) {
-            SimTime date = UnitParse::readDate(ctx.clock, it.getTime(),
-                                               UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
+            SimTime date = readDate_steps(ctx.clock, it.getTime());
             check_timed_date(ctx, date);
             ctx.timed->push_back(timed_deployment(date, TimedDeploymentKind::UNINFECT_VECTORS));
         }
@@ -1321,8 +1322,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& int
 
                     const scnXml::TimedBaseList::DeploySequence& seq = elt.getTimed().get().getDeploy();
                     for (auto it = seq.begin(); it != seq.end(); ++it) {
-                        SimTime date = UnitParse::readDate(
-                            ctx.clock, it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
+                        SimTime date = readDate_steps(ctx.clock, it->getTime());
                         check_timed_date(ctx, date);
                         ctx.timed->push_back(
                             timed_deployment(date, TimedDeploymentKind::VECTOR, VectorDeployParams{instance}));
@@ -1342,8 +1342,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& int
                 if (elt.getTimed().present()) {
                     for (const scnXml::Deploy2& deploy : elt.getTimed().get().getDeploy()) {
                         SimTime date =
-                            UnitParse::readDate(ctx.clock, deploy.getTime(),
-                                                UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
+                            readDate_steps(ctx.clock, deploy.getTime());
                         SimTime lifespan = UnitParse::readDuration(ctx.clock, deploy.getLifespan(), UnitParse::NONE);
                         ctx.timed->push_back(
                             timed_deployment(date, TimedDeploymentKind::ADD_NHH,
@@ -1366,8 +1365,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& int
                     const scnXml::DecayFunction& decay = elt.getDecay();
                     const scnXml::TimedBaseList::DeploySequence& seq = elt.getTimed().get().getDeploy();
                     for (auto it = seq.begin(); it != seq.end(); ++it) {
-                        SimTime date = UnitParse::readDate(
-                            ctx.clock, it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
+                        SimTime date = readDate_steps(ctx.clock, it->getTime());
                         check_timed_date(ctx, date);
                         nhh_mods_setup(ctx, instance, elt.getNonHumanHostsName(), elt.getDescription().getAnopheles(),
                                        decay, transmission);
