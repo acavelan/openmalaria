@@ -23,7 +23,7 @@
 #ifndef Hmod_LSTMTreatments
 #define Hmod_LSTMTreatments
 
-#include "Global.h"
+#include "Clock.h"
 
 using namespace std;
 

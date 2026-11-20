@@ -26,7 +26,7 @@
 // to WHVivax.h, shared with the model code). State stays defined in
 // WHVivax.cpp (extern re-declared below).
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
 #include "Host/WithinHost/WHInterface.h"

@@ -21,10 +21,11 @@
  */
 
 #include <iostream>
+#include "util/checkpoint.h"
 #include <fstream>
 #include <gzstream/gzstream.h>
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "mon/Continuous.h"
 #include "mon/Monitoring.h"

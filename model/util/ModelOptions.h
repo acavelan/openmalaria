@@ -23,7 +23,7 @@
 #ifndef Hmod_util_ModelOptions
 #define Hmod_util_ModelOptions
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/ModelNameProvider.h"
 #include <bitset>
 #include <optional>

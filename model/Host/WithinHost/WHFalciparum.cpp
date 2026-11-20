@@ -21,6 +21,7 @@
  */
 
 #include "core/RunExtensions.h"
+#include "util/checkpoint.h"
 #include "core/RunContext.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"

@@ -29,7 +29,7 @@
 // defined in the original files (extern re-declared below).
 
 #include "core/RunExtensions.h"
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "Parameters.h"
 #include "Host/NeonatalMortality.h"

@@ -23,9 +23,11 @@
 #ifndef Hmod_StreamValidator
 #define Hmod_StreamValidator
 
+#include <cstdint>
 // Compile-time optional
 #ifdef OM_STREAM_VALIDATOR
-#include "Global.h"
+#include "Clock.h"
+#include "util/checkpoint.h"
 #include <deque>
 #endif
 

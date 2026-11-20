@@ -21,7 +21,7 @@
  */
 
 #include "PopulationAgeStructure.h"
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "util/errors.h"
 

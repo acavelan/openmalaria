@@ -23,7 +23,7 @@
 #ifndef Hmod_ESCaseManagement
 #define Hmod_ESCaseManagement
 
-#include "Global.h"
+#include "Clock.h"
 #include "Clinical/CMDecisionTree.h"    // needed for ESDecisionMap
 #include "Host/WithinHost/WHInterface.h"
 namespace scnXml { class HSEventScheduler; }

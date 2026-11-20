@@ -24,7 +24,7 @@
 #define Hmod_PopulationAgeStructure
 
 #include <vector>
-#include "Global.h"
+#include "Clock.h"
 
 namespace scnXml{ class Demography; }
 namespace OM

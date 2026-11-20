@@ -1,7 +1,7 @@
 #ifndef Hmod_WithinHost_Mock
 #define Hmod_WithinHost_Mock
 
-#include "Global.h"
+#include "Clock.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "PkPd/LSTMModel.h"
 

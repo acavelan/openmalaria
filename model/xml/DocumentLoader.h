@@ -26,7 +26,7 @@
 #ifndef Hmod_util_DocumentLoader
 #define Hmod_util_DocumentLoader
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/errors.h"
 #include <schema/scenario.h>
 #include <fstream>

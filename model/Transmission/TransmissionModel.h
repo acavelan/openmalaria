@@ -24,9 +24,10 @@
 #define Hmod_TransmissionModel
 
 #include <string.h>
+#include "util/checkpoint.h"
 #include <fstream>
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "util/errors.h"
 

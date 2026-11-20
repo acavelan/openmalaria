@@ -21,6 +21,7 @@
  */
 
 #include "core/RunContext.h"
+#include "util/checkpoint.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "core/RunExtensions.h"

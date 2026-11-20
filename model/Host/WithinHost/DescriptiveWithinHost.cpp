@@ -21,7 +21,7 @@
  */
 
 #include "core/RunExtensions.h"
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/WHInterface.h"

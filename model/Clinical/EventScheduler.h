@@ -23,7 +23,7 @@
 #ifndef Hmod_ClinicalEventSchduler
 #define Hmod_ClinicalEventSchduler
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "Clinical/ClinicalModel.h"
 #include "Clinical/ESCaseManagement.h"

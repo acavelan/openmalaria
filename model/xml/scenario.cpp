@@ -29,7 +29,7 @@
 // headers (scnXml forward-declared).
 
 #include "core/RunExtensions.h"
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "Parameters.h"
 #include "Host/WithinHost/Diagnostic.h"

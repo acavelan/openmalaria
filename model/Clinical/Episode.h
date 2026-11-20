@@ -23,7 +23,7 @@
 #ifndef Hmod_Episode
 #define Hmod_Episode
 
-#include "Global.h"
+#include "Clock.h"
 #include "Host/WithinHost/Pathogenesis/State.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "mon/Monitoring.h"

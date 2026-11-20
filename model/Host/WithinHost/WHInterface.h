@@ -23,7 +23,7 @@
 #ifndef Hmod_WithinHost_Interface
 #define Hmod_WithinHost_Interface
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "humans/HostColumns.h"
 #include "infections/SlotAllocator.h"

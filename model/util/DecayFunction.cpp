@@ -21,10 +21,11 @@
  */
 
 #include <algorithm>
+#include "util/checkpoint.h"
 #include <limits>
 #include <memory>
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "util/sampler.h"
 #include "util/UnitParse.h"

@@ -23,7 +23,7 @@
 #ifndef OM_INTERVENTIONS_INTERVENTIONS
 #define OM_INTERVENTIONS_INTERVENTIONS
 
-#include "Global.h"
+#include "Clock.h"
 #include "interventions/Interfaces.h"
 #include "Transmission/TransmissionModel.h"
 namespace scnXml { class Interventions; }

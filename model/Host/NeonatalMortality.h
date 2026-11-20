@@ -23,7 +23,7 @@
 #ifndef Hmod_NeonatalMortality
 #define Hmod_NeonatalMortality
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/random.h"
 #include "Host/Human.h"
 

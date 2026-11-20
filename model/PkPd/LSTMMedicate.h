@@ -27,7 +27,7 @@
 #ifndef Hmod_LSTMMedicate
 #define Hmod_LSTMMedicate
 
-#include "Global.h"
+#include "Clock.h"
 #include "PkPd/LSTMModel.h"
 #include "util/errors.h"
 

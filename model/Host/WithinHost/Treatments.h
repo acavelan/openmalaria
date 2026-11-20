@@ -23,7 +23,7 @@
 #ifndef Hmod_WithinHost_Treatments
 #define Hmod_WithinHost_Treatments
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "interventions/Interfaces.h"
 

@@ -25,7 +25,7 @@
 // PopulationAgeStructure.cpp; declaration stays in PopulationAgeStructure.h.
 
 #include "core/RunContext.h"
-#include "Global.h"
+#include "Clock.h"
 #include "PopulationAgeStructure.h"
 #include "util/errors.h"
 #include <schema/demography.h>

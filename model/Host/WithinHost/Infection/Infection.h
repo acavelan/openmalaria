@@ -23,7 +23,7 @@
 #ifndef Hmod_Infection
 #define Hmod_Infection
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "Parameters.h"
 #include "Host/WithinHost/Genotypes.h"

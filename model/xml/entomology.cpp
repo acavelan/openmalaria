@@ -29,7 +29,7 @@
 // free initVectorInterv/initVectorTrap functions, called via
 // model/xml/entomology.h) and Anopheles/AnophelesModel.cpp.
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "Transmission/TransmissionModel.h"
 #include "Transmission/transmission.h"

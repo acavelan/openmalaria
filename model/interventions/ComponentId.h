@@ -20,13 +20,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-// Leaf vocabulary header: no OM includes beyond Global.h. Transmission/PerHost.h
+// Leaf vocabulary header: no OM includes beyond Clock.h. Transmission/PerHost.h
 // may include this without pulling in the interventions module (phase-5 cycle
 // break); everything else should keep using interventions/Interfaces.h.
 #ifndef Hmod_interventions_ComponentId
 #define Hmod_interventions_ComponentId
 
-#include "Global.h"
+#include "Clock.h"
+#include "util/checkpoint.h"
 #include <limits>
 
 namespace OM { namespace interventions {

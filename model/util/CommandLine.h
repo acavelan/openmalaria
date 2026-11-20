@@ -23,7 +23,7 @@
 #ifndef Hmod_util_CommandLine
 #define Hmod_util_CommandLine
 
-#include "Global.h"
+#include "Clock.h"
 #include <string>
 #include <set>
 #include <bitset>

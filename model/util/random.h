@@ -37,7 +37,7 @@
  * are stable across platforms and releases, allowing reproducibility.
  */
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/errors.h"
 #include <set>
 #include <gsl/gsl_rng.h>

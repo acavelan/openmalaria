@@ -23,7 +23,7 @@
 #ifndef Hmod_LSTMDrugType
 #define Hmod_LSTMDrugType
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/sampler.h"
 
 #include <string>

@@ -24,9 +24,10 @@
 #define UTIL_SAMPLER
 
 #include <limits>
+#include <memory>
 #include <optional>
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/random.h"
 
 namespace scnXml {

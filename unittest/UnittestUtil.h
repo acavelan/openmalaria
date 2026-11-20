@@ -26,7 +26,7 @@
 #ifndef Hmod_UnittestUtil
 #define Hmod_UnittestUtil
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/ModelOptions.h"
 
 #include "core/RunExtensions.h"

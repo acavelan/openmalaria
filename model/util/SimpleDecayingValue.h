@@ -23,7 +23,7 @@
 #ifndef Hmod_SimpleDecayingValue
 #define Hmod_SimpleDecayingValue
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/DecayFunction.h"
 
 namespace OM {

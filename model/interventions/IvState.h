@@ -30,7 +30,7 @@
 #ifndef Hmod_interventions_IvState
 #define Hmod_interventions_IvState
 
-#include "Global.h"
+#include "Clock.h"
 #include "humans/HostColumns.h"  // IvRecord
 
 namespace OM {

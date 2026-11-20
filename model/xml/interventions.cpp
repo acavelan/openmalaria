@@ -24,7 +24,7 @@
 // infection rates. Moved verbatim from Host/ImportedInfections.h (the
 // inline ImportedInfections::init became an out-of-line definition).
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunExtensions.h"
 #include "core/RunContext.h"
 #include "Host/ImportedInfections.h"

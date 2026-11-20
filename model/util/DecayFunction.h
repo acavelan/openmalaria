@@ -24,9 +24,10 @@
 #define Hmod_DecayFunction
 
 #include <limits>
+#include "util/checkpoint.h"
 #include <memory>
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/sampler.h"
 #include "util/UnitParse.h"
 

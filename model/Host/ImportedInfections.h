@@ -23,7 +23,7 @@
 #ifndef OM_IMPORTED_INFECTIONS
 #define OM_IMPORTED_INFECTIONS
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 namespace scnXml { class ImportedInfections; }
 #include "util/errors.h"

@@ -51,7 +51,9 @@
 #ifndef Hmod_ExtraAsserts
 #define Hmod_ExtraAsserts
 
-#include "Global.h"
+#include "Clock.h"
+#include <algorithm>
+#include <limits>
 #include <cxxtest/TestSuite.h>
 #include <limits>
 #include <cmath>
@@ -97,15 +99,16 @@
 
 /** Functions to check approximate equality and some other IEEE 754 stuff. */
 namespace ExtraAsserts {
+  using namespace std;
   /** Calculate the delta to which x and y should be equal in an approximate
    * equality test.
    * 
    * May return NaN, since in any case (x <= NaN) will evaluate false.
    * May not return inf, since (x <= inf) should not pass. */
   double tolerance (double x, double y, double relPrecision = 1e-7, double absPrecision = 1e-7) {
-    double tol = relPrecision * max(fabs(x), fabs(y));
-    if (tol > (numeric_limits<double>::max)())
-      return numeric_limits<double>::quiet_NaN();
+    double tol = relPrecision * std::max(fabs(x), fabs(y));
+    if (tol > (std::numeric_limits<double>::max)())
+      return std::numeric_limits<double>::quiet_NaN();
     if (tol < absPrecision)
       return absPrecision;
     return tol;

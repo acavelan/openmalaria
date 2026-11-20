@@ -21,6 +21,7 @@
  */
 
 #include "Host/WithinHost/Genotypes.h"
+#include "util/checkpoint.h"
 #include "util/random.h"
 #include "util/errors.h"
 #include "util/vectors.h"

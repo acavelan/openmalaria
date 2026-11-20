@@ -21,6 +21,7 @@
  */
 
 #include "Host/WithinHost/Infection/Infection.h"
+#include "util/checkpoint.h"
 #include "core/RunExtensions.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/random.h"

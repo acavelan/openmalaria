@@ -50,4 +50,7 @@ inline int mod_nn (int a, int b) {
 
 }
 }
+
+namespace OM { using util::mod; using util::mod_nn; }
+
 #endif

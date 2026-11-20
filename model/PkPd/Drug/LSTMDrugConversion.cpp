@@ -23,6 +23,7 @@
 // LSTMDrug Conversion kind (was LSTMDrugConversion; hierarchy collapsed phase 4b):
 // two 1-compartment models with conversion (parent typeData, metaboliteData).
 #include "PkPd/Drug/LSTMDrug.h"
+#include "util/checkpoint.h"
 #include "PkPd/Drug/LSTMDrugType.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/errors.h"

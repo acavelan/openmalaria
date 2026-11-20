@@ -23,7 +23,7 @@
 #ifndef Hmod_util_XMLChecker
 #define Hmod_util_XMLChecker
 
-#include "Global.h"
+#include "Clock.h"
 #include <schema/scenario.h>
 
 namespace OM

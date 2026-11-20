@@ -27,7 +27,7 @@
 #include <limits>
 #include <map>
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "util/CommandLine.h"
 #include "util/errors.h"

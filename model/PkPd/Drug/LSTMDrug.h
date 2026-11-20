@@ -23,7 +23,7 @@
 #ifndef Hmod_LSTMDrug
 #define Hmod_LSTMDrug
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/checkpoint_containers.h"
 #include "util/random.h"
 

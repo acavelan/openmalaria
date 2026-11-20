@@ -23,7 +23,7 @@
 #ifndef HS_DIAGNOSTIC
 #define HS_DIAGNOSTIC
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/random.h"
 
 class UnittestUtil;
