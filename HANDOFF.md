@@ -185,3 +185,6 @@ order of side-effecting calls all preserved explicitly.
   (message bytes + check order unchanged); require1DayTS single-bit bitset loop
   -> direct CLINICAL_EVENT_SCHEDULER check (msg identical); empty 1-day-TS
   branch inverted away. Gate: 52/52, OK, 53/53.
+- monitoring.cpp 251->242 (-9): dead extern Continuous block deleted (all state
+  now bound from ctx.ext-> inside Continuous::init; grep proof: names only
+  referenced via those locals) + duplicate using internal::SurveyDate. Same gates.
