@@ -24,10 +24,12 @@
 #define OM_UTIL_SPECIES_INDEX_CHECKER
 
 #include "Clock.h"
+#include "util/errors.h"
 
 #include <cstdint>
 #include <map>
 #include <set>
+#include <sstream>
 #include <string>
 
 namespace OM { namespace util {
@@ -51,6 +53,38 @@ private:
     const map<string,size_t>& _indices;
     set<string> found;
 };
+
+inline size_t SpeciesIndexChecker::getIndex( string species ){
+    if( found.count( species ) > 0 ){
+        std::ostringstream msg;
+        msg << "Intervention \"" << _intervName
+            << "\" has multiple descriptions for vector species \""
+            << species << "\"";
+        throw util::xml_scenario_error( msg.str() );
+    }
+    auto sIndex = _indices.find( species );
+    if( sIndex == _indices.end() ){
+        std::ostringstream msg;
+        msg << "Intervention \"" << _intervName
+            << "\" has a description for vector species \"" << species
+            << "\", but this species is not mentioned in the entomology section";
+        throw util::xml_scenario_error( msg.str() );
+    }
+    found.insert( species );
+    return sIndex->second;
+}
+
+inline void SpeciesIndexChecker::checkNoneMissed() const{
+    for( auto it = _indices.begin(); it != _indices.end(); ++it ){
+        if( found.count( it->first ) == 0 ){
+            std::ostringstream msg;
+            msg << "Intervention \"" << _intervName
+                << "\" has a no description for vector species \""
+                << it->first << "\"";
+            throw util::xml_scenario_error( msg.str() );
+        }
+    }
+}
 
 } }
 #endif

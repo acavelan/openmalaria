@@ -1,3 +1,65 @@
+# P8-files HANDOFF — merge files that belong (branch `p8-files` off `rewrite` HEAD = p8-sweep green ad640d22)
+
+User order (verbatim): "don't touch CalcNvO, review the structure again and try
+to merge files that belong".
+
+## Environment
+- Worktree `/tmp/opencode/p8files`, build `build-fl/` = Release `-O3 -DNDEBUG
+  -ffp-contract=off -DOM_BOXTEST_BINARY=ON`; ignored symlink `build -> build-fl`
+  present (parity.py resolves generated XSD via REPO/build/schema).
+- Gates per merge commit: `cmake --build build-fl -j14` (0 errors);
+  `cd build-fl && ctest -j12` (64); `cd build-fl/unittest && ./unittest`
+  (".OK!"); T1 `python3 util/parity.py --old /tmp/opencode/om-ref/A0/openMalaria
+  --new build-fl/openMalaria --recipe /tmp/opencode/om-ref/A0/recipe.json
+  --tiers a -j12` (53); + `--tiers b --seeds 1-4` on commits moving
+  WithinHost/Clinical/PkPd BODIES. Final: tiers a + b seeds 1-10 = 63/63.
+  Commits unsigned (`--no-gpg-sign`). No bench (structural, include-level only).
+- Baseline at HEAD before first merge: build ✓, ctest 64/64, unittest .OK!,
+  tier-a 53/53, model 17,545 code LOC / 140 files.
+- TU-count tool (demography-trap check): transitive .cpp-include closure,
+  RunContext.h cone = 58/65 TUs; anything inside that cone stays a cpp.
+
+## Merge ledger (one commit per group)
+
+| # | merge | files Δ | gates |
+|---|---|---|---|
+| G1 | util/SpeciesIndexChecker.cpp -> .h (both methods inline; std:: ostringstream qualification only) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 |
+
+## Rejected (belonging/TU tests)
+- errors.cpp(118 LOC/67 TU), Genotypes.cpp(68/59), Diagnostic.cpp(54/58),
+  LSTMDrugType.cpp(78/59), LSTMModel.cpp(83/58), PopulationAgeStructure.cpp(126/58),
+  UnitParse.cpp(127/39), PerHost.cpp(106/33), InfectionIncidenceModel.cpp(156/33):
+  cpp→header = demography-class (body lands in the wide RunContext/PerHost cone).
+- IvState.cpp→IvState.h: 199 LOC + documented leaf header (cycle break); fold
+  would drag ITN/IRS/GVI registries into the leaf. Keep cpp.
+- Continuous.h+Monitoring.h: Continuous.h includes Population.h (16 TU) —
+  merging pushes it into Monitoring.h's 44-TU cone. Keep separate.
+- ImmediateOutcomes.h+ESCaseManagement.h: different health-system families
+  (5-day vs EventScheduler). ESCaseManagement.h merged into EventScheduler.h
+  instead (its only consumer + same ES concept).
+- transmission.h→TransmissionModel.h: it is the xml/entomology.cpp factory TOC
+  incl. AnophelesModel+EmergenceRateEstimator includes; folding drags vector
+  machinery into the model header. Keep.
+- NeonatalMortality.h+InfectionIncidenceModel.h: different concepts (neonatal
+  death event vs FOI config model); InfectionIncidenceModel.h cone = 33 TU.
+- xml/util.h incl. UnitParse.h: DocumentLoader/XMLChecker pull <schema>;
+  UnitParse.h cone = 39 TU → schema would hit all of them (generated-schema
+  bloat rule). XMLChecker+latentP+DocumentLoader merge together instead
+  (all schema-reading, ≤5 TU); name kept DocumentLoader.h (xml/util.h would
+  mislabel xml/util.cpp, whose API deliberately lives in consumer headers).
+- ModelNameProvider.h→ModelOptions.h: different concepts (name registry vs
+  option bits); fold pushes ModelOptions.h (340 lines) into Parameters.h cone.
+- One interventions "components" mega-file: IRS/ITN/GVI/Vaccine are distinct
+  component concepts; Components.h is already their TOC. Per-file folds only.
+- ClinicalModel.cpp/Episode.cpp→headers: cycle (Episode.h←ClinicalModel.h,
+  EventScheduler.h→ClinicalModel.h). Keep cpp.
+- Exclusions honoured: CalcNvO.{h,cpp}, EmergenceRateEstimator.h,
+  model/checkpoint/ internals, demography.cpp, mod.h/checkpoint usings,
+  ComponentId.h leaf, RunContext.h lean, all variants alive, formula bodies +
+  error strings verbatim.
+
+---
+
 # P8-sweep HANDOFF — ponytail audit sweep (branch `p8-sweep` off `rewrite` HEAD incl. p8-CK merge; green-stop at HEAD)
 
 SOURCE OF WORK: `/tmp/opencode/ponytail_audit.md` (ranked ledger, auditor-verified).
