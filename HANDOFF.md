@@ -71,7 +71,14 @@ report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
       vs C3-a2, T1 a+b 63/63 bit-clean, consumption proven (see PERF 7c-PGO). a2p = new
       yardstick; gate build stays profile-free. Fix for the p7b trap: NEVER separate
       pgogen/use build dirs — same dir, swap flags, gcda stay beside objects.
-- [ ] 7c-D: LOC sweep (≥-50 LOC deletions = own commit, gate + tier-a each)
+- [x] 7c-C-P: SoA "why not faster" PROFILE DONE (PERF §7c-C-P, table for final report):
+      IPC 3.48 / LLC-miss 0.14 % / LL-miss 0.01 % — layout WORKS, run is issue-bound; SoA
+      lanes ≈25 % of CPU, bit-exact levers already ≈−5 % total; blockers are dgemm 21 %,
+      libm/GSL 12 %, pyrogen serial recurrence ≈6 % (all shape-blind, phase-8). Slab-arena
+      hypothesis (iv/vac scatter) measured and rejected.
+- [x] 7c-Da: dead-code sweep −22 LOC (commit f1f7ab10). C6 RESTORED per ruling (1fbf788a).
+- [ ] 7c-D2: wrappers/duplication/xml/ compaction (xml subset 4,287 vs 2.6k — assess honestly,
+      code already looked dense; a forced cut = risky churn vs zero perf)
 - [ ] 7c-E: final gate (T1 a+b 63/63, ctest, unittest, cloc table, benches incl. a2p,
       perf top-5, PERF 7c-F scoreboard, report, HANDOFF close)
 
@@ -103,6 +110,9 @@ report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
 
 ## Traps (inherited, all live, + new)
 - NEW: benches only from `/tmp/opencode/om-bench` cwd; never overlap bench with any other load.
+  Bench core = **c5 only** (second agent owns c3 + `/tmp/opencode/om-bench-p7d`). Min 3 reps;
+  ±1 % = "unknown"; if spread is wide or load avg >1 ⇒ RE-RUN or A/B-interleave vs a2g and
+  compare in-window (session-to-session absolute numbers are NOT comparable).
   Scenario = absolute `/home/razlock/git/fork/util/example/example_scenario.xml` (bare/wrong
   name ⇒ all-0.00 lines, same symptom as wrong cwd). `unittest` must run from
   `build-p7c/unittest/` (fixture CSVs sit next to the binary; elsewhere = 16 file-not-found).
