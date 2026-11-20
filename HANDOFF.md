@@ -5,8 +5,9 @@ waves 1–2 merged & verified: structure, checkpoint-redo, files, Q2-polymorphis
 ctest 64/64 (incl Resume_*), unittest .OK!, T1 a+b seeds 1-10 = 63/63 vs A0. Verify build =
 `build-mrg/`; repo-root `build/schema/*.xsd` must exist (parity harness resolves XSDs there —
 restored from build-mrg; a missing one = harness red, not code red). No p8 worktrees/branches remain.
-NEXT (user call): 8-Q1 de-GSL RNG (brief in plan), 8-Q3 LSTMDrug/ClinicalModel poly wave
-(pattern+anchors in the P8-poly HANDOFF section at end of file / PERF p8-Q2 row), cap-vs-purity decision
+NEXT (user call): ~~8-Q1 de-GSL~~ **REJECTED 2026-11-20, do not re-attempt** (measured: verbatim GSL
+port = +617 LOC for −2.6 %; user keeps GSL — PERF row p8-q1), 8-Q3 LSTMDrug/ClinicalModel poly wave
+= DONE (merged; pattern in the P8-poly HANDOFF section at end of file / PERF p8-Q2 row), cap-vs-purity decision
 (−2,759 to the 14.0k model cap; only [phase8] FP work or a [string-audit] xml rework can close it).
 Bench numbers are stale vs this tree — re-measure A0-class (+ optionally the PGO recipe,
 PERF `7d-A-amended`) before any perf claim.
