@@ -49,7 +49,12 @@ report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
       probe-verified: rename profile files to the new build-dir encoding + `-fprofile-dir=DIR`.
       PGO on the current tree gets re-priced properly in 7c-E (plan: build-p7c-pgogen corpus
       on HEAD → rename → build-p7c-a2p with -fprofile-dir → T1 tier-b + bench).
-- [ ] 7c-C: vectorization of SoA sweeps (see Work below)
+- [x] 7c-C: SoA sweep vectorization — **C3 KEPT** (immunitySurvivalFactor host-tick hoist,
+      −1.04 % = 11.85, commit 5125841b). C1 pyrogen-hoist, C2 age-sweep hoist, C6 vectorUpdate
+      two-pass staging all measured sub-floor ⇒ reverted+logged (PERF 7c-C rows). Vec-info
+      evidence: hot TUs already run 126 auto-vectorized loops, default cost model reports zero
+      missed; rest blocked by control flow / clobbering libm+recordStat = phase-8/9 territory.
+      Pre-phase-8 bit-exact vectorization is exhausted.
 - [ ] 7c-D: LOC sweep (≥-50 LOC deletions = own commit, gate + tier-a each)
 - [ ] 7c-E: final gate (T1 a+b 63/63, ctest, unittest, cloc table, benches incl. a2p,
       perf top-5, PERF 7c-F scoreboard, report, HANDOFF close)
@@ -72,9 +77,16 @@ report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
   (raw 11.96–12.00) = yardstick reproduced.
 - (7c-B) a2n: objdump 0 FMA; parity tier-a 53/53; tier-b s1–10 10/10; bench 12.12 MAD .010
   (raw 12.10–12.13); perf stat −1.05 % instr, +1.28 % cycles. Verdict: not adopted, logged.
+- (7c-C3) commit 5125841b: gate ctest 52/52, unittest OK, tier-a 53/53; a2 11.85 (n=20).
+- (7c-C1/C2/C6) each measured sub-floor on a2 n=20 ⇒ reverted, logged in PERF 7c-C. Final
+  tree = HEAD 5125841b; a2 same-session re-measure 11.835 (n=20, raw 11.81–11.88). Vec-info
+  artifacts: /tmp/opencode/vec_all.txt.
 
 ## Traps (inherited, all live, + new)
 - NEW: benches only from `/tmp/opencode/om-bench` cwd; never overlap bench with any other load.
+  Scenario = absolute `/home/razlock/git/fork/util/example/example_scenario.xml` (bare/wrong
+  name ⇒ all-0.00 lines, same symptom as wrong cwd). `unittest` must run from
+  `build-p7c/unittest/` (fixture CSVs sit next to the binary; elsewhere = 16 file-not-found).
 - NEW: PGO cross-build-dir reuse requires the rename+`-fprofile-dir` dance (see AUDIT above);
   "no warning" ≠ "profile used" — verify with `-Wmissing-profile` probe before believing any
   A2 number.
