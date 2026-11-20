@@ -52,41 +52,35 @@ void TransmissionModel::ctsCbVecStat(Anopheles::VecStat vs, ostream &stream)
     for (size_t i = 0; i < speciesIndex.size(); ++i)
         stream << '\t' << species[i]->getLastVecStat(vs);
 }
+namespace {
+/// Mean over the population of a per-host term: left fold in host order, the
+/// same FP sequence the three separate callbacks accumulated (cts bytes).
+template <typename Term>
+double meanOver(const vector<Host::Human> &population, Term term)
+{
+    double total = 0.0;
+    for (const Host::Human &human : population) total += term(human);
+    return total / population.size();
+}
+}
+
 void TransmissionModel::ctsCbAlpha(const vector<Host::Human> &population, ostream &stream)
 {
     for (size_t i = 0; i < speciesIndex.size(); ++i)
-    {
-        double total = 0.0;
-        for (const Host::Human &human : population)
-        {
-            total += human.perHostTransmission.entoAvailabilityFull(i, sim::inYears(human.age(ctx.clock.now())));
-        }
-        stream << '\t' << total / population.size();
-    }
+        stream << '\t' << meanOver(population, [&](const Host::Human &human)
+            { return human.perHostTransmission.entoAvailabilityFull(i, sim::inYears(human.age(ctx.clock.now()))); });
 }
 void TransmissionModel::ctsCbP_B(const vector<Host::Human> &population, ostream &stream)
 {
     for (size_t i = 0; i < speciesIndex.size(); ++i)
-    {
-        double total = 0.0;
-        for (const Host::Human &human : population)
-        {
-            total += human.perHostTransmission.probMosqBiting(i);
-        }
-        stream << '\t' << total / population.size();
-    }
+        stream << '\t' << meanOver(population, [&](const Host::Human &human)
+            { return human.perHostTransmission.probMosqBiting(i); });
 }
 void TransmissionModel::ctsCbP_CD(const vector<Host::Human> &population, ostream &stream)
 {
     for (size_t i = 0; i < speciesIndex.size(); ++i)
-    {
-        double total = 0.0;
-        for (const Host::Human &human : population)
-        {
-            total += human.perHostTransmission.probMosqResting(i);
-        }
-        stream << '\t' << total / population.size();
-    }
+        stream << '\t' << meanOver(population, [&](const Host::Human &human)
+            { return human.perHostTransmission.probMosqResting(i); });
 }
 void TransmissionModel::ctsCbResAvailability(ostream &stream)
 {
