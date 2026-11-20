@@ -1121,38 +1121,28 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& int
             }
 
             ComponentConfig comp{id, Component::RECRUIT_ONLY, expireAfter, RecruitOnlyParams{}};
-            // Each branch: present() then get(), same call sequence as before.
-            if (auto& e = component.getScreen(); e.present()) {
-                comp.kind = Component::SCREEN;
-                comp.data.emplace<ScreenParams>(ctx, e.get());
-            } else if (auto& e = component.getTreatSimple(); e.present()) {
-                comp.kind = Component::TREAT_SIMPLE;
-                comp.data.emplace<TreatSimpleParams>(ctx, e.get());
-            } else if (auto& e = component.getTreatPKPD(); e.present()) {
-                comp.kind = Component::TREAT_PKPD;
-                comp.data.emplace<TreatPKPDParams>(ctx, e.get());
-            } else if (auto& e = component.getDecisionTree(); e.present()) {
-                comp.kind = Component::CM_DT;
-                comp.data.emplace<DecisionTreeParams>(ctx, e.get());
-            } else if (auto& e = component.getPEV(); e.present()) {
-                comp.kind = Component::PEV;
-                comp.data.emplace<VaccineParams>(ctx, id, e.get(), Vaccine::PEV);
-            } else if (auto& e = component.getBSV(); e.present()) {
-                comp.kind = Component::BSV;
-                comp.data.emplace<VaccineParams>(ctx, id, e.get(), Vaccine::BSV);
-            } else if (auto& e = component.getTBV(); e.present()) {
-                comp.kind = Component::TBV;
-                comp.data.emplace<VaccineParams>(ctx, id, e.get(), Vaccine::TBV);
-            } else if (auto& e = component.getITN(); e.present()) {
-                comp.kind = Component::ITN;
-                comp.data.emplace<ITNParams>(ctx, id, e.get(), species_index_map);
-            } else if (auto& e = component.getIRS(); e.present()) {
-                comp.kind = Component::IRS;
-                comp.data.emplace<IRSParams>(ctx, id, e.get(), species_index_map);
-            } else if (auto& e = component.getGVI(); e.present()) {
-                comp.kind = Component::GVI;
-                comp.data.emplace<GVIParams>(ctx, id, e.get(), species_index_map);
-            } else if (component.getRecruitmentOnly().present()) {
+            // Each branch: present() then get(), same call sequence as before; first child wins.
+            if (auto& e = component.getScreen(); e.present())
+                comp.set<ScreenParams>(Component::SCREEN, ctx, e.get());
+            else if (auto& e = component.getTreatSimple(); e.present())
+                comp.set<TreatSimpleParams>(Component::TREAT_SIMPLE, ctx, e.get());
+            else if (auto& e = component.getTreatPKPD(); e.present())
+                comp.set<TreatPKPDParams>(Component::TREAT_PKPD, ctx, e.get());
+            else if (auto& e = component.getDecisionTree(); e.present())
+                comp.set<DecisionTreeParams>(Component::CM_DT, ctx, e.get());
+            else if (auto& e = component.getPEV(); e.present())
+                comp.set<VaccineParams>(Component::PEV, ctx, id, e.get(), Vaccine::PEV);
+            else if (auto& e = component.getBSV(); e.present())
+                comp.set<VaccineParams>(Component::BSV, ctx, id, e.get(), Vaccine::BSV);
+            else if (auto& e = component.getTBV(); e.present())
+                comp.set<VaccineParams>(Component::TBV, ctx, id, e.get(), Vaccine::TBV);
+            else if (auto& e = component.getITN(); e.present())
+                comp.set<ITNParams>(Component::ITN, ctx, id, e.get(), species_index_map);
+            else if (auto& e = component.getIRS(); e.present())
+                comp.set<IRSParams>(Component::IRS, ctx, id, e.get(), species_index_map);
+            else if (auto& e = component.getGVI(); e.present())
+                comp.set<GVIParams>(Component::GVI, ctx, id, e.get(), species_index_map);
+            else if (component.getRecruitmentOnly().present()) {
             } else if (component.getClearImmunity().present())
                 comp.kind = Component::CLEAR_IMMUNITY; // no payload (cf. RecruitOnly)
             else
