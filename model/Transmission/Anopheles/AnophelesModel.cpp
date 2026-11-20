@@ -544,15 +544,7 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
 
     // NON-HUMAN HOSTS INTERVENTIONS
     // Check if some nhh must be removed
-    for (auto it = nhhInstances.begin(); it != nhhInstances.end();)
-    {
-        if (ctx.clock.ts0() >= it->second.expiry)
-        {
-            it = nhhInstances.erase(it);
-            continue;
-        }
-        it++;
-    }
+    std::erase_if(nhhInstances, [now = ctx.clock.ts0()](const auto &e) { return now >= e.second.expiry; });
 
     double modified_nhh_avail = 0.0;
     double modified_nhh_sigma_df = 0.0;
