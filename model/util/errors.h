@@ -78,6 +78,8 @@ namespace OM { namespace util {
         FileExists,		// wanted to create a file but it already exists!
         FileIO,			// any other file read/write error
         EffectiveEIR,
+        /// bad/incompatible checkpoint file
+        Checkpoint,
         NumNewInfections,
         InitialKappa,
         VectorWarmup,

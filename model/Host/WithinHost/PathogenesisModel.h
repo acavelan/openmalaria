@@ -36,6 +36,7 @@ namespace OM { class RunContext; }
 
 namespace OM {
     namespace Host { class Human; }
+    namespace checkpoint { class Archive; }
     namespace WithinHost { namespace Pathogenesis {
 
 using util::LocalRng;
@@ -78,6 +79,9 @@ public:
     /// PyrogenPathogenesis::init; called from PathogenesisModel::init in xml).
     static void initMueller( RunContext& ctx, const Parameters& parameters );
     static void initPyrogen( RunContext& ctx, const Parameters& parameters );
+
+    /// Save/restore wire state (model/checkpoint/humans.cpp).
+    void checkpoint (checkpoint::Archive& a);
 
 protected:
     /** Create a PathogenesisModel (_pyrogenThres = initPyroThres for the

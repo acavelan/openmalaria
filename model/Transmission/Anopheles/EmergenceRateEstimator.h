@@ -36,6 +36,7 @@
 #include <limits>
 
 namespace OM {
+namespace checkpoint { class Archive; }
 namespace Transmission {
 namespace Anopheles {
     using std::numeric_limits;
@@ -182,6 +183,10 @@ public:
 
         return !(scaled && rotated);
     }
+
+    /// Run-state save/restore (model/checkpoint/transmission.cpp): fitting
+    /// state only; kind/populationSize come from the scenario.
+    void checkpoint (checkpoint::Archive& a);
 
 private:
     bool estimateSolver(AnophelesModel &m, const std::vector<double> &laggedKappa, double meanAvail)

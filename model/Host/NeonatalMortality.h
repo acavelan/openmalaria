@@ -31,6 +31,7 @@ namespace scnXml {
     class Clinical;
 }
 namespace OM {
+namespace checkpoint { class Archive; }
     class Population;
 namespace Host {
 
@@ -47,6 +48,10 @@ public:
   
   /** Calculate risk of a neonatal mortality based on humans 20-25 years old. */
   static void update (RunContext& ctx, vector<Human>& population);
+  
+  /// Run state (risk + prevalence ring) to/from checkpoint wire
+  /// (model/checkpoint/statics.cpp).
+  static void staticCheckpoint (checkpoint::Archive& a);
 };
 
 } }

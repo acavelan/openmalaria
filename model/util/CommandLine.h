@@ -99,6 +99,21 @@ namespace OM { namespace util {
 			return seedOverride;
 		}
 
+    /** --save-to: checkpoint file path; empty = no checkpointing. */
+		static inline string getSaveName (){
+			return saveName;
+		}
+
+    /** --save-at: simulation day (non-negative int) or "main". */
+		static inline string getSaveAt (){
+			return saveAt;
+		}
+
+    /** --resume: checkpoint file to restore; empty = normal run. */
+		static inline string getResumeName (){
+			return resumeName;
+		}
+
 	/** Looks through all command line options.
 	*
 	* @returns The name of the scenario XML file to use.
@@ -120,6 +135,9 @@ private:
 	static OutputFormat outputFormat;
 	static string ctsoutName;
 	static int seedOverride;
+	static string saveName;
+	static string saveAt;
+	static string resumeName;
 };
 } }
 #endif

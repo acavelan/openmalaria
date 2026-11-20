@@ -27,6 +27,7 @@
 #include "util/DecayFunction.h"
 
 namespace OM {
+namespace checkpoint { class Archive; }
 namespace util {
 
 /** Parameters to for a decaying intervention whose effect can be described
@@ -42,6 +43,9 @@ public:
     SimpleDecayingValue() :
             initial(0.0),
             deploy_t(sim::never()) {}
+    
+    /// Run-state save/restore (model/checkpoint/transmission.cpp).
+    void checkpoint (checkpoint::Archive& a);
     
     /** Configure from an XML element. */
     inline void set (const SimClock& clock, double initial_value, const scnXml::DecayFunction& elt, const char* name){

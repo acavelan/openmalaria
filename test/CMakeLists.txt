@@ -74,3 +74,15 @@ endif ()
 foreach (TEST_NAME ${OM_BOXTEST_NAMES})
     add_test (${TEST_NAME} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/run.py ${OM_BOXTEST_ARGS} ${TEST_NAME})
 endforeach (TEST_NAME)
+
+# Checkpoint resume equivalence (model/checkpoint/): split runs must match
+# uninterrupted runs byte for byte. Keep the list where split-run coverage is
+# cheap; C2 grows it.
+configure_file (
+  ${CMAKE_CURRENT_SOURCE_DIR}/resume.py
+  ${CMAKE_CURRENT_BINARY_DIR}/resume.py
+  @ONLY
+)
+foreach (TEST_NAME NoInterv Vivax Empirical Molineaux Penny)
+    add_test (Resume_${TEST_NAME} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/resume.py ${TEST_NAME})
+endforeach (TEST_NAME)

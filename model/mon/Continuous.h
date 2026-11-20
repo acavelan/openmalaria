@@ -44,8 +44,11 @@ namespace Continuous {
      */
 	/** Load XML description of options and open the continuous-output file.
 	 *
-	 * Callbacks should be registered before init() is called. */
-	void init (RunContext& ctx, const scnXml::Monitoring& monitoring);
+	 * Callbacks should be registered before init() is called.
+	 * @param isCheckpoint  Resuming: reopen the existing output file without
+	 * truncating or rewriting the header (the checkpoint read seeks it). */
+	void init (RunContext& ctx, const scnXml::Monitoring& monitoring,
+	    bool isCheckpoint=false);
 
 	/** Register a callback function which produces output.
 	 *

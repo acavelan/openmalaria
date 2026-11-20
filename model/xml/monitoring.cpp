@@ -245,7 +245,8 @@ using util::xml_scenario_error;
 
         /* Initialise: enable outputs registered and requested in XML.
          * Search for Continuous::registerCallback to see outputs available. */
-        void init (RunContext& ctx, const scnXml::Monitoring& monitoring) {
+        void init (RunContext& ctx, const scnXml::Monitoring& monitoring,
+                bool isCheckpoint) {
             auto& ctsOStream = ctx.ext->ctsOStream;
             auto& registered = ctx.ext->ctsRegistered;
             auto& toReport = ctx.ext->ctsToReport;
@@ -279,6 +280,17 @@ using util::xml_scenario_error;
             }
 
             const string filename = util::CommandLine::getCtsoutName();
+
+            if (isCheckpoint) {
+                // Keep the existing content; the checkpoint read seeks the
+                // write position to the saved offset. Anything the previous
+                // run wrote past that point is overwritten from there.
+                ctsOStream.open (filename, ios::binary|ios::in|ios::out);
+                if (!ctsOStream.is_open())
+                    throw util::cmd_exception ("can't reopen continuous output file \"" +
+                        filename + "\" for resume", util::Error::Checkpoint);
+                return;
+            }
 
             ctsOStream.open(filename, ios::binary|ios::out);
             ctsOStream << "##\t##\n"; // live-graph needs a delimiter specifier when it is not a comma

@@ -42,6 +42,7 @@ namespace scnXml
 }
 
 namespace OM {
+namespace checkpoint { class Archive; }
 namespace Transmission {
 namespace Anopheles {
     using std::numeric_limits;
@@ -184,6 +185,9 @@ struct TrapData {
 class AnophelesModel
 {
 public:
+    /// Run-state save/restore (model/checkpoint/transmission.cpp)
+    void checkpoint (checkpoint::Archive& a);
+
     /// The run this model belongs to (clock accessed as ctx.clock).
     RunContext& ctx;
 

@@ -30,7 +30,9 @@
 #include "util/random.h"
 #include <list>
 
-namespace OM { namespace WithinHost {
+namespace OM {
+namespace checkpoint { class Archive; }
+namespace WithinHost {
 
 using util::LocalRng;
 
@@ -88,6 +90,9 @@ struct Infection final {
     /// the checkpointing factory function pointer carries the kind across a
     /// resume).
     Kind kind;
+
+    /// Save/restore wire state (model/checkpoint/humans.cpp).
+    void checkpoint (checkpoint::Archive& a);
 
     /// Pre-erythrocytic latent period (instantiated in WHFalciparum.cpp)
     inline static void init( SimTime latentP ){

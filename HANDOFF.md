@@ -12,11 +12,11 @@ checkpointing similar to xml/".
   for BOTH binaries — environment trap, not a code bug.
 - unittest: `cd build-ck/unittest && ./unittest` → ".OK!" (93 cases; was 94 —
   CheckpointSuite's single test was killed with the feature).
-- ctest: `cd build-ck && ctest -j12` → 52. Count unchanged but semantics
-  changed (kill commit): box tests are single continuous runs now; they used to
-  be save+restore round-trips via `--checkpoint-stop` (that loop in test/run.py
-  WAS the checkpoint round-trip gate — `util/parity.py` never contained
-  checkpoint code; its tier-a=53 scenarios, tier-b=example×seeds both stay).
+- ctest: `cd build-ck && ctest -j12` → 57 (52 box tests + 5 new Resume_*:
+  test/resume.py split-run equivalence, see C1). The old box-test
+  `--checkpoint-stop` loop was killed with the feature; resume.py is the new
+  round-trip gate (`util/parity.py` never contained checkpoint code; its
+  tier-a=53 scenarios, tier-b=example×seeds both stay).
 - T1: `python3 util/parity.py --old /tmp/opencode/om-ref/A0/openMalaria --new
   build-ck/openMalaria --recipe /tmp/opencode/om-ref/A0/recipe.json --tiers a
   -j12` → 53/53. Every commit.
@@ -62,15 +62,31 @@ functions, per-subsystem files, ONE orchestrator listing the section order.
   ONLY if event replay reproduces per-host records bit-exactly — if it doesn't
   (rng draw order!), HANDOFF states that honestly as the remaining gap.
 
-## Steps (TDD ladder; every commit: build + ctest 52 + unittest .OK! + tier-a 53)
+## Steps (TDD ladder; every commit: build + ctest + unittest .OK! + tier-a 53)
 - [x] P0 KILL (one commit).
-- [ ] C1 Stream.h + CLI + orchestrator skeleton + resume test
-      (test/resume/: two-process ctest case: run --save-at D --save-to, full
-      uninterrupted run, split run, `cmp output.bin` == 0) for
-      scenario NoInterv @ main-phase start. Sections implemented: all needed
-      for one scenario; missing-state shows as output diff → fix → keep test.
-- [ ] C2 multiple Ds: mid-warmup, post-warmup pre-intervention, late (needs
-      phase/iterate loop state in the clock section).
+- [x] C1 module + CLI + resume tests. Landed: model/checkpoint/ (Stream.h
+      Archive rd/wr-on-one-class, sections.h, checkpoint.{h,cpp} TOC,
+      statics.cpp, transmission.cpp, humans.cpp), Error::Checkpoint,
+      CLI --save-to/--save-at/--resume, Continuous::init(isCheckpoint)
+      resume-open + seek, run.cpp branch (skip createInitialHumans/init2/
+      warmup/calibration/reset per saved phase). test/resume.py per scenario:
+      full run vs save@main → resume+save@(main+50d) → resume, plus truncated
+      file must fail; compares output(.bin) AND ctsout bytes.
+      Wire = magic OMCk/v1, phase, clock(t0,t1,interv,end,estEnd), statics,
+      monitoring(RuntimeState+cts offset), transmission(v2-superset field
+      list; estimator/MPD/NonVector), humans(SoA cols+infIncidence+WH all
+      kinds incl. Vivax broods+Molineaux variant counts+Pathogenesis+
+      LSTMDrug/LSTM queues+Clinical/Episode), master RNG last. Restores reuse
+      real ctors (createInfection / infection_new / emplace) whose draws are
+      then overwritten from the wire. Budget-checked reads: every corrupt
+      case = clean rc73 error, never UB. Also fixed: kill leftovers
+      Genotypes.cpp assert `state.current_mode` (only breaks assert builds)
+      and Infection-descriptive restore (factory unset → direct infection_new).
+- [x] C4 (partial): magic/version/budget/count checks → clean errors, proven
+      in resume.py (truncated) + manual junk/bad-magic/wrong-scenario runs.
+      v2 (boost/gzstream) file → magic error (message could name it nicer).
+- [ ] C2 multiple Ds: mid-warmup (proven once manually: NoInterv day 5000
+      IDENTICAL, not yet scripted), post-warmup pre-intervention, late.
 - [ ] C3 corpus: example, DecisionTree(5Day), Vivax, HetVecDailyEIR /
       vector-full (AnophelesModel + ExactNv0), Molineaux/Penny, Empirical,
       interventions-heavy (IvState global + replay), MSAT/Genotypes.
@@ -80,4 +96,23 @@ functions, per-subsystem files, ONE orchestrator listing the section order.
       tier-a clean. PERF.md NOT touched (main-session ledger).
 
 ## Proven round-trips (update every green commit)
-(none yet)
+C1 (all byte-identical vs uninterrupted, output.bin + ctsout.txt, seed 112):
+- NoInterv (Descriptive WH + continuous output ~1.5k lines): save@main;
+  save@day5000 (mid-warmup, manual); save@day10000 (mid-main, manual)
+- Vivax (brood restore), Empirical, Molineaux (growing variants — count on
+  wire), Penny: save@main → resume → save@(mainStart+50d) → resume (chain)
+- corrupt: truncated → rc73; junk/bad magic → rc73; wrong scenario → rc73
+  (measure store count mismatch) — no UB, no output file.
+Gates at C1: build ✓, ctest 57/57, unittest .OK! (93), tier-a 53/53.
+
+## Known limits (honest partial — extend in C3+)
+- NO interventions section yet (skill law): --resume on a scenario that
+  deploys anything is UNSUPPORTED (nextTimed/IvState/continuous deployments
+  not on the wire; deployments never replayed either). Proven days are all
+  intervention-free scenarios.
+- SimpleDecayingValue: writes deploy_t + het-presence flag; RESUMING a
+  scenario with a SAMPLED decay deployment throws a clean
+  "sampled decay deployment not yet supported" error.
+- Cohorts intervention-column state is config-rebuilt (empty), not wire.
+- cts resume overwrites file content past the saved offset (rows the later
+  part of a previous longer run wrote are replaced; fine for save+exit use).

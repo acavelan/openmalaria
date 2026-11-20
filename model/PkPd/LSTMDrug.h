@@ -27,6 +27,7 @@
 #include "util/random.h"
 
 namespace OM {
+namespace checkpoint { class Archive; }
 namespace WithinHost {
     class Infection;
 }
@@ -57,6 +58,9 @@ public:
     
     /// Get the drug type's index.
     size_t getIndex() const;
+
+    /// Save/restore wire state (model/checkpoint/humans.cpp).
+    void checkpoint (checkpoint::Archive& a);
     
     /** Indicate a new medication this time step.
      *

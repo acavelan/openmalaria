@@ -54,6 +54,7 @@ class UnittestUtil;
 class InfectionImmunitySuite;
 
 namespace OM {
+namespace checkpoint { class Archive; }
 namespace Host {
     class Human;
 }
@@ -159,7 +160,10 @@ public:
     
     /** Fully clear liver stage parasites. */
     void treatmentLS();
-    
+
+    /// Save/restore wire state (model/checkpoint/humans.cpp).
+    void checkpoint (checkpoint::Archive& a);
+
 private:
     
     // list of times at which the merozoite and hypnozoites release, ordered by

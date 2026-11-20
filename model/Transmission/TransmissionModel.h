@@ -54,6 +54,7 @@ using namespace std::placeholders;
 namespace OM
 {
 class Population;
+namespace checkpoint { class Archive; }
 namespace Host
 {
 class Human;
@@ -589,9 +590,11 @@ private:
     void ctsCbResRequirements(ostream &stream);
 
 public:
+    /// Run-state save/restore (definition in model/checkpoint/transmission.cpp)
+    void checkpoint (checkpoint::Archive& a);
+
     /// RNG used by the transmission model (vector kind)
     LocalRng m_rng;
-
     /// Number of iterations performed during initialization (vector kind).
     ///
     /// Special cases: 0 during initial one-human-lifespan warmup, <0 after

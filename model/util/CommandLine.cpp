@@ -40,6 +40,9 @@ namespace OM { namespace util {
 	CommandLine::OutputFormat CommandLine::outputFormat = CommandLine::OutputFormat::TXT;
 	string CommandLine::ctsoutName;
 	int CommandLine::seedOverride = -1;
+	string CommandLine::saveName;
+	string CommandLine::saveAt;
+	string CommandLine::resumeName;
 
 	string parseNextArg (int argc, char* argv[], int& i) {
 		++i;
@@ -79,6 +82,9 @@ namespace OM { namespace util {
 		outputName = "";
 		outputFormat = OutputFormat::TXT;
 		ctsoutName = "";
+		saveName = "";
+		saveAt = "main";
+		resumeName = "";
 #	ifdef OM_STREAM_VALIDATOR
 		string sVFile;
 #	endif
@@ -128,6 +134,24 @@ namespace OM { namespace util {
 						throw cmd_exception ("--ctsout argument may only be given once");
 					}
 					ctsoutName = parseNextArg (argc, argv, i);
+				} else if (clo == "save-to") {
+					if (saveName != ""){
+						throw cmd_exception ("--save-to argument may only be given once");
+					}
+					saveName = parseNextArg (argc, argv, i);
+				} else if (clo == "save-at") {
+					saveAt = parseNextArg (argc, argv, i);
+					if (saveAt != "main") {
+						int day = -1;
+						try { day = stoi (saveAt); } catch (...) {}
+						if (day < 0)
+							throw cmd_exception ("--save-at must be a non-negative day or 'main'");
+					}
+				} else if (clo == "resume") {
+					if (resumeName != ""){
+						throw cmd_exception ("--resume argument may only be given once");
+					}
+					resumeName = parseNextArg (argc, argv, i);
 				} else if (clo == "name") {
 					if (ctsoutName != "" || outputName != "" || scenarioFile != ""){
 						throw cmd_exception ("--name may not be used along with --scenario, --output or --ctsout");
@@ -261,6 +285,10 @@ namespace OM { namespace util {
 		<< "    --output-format txt|bin" << endl
 		<< "			Select main survey output format." << endl
 		<< "    --ctsout file.txt	Uses file.txt as ctsout file name. If not given, ctsout.txt is used." << endl
+		<< "    --save-to FILE	Write a checkpoint to FILE, then exit successfully." << endl
+		<< "    --save-at DAY	Checkpoint at simulation day DAY, or at the start of" << endl
+		<< "			the main phase when DAY is 'main' (default: main)." << endl
+		<< "    --resume FILE	Restore from the checkpoint FILE and continue." << endl
 		<< " -n --name NAME		Equivalent to --scenario scenarioNAME.xml --output outputNAME \\"<<endl
 		<< "			--ctsout ctsoutNAME.txt" <<endl
 		<< " -z --compress-output	Compress output with gzip and use a .gz extension." << endl

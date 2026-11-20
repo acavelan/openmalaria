@@ -75,7 +75,7 @@ uint32_t Genotypes::sampleGenotype( LocalRng& rng, vector<double>& genotype_weig
         assert( it != cum_initial_freqs.end() );
         return it->second;
     }else{
-        assert( state.current_mode == SAMPLE_TRACKING );
+        assert( current_mode == SAMPLE_TRACKING );
         assert( genotype_weights.size() == N_genotypes );
         double weight_sum = util::vectors::sum( genotype_weights );
         assert( weight_sum >= 0.0 && weight_sum < 1e5 );        // possible loss of precision or other error

@@ -34,6 +34,7 @@ namespace scnXml { class ImportedInfections; }
 
 namespace OM {
     class Population;
+namespace checkpoint { class Archive; }
 
 namespace Host {
 
@@ -47,6 +48,9 @@ namespace Host {
          * @returns True if any infections are imported
          */
         void init( RunContext& ctx, const scnXml::ImportedInfections& iiElt );
+        
+        /// Checkpoint the rate-table cursor (model/checkpoint/statics.cpp).
+        void checkpoint (checkpoint::Archive& a);
         
         /** Import this time-step's imported infections, according to initialised rates
          * 
