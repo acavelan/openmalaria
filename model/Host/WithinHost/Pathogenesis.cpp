@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Host/WithinHost/PathogenesisModel.h"
+#include "Host/WithinHost/Pathogenesis.h"
 #include "Host/Human.h"
 #include "mon/Monitoring.h"
 #include "util/random.h"
@@ -70,25 +70,25 @@ const size_t n = 11;
 double a = numeric_limits<double>::signaling_NaN(), b = numeric_limits<double>::signaling_NaN();
 //END static
 
-PathogenesisModel* PathogenesisModel::createPathogenesisModel(double cF) {
+Model* Model::createPathogenesisModel(double cF) {
     // Kind from model options (same dispatch chain as the old subclass factory)
     if (opt_predetermined_episodes)
-        return new PathogenesisModel(cF, Kind::Predet);
+        return new Model(cF, Kind::Predet);
     if (opt_mueller_pres_model)
-        return new PathogenesisModel(cF, Kind::Mueller);
-    return new PathogenesisModel(cF, Kind::Pyrogen);
+        return new Model(cF, Kind::Mueller);
+    return new Model(cF, Kind::Pyrogen);
 }
 
-PathogenesisModel::PathogenesisModel(double cF, Kind kind)
+Model::Model(double cF, Kind kind)
     : _comorbidityFactor(cF), kind(kind), _pyrogenThres(kind == Kind::Mueller ? 0.0 : initPyroThres) {}
 
-void PathogenesisModel::initMueller(Context& ctx, const Parameters& parameters) {
+void Model::initMueller(Context& ctx, const Parameters& parameters) {
     // parity: old MuellerPathogenesis::init (Submodels.cpp:41)
     rateMultiplier_31 = parameters[Parameter::MUELLER_RATE_MULTIPLIER] * ctx.clock.years_per_step;
     densityExponent_32 = parameters[Parameter::MUELLER_DENSITY_EXPONENT];
 }
 
-void PathogenesisModel::initPyrogen(Context& ctx, const Parameters& parameters) {
+void Model::initPyrogen(Context& ctx, const Parameters& parameters) {
     // parity: old PyrogenPathogenesis::init (Submodels.cpp:68)
     initPyroThres = parameters[Parameter::Y_STAR_0];
 
@@ -106,7 +106,7 @@ void PathogenesisModel::initPyrogen(Context& ctx, const Parameters& parameters) 
     Ystar1_26 = parameters[Parameter::Y_STAR_1];
 }
 
-double PathogenesisModel::getPEpisode(double timeStepMaxDensity, double totalDensity) {
+double Model::getPEpisode(double timeStepMaxDensity, double totalDensity) {
     switch (kind) {
     case Kind::Mueller: {
         // parity: old MuellerPathogenesis::getPEpisode (Submodels.cpp:47)
@@ -125,7 +125,7 @@ double PathogenesisModel::getPEpisode(double timeStepMaxDensity, double totalDen
     return 0.0; // unreachable: every Kind has a case
 }
 
-void PathogenesisModel::updatePyrogenThres(double totalDensity) {
+void Model::updatePyrogenThres(double totalDensity) {
     // Note: this calculation is slow (something like 5% of runtime)
 
     //Numerical approximation to equation 2, AJTMH p.57
@@ -135,14 +135,14 @@ void PathogenesisModel::updatePyrogenThres(double totalDensity) {
     }
 }
 
-void PathogenesisModel::summarize(const Host::Human& human) {
+void Model::summarize(const Host::Human& human) {
     if (kind == Kind::Mueller)
         return; // old base summarize was empty
     mon::recordStat(mon::measure("sumPyrogenThresh"), human, _pyrogenThres);
     mon::recordStat(mon::measure("sumLogPyrogenThres"), human, log(_pyrogenThres + 1.0));
 }
 
-Pathogenesis::StatePair PathogenesisModel::determineState(Host::Human& human, double ageYears,
+Pathogenesis::StatePair Model::determineState(Host::Human& human, double ageYears,
                                                           double timeStepMaxDensity, double endDensity, bool isDoomed) {
     double pMalariaFever = getPEpisode(timeStepMaxDensity, endDensity);
     StatePair result;
@@ -190,7 +190,7 @@ Pathogenesis::StatePair PathogenesisModel::determineState(Host::Human& human, do
     return result;
 }
 
-Pathogenesis::State PathogenesisModel::sampleNMF(LocalRng& rng, double ageYears) {
+Pathogenesis::State Model::sampleNMF(LocalRng& rng, double ageYears) {
     if (pg_NMF_incidence.isSet()) {
         double pNMF = pg_NMF_incidence.eval(ageYears);
         // parity: order — local RNG stream: draw call order fixes stream state

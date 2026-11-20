@@ -29,8 +29,8 @@
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Diagnostic.h"
-#include "Clinical/ClinicalModel.h"
-#include "Transmission/TransmissionModel.h"
+#include "Clinical/Model.h"
+#include "Transmission/Model.h"
 
 #include "util/errors.h"
 #include "util/random.h"
@@ -42,7 +42,7 @@
 namespace OM {
 using namespace std::placeholders;
 using namespace OM::util;
-using Transmission::TransmissionModel;
+using Transmission::Model;
 
 /** Variables for continuous reporting */
 const vector<double> ctsDemogAgeGroups = {1.0, 5.0, 10.0, 15.0, 25.0};

@@ -107,10 +107,10 @@ struct HumanColumns {
     std::vector<double> imm_h, imm_Y, imm_Y_lag;
     /// Primary blood-stage infection count (old WHInterface cumPrimInf, u32).
     std::vector<uint32_t> cum_prim_inf;
-    /// Clinical timestamps (old ClinicalModel m_tLastTreatment + ES-kind
+    /// Clinical timestamps (old Model m_tLastTreatment + ES-kind
     /// esCaseStartTime/esTimeOfRecovery/esTimeLastTreatment, SimTime).
     std::vector<SimTime> t_last_treatment, es_case_start, es_time_recovery, es_time_treatment;
-    /// ES total density last time step (old ClinicalModel esPreviousDensity).
+    /// ES total density last time step (old Model esPreviousDensity).
     std::vector<double> es_prev_density;
     /// Per-species transmission params (old PerHost anoph* vectors; nested:
     /// one vector<double> per row, resized by PerHost::initialise).

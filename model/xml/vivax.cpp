@@ -28,7 +28,7 @@
 
 #include "Clock.h"
 #include "Context.h"
-#include "Host/WithinHost/PathogenesisModel.h"
+#include "Host/WithinHost/Pathogenesis.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/CommandLine.h"
 #include "util/UnitParse.h"
@@ -123,7 +123,7 @@ void WHVivax::init(Context& ctx, const OM::Parameters& parameters, const scnXml:
     }
 
     initNHypnozoites();
-    Pathogenesis::PathogenesisModel::init(ctx, parameters, model.getClinical(), true);
+    Pathogenesis::Model::init(ctx, parameters, model.getClinical(), true);
 }
 
 void WHVivax::setHSParameters(const scnXml::LiverStageDrug* elt) {

@@ -106,7 +106,7 @@ class PerHostAnophParams {
     // (no per-type data here: the registry lives in Context::anophParams)
 };
 
-/** Contains TransmissionModel parameters which need to be stored per host.
+/** Contains Model parameters which need to be stored per host.
  *
  * Currently many members are public and directly accessed. */
 class PerHost {

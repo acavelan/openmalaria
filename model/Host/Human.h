@@ -31,13 +31,13 @@
 
 namespace OM {
 namespace Clinical {
-class ClinicalModel;
+class Model;
 }
 namespace WithinHost {
 class WHInterface;
 }
 namespace Transmission {
-class TransmissionModel;
+class Model;
 }
 
 namespace Host {
@@ -109,10 +109,10 @@ class Human {
     /** The InfectionIncidenceModel translates per-host EIR into new infections */
     unique_ptr<InfectionIncidenceModel> infIncidence;
 
-    /** The ClinicalModel encapsulates pathogenesis (sickness status),
+    /** The Model encapsulates pathogenesis (sickness status),
     * case management (medicating drugs)
     * and clinical outcomes (morbidity, reporting). */
-    unique_ptr<Clinical::ClinicalModel> clinicalModel;
+    unique_ptr<Clinical::Model> clinicalModel;
 
     /** Per-host RNG: SoA column row, not a member (accessor below keeps the
      * old `human.rng()` call syntax; 4×u64 Xoshiro state per row). */
@@ -160,7 +160,7 @@ struct HostScratch {
 struct HostView {
     Context& ctx;
     Human& human;
-    Transmission::TransmissionModel& transmission;
+    Transmission::Model& transmission;
     HostScratch& scratch;
 };
 
@@ -174,7 +174,7 @@ void host_within_host_update(HostView& v);
 void host_clinical_update(HostView& v);
 void host_update_infant_deaths(HostView& v);
 
-void update(Context& ctx, Human& human, Transmission::TransmissionModel& transmission, HostScratch& scratch);
+void update(Context& ctx, Human& human, Transmission::Model& transmission, HostScratch& scratch);
 
 inline SimTime Human::age(SimTime time) const { return time - cols->dob[row]; }
 

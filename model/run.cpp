@@ -39,7 +39,7 @@
 #include "mon/Monitoring.h"
 
 #include "interventions/InterventionManager.h"
-#include "Clinical/ClinicalModel.h"
+#include "Clinical/Model.h"
 
 #include "Host/NeonatalMortality.h"
 #include "Transmission/transmission.h"
@@ -57,7 +57,7 @@
 
 namespace OM {
 using interventions::InterventionManager;
-using Transmission::TransmissionModel;
+using Transmission::Model;
 }
 
 using namespace OM;
@@ -87,7 +87,7 @@ void print_errno(const Context& ctx) {
 
 // --save-to FILE: write the checkpoint and exit successfully (main maps
 // cmd_exception code 0 to a clean exit; destructors close the output files).
-void save_and_exit(Context& ctx, Population& population, TransmissionModel& transmission, checkpoint::Phase phase,
+void save_and_exit(Context& ctx, Population& population, Model& transmission, checkpoint::Phase phase,
                    SimTime& endTime, SimTime& estEndTime) {
     checkpoint::writeCheckpoint(ctx, population, transmission, phase, endTime, estEndTime,
                                 util::CommandLine::getSaveName());
@@ -96,7 +96,7 @@ void save_and_exit(Context& ctx, Population& population, TransmissionModel& tran
 
 // --save-at DAY (not "main", handled at the main-phase reset): fire once at
 // the first loop boundary at or after the given simulation day.
-void maybe_save(Context& ctx, Population& population, TransmissionModel& transmission, bool mainPhase, SimTime& endTime,
+void maybe_save(Context& ctx, Population& population, Model& transmission, bool mainPhase, SimTime& endTime,
                 SimTime& estEndTime) {
     const string spec = util::CommandLine::getSaveName().empty() ? string() : util::CommandLine::getSaveAt();
     if (spec.empty() || spec == "main")
@@ -107,7 +107,7 @@ void maybe_save(Context& ctx, Population& population, TransmissionModel& transmi
 }
 
 // Internal simulation loop
-void run(Context& ctx, Population& population, TransmissionModel& transmission, SimTime humanWarmupLength,
+void run(Context& ctx, Population& population, Model& transmission, SimTime humanWarmupLength,
          SimTime& endTime, SimTime& estEndTime, bool surveyOnlyNewEp, string phase) {
     int lastPercent = -1;
     const bool mainPhase = phase == "Intervention period";
@@ -246,7 +246,7 @@ void run_simulation(Context& ctx, const std::string& scenarioFile) {
     Transmission::PerHost::init(ctx, scenario->getModel().getHuman().getAvailabilityToMosquitoes());
     Host::InfectionIncidenceModel::init(ctx, parameters);
     WithinHost::WHInterface::init(ctx, parameters, *scenario);
-    Clinical::ClinicalModel::init(ctx, parameters, *scenario);
+    Clinical::Model::init(ctx, parameters, *scenario);
     Host::NeonatalMortality::init(ctx, scenario->getModel().getClinical());
     AgeStructure::init(ctx, scenario->getDemography());
 
@@ -258,7 +258,7 @@ void run_simulation(Context& ctx, const std::string& scenarioFile) {
     size_t popSize = scenario->getDemography().getPopSize();
 
     std::unique_ptr<Population> population = std::unique_ptr<Population>(new Population(ctx, popSize));
-    std::unique_ptr<TransmissionModel> transmission = std::unique_ptr<TransmissionModel>(
+    std::unique_ptr<Model> transmission = std::unique_ptr<Model>(
         Transmission::createTransmissionModel(ctx, scenario->getEntomology(), popSize));
 
     registerContinousPopulationCallbacks(ctx);
@@ -266,7 +266,7 @@ void run_simulation(Context& ctx, const std::string& scenarioFile) {
     // Depends on transmission model (for species indexes):
     // MDA1D may depend on health system (too complex to verify)
     interventions::InterventionManager::init(ctx, scenario->getInterventions(), *transmission);
-    Clinical::ClinicalModel::setHS(ctx, scenario->getHealthSystem()); // Depends on interventions, PK/PD (from humanPop)
+    Clinical::Model::setHS(ctx, scenario->getHealthSystem()); // Depends on interventions, PK/PD (from humanPop)
     mon::initCohorts(ctx, scenario->getMonitoring());                 // Depends on interventions
 
     bool surveyOnlyNewEp = scenario->getMonitoring().getSurveyOptions().getOnlyNewEpisode();
@@ -345,7 +345,7 @@ void run_simulation(Context& ctx, const std::string& scenarioFile) {
         Clinical::InfantMortality::preMainSimInit();
         ctx.genotypes.preMainSimInit();
         population->recentBirths = 0;
-        transmission->summarize(ctx); // Only to reset TransmissionModel::inoculationsPerAgeGroup
+        transmission->summarize(ctx); // Only to reset Model::inoculationsPerAgeGroup
         mon::initMainSim(ctx);
 
         // --save-at main: checkpoint exactly at the start of the main phase.

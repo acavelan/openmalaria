@@ -57,14 +57,14 @@ void CM5DayCommon::init() { cfr_pf_use_hospital = util::ModelOptions::option(uti
 
 // ———  per-human, construction and destruction  ———
 
-void clinicalUpdate5Day(ClinicalModel& cm, Context& ctx, Human& human, double ageYears,
+void clinicalUpdate5Day(Model& cm, Context& ctx, Human& human, double ageYears,
                         WithinHost::Pathogenesis::StatePair& pg) {
     Episode::State pgState = static_cast<Episode::State>(pg.state);
 
     if (pgState & Episode::MALARIA) {
         if (pgState & Episode::COMPLICATED) {
             severeMalaria(cm, ctx, human, pgState, ageYears, cm.doomed);
-        } else if (ClinicalModel::indirectMortBugfix || !pg.indirectMortality) {
+        } else if (Model::indirectMortBugfix || !pg.indirectMortality) {
             // NOTE: the "not indirect mortality" bit is a historical accident.
             // Validity is debatable, but there's no point changing now.
             // (This does affect tests.)
@@ -84,21 +84,21 @@ void clinicalUpdate5Day(ClinicalModel& cm, Context& ctx, Human& human, double ag
         human.removeFirstEvent(interventions::SubPopRemove::ON_FIRST_BOUT);
 }
 
-void severeMalaria(ClinicalModel& cm, Context& ctx, Human& human, Episode::State pgState, double ageYears,
+void severeMalaria(Model& cm, Context& ctx, Human& human, Episode::State pgState, double ageYears,
                    int& doomed) {
     // Probability of getting treatment (only part which is case managment):
     double p2 = CM5DayCommon::accessSevere * cm.m_treatmentSeekingFactor;
     // Probability of getting cured after getting treatment:
     double p3 = CM5DayCommon::cureRateSevere;
     // p4 is the hospital case-fatality rate from Tanzania
-    double p4 = ClinicalModel::caseFatalityRate.eval(ageYears);
+    double p4 = Model::caseFatalityRate.eval(ageYears);
     // p5a here is the community threshold case-fatality rate
-    double p5a = ClinicalModel::getCommunityCFR(p4);
+    double p5a = Model::getCommunityCFR(p4);
     // p5b here is the in-hospital treatment-failure case-fatality rate
     // In our code it was originally the community CFR, but in the published model description it should be the hospital CFR
     double p5b = (cfr_pf_use_hospital) ? p4 : p5a;
     // p6 is P(seq) for treated patients
-    double p6 = ClinicalModel::pSequelaeInpatient.eval(ageYears);
+    double p6 = Model::pSequelaeInpatient.eval(ageYears);
     // p7 is P(seq) when parasites aren't cleared
     // note: if p7 were not equal p6, we might have to do something similar to p5b
     double p7 = p6;
@@ -193,10 +193,10 @@ const FlatTree *treeUCOfficial = 0, *treeUCSelfTreat = 0;
 
 // ———  per-human, update  ———
 
-void treeUncomplicatedEvent(ClinicalModel& cm, Context& ctx, Human& human, Episode::State pgState) {
+void treeUncomplicatedEvent(Model& cm, Context& ctx, Human& human, Episode::State pgState) {
     // If last treatment prescribed was in recent memory, consider second line.
     CM5DayCommon::CaseType regimen = CM5DayCommon::FirstLine;
-    if (cm.t_last_treatment() + ClinicalModel::healthSystemMemory > ctx.clock.ts0()) {
+    if (cm.t_last_treatment() + Model::healthSystemMemory > ctx.clock.ts0()) {
         pgState = Episode::State(pgState | Episode::SECOND_CASE);
         regimen = CM5DayCommon::SecondLine;
     }
@@ -237,10 +237,10 @@ bool ImmediateOutcomes::useDiagnosticUC = false;
 
 // ———  per-human, update  ———
 
-void immOutUncomplicatedEvent(ClinicalModel& cm, Context& ctx, Human& human, Episode::State pgState) {
+void immOutUncomplicatedEvent(Model& cm, Context& ctx, Human& human, Episode::State pgState) {
     // If last treatment prescribed was in recent memory, consider second line.
     CM5DayCommon::CaseType regimen = CM5DayCommon::FirstLine;
-    if (cm.t_last_treatment() + ClinicalModel::healthSystemMemory > ctx.clock.ts0()) {
+    if (cm.t_last_treatment() + Model::healthSystemMemory > ctx.clock.ts0()) {
         pgState = Episode::State(pgState | Episode::SECOND_CASE);
         regimen = CM5DayCommon::SecondLine;
     }

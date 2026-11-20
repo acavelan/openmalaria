@@ -24,7 +24,7 @@
 // into Episode.h would drag that chain into the whole clinical cone.
 #include "Context.h"
 #include "Clinical/Episode.h"
-#include "Clinical/ClinicalModel.h"
+#include "Clinical/Model.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/WHInterface.h"
 
@@ -41,9 +41,9 @@ void Episode::flush() {
 void Episode::update(Context& ctx, const Host::Human& human, Episode::State newState) {
     bool toReport = false;
 
-    if (healthSystemMemoryFix && (time + ClinicalModel::hsMemory() <= ctx.clock.ts0()))
+    if (healthSystemMemoryFix && (time + Model::hsMemory() <= ctx.clock.ts0()))
         toReport = true;
-    else if (!healthSystemMemoryFix && (time + ClinicalModel::hsMemory() < ctx.clock.ts0()))
+    else if (!healthSystemMemoryFix && (time + Model::hsMemory() < ctx.clock.ts0()))
         toReport = true;
 
     if (toReport) {

@@ -34,7 +34,7 @@
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/Infection.h"
-#include "Host/WithinHost/PathogenesisModel.h"
+#include "Host/WithinHost/Pathogenesis.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "mon/Monitoring.h"
 #include "util/AgeGroupInterpolation.h"
@@ -127,8 +127,8 @@ void WHFalciparum::init(Context& ctx, const OM::Parameters& parameters, const sc
 
     y_lag_len = ctx.clock.inSteps(sim::fromDays(20)) + 1;
 
-    //NOTE: should also call cleanup() on the PathogenesisModel, but it only frees memory which the OS does anyway
-    Pathogenesis::PathogenesisModel::init(ctx, parameters, model.getClinical(), false);
+    //NOTE: should also call cleanup() on the Model, but it only frees memory which the OS does anyway
+    Pathogenesis::Model::init(ctx, parameters, model.getClinical(), false);
 
     // Default value to use if no <parameters> element is present in XML.
     SimTime latentP = read_latentP(ctx.clock, model);

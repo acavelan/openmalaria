@@ -22,7 +22,7 @@
 
 #include "Context.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/PathogenesisModel.h"
+#include "Host/WithinHost/Pathogenesis.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/Genotypes.h"
@@ -85,7 +85,7 @@ void WHFalciparum::setParams(double cumYStar, double cumHStar, double aM, double
 // -----  Non-static  -----
 
 WHFalciparum::WHFalciparum(Context& ctx, LocalRng& rng, double comorbidityFactor, Kind kind) : WHInterface(ctx, kind) {
-    pathogenesisModel.reset(Pathogenesis::PathogenesisModel::createPathogenesisModel(comorbidityFactor));
+    pathogenesisModel.reset(Pathogenesis::Model::createPathogenesisModel(comorbidityFactor));
 
     // NOTE: negating a Gaussian sample with mean 0 is pointless — except that
     // the individual samples change. In any case the overhead is negligible.

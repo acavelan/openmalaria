@@ -25,7 +25,7 @@
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Genotypes.h"
-#include "Host/WithinHost/PathogenesisModel.h"
+#include "Host/WithinHost/Pathogenesis.h"
 #include "util/errors.h"
 #include "util/ModelOptions.h"
 #include "util/AgeGroupInterpolation.h"

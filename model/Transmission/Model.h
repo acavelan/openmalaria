@@ -62,7 +62,7 @@ class Human;
 namespace Transmission {
 
 /// Shared error text: vector interventions require dynamic mode (defined in
-/// TransmissionModel.cpp; also thrown by xml/interventions.cpp — one string,
+/// Model.cpp; also thrown by xml/interventions.cpp — one string,
 /// bytes unchanged).
 extern const std::string vec_mode_err;
 
@@ -99,26 +99,26 @@ enum SimulationMode {
 };
 
 /// Abstract base class, defines behaviour of transmission models
-class TransmissionModel {
+class Model {
   public:
     /// Which behaviour this (single, final) model class implements.
     enum class Kind { Vector, NonVector };
 
     /// Vector-model constructor (was VectorModel::VectorModel).
-    TransmissionModel(Context& ctx, vector<double> initEIR, int interventionMode,
+    Model(Context& ctx, vector<double> initEIR, int interventionMode,
                       vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
                       vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
                       map<string, size_t> speciesIndexList);
 
     /// Non-vector constructor (was NonVectorModel; defined in xml/entomology.cpp).
-    TransmissionModel(Context& ctx, vector<double> initEIR, int interventionMode,
+    Model(Context& ctx, vector<double> initEIR, int interventionMode,
                       const scnXml::NonVector& nonVectorData, int eipDuration);
 
   protected:
     /// The run this model belongs to (clock accessed as ctx.clock).
     Context& ctx;
 
-    TransmissionModel(Context& ctx, vector<double> initialisationEIR, int interventionMode, Kind kind,
+    Model(Context& ctx, vector<double> initialisationEIR, int interventionMode, Kind kind,
                       vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
                       vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
                       map<string, size_t> speciesIndexList)
@@ -143,20 +143,20 @@ class TransmissionModel {
         opt_vaccine_genotype = util::ModelOptions::option(util::VACCINE_GENOTYPE);
 
         mon::Continuous::registerCallback(ctx, "input EIR", "\tinput EIR",
-                                          std::bind(&TransmissionModel::ctsCbInputEIR, this, _1));
+                                          std::bind(&Model::ctsCbInputEIR, this, _1));
         mon::Continuous::registerCallback(ctx, "simulated EIR", "\tsimulated EIR",
-                                          std::bind(&TransmissionModel::ctsCbSimulatedEIR, this, _1));
+                                          std::bind(&Model::ctsCbSimulatedEIR, this, _1));
         mon::Continuous::registerCallback(ctx, "human infectiousness", "\thuman infectiousness",
-                                          std::bind(&TransmissionModel::ctsCbKappa, this, _1));
+                                          std::bind(&Model::ctsCbKappa, this, _1));
         mon::Continuous::registerCallback(ctx, "num transmitting humans", "\tnum transmitting humans",
-                                          std::bind(&TransmissionModel::ctsCbNumTransmittingHumans, this, _1));
+                                          std::bind(&Model::ctsCbNumTransmittingHumans, this, _1));
     }
 
   public:
     bool isVector() const { return kind == Kind::Vector; }
 
-    /// ~Deallocate memory for TransmissionModel parameters and clean up
-    ~TransmissionModel() {}
+    /// ~Deallocate memory for Model parameters and clean up
+    ~Model() {}
 
     /** Extra initialisation when not loading from a checkpoint, requiring
      * information from the human population structure. */
@@ -327,7 +327,7 @@ class TransmissionModel {
 
         for (const Host::Human& human : population) {
             // NOTE: calculate availability relative to age at end of time step;
-            // not my preference but consistent with TransmissionModel::getEIR().
+            // not my preference but consistent with Model::getEIR().
             const double avail =
                 human.perHostTransmission.relativeAvailabilityHetAge(sim::inYears(human.age(ctx.clock.ts1())));
             sumWeight += avail;

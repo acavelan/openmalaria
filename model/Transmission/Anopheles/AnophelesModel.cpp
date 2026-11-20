@@ -22,7 +22,7 @@
 
 #include "Clock.h"
 #include "Context.h"
-#include "Transmission/TransmissionModel.h"
+#include "Transmission/Model.h"
 #include "Transmission/Anopheles/AnophelesModel.h"
 #include "Transmission/PerHost.h"
 #include "Population.h"
@@ -279,7 +279,7 @@ mosquito surviving biting, finding a resting site, resting and ovipositing.");
 /** Called by initialise function to init variables directly related to EIR
  *
  * @param anoph Data from XML
- * @param initialisationEIR In/out parameter: TransmissionModel::initialisationEIR
+ * @param initialisationEIR In/out parameter: Model::initialisationEIR
  * @param EIPDuration parameter from MosqTransmission (used for an estimation)
  */
 void AnophelesModel::initEIR(const vector<double>& initEIR365, vector<double> FSCoefficInit, double EIRRotateAngleInit,
@@ -290,7 +290,7 @@ void AnophelesModel::initEIR(const vector<double>& initEIR365, vector<double> FS
 
     partialInitEIR.resize(ctx.clock.steps_per_year, 0.0);
 
-    // Add to the TransmissionModel's EIR, used for the initalization phase.
+    // Add to the Model's EIR, used for the initalization phase.
     // Note: sum stays the same, units changes to per-time-step.
     for (SimTime i = sim::zero(); i < sim::oneYear(); i = i + sim::oneDay()) {
         partialInitEIR[mod_nn(ctx.clock.inSteps(i), ctx.clock.steps_per_year)] += initEIR365[i];

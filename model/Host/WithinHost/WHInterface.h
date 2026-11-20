@@ -30,7 +30,7 @@
 #include "util/errors.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
-#include "Host/WithinHost/PathogenesisModel.h"
+#include "Host/WithinHost/Pathogenesis.h"
 #include "Host/WithinHost/Infection/Infection.h"
 
 #include "Parameters.h"
@@ -58,7 +58,7 @@ class Human;
 }
 namespace WithinHost {
 namespace Pathogenesis {
-class PathogenesisModel;
+class Model;
 }
 
 /** Sole owner of the per-host infection-slot cap (plan §5: "MAX_INFECTIONS=21
@@ -419,8 +419,8 @@ class WHInterface {
     * from the previous time step (once updateInfection has been called). */
     std::vector<double> m_y_lag_i, m_y_lag_l;
 
-    /// The PathogenesisModel introduces illness dependant on parasite density
-    unique_ptr<Pathogenesis::PathogenesisModel> pathogenesisModel;
+    /// The Model introduces illness dependant on parasite density
+    unique_ptr<Pathogenesis::Model> pathogenesisModel;
 
     /// End of step on which treatment expires = start of first step after expiry
     SimTime treatExpiryLiver = sim::zero(), treatExpiryBlood = sim::zero();

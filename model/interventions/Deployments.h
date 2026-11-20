@@ -37,7 +37,7 @@
 #include "Context.h"
 #include "util/errors.h"
 #include "Population.h"
-#include "Transmission/TransmissionModel.h"
+#include "Transmission/Model.h"
 #include "Transmission/PerHost.h"
 #include "util/random.h"
 #include <map>
@@ -164,10 +164,10 @@ struct ChangeEirDeployParams {
 
 // Definitions in xml/interventions.cpp (they need the schema/clinical includes
 // this header must not pull in):
-void timed_deploy_change_hs(Context&, Transmission::TransmissionModel&, ChangeHsDeployParams&);
-void timed_deploy_change_eir(Context&, Transmission::TransmissionModel&, ChangeEirDeployParams&);
-void timed_deploy_add_nhh(Context&, std::vector<Host::Human>&, Transmission::TransmissionModel&, AddNhhDeployParams&);
-void timed_deploy_nhh_mods(Context&, std::vector<Host::Human>&, Transmission::TransmissionModel&,
+void timed_deploy_change_hs(Context&, Transmission::Model&, ChangeHsDeployParams&);
+void timed_deploy_change_eir(Context&, Transmission::Model&, ChangeEirDeployParams&);
+void timed_deploy_add_nhh(Context&, std::vector<Host::Human>&, Transmission::Model&, AddNhhDeployParams&);
+void timed_deploy_nhh_mods(Context&, std::vector<Host::Human>&, Transmission::Model&,
                            const NhhModsDeployParams&);
 
 // ———  timed human deployments  ———
@@ -314,11 +314,11 @@ struct TimedDeployment {
     TimedDeployment(const TimedDeployment&) = delete;
     TimedDeployment& operator=(const TimedDeployment&) = delete;
 
-    void deploy(Context& ctx, std::vector<Host::Human>& population, Transmission::TransmissionModel& transmission);
+    void deploy(Context& ctx, std::vector<Host::Human>& population, Transmission::Model& transmission);
 };
 
 inline void TimedDeployment::deploy(Context& ctx, std::vector<Host::Human>& population,
-                                    Transmission::TransmissionModel& transmission) {
+                                    Transmission::Model& transmission) {
     switch (kind) {
 
     case TimedDeploymentKind::DUMMY:

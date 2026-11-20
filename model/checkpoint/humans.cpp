@@ -36,8 +36,8 @@
 #include "Host/Human.h"
 #include "Host/InfectionIncidenceModel.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/PathogenesisModel.h"
-#include "Clinical/ClinicalModel.h"
+#include "Host/WithinHost/Pathogenesis.h"
+#include "Clinical/Model.h"
 #include "Clinical/Episode.h"
 #include "PkPd/LSTMDrug.h"
 #include "Context.h"
@@ -67,7 +67,7 @@ void checkpoint(checkpoint::Archive& a, VivaxBrood& b) {
 }
 
 namespace Pathogenesis {
-void checkpoint(checkpoint::Archive& a, PathogenesisModel& pm) {
+void checkpoint(checkpoint::Archive& a, Model& pm) {
     a.value(pm._comorbidityFactor);
     a.value(pm._pyrogenThres);
 }
@@ -281,7 +281,7 @@ void ckEpisode(checkpoint::Archive& a, Episode& ep) {
 }
 } // namespace
 
-void checkpoint(checkpoint::Archive& a, ClinicalModel& cm) {
+void checkpoint(checkpoint::Archive& a, Model& cm) {
     a.value(cm.m_treatmentSeekingFactor);
     a.value(cm.doomed);
     ckEpisode(a, cm.latestReport);
@@ -293,7 +293,7 @@ void checkpoint(checkpoint::Archive& a, ClinicalModel& cm) {
         // createClinicalModel, same run config both ends of the wire) is the
         // proof for the down-cast. Wire stays symmetric: the 5-day variants
         // carry the old always-NONE bytes in a local.
-        auto* es = cm.kind == ClinicalModel::Kind::EventScheduler ? &static_cast<CMEventScheduler&>(cm) : nullptr;
+        auto* es = cm.kind == Model::Kind::EventScheduler ? &static_cast<CMEventScheduler&>(cm) : nullptr;
         int32_t e = es ? static_cast<int32_t>(es->esPgState) : Episode::NONE;
         a.value(e);
         if (es)

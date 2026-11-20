@@ -23,7 +23,7 @@
 // model/xml/ conversion layer — entomology: vector/non-vector transmission
 // model construction and EIR/change-EIR intervention reading from scnXml.
 // Moved verbatim from Transmission/transmission.h (the inline factory
-// functions; readMode stays), TransmissionModel.h (averageEIR),
+// functions; readMode stays), Model.h (averageEIR),
 // NonVectorModel.h (constructor and changeEIRIntervention bodies),
 // PerHost.cpp, VectorModel.cpp (per-species intervention loops became the
 // free initVectorInterv/initVectorTrap functions, called via
@@ -31,7 +31,7 @@
 
 #include "Clock.h"
 #include "Context.h"
-#include "Transmission/TransmissionModel.h"
+#include "Transmission/Model.h"
 #include "Transmission/transmission.h"
 #include "Transmission/PerHost.h"
 #include "Transmission/Anopheles/AnophelesModel.h"
@@ -81,7 +81,7 @@ inline double averageEIR(const scnXml::DailyValues& vectorData) {
     return averageEIR_seq(vectorData.getValue(), "no daily values given");
 }
 
-TransmissionModel* createNonVectorModel(Context& ctx, const scnXml::Entomology& entoData) {
+Model* createNonVectorModel(Context& ctx, const scnXml::Entomology& entoData) {
     const scnXml::NonVector& nonVectorData = entoData.getNonVector().get();
 
     int interventionMode = readMode(entoData.getMode());
@@ -90,7 +90,7 @@ TransmissionModel* createNonVectorModel(Context& ctx, const scnXml::Entomology& 
     vector<double> initialisationEIR;
     initialisationEIR.assign(ctx.clock.steps_per_year, 0.0);
 
-    return new TransmissionModel(ctx, initialisationEIR, interventionMode, nonVectorData, eipDuration);
+    return new Model(ctx, initialisationEIR, interventionMode, nonVectorData, eipDuration);
 }
 
 bool anophelesCompare(const scnXml::AnophelesParams& a1, const scnXml::AnophelesParams& a2) {
@@ -327,7 +327,7 @@ Anopheles::AnophelesModel* createAnophelesModel(Context& ctx, size_t i, const sc
     return anophModel;
 }
 
-TransmissionModel* createVectorModel(Context& ctx, const scnXml::Entomology& entoData, int populationSize) {
+Model* createVectorModel(Context& ctx, const scnXml::Entomology& entoData, int populationSize) {
     const scnXml::Vector& vectorData = entoData.getVector().get();
     scnXml::Vector::AnophelesSequence anophelesList = vectorData.getAnopheles();
 
@@ -370,14 +370,14 @@ TransmissionModel* createVectorModel(Context& ctx, const scnXml::Entomology& ent
     // Note: in forcedEIR mode species/emergenceRateEstimators are not needed
     // anymore (we have initialisationEIR), but interventions still use them.
 
-    return new TransmissionModel(ctx, initialisationEIR, interventionMode, std::move(species),
+    return new Model(ctx, initialisationEIR, interventionMode, std::move(species),
                                  std::move(emergenceRateEstimators), speciesIndex);
 }
 
-TransmissionModel* createTransmissionModel(Context& ctx, const scnXml::Entomology& entoData, int populationSize) {
+Model* createTransmissionModel(Context& ctx, const scnXml::Entomology& entoData, int populationSize) {
     // Entomology contains either a list of at least one anopheles or a list of at
     // least one EIRDaily.
-    TransmissionModel* model;
+    Model* model;
     if (entoData.getVector().present())
         model = createVectorModel(ctx, entoData, populationSize);
     else {
@@ -404,9 +404,9 @@ TransmissionModel* createTransmissionModel(Context& ctx, const scnXml::Entomolog
     return model;
 }
 
-TransmissionModel::TransmissionModel(Context& ctx, vector<double> initEIR, int interventionMode,
+Model::Model(Context& ctx, vector<double> initEIR, int interventionMode,
                                      const scnXml::NonVector& nonVectorData, int eipDuration)
-    : TransmissionModel(ctx, std::move(initEIR), interventionMode, Kind::NonVector, {}, {}, {}) {
+    : Model(ctx, std::move(initEIR), interventionMode, Kind::NonVector, {}, {}, {}) {
     nSpore = sim::fromDays(eipDuration);
     laggedKappa.resize(ctx.clock.inSteps(nSpore) + 1, 0.0);
 
@@ -471,7 +471,7 @@ static void fill_intervention_eir(Context& ctx, vector<double>& interventionEIR,
     }
 }
 
-void TransmissionModel::changeEIRIntervention_nonVector(const scnXml::NonVector& nonVectorData) {
+void Model::changeEIRIntervention_nonVector(const scnXml::NonVector& nonVectorData) {
     // Note: requires ctx.clock.interv >= sim::zero(), but this can only be
     // called in intervention period anyway.
     simulationMode = transientEIRknown;
@@ -506,7 +506,7 @@ void PerHost::init(Context& ctx, const scnXml::AgeGroupValues& availabilityToMos
     relAvailAge.set(ctx.clock, availabilityToMosquitoes, "availabilityToMosquitoes");
 }
 
-void initVectorInterv(TransmissionModel& vm, const scnXml::Description::AnophelesSequence& list, size_t instance,
+void initVectorInterv(Model& vm, const scnXml::Description::AnophelesSequence& list, size_t instance,
                       const string& name) {
     SpeciesIndexChecker checker(name, vm.speciesIndex);
     for (const scnXml::VectorSpeciesIntervention& anoph : list) {
@@ -515,7 +515,7 @@ void initVectorInterv(TransmissionModel& vm, const scnXml::Description::Anophele
     }
     checker.checkNoneMissed();
 }
-void initVectorTrap(TransmissionModel& vm, const scnXml::VectorTrap::DescriptionSequence list, size_t instance,
+void initVectorTrap(Model& vm, const scnXml::VectorTrap::DescriptionSequence list, size_t instance,
                     const scnXml::VectorTrap::NameOptional name_opt) {
     stringstream name_ss;
     if (name_opt.present())
@@ -531,7 +531,7 @@ void initVectorTrap(TransmissionModel& vm, const scnXml::VectorTrap::Description
     checker.checkNoneMissed();
 }
 
-void TransmissionModel::changeEIRIntervention_vector(const scnXml::NonVector& nonVectorData) {
+void Model::changeEIRIntervention_vector(const scnXml::NonVector& nonVectorData) {
     if ((simulationMode != forcedEIR) && (simulationMode != transientEIRknown))
         throw util::xml_error("changeEIR intervention can only be used in forced EIR mode");
 

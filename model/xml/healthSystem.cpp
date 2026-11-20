@@ -21,10 +21,10 @@
  */
 
 // model/xml/ conversion layer — health system / clinical side of the host
-// modules: non-malaria fevers (PathogenesisModel), neonatal mortality,
+// modules: non-malaria fevers (Model), neonatal mortality,
 // diagnostic selection, within-host treatment options and the whole
 // decision-tree / case-management construction from scnXml.
-// Moved verbatim from Host/WithinHost/PathogenesisModel.cpp,
+// Moved verbatim from Host/WithinHost/Model.cpp,
 // Host/NeonatalMortality.cpp and Host/WithinHost/Treatments.cpp. State stays
 // defined in the original files (extern re-declared below).
 
@@ -33,12 +33,12 @@
 #include "Parameters.h"
 #include "Host/NeonatalMortality.h"
 #include "Host/WithinHost/Diagnostic.h"
-#include "Host/WithinHost/PathogenesisModel.h"
+#include "Host/WithinHost/Pathogenesis.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Clinical/CM5DayCommon.h"
 #include "Clinical/CMDecisionTree.h"
-#include "Clinical/ClinicalModel.h"
+#include "Clinical/Model.h"
 #include "Clinical/CM5DayCommon.h"
 #include "Clinical/Episode.h"
 #include "Clinical/EventScheduler.h"
@@ -70,12 +70,12 @@ namespace WithinHost {
 using namespace OM::util;
 namespace Pathogenesis {
 
-// State defined in PathogenesisModel.cpp (external linkage):
+// State defined in Model.cpp (external linkage):
 extern double pg_indirRiskCoFactor, pg_severeMalThreshold, pg_comorbIntercept, pg_inv_critAgeComorb;
 extern AgeGroupInterpolator pg_NMF_incidence;
 extern bool opt_predetermined_episodes, opt_mueller_pres_model;
 
-void PathogenesisModel::init(Context& ctx, const Parameters& parameters, const scnXml::Clinical& clinical,
+void Model::init(Context& ctx, const Parameters& parameters, const scnXml::Clinical& clinical,
                              bool nmfOnly) {
     if (util::ModelOptions::option(util::NON_MALARIA_FEVERS)) {
         if (!clinical.getNonMalariaFevers().present()) {
@@ -95,13 +95,13 @@ void PathogenesisModel::init(Context& ctx, const Parameters& parameters, const s
     if (util::ModelOptions::option(util::PREDETERMINED_EPISODES)) {
         opt_predetermined_episodes = true;
         //no separate init:
-        PathogenesisModel::initPyrogen(ctx, parameters);
+        Model::initPyrogen(ctx, parameters);
     } else {
         if (util::ModelOptions::option(util::MUELLER_PRESENTATION_MODEL)) {
             opt_mueller_pres_model = true;
-            PathogenesisModel::initMueller(ctx, parameters);
+            Model::initMueller(ctx, parameters);
         } else {
-            PathogenesisModel::initPyrogen(ctx, parameters);
+            Model::initPyrogen(ctx, parameters);
         }
     }
 }
@@ -205,7 +205,7 @@ using WithinHost::diagnostics;
 using namespace OM::util;
 using std::vector;
 
-// State defined in ClinicalModel.cpp (external linkage):
+// State defined in Model.cpp (external linkage):
 extern bool opt_event_scheduler, opt_imm_outcomes;
 extern double oddsRatioThreshold;
 // State defined in EventScheduler.cpp (external linkage):
@@ -375,7 +375,7 @@ uint32_t compile_uncomplicated(CompileCtx& c, const scnXml::DTUncomplicated& nod
     // (readShortDuration may throw format_error; like the old ctor argument,
     // it escapes uncaught)
     const SimTime memory = UnitParse::readShortDuration(c.ctx.clock, node.getMemory(), UnitParse::STEPS);
-    if (memory > ClinicalModel::hsMemory())
+    if (memory > Model::hsMemory())
         throw util::xml_error(
             "<uncomplicated> memory parameter must be less than or equal to the healthsystem memory (hsmemory parameter)");
     c.t.nodes[n].aux = static_cast<uint32_t>(memory); // two's-complement, C++20
@@ -624,7 +624,7 @@ void ClinicalEventScheduler::setParameters(const SimClock& clock, const scnXml::
     }
     cumDailyPrImmUCTS.back() = 1.0;
 
-    ClinicalModel::caseFatalityRate.scale(alpha);
+    Model::caseFatalityRate.scale(alpha);
 
     if (util::ModelOptions::option(util::NON_MALARIA_FEVERS)) {
         if (!esData.getNonMalariaFevers().present()) {
@@ -647,7 +647,7 @@ void ESCaseManagement::setHealthSystem(Context& ctx, const scnXml::HSEventSchedu
     escm_complicated = &compile_decision_tree(ctx, esData.getComplicated(), false);
 
     // Calling our parent class like this is messy. Changing this would require
-    // moving change-of-health-system handling into ClinicalModel.
+    // moving change-of-health-system handling into Model.
     ClinicalEventScheduler::setParameters(ctx.clock, esData);
 }
 // ———  static, utility functions  ———
@@ -815,7 +815,7 @@ void DecisionTree5Day::setHealthSystem(Context& ctx, const scnXml::HSDT5Day& hsD
 
     set_liver_stage(hsDescription.getLiverStageDrug());
 }
-void ClinicalModel::init(Context& ctx, const Parameters& parameters, const scnXml::Scenario& scenario) {
+void Model::init(Context& ctx, const Parameters& parameters, const scnXml::Scenario& scenario) {
     const scnXml::Clinical& clinical = scenario.getModel().getClinical();
     try {
         indirectMortBugfix = util::ModelOptions::option(util::INDIRECT_MORTALITY_FIX);
@@ -847,7 +847,7 @@ void ClinicalModel::init(Context& ctx, const Parameters& parameters, const scnXm
     }
 }
 
-void ClinicalModel::setHS(Context& ctx, const scnXml::HealthSystem& healthSystem) {
+void Model::setHS(Context& ctx, const scnXml::HealthSystem& healthSystem) {
     caseFatalityRate.set(ctx.clock, healthSystem.getCFR(), "CFR");
     pSequelaeInpatient.set(ctx.clock, healthSystem.getPSequelaeInpatient(), "pSequelaeInpatient");
     // Presence check + message for the three sections; bytes composed from the

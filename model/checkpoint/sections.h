@@ -32,14 +32,14 @@ namespace OM {
 class Context;
 class Population;
 namespace Transmission {
-class TransmissionModel;
+class Model;
 }
 
 namespace checkpoint {
 
 void ckStatics(Archive&, Context&);
 void ckMonitoring(Archive&, Context&);
-void ckTransmission(Archive&, Context&, Transmission::TransmissionModel&);
+void ckTransmission(Archive&, Context&, Transmission::Model&);
 void ckHumans(Archive&, Context&, Population&);
 
 } // namespace checkpoint

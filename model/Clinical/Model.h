@@ -37,7 +37,7 @@ namespace Pathogenesis {
 } }
 namespace Clinical {
 
-/// Positive values of doomed (codes). (parity: old ClinicalModel members)
+/// Positive values of doomed (codes). (parity: old Model members)
 enum DoomedCause {
         DOOMED_EXPIRED = -35,   // codes less than or equal to this mean "dead now"
         DOOMED_NEXT_TS = -30,   // will expire on next time step
@@ -67,7 +67,7 @@ enum DoomedCause {
  * variant is a clearly independent derived class below with its own update
  * functions. createClinicalModel() selects the variant (one create-line
  * each). */\
-class ClinicalModel
+class Model
 {
 protected:
     /// The run this clinical model belongs to (clock accessed as ctx.clock).
@@ -87,10 +87,10 @@ public:
      * Also done when a certain intervention is deployed. */
     static void setHS (Context& ctx, const scnXml::HealthSystem& healthSystem);
     
-    /** Return a new ClinicalModel.
+    /** Return a new Model.
      *
      * @param tSF	treatment seeking factor, passed to CaseManagementModel */
-    static unique_ptr<ClinicalModel> createClinicalModel (Context& ctx, double tSF);
+    static unique_ptr<Model> createClinicalModel (Context& ctx, double tSF);
     //@}
     
     /// Destructor
@@ -138,9 +138,9 @@ public:
     
     /** Construct a per-human instance (base: no RNG draws; the EventScheduler
      * variant rejects treatment-seeking heterogeneity in its own ctor). */
-    ClinicalModel (Context& ctx, double tSF, Kind kind);
+    Model (Context& ctx, double tSF, Kind kind);
 
-    virtual ~ClinicalModel() {}
+    virtual ~Model() {}
 
     /// Variant behaviour (public: the shared 5-day free function
     /// clinicalUpdate5Day dispatches through uncomplicatedEvent).
@@ -217,9 +217,9 @@ public:
  * uncomplicated-case access by fixed function, treatment by the compiled
  * decision tree. Case-management config statics live in CM5DayCommon /
  * DecisionTree5Day; bodies in CM5DayCommon.cpp. */
-class CMDecisionTree5Day final : public ClinicalModel {
+class CMDecisionTree5Day final : public Model {
   public:
-    CMDecisionTree5Day(Context& ctx, double tSF) : ClinicalModel(ctx, tSF, Kind::DecisionTree5Day) {}
+    CMDecisionTree5Day(Context& ctx, double tSF) : Model(ctx, tSF, Kind::DecisionTree5Day) {}
     void doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) override;
     void uncomplicatedEvent(Human& human, Episode::State pgState) override;
 };
@@ -227,9 +227,9 @@ class CMDecisionTree5Day final : public ClinicalModel {
 /** ImmediateOutcomes health system (old ClinicalImmediateOutcomes): all-or-
  * nothing treatment, no decision tree. Config statics live in
  * ImmediateOutcomes; bodies in CM5DayCommon.cpp. */
-class CMImmediateOutcomes final : public ClinicalModel {
+class CMImmediateOutcomes final : public Model {
   public:
-    CMImmediateOutcomes(Context& ctx, double tSF) : ClinicalModel(ctx, tSF, Kind::ImmediateOutcomes) {}
+    CMImmediateOutcomes(Context& ctx, double tSF) : Model(ctx, tSF, Kind::ImmediateOutcomes) {}
     void doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) override;
     void uncomplicatedEvent(Human& human, Episode::State pgState) override;
 };
@@ -239,7 +239,7 @@ class CMImmediateOutcomes final : public ClinicalModel {
  * statics live in ClinicalEventScheduler / ESCaseManagement; body in
  * EventScheduler.cpp. Owns the ES bout state (parity: old
  * ClinicalEventScheduler members; the other kinds never had these fields). */
-class CMEventScheduler final : public ClinicalModel {
+class CMEventScheduler final : public Model {
   public:
     /// Rejects treatment-seeking heterogeneity (old ES ctor guard).
     CMEventScheduler(Context& ctx, double tSF);

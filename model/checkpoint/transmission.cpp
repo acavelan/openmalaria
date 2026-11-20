@@ -26,7 +26,7 @@
 
 #include "sections.h"
 
-#include "Transmission/TransmissionModel.h"
+#include "Transmission/Model.h"
 #include "Transmission/Anopheles/AnophelesModel.h"
 #include "Transmission/Anopheles/EmergenceRateEstimator.h"
 #include "util/SimpleDecayingValue.h"
@@ -126,7 +126,7 @@ void checkpoint(Archive& a, EmergenceRateEstimator& e) {
 
 } // namespace Anopheles
 
-void checkpoint(Archive& a, TransmissionModel& tm) {
+void checkpoint(Archive& a, Model& tm) {
     a.rng(tm.m_rng);
     a.value(tm.initIterations);
     a.value(tm.meanAvail);
@@ -150,7 +150,7 @@ void checkpoint(Archive& a, TransmissionModel& tm) {
     a.value(tm.lastSurveyTime);
     a.value(tm.adultAge);
     a.value(tm.numTransmittingHumans);
-    if (tm.kind == TransmissionModel::Kind::Vector) {
+    if (tm.kind == Model::Kind::Vector) {
         uint64_t n = tm.species.size();
         a.value(n);
         if (a.reading() && n != tm.species.size())
@@ -172,7 +172,7 @@ void checkpoint(Archive& a, TransmissionModel& tm) {
 
 namespace checkpoint {
 
-void ckTransmission(Archive& a, Context&, Transmission::TransmissionModel& transmission) {
+void ckTransmission(Archive& a, Context&, Transmission::Model& transmission) {
     Transmission::checkpoint(a, transmission);
 }
 

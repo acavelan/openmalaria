@@ -28,7 +28,7 @@
 #include "util/errors.h"
 #include <algorithm>
 #include "Host/Human.h"
-#include "Host/WithinHost/PathogenesisModel.h"
+#include "Host/WithinHost/Pathogenesis.h"
 #include "Clinical/Episode.h"
 #include "interventions/Interfaces.h"
 #include <cstdint>

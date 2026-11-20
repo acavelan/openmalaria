@@ -22,7 +22,7 @@
 
 #include "mon/Monitoring.h"
 #include "Host/WithinHost/Genotypes.h"
-#include "Clinical/ClinicalModel.h"
+#include "Clinical/Model.h"
 #include "Host/Human.h"
 #include "util/CommandLine.h"
 #include "util/errors.h"

@@ -40,9 +40,9 @@
 #include "xml/entomology.h"
 #include "interventions/Deployments.h"
 #include "Host/WithinHost/Diagnostic.h"
-#include "Transmission/TransmissionModel.h"
+#include "Transmission/Model.h"
 #include "Transmission/PerHost.h"
-#include "Clinical/ClinicalModel.h"
+#include "Clinical/Model.h"
 #include "mon/Monitoring.h"
 #include "util/ModelOptions.h"
 #include "R_nmath/qnorm.h"
@@ -123,13 +123,13 @@ static const string nonvec_err = "vector model interventions can not be used wit
 // schema clone in the TimedDeployment variant, consumed (deleted) on deploy.
 // Never-deployed clones leak at exit — exactly the old classes' behaviour
 // (their destructors never freed these).
-void timed_deploy_change_hs(Context& ctx, Transmission::TransmissionModel&, ChangeHsDeployParams& p) {
-    Clinical::ClinicalModel::setHS(ctx, *p.newHS);
+void timed_deploy_change_hs(Context& ctx, Transmission::Model&, ChangeHsDeployParams& p) {
+    Clinical::Model::setHS(ctx, *p.newHS);
     delete p.newHS;
     p.newHS = 0;
 }
 
-void timed_deploy_change_eir(Context& ctx, Transmission::TransmissionModel& transmission, ChangeEirDeployParams& p) {
+void timed_deploy_change_eir(Context& ctx, Transmission::Model& transmission, ChangeEirDeployParams& p) {
     transmission.changeEIRIntervention(*p.newEIR);
     delete p.newEIR;
     p.newEIR = 0;
@@ -261,8 +261,8 @@ static void nhh_slot(const SimClock& clock, M& m, const std::string& intervName,
 /// the caller's (was the TimedDeployment base ctor, which ran first).
 static void nhh_mods_setup(Context& ctx, size_t instance, string intervName,
                            const scnXml::Description2::AnophelesSequence list, const scnXml::DecayFunction& decay,
-                           Transmission::TransmissionModel& transmission) {
-    Transmission::TransmissionModel* vectorModel = transmission.isVector() ? &transmission : nullptr;
+                           Transmission::Model& transmission) {
+    Transmission::Model* vectorModel = transmission.isVector() ? &transmission : nullptr;
     if (vectorModel) {
         util::SpeciesIndexChecker checker(intervName, vectorModel->speciesIndex);
         for (const scnXml::NonHumanHostsSpeciesIntervention& anoph : list) {
@@ -302,11 +302,11 @@ static void nhh_mods_setup(Context& ctx, size_t instance, string intervName,
 }
 
 /// Old TimedNonHumanHostsDeployment::deploy body, verbatim.
-void timed_deploy_nhh_mods(Context& ctx, std::vector<Host::Human>&, Transmission::TransmissionModel& transmission,
+void timed_deploy_nhh_mods(Context& ctx, std::vector<Host::Human>&, Transmission::Model& transmission,
                            const NhhModsDeployParams& params) {
     const size_t instance = params.instance;
     const string& intervName = params.intervName;
-    Transmission::TransmissionModel* vectorModel = transmission.isVector() ? &transmission : nullptr;
+    Transmission::Model* vectorModel = transmission.isVector() ? &transmission : nullptr;
     if (vectorModel) {
         for (size_t i = 0; i < vectorModel->speciesIndex.size(); ++i) {
             Transmission::Anopheles::AnophelesModel* anophModel = vectorModel->species[i].get();
@@ -327,12 +327,12 @@ void timed_deploy_nhh_mods(Context& ctx, std::vector<Host::Human>&, Transmission
 /// check_timed_date (was the TimedDeployment base ctor) runs first, as before.
 static AddNhhDeployParams read_add_nhh(Context& ctx, SimTime date, const string& intervName, SimTime lifespan,
                                        const scnXml::Description3::AnophelesSequence list,
-                                       Transmission::TransmissionModel& transmission) {
+                                       Transmission::Model& transmission) {
     check_timed_date(ctx, date);
     AddNhhDeployParams a;
     a.intervName = intervName;
     a.lifespan = lifespan;
-    Transmission::TransmissionModel* vectorModel = transmission.isVector() ? &transmission : nullptr;
+    Transmission::Model* vectorModel = transmission.isVector() ? &transmission : nullptr;
     if (vectorModel) {
         util::SpeciesIndexChecker checker(intervName, vectorModel->speciesIndex);
         for (const scnXml::NonHumanHostsVectorSpecies& anoph : list) {
@@ -354,11 +354,11 @@ static AddNhhDeployParams read_add_nhh(Context& ctx, SimTime date, const string&
 
 /// Old TimedAddNonHumanHostsDeployment::deploy body, verbatim (nhhParams is
 /// the old member of the same name).
-void timed_deploy_add_nhh(Context& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission,
+void timed_deploy_add_nhh(Context& ctx, vector<Host::Human>& population, Transmission::Model& transmission,
                           AddNhhDeployParams& nhhParams) {
     const string& intervName = nhhParams.intervName;
     const SimTime lifespan = nhhParams.lifespan;
-    Transmission::TransmissionModel* vectorModel = transmission.isVector() ? &transmission : nullptr;
+    Transmission::Model* vectorModel = transmission.isVector() ? &transmission : nullptr;
     if (vectorModel) {
         double popSize = population.size();
         if (vectorModel->interventionMode != Transmission::SimulationMode::dynamicEIR) {
@@ -1053,7 +1053,7 @@ template <typename T> static void reg_at(std::vector<const T*>& v, ComponentId i
 }
 
 void InterventionManager::init(Context& ctx, const scnXml::Interventions& intervElt,
-                               Transmission::TransmissionModel& transmission) {
+                               Transmission::Model& transmission) {
     ctx.nextTimed = 0;
 
     // changeHS and changeEIR timed deployments: identical loops differing only
@@ -1084,7 +1084,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
     map<string, size_t> species_index_map;
 
     {
-        Transmission::TransmissionModel* vectorModel = transmission.isVector() ? &transmission : nullptr;
+        Transmission::Model* vectorModel = transmission.isVector() ? &transmission : nullptr;
         if (vectorModel != nullptr)
             species_index_map = vectorModel->speciesIndex;
     }
@@ -1308,7 +1308,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
         }
     }
     if (intervElt.getVectorPop().present()) {
-        Transmission::TransmissionModel* vectorModel = transmission.isVector() ? &transmission : nullptr;
+        Transmission::Model* vectorModel = transmission.isVector() ? &transmission : nullptr;
         if (vectorModel) {
             typedef scnXml::VectorPop::InterventionSequence SeqT;
             const SeqT& seq = intervElt.getVectorPop().get().getIntervention();
@@ -1331,7 +1331,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
             throw util::xml_error(nonvec_err);
     }
     if (intervElt.getAddNonHumanHosts().present()) {
-        Transmission::TransmissionModel* vectorModel = transmission.isVector() ? &transmission : nullptr;
+        Transmission::Model* vectorModel = transmission.isVector() ? &transmission : nullptr;
         if (vectorModel) {
             typedef scnXml::AddNonHumanHosts::NonHumanHostsSequence SeqT;
             const SeqT& seq = intervElt.getAddNonHumanHosts().get().getNonHumanHosts();
@@ -1351,7 +1351,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
             throw util::xml_error(nonvec_err);
     }
     if (intervElt.getNonHumanHostsModifications().present()) {
-        Transmission::TransmissionModel* vectorModel = transmission.isVector() ? &transmission : nullptr;
+        Transmission::Model* vectorModel = transmission.isVector() ? &transmission : nullptr;
         if (vectorModel) {
             typedef scnXml::NonHumanHostsModifications::InterventionSequence SeqT;
             const SeqT& seq = intervElt.getNonHumanHostsModifications().get().getIntervention();
@@ -1376,7 +1376,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
             throw util::xml_error(nonvec_err);
     }
     if (intervElt.getVectorTrap().present()) {
-        Transmission::TransmissionModel* vectorModel = transmission.isVector() ? &transmission : nullptr;
+        Transmission::Model* vectorModel = transmission.isVector() ? &transmission : nullptr;
         if (vectorModel) {
             size_t instance = 0;
             for (const scnXml::VectorTrap& trap : intervElt.getVectorTrap().get().getIntervention()) {

@@ -73,7 +73,7 @@ enum class Parameter {
     SIGMA0_SQ,
     X_NU_STAR,
     //@}
-    /// @b Used in PathogenesisModel
+    /// @b Used in Model
     //@{
     Y_STAR_SQ,
     ALPHA,
@@ -81,20 +81,20 @@ enum class Parameter {
     DENSITY_BIAS_NON_GARKI,       ///< Used in Diagnostic
     BASELINE_AVAILABILITY_SHAPE,  ///< Used in InfectionIncidenceModel
     LOG_ODDS_RATIO_CF_COMMUNITY,  ///< Used in CaseManagementModel
-    INDIRECT_RISK_COFACTOR,       ///< Used in PathogenesisModel
+    INDIRECT_RISK_COFACTOR,       ///< Used in Model
     NON_MALARIA_INFANT_MORTALITY, ///< Used in Summary
     DENSITY_BIAS_GARKI,           ///< Used in Diagnostic
-    SEVERE_MALARIA_THRESHHOLD,    ///< Used in PathogenesisModel
+    SEVERE_MALARIA_THRESHHOLD,    ///< Used in Model
     IMMUNITY_PENALTY,             ///< Used in WHFalciparum
     IMMUNE_EFFECTOR_DECAY,        ///< Used in WHFalciparum
-    /// @b Used in PathogenesisModel
+    /// @b Used in Model
     //@{
     COMORBIDITY_INTERCEPT,
     Y_STAR_HALF_LIFE,
     Y_STAR_1,
     //@}
     ASEXUAL_IMMUNITY_DECAY, ///< Used in WHFalciparum
-    /// @b Used in PathogenesisModel
+    /// @b Used in Model
     //@{
     Y_STAR_0,
 

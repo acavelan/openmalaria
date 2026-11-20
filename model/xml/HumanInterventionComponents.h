@@ -33,7 +33,7 @@
 #include "Clinical/EventScheduler.h"
 #include "Clinical/CM5DayCommon.h"
 #include "Host/Human.h"
-#include "Transmission/TransmissionModel.h"
+#include "Transmission/Model.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "PkPd/LSTMMedicate.h"
 #include "mon/Monitoring.h"

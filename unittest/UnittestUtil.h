@@ -28,7 +28,7 @@
 #include "Clock.h"
 #include "util/ModelOptions.h"
 
-#include "Clinical/ClinicalModel.h"
+#include "Clinical/Model.h"
 #include "Host/Human.h"
 #include "PkPd/LSTMModel.h"
 #include "PkPd/LSTMDrugType.h"

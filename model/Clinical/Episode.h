@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Clock.h"
-#include "Host/WithinHost/PathogenesisModel.h"
+#include "Host/WithinHost/Pathogenesis.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "mon/Monitoring.h"
 #include "util/ModelOptions.h"

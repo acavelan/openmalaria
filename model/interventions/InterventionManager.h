@@ -29,7 +29,7 @@
 #include "Host/ImportedInfections.h"
 #include "interventions/Deployments.h"
 #include "interventions/Interfaces.h"
-#include "Transmission/TransmissionModel.h"
+#include "Transmission/Model.h"
 namespace scnXml {
 class Interventions;
 }
@@ -47,7 +47,7 @@ class InterventionManager {
   public:
     /** Read XML descriptions. */
     static void init(Context& ctx, const scnXml::Interventions& intervElt,
-                     Transmission::TransmissionModel& transmission);
+                     Transmission::Model& transmission);
 
     /** Call after loading a checkpoint, passing the intervention-period time.
      * 
@@ -60,7 +60,7 @@ class InterventionManager {
      * 
      * Continuous interventions are deployed as humans reach the target ages.
      * Unlike with vaccines, missing one schedule doesn't preclude the next. */
-    static void deploy(Context& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission);
+    static void deploy(Context& ctx, vector<Host::Human>& population, Transmission::Model& transmission);
 
     /** Get a numeric ComponentId from the textual identifier used in the XML.
      * 
@@ -86,7 +86,7 @@ inline ComponentId InterventionManager::getComponentId(Context& ctx, const strin
 }
 
 inline void InterventionManager::deploy(Context& ctx, vector<Host::Human>& population,
-                                        Transmission::TransmissionModel& transmission) {
+                                        Transmission::Model& transmission) {
     if (ctx.clock.interv < sim::zero())
         return;
 

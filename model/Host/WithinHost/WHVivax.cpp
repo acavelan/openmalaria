@@ -22,7 +22,7 @@
 
 #include "Context.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/PathogenesisModel.h"
+#include "Host/WithinHost/Pathogenesis.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/Infection.h"
@@ -368,7 +368,7 @@ void WHVivax::update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nN
 
     //NOTE: currently we don't model co-infection or indirect deaths
     if (morbidity == Pathogenesis::NONE) {
-        morbidity = Pathogenesis::PathogenesisModel::sampleNMF(rng, ageInYears);
+        morbidity = Pathogenesis::Model::sampleNMF(rng, ageInYears);
     }
 }
 

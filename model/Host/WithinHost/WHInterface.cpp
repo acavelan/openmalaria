@@ -1,5 +1,5 @@
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/PathogenesisModel.h"
+#include "Host/WithinHost/Pathogenesis.h"
 #include "Host/WithinHost/Treatments.h"
 #include "mon/Monitoring.h"
 #include "util/ModelOptions.h"

@@ -23,7 +23,7 @@
 // p8-files: PerHost.h is read by interventions + WH + checkpoint paths; the
 // bit-vector deploy/restore bodies stay here (wide-cone rule).
 #include "Transmission/PerHost.h"
-#include "Transmission/TransmissionModel.h"
+#include "Transmission/Model.h"
 #include "Host/Human.h"
 #include "interventions/IvState.h"
 #include "util/errors.h"

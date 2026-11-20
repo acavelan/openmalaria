@@ -31,22 +31,22 @@
  *    (PerHost.h:82-111; main.cpp calls it before the sim, and interventions
  *    interpolate on it). Pinned bit-exactly for one species with
  *    availability distr=gamma CV=0.3, factor 1.0.
- * 2. ClinicalModel::getCommunityCFR() (ClinicalModel.cpp:115-118) — the
+ * 2. Model::getCommunityCFR() (Model.cpp:115-118) — the
  *    community-vs-hospital CFR map x·θ/(1−cfr+x). It reads the file-global
- *    OM::Clinical::oddsRatioThreshold (ClinicalModel.cpp:45, external
+ *    OM::Clinical::oddsRatioThreshold (Model.cpp:45, external
  *    linkage), set directly here instead of via Parameters → no model
  *    changes needed. Goldens evaluated in IEEE-754 double, same op order.
  */
 
 #include <cxxtest/TestSuite.h>
 #include "Transmission/PerHost.h"
-#include "Clinical/ClinicalModel.h"
+#include "Clinical/Model.h"
 #include "UnittestUtil.h"
 #include "util/ModelOptions.h"
 #include <cstring>
 #include <limits>
 
-// file-global defined by ClinicalModel.cpp:45; no header declares it
+// file-global defined by Model.cpp:45; no header declares it
 namespace OM {
 namespace Clinical {
 extern double oddsRatioThreshold;
@@ -198,7 +198,7 @@ class PercentileCFRSuite : public CxxTest::TestSuite {
     void testCommunityCFR() {
         Clinical::oddsRatioThreshold = 1.5;
         // golden[cfr] = x/((1-cfr)+x), x=cfr*1.5 — evaluated 2026-11-19 in
-        // IEEE-754 double with the op order of ClinicalModel.cpp:116-117
+        // IEEE-754 double with the op order of Model.cpp:116-117
         static const double TAB[][2] = {
             {0.0, 0.0},
             {0.01, 0.014925373134328359},
@@ -209,7 +209,7 @@ class PercentileCFRSuite : public CxxTest::TestSuite {
             {1.0, 1.0},
         };
         for (const auto& row : TAB) {
-            double got = OM::Clinical::ClinicalModel::getCommunityCFR(row[0]);
+            double got = OM::Clinical::Model::getCommunityCFR(row[0]);
             if (!(std::memcmp(&got, &row[1], sizeof(double)) == 0))
                 TS_FAIL("CFR mismatch");
         }

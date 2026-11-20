@@ -24,7 +24,7 @@
 
 #include "Clock.h"
 #include "Context.h"
-#include "Clinical/ClinicalModel.h"
+#include "Clinical/Model.h"
 #include "Clinical/CMDecisionTree.h" // needed for FlatTree/CMDTOut (ESCaseManagement)
 #include "Host/WithinHost/WHInterface.h"
 #include "util/AgeGroupInterpolation.h"

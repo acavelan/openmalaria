@@ -35,7 +35,7 @@
 #include "Host/InfectionIncidenceModel.h"
 #include "Host/ImportedInfections.h"
 #include "Host/WithinHost/Genotypes.h"
-#include "Clinical/ClinicalModel.h"
+#include "Clinical/Model.h"
 #include "mon/Monitoring.h"
 
 namespace OM {
@@ -44,7 +44,7 @@ namespace OM {
 // external linkage; the checkpoint module is the only code outside those TUs
 // that touches them):
 namespace Clinical {
-extern std::vector<int> infantDeaths;          // ClinicalModel.cpp
+extern std::vector<int> infantDeaths;          // Model.cpp
 extern std::vector<int> infantIntervalsAtRisk; // ditto
 }
 namespace Host {
