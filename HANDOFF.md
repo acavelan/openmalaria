@@ -113,6 +113,16 @@ report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
 - (7c-PGO) a2p two-pass: pass-1 corpus ctest 52/52 + unittest + example seeds 1–4; pass-2
   clean rebuild 0 profile warnings; ctest 52/52, unittest OK, T1 tier-a 53/53 + tier-b s1–10
   10/10; bench n=20 median 11.02 (10.98–11.09). KEPT as yardstick.
+- (7c-Da) dead −22 LOC: gate green (first attempt caught by build fail — case-sensitive
+  deadscan nearly killed `setHadEvent` callers; unittest-run-from-repo-cwd trap logged).
+- (C6 restore, user ruling 1) 1fbf788a: tier-a 53/53; loaded interleave 11.98 vs a2g 12.04.
+- (7c-C-P) perf stat/record + cachegrind/callgrind (tiny pop=10 scenario) + p5 callgrind A/B:
+  artifacts /tmp/opencode/{cg_a2g_d.out,cg7c_curr.out,cg7c_p5.out,p7c_rec.data}; PERF §7c-C-P.
+- (7c-Db) LSTM checkpoint templating −36 LOC: ctest incl. checkpoint goldens, tier-a 53/53.
+- (7c-E) final: gate build T1 a+b **63/63**; a2p rebuilt fresh two-pass on final tree (81 gcda,
+  0 profile warnings) → ctest 52/52, unittest OK, T1 **63/63**; a2p-vs-a2 interleaved −5.9 %;
+  final perf record: dgemm 21.15 % top. Ledger 7c-F. NOTE: first p7d merge clobbered 7c rows
+  in PERF/HANDOFF — restored in cc3f23ba; re-check after merges.
 
 ## Traps (inherited, all live, + new)
 - NEW: benches only from `/tmp/opencode/om-bench` cwd; never overlap bench with any other load.
