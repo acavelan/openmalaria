@@ -304,7 +304,6 @@ void TransmissionModel::calculateEIR_vector(Host::Human &human, double ageYears,
         EIR_i.assign(1, 0.0);
         EIR_l.assign(1, 0.0);
 
-        assert(simulationMode == forcedEIR);
         for (size_t i = 0; i < speciesIndex.size(); ++i)
         {
             /* Calculates EIR per individual (hence N_i == 1).
