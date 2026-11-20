@@ -30,7 +30,7 @@
 #include "interventions/IvState.h"
 #include "util/ModelOptions.h"
 #include "util/errors.h"
-#include "Clinical/ESCaseManagement.h"
+#include "Clinical/EventScheduler.h"
 #include "Clinical/CM5DayCommon.h"
 #include "Host/Human.h"
 #include "Transmission/TransmissionModel.h"

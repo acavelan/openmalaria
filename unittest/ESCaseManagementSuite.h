@@ -26,7 +26,7 @@
 #define Hmod_ESCaseManagementSuite
 
 #include <cxxtest/TestSuite.h>
-#include "Clinical/ESCaseManagement.h"
+#include "Clinical/EventScheduler.h"
 #include "UnittestUtil.h"
 #include "ExtraAsserts.h"
 #include <list>

@@ -26,7 +26,8 @@
 #include "Clock.h"
 #include "RunContext.h"
 #include "Clinical/ClinicalModel.h"
-#include "Clinical/ESCaseManagement.h"
+#include "Clinical/CMDecisionTree.h"    // needed for FlatTree/CMDTOut (ESCaseManagement)
+#include "Host/WithinHost/WHInterface.h"
 #include "util/AgeGroupInterpolation.h"
 
 namespace scnXml { class Clinical; class HSEventScheduler; }
@@ -113,6 +114,33 @@ public:
 /// (es* fields).
 void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human,
                        double ageYears, WithinHost::Pathogenesis::StatePair &pg);
+
+// ———  ESCaseManagement (was Clinical/ESCaseManagement.h; same ES chain)  ———
+
+using WithinHost::WHInterface;
+
+// Compiled case-management decision trees; set by the health-system reader
+// (xml/healthSystem.cpp) at scenario load. inline ⇒ one entity across TUs.
+inline const FlatTree *escm_uncomplicated = 0, *escm_complicated = 0;
+
+/** Tracks clinical status (sickness), does case management for new events,
+ * medicates treatment, determines patient recovery, death and sequelae.
+ *****************************************************************************/
+class ESCaseManagement {
+public:
+    /** Load health system data from initial data or an intervention's data (both from XML).
+    * (Re)loads all data affected by this healthSystem element. */
+    static void setHealthSystem (RunContext& ctx, const scnXml::HSEventScheduler& esData);
+    
+    static CMDTOut execute( RunContext& ctx, Host::Human& human,
+        double ageYears, Episode::State pgState ) {
+        assert (pgState & Episode::SICK);
+        const FlatTree& tree = (pgState & Episode::COMPLICATED) ?
+            *escm_complicated : *escm_uncomplicated;
+        DTExecCtx ec( ctx, human, ageYears, pgState );
+        return exec_decision_tree( tree, ec );
+    }
+};
 
 }
 }

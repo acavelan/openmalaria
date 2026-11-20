@@ -40,7 +40,6 @@
 #include "Clinical/CMDecisionTree.h"
 #include "Clinical/ClinicalModel.h"
 #include "Clinical/CM5DayCommon.h"
-#include "Clinical/ESCaseManagement.h"
 #include "Clinical/Episode.h"
 #include "Clinical/EventScheduler.h"
 #include "PkPd/LSTMTreatments.h"
