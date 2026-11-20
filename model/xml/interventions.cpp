@@ -694,9 +694,8 @@ void factors::RelativeAttractiveness::initTwoStage(const scnXml::TwoStageDeterre
         b.insecticideScalingEntering = elt.getEntering().get().getInsecticideScalingFactor();
         if (!(PF > 0.0)) {
             // we take the log of PF, so it must be positive
-            ostringstream msg;
-            msg << "ITN.description.anophelesParams.twoStageDeterrency.entering: insecticideFactor must be positive since we take its logarithm.";
-            throw util::xml_scenario_error(msg.str());
+            throw util::xml_scenario_error("ITN.description.anophelesParams.twoStageDeterrency.entering: "
+                                           "insecticideFactor must be positive since we take its logarithm.");
         }
 
         /* We need to ensure the relative availability is non-negative. However,
@@ -849,9 +848,8 @@ void IRSParams::IRSAnopheles::RelativeAttractiveness::init(const scnXml::IRSDete
     double PF = elt.getInsecticideFactor();
     insecticideScaling = elt.getInsecticideScalingFactor();
     if (!(PF > 0.0)) {
-        ostringstream msg;
-        msg << "IRS.description.anophelesParams.relativeAvailability: expected insecticideFactor to be positive.";
-        throw util::xml_scenario_error(msg.str());
+        throw util::xml_scenario_error(
+            "IRS.description.anophelesParams.relativeAvailability: expected insecticideFactor to be positive.");
     }
 
     /* We need to ensure the relative availability is non-negative. However,
