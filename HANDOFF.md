@@ -19,10 +19,13 @@ belong? same for runextension... delate"
 - HARD boundary: never touch /tmp/opencode/p8ckpt or /home/razlock/git/fork.
 
 ## Steps
-- [ ] S1 kill model/core/: RunContext.h, run.h, run.cpp, RunExtensions.h →
+- [x] S1 kill model/core/: RunContext.h, run.h, run.cpp, RunExtensions.h →
       model/ top level (siblings of Clock.h — that is where they belong).
       sed `#include "core/X.h"` → `"X.h"` across model+unittest. GLOB build →
-      no CMakeLists edits.
+      no CMakeLists edits. DONE: gates green (52 ctest, 94 unittest, T1 a
+      53/53), LOC 18,248 unchanged, 139 files (4 renames). Trap found:
+      parity.py hardcodes REPO/build/schema for the XSD — worktree needs an
+      ignored `build -> build-st` symlink (`build*/` is gitignored).
 - [ ] S2 SlotAllocator.h: model/Host/ → model/Host/WithinHost/ (WHInterface
       owns one per host; Common/Descriptive drive it).
 - [ ] S3 DELETE RunExtensions.h: every field becomes a plain RunContext
