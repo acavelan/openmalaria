@@ -181,3 +181,7 @@ order of side-effecting calls all preserved explicitly.
   set_interv_decay (resizes kept at call sites before present(); sugar slot's
   seekingDeathRateIncrease tag quirk and "intrevention" typo verbatim);
   duplicate include + empty forcedEIR if-block removed. Gate: 52/52, OK, 53/53.
+- util.cpp 396->373 (-23): Emax present/validation blocks via need/chk lambdas
+  (message bytes + check order unchanged); require1DayTS single-bit bitset loop
+  -> direct CLINICAL_EVENT_SCHEDULER check (msg identical); empty 1-day-TS
+  branch inverted away. Gate: 52/52, OK, 53/53.
