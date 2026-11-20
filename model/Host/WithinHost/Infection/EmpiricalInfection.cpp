@@ -37,28 +37,35 @@
 namespace OM { namespace WithinHost {
 using namespace ::OM::util;
     
-// -----  static class members (variables & functions)  -----
+// -----  Empirical model statics  -----
+// File scope: this TU is the only reader/writer; re-initialised per run by
+// infection_init_empirical (and reset by independent parameterisation):
+constexpr int _maximumDurationInDays = 418;
+static double _maximumPermittedAmplificationPerCycle;
+static double _subPatentLimit;
+static double _alpha1;
+static double _alpha2;	
+static double _alpha3;
+static double _mu1;	
+static double _mu2;	
+static double _mu3;
+static double _sigma0_res;	
+static double _sigmat_res;
+static double _mu_beta1[_maximumDurationInDays];
+static double _sigma_beta1[_maximumDurationInDays];
+static double _mu_beta2[_maximumDurationInDays];
+static double _sigma_beta2[_maximumDurationInDays];
+static double _mu_beta3[_maximumDurationInDays];
+static double _sigma_beta3[_maximumDurationInDays];
+static double _inflationMean;
+static double _inflationVariance;
+static double _extinctionLevel;
+static double _overallMultiplier;
 
-double Infection::_maximumPermittedAmplificationPerCycle;
-double Infection::_subPatentLimit;
-double Infection::_alpha1;
-double Infection::_alpha2;	
-double Infection::_alpha3;
-double Infection::_mu1;	
-double Infection::_mu2;	
-double Infection::_mu3;
-double Infection::_sigma0_res;	
-double Infection::_sigmat_res;
-double Infection::_mu_beta1[_maximumDurationInDays];
-double Infection::_sigma_beta1[_maximumDurationInDays];
-double Infection::_mu_beta2[_maximumDurationInDays];
-double Infection::_sigma_beta2[_maximumDurationInDays];
-double Infection::_mu_beta3[_maximumDurationInDays];
-double Infection::_sigma_beta3[_maximumDurationInDays];
-double Infection::_inflationMean;
-double Infection::_inflationVariance;
-double Infection::_extinctionLevel;
-double Infection::_overallMultiplier;
+// TU-local helpers (bodies below)
+static double getInflatedDensity(LocalRng& rng, double nonInflatedDensity);
+static double sigma_noise(int ageDays);
+static double sampleSubPatentValue(LocalRng& rng, double mu, double sigma, double upperBound);
 
 
 Infection* createEmpiricalInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
@@ -69,7 +76,7 @@ Infection* checkpointedEmpiricalInfection (RunContext& ctx, istream& stream) {
 }
 
 
-void Infection::initEmpirical(RunContext& ctx){
+void infection_init_empirical(RunContext& ctx){
     ctx.ext->createInfection = &createEmpiricalInfection;
     ctx.ext->checkpointedInfection = &checkpointedEmpiricalInfection;
     
@@ -135,20 +142,20 @@ void Infection::initEmpirical(RunContext& ctx){
 }
 
 
-// -----  non-static class members (Construction and destruction, checkpointing)  -----
+// -----  non-static members (Construction and destruction, checkpointing)  -----
 
 /* Initialises a new infection by assigning the densities for the last 3 prepatent days
 */
-void Infection::ctorBody_Empirical(LocalRng& rng, double growthRateMultiplier) {
-    empirical = std::make_unique<EmpiricalData>();
+void infection_ctor_empirical(Infection& inf, LocalRng& rng, double growthRateMultiplier) {
+    inf.empirical = std::make_unique<Infection::EmpiricalData>();
   //sample the parasite densities for the last 3 prepatent days
   //note that the lag decreases with time
-  empirical->_laggedLogDensities[0]=sampleSubPatentValue(rng, _alpha1,_mu1,log(_subPatentLimit));  
-  empirical->_laggedLogDensities[1]=sampleSubPatentValue(rng, _alpha2,_mu2,log(_subPatentLimit)); 
-  empirical->_laggedLogDensities[2]=sampleSubPatentValue(rng, _alpha3,_mu3,log(_subPatentLimit));  
+  inf.empirical->_laggedLogDensities[0]=sampleSubPatentValue(rng, _alpha1,_mu1,log(_subPatentLimit));  
+  inf.empirical->_laggedLogDensities[1]=sampleSubPatentValue(rng, _alpha2,_mu2,log(_subPatentLimit)); 
+  inf.empirical->_laggedLogDensities[2]=sampleSubPatentValue(rng, _alpha3,_mu3,log(_subPatentLimit));  
   //only the immediately preceding value is modified by the growth rate multiplier
-  empirical->_laggedLogDensities[0] += log(growthRateMultiplier); 
-  empirical->_patentGrowthRateMultiplier = growthRateMultiplier;
+  inf.empirical->_laggedLogDensities[0] += log(growthRateMultiplier); 
+  inf.empirical->_patentGrowthRateMultiplier = growthRateMultiplier;
 }
 
 
@@ -157,9 +164,9 @@ void Infection::ctorBody_Empirical(LocalRng& rng, double growthRateMultiplier) {
 
 // NOTE: TS never provided a lot of documentation for this code.
 const int EI_MAX_SAMPLES = 10;
-bool Infection::updateDensity_Empirical( LocalRng& rng, double survivalFactor, SimTime bsAge, double ){
+bool update_density_empirical( Infection& inf, LocalRng& rng, double survivalFactor, SimTime bsAge, double ){
   //to avoid the formula for the linear predictor being excessively long we introduce L for the lagged densities
-  # define L empirical->_laggedLogDensities
+  # define L inf.empirical->_laggedLogDensities
   
   if (bsAge >= _maximumDurationInDays || !(L[0] > -999999.9))	// Note: second test is extremely unlikely to fail
     return true;	// cut-off point
@@ -183,7 +190,7 @@ bool Infection::updateDensity_Empirical( LocalRng& rng, double survivalFactor, S
       //include sampling error
       logDensity=rng.gauss(expectedlogDensity,sigma_noise(ageDays));
       //include drug and immunity effects via growthRateMultiplier 
-      logDensity += log(empirical->_patentGrowthRateMultiplier);
+      logDensity += log(inf.empirical->_patentGrowthRateMultiplier);
       
       if (logDensity <= upperLimitoflogDensity)	//got an acceptable density, we're done
 	break;	// most of the time this should happen first try
@@ -207,22 +214,22 @@ bool Infection::updateDensity_Empirical( LocalRng& rng, double survivalFactor, S
   if (!(localDensity >= 0.0 && amplificationPerCycle <= _maximumPermittedAmplificationPerCycle))	// in case the above tries fail
     localDensity = _maximumPermittedAmplificationPerCycle*exp(L[1]);
   
-  empirical->_laggedLogDensities[2]=empirical->_laggedLogDensities[1];
-  empirical->_laggedLogDensities[1]=empirical->_laggedLogDensities[0];
-  empirical->_laggedLogDensities[0]=log(localDensity);
+  inf.empirical->_laggedLogDensities[2]=inf.empirical->_laggedLogDensities[1];
+  inf.empirical->_laggedLogDensities[1]=inf.empirical->_laggedLogDensities[0];
+  inf.empirical->_laggedLogDensities[0]=log(localDensity);
   
-  m_density = localDensity;
-  m_cumulativeExposureJ += m_density;
+  inf.m_density = localDensity;
+  inf.m_cumulativeExposureJ += inf.m_density;
   
   // Note: here use a positive test for survival, since if m_density became an NaN tests against it will return false:
-  if (m_density > _extinctionLevel)
+  if (inf.m_density > _extinctionLevel)
     return false;	// Still parasites; infection didn't go extinct
   else
     return true;	// parasites are extinct; infection will be removed from model
 # undef L
 }
 
-double Infection::sampleSubPatentValue(LocalRng& rng, double alpha, double mu, double upperBound){
+static double sampleSubPatentValue(LocalRng& rng, double alpha, double mu, double upperBound){
     double beta = alpha * (1.0-mu) / mu;
     // parity: order — local RNG stream: draw call order fixes stream state
     double nonInflatedValue = upperBound + log(rng.beta(alpha, beta));
@@ -237,11 +244,11 @@ double Infection::sampleSubPatentValue(LocalRng& rng, double alpha, double mu, d
     return inflatedValue;
 }
 
-double Infection::sigma_noise(int ageDays) {
+static double sigma_noise(int ageDays) {
   return _sigma0_res+_sigmat_res*((double)ageDays);
 }
 
-double Infection::getInflatedDensity(LocalRng& rng, double nonInflatedDensity){
+static double getInflatedDensity(LocalRng& rng, double nonInflatedDensity){
   // parity: order — local RNG stream: draw call order fixes stream state
   double inflatedLogDensity = log(_inflationMean) + rng.gauss(nonInflatedDensity, sqrt(_inflationVariance));
   return exp(inflatedLogDensity);
@@ -249,18 +256,18 @@ double Infection::getInflatedDensity(LocalRng& rng, double nonInflatedDensity){
 
 // -----  checkpointing  -----
 
-void Infection::read_Empirical (istream& stream) {
-    empirical = std::make_unique<EmpiricalData>();
-    empirical->_laggedLogDensities[0] & stream;
-    empirical->_laggedLogDensities[1] & stream;
-    empirical->_laggedLogDensities[2] & stream;
-    empirical->_patentGrowthRateMultiplier & stream;
+void read_empirical (Infection& inf, istream& stream) {
+    inf.empirical = std::make_unique<Infection::EmpiricalData>();
+    inf.empirical->_laggedLogDensities[0] & stream;
+    inf.empirical->_laggedLogDensities[1] & stream;
+    inf.empirical->_laggedLogDensities[2] & stream;
+    inf.empirical->_patentGrowthRateMultiplier & stream;
 }
-void Infection::checkpoint_Empirical (ostream& stream) {
-    empirical->_laggedLogDensities[0] & stream;
-    empirical->_laggedLogDensities[1] & stream;
-    empirical->_laggedLogDensities[2] & stream;
-    empirical->_patentGrowthRateMultiplier & stream;
+void checkpoint_empirical (Infection& inf, ostream& stream) {
+    inf.empirical->_laggedLogDensities[0] & stream;
+    inf.empirical->_laggedLogDensities[1] & stream;
+    inf.empirical->_laggedLogDensities[2] & stream;
+    inf.empirical->_patentGrowthRateMultiplier & stream;
 }
 
 } }

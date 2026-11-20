@@ -90,8 +90,6 @@ struct Infection final {
 
     ///@name Static (shared) init — call the one for the model in use
     //@{
-    static void initDummy(RunContext& ctx);
-    static void initEmpirical(RunContext& ctx);   // 1-day time step check
     static void initMolineaux(RunContext& ctx, const OM::Parameters& parameters);
     static void initPenny(RunContext& ctx);
     //@}
@@ -217,53 +215,16 @@ struct Infection final {
     Kind m_kind;
 
     // ——— ctor bodies and per-kind update/checkpoint, defined in the kind's TU ———
-    void ctorBody_Empirical(LocalRng& rng, double growthRateMultiplier);
     void ctorBody_Molineaux(LocalRng& rng);
     void ctorBody_Penny(LocalRng& rng);
-    bool updateDensity_Dummy(LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
-    bool updateDensity_Empirical(LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
     bool updateDensity_Molineaux(LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
     bool updateDensity_Penny(LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
-    void read_Empirical(istream& stream);
     void read_Molineaux(istream& stream);
     void read_Penny(istream& stream);
-    void checkpoint_Empirical(ostream& stream);
     void checkpoint_Molineaux(ostream& stream);
     void checkpoint_Penny(ostream& stream);
 
     // ——— Dummy state: none ———
-
-    // ——— Empirical state: in EmpiricalData payload ———
-
-    double getInflatedDensity(LocalRng& rng, double nonInflatedDensity);
-    double sigma_noise(int ageDays);
-    double sampleSubPatentValue(LocalRng& rng, double mu, double sigma, double upperBound);
-
-    ///@brief Static variables
-    ///Set by initEmpirical (and reset by independent parameterisation)
-    //@{
-    static const int _maximumDurationInDays=418;
-    static double _maximumPermittedAmplificationPerCycle;
-    static double _subPatentLimit;
-    static double _alpha1;
-    static double _alpha2;
-    static double _alpha3;
-    static double _mu1;
-    static double _mu2;
-    static double _mu3;
-    static double _sigma0_res;
-    static double _sigmat_res;
-    static double _mu_beta1[_maximumDurationInDays];
-    static double _sigma_beta1[_maximumDurationInDays];
-    static double _mu_beta2[_maximumDurationInDays];
-    static double _sigma_beta2[_maximumDurationInDays];
-    static double _mu_beta3[_maximumDurationInDays];
-    static double _sigma_beta3[_maximumDurationInDays];
-    static double _inflationMean;
-    static double _inflationVariance;
-    static double _extinctionLevel;
-    static double _overallMultiplier;
-    //@}
 
     // ——— Molineaux: variant row type (payload below) ———
     struct Variant {
@@ -380,6 +341,20 @@ void determine_densities_descriptive(
 
 void read_descriptive(Infection& inf, istream& stream);
 void checkpoint_descriptive(Infection& inf, ostream& stream);
+
+// ——— Dummy free functions (DummyInfection.cpp) ———
+void infection_init_dummy(RunContext& ctx);
+/// One update step; @returns true when the infection goes extinct.
+bool update_density_dummy(Infection& inf, LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
+
+// ——— Empirical free functions (EmpiricalInfection.cpp) ———
+/// 1-day time step check; loads autoRegressionParameters.csv (per run)
+void infection_init_empirical(RunContext& ctx);
+/// New-infection hook for Kind::Empirical: prepatent-density draws (payload first).
+void infection_ctor_empirical(Infection& inf, LocalRng& rng, double growthRateMultiplier);
+bool update_density_empirical(Infection& inf, LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
+void read_empirical(Infection& inf, istream& stream);
+void checkpoint_empirical(Infection& inf, ostream& stream);
 
 /// Create a dummy infection (used directly by unit test).
 Infection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin);

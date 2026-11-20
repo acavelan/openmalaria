@@ -94,10 +94,10 @@ void WHInterface::init( RunContext& ctx, const OM::Parameters& parameters, const
         
         if (util::ModelOptions::option (util::DUMMY_WITHIN_HOST_MODEL)) {
             opt_dummy_whm = true;
-            Infection::initDummy (ctx);
+            infection_init_dummy (ctx);
         } else if (util::ModelOptions::option (util::EMPIRICAL_WITHIN_HOST_MODEL)) {
             opt_empirical_whm = true;
-            Infection::initEmpirical(ctx);    // 1-day time step check
+            infection_init_empirical(ctx);    // 1-day time step check
         } else if (util::ModelOptions::option (util::MOLINEAUX_WITHIN_HOST_MODEL)) {
             opt_molineaux_whm = true;
             Infection::initMolineaux( ctx, parameters );

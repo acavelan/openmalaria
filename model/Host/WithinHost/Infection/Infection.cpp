@@ -48,7 +48,7 @@ Infection::Infection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int orig
             m_density = 16;	// increased by DH to avoid zeros in initialKappa
             break;
         case Kind::Empirical:
-            ctorBody_Empirical(rng, growthRateMultiplier);
+            infection_ctor_empirical(*this, rng, growthRateMultiplier);
             break;
         case Kind::Molineaux:
             ctorBody_Molineaux(rng);
@@ -72,7 +72,7 @@ Infection::Infection (RunContext& ctx, istream& stream, Kind kind) :
     switch( kind ){
         case Kind::Descriptive: read_descriptive(*this, stream); break;
         case Kind::Dummy: break;
-        case Kind::Empirical: read_Empirical(stream); break;
+        case Kind::Empirical: read_empirical(*this, stream); break;
         case Kind::Molineaux: read_Molineaux(stream); break;
         case Kind::Penny: read_Penny(stream); break;
     }
@@ -87,8 +87,8 @@ bool Infection::update( LocalRng& rng, double survivalFactor, SimTime now, doubl
     if( bsAge < sim::zero() )
         return false;	// latent period (liver stage) — don't do anything
     switch( m_kind ){
-        case Kind::Dummy: return updateDensity_Dummy (rng, survivalFactor, bsAge, body_mass);
-        case Kind::Empirical: return updateDensity_Empirical (rng, survivalFactor, bsAge, body_mass);
+        case Kind::Dummy: return update_density_dummy (*this, rng, survivalFactor, bsAge, body_mass);
+        case Kind::Empirical: return update_density_empirical (*this, rng, survivalFactor, bsAge, body_mass);
         case Kind::Molineaux: return updateDensity_Molineaux (rng, survivalFactor, bsAge, body_mass);
         case Kind::Penny: return updateDensity_Penny (rng, survivalFactor, bsAge, body_mass);
         default:
@@ -108,7 +108,7 @@ void Infection::checkpoint (ostream& stream) {
     switch( m_kind ){
         case Kind::Descriptive: checkpoint_descriptive (*this, stream); break;
         case Kind::Dummy: break;
-        case Kind::Empirical: checkpoint_Empirical (stream); break;
+        case Kind::Empirical: checkpoint_empirical (*this, stream); break;
         case Kind::Molineaux: checkpoint_Molineaux (stream); break;
         case Kind::Penny: checkpoint_Penny (stream); break;
     }

@@ -41,7 +41,7 @@ public:
         m_rng.seed(0, 721347520444481703);
         UnittestUtil::initTime(1);
         UnittestUtil::Infection_init_latentP_and_NaN ();
-        Infection::initDummy(UnittestUtil::ctx());
+        infection_init_dummy(UnittestUtil::ctx());
         // pkpdID (1st value) isn't important since we're not using drug model here:
         infection = UnittestUtil::ctx().ext->createInfection( UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous);
         for( SimTime d = UnittestUtil::clock().ts1(), end = UnittestUtil::clock().ts1() + sim::fromDays(15); d < end; d = d + sim::oneDay() ){

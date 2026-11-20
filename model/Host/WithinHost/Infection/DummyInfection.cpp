@@ -38,19 +38,19 @@ Infection* checkpointedDummyInfection (RunContext& ctx, istream& stream) {
     return new Infection (ctx, stream, Infection::Kind::Dummy);
 }
 
-void Infection::initDummy (RunContext& ctx) {
+void infection_init_dummy (RunContext& ctx) {
     ctx.ext->createInfection = &createDummyInfection;
     ctx.ext->checkpointedInfection = &checkpointedDummyInfection;
 }
 
-bool Infection::updateDensity_Dummy( LocalRng& rng, double survivalFactor, SimTime, double ){
+bool update_density_dummy( Infection& inf, LocalRng& rng, double survivalFactor, SimTime, double ){
     const double GROWTH_RATE = 8.0;
     const double PARASITE_THRESHOLD = 1;
     
-    m_density = (mod_nn(int(m_density*GROWTH_RATE), 20000)) * survivalFactor;
-    m_cumulativeExposureJ += m_density;
+    inf.m_density = (mod_nn(int(inf.m_density*GROWTH_RATE), 20000)) * survivalFactor;
+    inf.m_cumulativeExposureJ += inf.m_density;
     
-    if (m_density < PARASITE_THRESHOLD) {
+    if (inf.m_density < PARASITE_THRESHOLD) {
         return true;
     } else {
         return false;
