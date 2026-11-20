@@ -93,13 +93,12 @@ const string& reverseLookup(const map<string, size_t>& m, size_t i) {
     return it->first;
 }
 
-Model::Model(
-    Context& ctx, vector<double> initEIR, int interventionMode,
-    vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
-    vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
-    map<string, size_t> speciesIndexList)
+Model::Model(Context& ctx, vector<double> initEIR, int interventionMode,
+             vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
+             vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
+             map<string, size_t> speciesIndexList)
     : Model(ctx, std::move(initEIR), interventionMode, Kind::Vector, std::move(speciesList),
-                        std::move(emergenceRateEstimatorsList), std::move(speciesIndexList)) {
+            std::move(emergenceRateEstimatorsList), std::move(speciesIndexList)) {
     // set VACCINE_GENOTYPE option
     opt_vaccine_genotype = util::ModelOptions::option(util::VACCINE_GENOTYPE);
 
@@ -116,8 +115,7 @@ Model::Model(
         return s.str();
     };
 
-    mon::Continuous::registerCallback(ctx, "N_v0", ctsHeads("\tN_v0("),
-                                      std::bind(&Model::ctsCbN_v0, this, _1));
+    mon::Continuous::registerCallback(ctx, "N_v0", ctsHeads("\tN_v0("), std::bind(&Model::ctsCbN_v0, this, _1));
     mon::Continuous::registerCallback(ctx, "P_A", ctsHeads("\tP_A("),
                                       std::bind(&Model::ctsCbVecStat, this, Anopheles::PA, _1));
     mon::Continuous::registerCallback(ctx, "P_Amu", ctsHeads("\tP_Amu("),
@@ -140,8 +138,7 @@ Model::Model(
     // availability to mosquitoes relative to other humans, excluding age factor
     mon::Continuous::registerCallback(ctx, "alpha", ctsHeads("\talpha_i("),
                                       std::bind(&Model::ctsCbAlpha, this, _1, _2));
-    mon::Continuous::registerCallback(ctx, "P_B", ctsHeads("\tP_B("),
-                                      std::bind(&Model::ctsCbP_B, this, _1, _2));
+    mon::Continuous::registerCallback(ctx, "P_B", ctsHeads("\tP_B("), std::bind(&Model::ctsCbP_B, this, _1, _2));
     mon::Continuous::registerCallback(ctx, "P_C*P_D", ctsHeads("\tP_C*P_D("),
                                       std::bind(&Model::ctsCbP_CD, this, _1, _2));
 
@@ -226,7 +223,7 @@ SimTime Model::initIterate_vector() {
 }
 
 void Model::calculateEIR_vector(Host::Human& human, double ageYears, vector<double>& EIR_i,
-                                            vector<double>& EIR_l) const {
+                                vector<double>& EIR_l) const {
 
     PerHost& host = human.perHostTransmission;
     host.update(human);

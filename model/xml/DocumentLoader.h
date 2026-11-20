@@ -103,7 +103,7 @@ class XMLChecker {
             const int interval = scenario.getModel().getParameters().get().getInterval();
             if (interval != 1 && interval != 5) {
                 throw util::xml_error("Time step set to " + std::to_string(interval) +
-                                               " days but only 1 and 5 days are supported.");
+                                      " days but only 1 and 5 days are supported.");
             }
         }
     }

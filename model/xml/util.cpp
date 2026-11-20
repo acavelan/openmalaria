@@ -77,8 +77,8 @@ inline unique_ptr<Sampler> createSampler(Sampler::Kind kind, double mean, const 
             throw util::xml_error("\"distr=\"const\": expected \"lognormal\"");
 
         if (elt.getCV().present() && elt.getCV().get() != 0.0)
-            throw util::xml_error(
-                "\"distr=" + d + "\": attribute \"CV\" must be zero or omitted when distr=\"const\" or is omitted");
+            throw util::xml_error("\"distr=" + d +
+                                  "\": attribute \"CV\" must be zero or omitted when distr=\"const\" or is omitted");
         if (elt.getVariance().present() && elt.getVariance().get() != 0.0)
             throw util::xml_error(
                 "\"distr=" + d +
@@ -97,7 +97,7 @@ inline unique_ptr<Sampler> createSampler(Sampler::Kind kind, double mean, const 
 
     if (hasCV == hasVar) // both present or both absent
         throw util::xml_error("\"distr=" + d +
-                                       "\": exactly one of attributes \"CV\" or \"variance\" must be specified");
+                              "\": exactly one of attributes \"CV\" or \"variance\" must be specified");
 
     // The optional truncation parameter
     std::optional<double> truncate =
@@ -205,8 +205,8 @@ unique_ptr<DecayFunction> DecayFunction::makeObject(const SimClock& clock, const
     case Kind::Multiplies: {
         const scnXml::DecayFunction::DecaySequence& decaySequence = elt.getDecay();
         if (decaySequence.size() != 2)
-            throw xml_error("Operator decay function expects two decay functions, " +
-                                     to_string(decaySequence.size()) + "  were given.");
+            throw xml_error("Operator decay function expects two decay functions, " + to_string(decaySequence.size()) +
+                            "  were given.");
         o->f1 = makeObject(clock, decaySequence[0], "Operator::f1");
         o->f2 = makeObject(clock, decaySequence[1], "Operator::f2");
         break;
@@ -216,7 +216,7 @@ unique_ptr<DecayFunction> DecayFunction::makeObject(const SimClock& clock, const
         const scnXml::DecayFunction::DecaySequence& decaySequence = elt.getDecay();
         if (decaySequence.size() != 1)
             throw util::xml_error("The Emax function expects exactly one user function, but " +
-                                           to_string(decaySequence.size()) + "  were given.");
+                                  to_string(decaySequence.size()) + "  were given.");
         auto need = [](bool have, const char* msg) {
             if (!have)
                 throw util::xml_error(msg);
@@ -277,8 +277,8 @@ void AgeGroupInterpolator::set(const SimClock& clock, const scnXml::AgeGroupValu
                 greatestLbound = lbound;
                 lastValue = it->getValue(); // always insert previous value
             } else
-                throw util::xml_error(string(eltName) + ": lower bound " + to_string(lbound) +
-                                               " less than previous " + to_string(greatestLbound));
+                throw util::xml_error(string(eltName) + ": lower bound " + to_string(lbound) + " less than previous " +
+                                      to_string(greatestLbound));
         }
         // add a point in middle of last age group (taking upper bound as max-age-years:
         data[0.5 * (greatestLbound + sim::inYears(clock.max_human_age))] = lastValue;
@@ -303,7 +303,7 @@ void AgeGroupInterpolator::set(const SimClock& clock, const scnXml::AgeGroupValu
                 pos = data.insert(pos, make_pair(lbound, group.getValue()));
             } else
                 throw util::xml_error(string(eltName) + ": lower bound " + to_string(lbound) +
-                                               " not greater than previous " + to_string(greatestLbound));
+                                      " not greater than previous " + to_string(greatestLbound));
         }
         // first lower-bound must be 0
         if (data.begin()->first != 0.0)
@@ -517,8 +517,7 @@ void ModelOptions::init(const SimClock& clock, scnXml::Model::ModelOptionsOption
     if (clock.one_TS() == sim::fromDays(5)) {
         // 5 day TS is okay; the only option with a 1-day-TS requirement:
         if (options[CLINICAL_EVENT_SCHEDULER])
-            throw xml_error(
-                "Model option CLINICAL_EVENT_SCHEDULER is only compatible with a 1-day time step.");
+            throw xml_error("Model option CLINICAL_EVENT_SCHEDULER is only compatible with a 1-day time step.");
     } else if (clock.one_TS() != sim::fromDays(1)) {
         // 1 day TS is also okay; anything else is not supported
         ostringstream msg;

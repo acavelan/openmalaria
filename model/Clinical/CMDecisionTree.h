@@ -216,9 +216,7 @@ void walk(const FlatTree& t, DTExecCtx& e, uint32_t n) {
             continue;
         case DTK_InfectionOrigin: {
             auto o = e.human.withinHostModel->getInfectionOrigin();
-            n = o == WithinHost::Origin::Imported     ? nd.c0
-                : o == WithinHost::Origin::Introduced ? nd.c1
-                                                               : nd.c2;
+            n = o == WithinHost::Origin::Imported ? nd.c0 : o == WithinHost::Origin::Introduced ? nd.c1 : nd.c2;
             continue;
         }
         case DTK_Diagnostic: {

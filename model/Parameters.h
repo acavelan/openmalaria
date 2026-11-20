@@ -165,7 +165,7 @@ class Parameters {
                 if (pair.second == name) {
                     const int paramCode = pair.first;
                     throw util::xml_error("Parameter with index " + to_string(paramCode) +
-                                                   " required but not described.");
+                                          " required but not described.");
                 }
             }
             throw util::base_exception(

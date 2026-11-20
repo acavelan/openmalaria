@@ -80,8 +80,7 @@ LSTMDrugType::LSTMDrugType(Context& ctx, size_t index, const scnXml::PKPDDrug& d
     negligible_concentration = pk.getNegligible_concentration();
     if (pk.getHalf_life().present()) {
         if (pk.getK().present() || pk.getM_exponent().present()) {
-            throw util::xml_error(
-                "PK data must specify one of half_life or (k, m_exponent); it specifies both");
+            throw util::xml_error("PK data must specify one of half_life or (k, m_exponent); it specifies both");
         }
         elimination_rate = Sampler::fromMeanCV(Sampler::Kind::Lognormal, log(2.0) / pk.getHalf_life().get(), 0.0);
         neg_m_exp = 0.0; // no dependence on body mass
@@ -107,7 +106,7 @@ LSTMDrugType::LSTMDrugType(Context& ctx, size_t index, const scnXml::PKPDDrug& d
         }
     } else if (pk.getCompartment3().present()) {
         throw util::xml_error("PK model specifies parameters for "
-                                       "compartment3 without compartment2");
+                              "compartment3 without compartment2");
     }
     if (pk.getConversion().present()) {
         if (k12) {
@@ -117,8 +116,7 @@ LSTMDrugType::LSTMDrugType(Context& ctx, size_t index, const scnXml::PKPDDrug& d
         try {
             metabolite = ctx.drugs.findDrug(conv.getMetabolite());
         } catch (util::xml_error& e) {
-            throw util::xml_error(
-                "PK: metabolite drug not found; metabolite must be defined *before* parent drug!");
+            throw util::xml_error("PK: metabolite drug not found; metabolite must be defined *before* parent drug!");
         }
         conversion_rate = util::createSampler(conv.getRate());
         mwr = conv.getMolRatio();
@@ -132,14 +130,14 @@ LSTMDrugType::LSTMDrugType(Context& ctx, size_t index, const scnXml::PKPDDrug& d
     if (pk.getK_a().present()) {
         if (!k12 && !conversion_rate) {
             throw util::xml_error("PK models only allow an "
-                                           "absorption rate parameter (k_a) when compartment2 or "
-                                           " conversion parameters are present");
+                                  "absorption rate parameter (k_a) when compartment2 or "
+                                  " conversion parameters are present");
         }
         absorption_rate = util::createSampler(pk.getK_a().get());
     } else {
         if (k12) {
             throw util::xml_error("PK models require an absorption "
-                                           "rate parameter (k_a) when compartment2 is present");
+                                  "rate parameter (k_a) when compartment2 is present");
         }
     }
 
@@ -176,8 +174,7 @@ LSTMDrugType::LSTMDrugType(Context& ctx, size_t index, const scnXml::PKPDDrug& d
             for (const scnXml::Restriction& restriction : phenotype.getRestriction()) {
                 size_t n = expected_loci.erase(restriction.getOnLocus());
                 if (n == 0)
-                    throw util::xml_error(
-                        mismatch(restriction.getOnLocus(), pheno_name(), first_phenotype_name));
+                    throw util::xml_error(mismatch(restriction.getOnLocus(), pheno_name(), first_phenotype_name));
             }
             if (!expected_loci.empty())
                 throw util::xml_error(mismatch(*expected_loci.begin(), first_phenotype_name, pheno_name()));
@@ -188,11 +185,11 @@ LSTMDrugType::LSTMDrugType(Context& ctx, size_t index, const scnXml::PKPDDrug& d
             uint32_t allele = ctx.genotypes.findAlleleCode(restriction.getOnLocus(), restriction.getToAllele());
             if (allele == numeric_limits<uint32_t>::max()) {
                 throw util::xml_error("phenotype has "
-                                               "restriction on locus " +
-                                               string(restriction.getOnLocus()) + " allele " +
-                                               string(restriction.getToAllele()) +
-                                               " but this locus/allele "
-                                               "has not been defined in parasiteGenetics section");
+                                      "restriction on locus " +
+                                      string(restriction.getOnLocus()) + " allele " +
+                                      string(restriction.getToAllele()) +
+                                      " but this locus/allele "
+                                      "has not been defined in parasiteGenetics section");
             }
             auto iter = loci.find(restriction.getOnLocus());
             if (iter == loci.end()) {
@@ -209,7 +206,7 @@ LSTMDrugType::LSTMDrugType(Context& ctx, size_t index, const scnXml::PKPDDrug& d
     if (loci_per_phenotype.size() == 0) {
         if (pd.size() > 1) {
             throw util::xml_error("pharmacology/drugs/drug/pd/phenotype:"
-                                           " restrictions required when num. phenotypes > 1");
+                                  " restrictions required when num. phenotypes > 1");
         } else {
             // All genotypes map to phenotype 0
             genotype_mapping.assign(ctx.genotypes.genotypes.size(), 0);
@@ -244,8 +241,8 @@ LSTMDrugType::LSTMDrugType(Context& ctx, size_t index, const scnXml::PKPDDrug& d
                         // We could try to convert genotype's allele codes to
                         // locus/allele names, but requires several lookups
                         throw util::xml_error("phenotype restrictions "
-                                                       "not restrictive enough: multiple phenotypes match "
-                                                       "some genotype");
+                                              "not restrictive enough: multiple phenotypes match "
+                                              "some genotype");
                     }
                 }
             }
@@ -253,7 +250,7 @@ LSTMDrugType::LSTMDrugType(Context& ctx, size_t index, const scnXml::PKPDDrug& d
                 // We could try to convert genotype's allele codes to
                 // locus/allele names, but requires several lookups
                 throw util::xml_error("phenotype restrictions too"
-                                               "restrictive: no phenotype matching some genotype");
+                                      "restrictive: no phenotype matching some genotype");
             }
             genotype_mapping[j] = phenotype;
         }
@@ -343,11 +340,11 @@ void LSTMTreatments::init(Context& ctx, const scnXml::Treatments& data) {
         else {
             if (!elt.getMultiply().present()) {
                 throw util::xml_error("dosages table does not "
-                                               "include age, bodymass or multiply element");
+                                      "include age, bodymass or multiply element");
             }
             if (elt.getMultiply().get().getBy() != "kg") {
                 throw util::xml_error("dosages table \"multipy by\" "
-                                               "option is not \"kg\"");
+                                      "option is not \"kg\"");
             }
             dosages[i].useMass = true;
             dosages[i].multMassKg = true;

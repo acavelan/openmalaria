@@ -167,8 +167,7 @@ struct ChangeEirDeployParams {
 void timed_deploy_change_hs(Context&, Transmission::Model&, ChangeHsDeployParams&);
 void timed_deploy_change_eir(Context&, Transmission::Model&, ChangeEirDeployParams&);
 void timed_deploy_add_nhh(Context&, std::vector<Host::Human>&, Transmission::Model&, AddNhhDeployParams&);
-void timed_deploy_nhh_mods(Context&, std::vector<Host::Human>&, Transmission::Model&,
-                           const NhhModsDeployParams&);
+void timed_deploy_nhh_mods(Context&, std::vector<Host::Human>&, Transmission::Model&, const NhhModsDeployParams&);
 
 // ———  timed human deployments  ———
 
@@ -397,7 +396,7 @@ inline void print_timed_details(std::ostream& out, const TimedDeployment& td) {
     case DeploymentKind::CUMULATIVE_HUMAN: {
         // old TimedCumulativeHumanDeployment inherited the plain Human text
         const TimedHumanParams& th = td.kind == DeploymentKind::HUMAN ? std::get<TimedHumanParams>(td.p)
-                                                                           : std::get<CumulativeHumanParams>(td.p).h;
+                                                                      : std::get<CumulativeHumanParams>(td.p).h;
         const HumanDeployParams& d = th.d;
         out << "Human:" << endl;
         out << "\tage: " << sim::inYears(th.minAge) << "y\tmax age: " << sim::inYears(th.maxAge) << "y\tsubpop: ";

@@ -106,22 +106,22 @@ class Model {
 
     /// Vector-model constructor (was VectorModel::VectorModel).
     Model(Context& ctx, vector<double> initEIR, int interventionMode,
-                      vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
-                      vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
-                      map<string, size_t> speciesIndexList);
+          vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
+          vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
+          map<string, size_t> speciesIndexList);
 
     /// Non-vector constructor (was NonVectorModel; defined in xml/entomology.cpp).
-    Model(Context& ctx, vector<double> initEIR, int interventionMode,
-                      const scnXml::NonVector& nonVectorData, int eipDuration);
+    Model(Context& ctx, vector<double> initEIR, int interventionMode, const scnXml::NonVector& nonVectorData,
+          int eipDuration);
 
   protected:
     /// The run this model belongs to (clock accessed as ctx.clock).
     Context& ctx;
 
     Model(Context& ctx, vector<double> initialisationEIR, int interventionMode, Kind kind,
-                      vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
-                      vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
-                      map<string, size_t> speciesIndexList)
+          vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
+          vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
+          map<string, size_t> speciesIndexList)
         : ctx(ctx), initialisationEIR(std::move(initialisationEIR)), simulationMode(forcedEIR),
           interventionMode(interventionMode),
           laggedKappa(ctx.clock.steps_per_year, 0.0), // if using non-vector model, it will resize this
@@ -142,8 +142,7 @@ class Model {
         // Set VACCINE_GENOTYPE option
         opt_vaccine_genotype = util::ModelOptions::option(util::VACCINE_GENOTYPE);
 
-        mon::Continuous::registerCallback(ctx, "input EIR", "\tinput EIR",
-                                          std::bind(&Model::ctsCbInputEIR, this, _1));
+        mon::Continuous::registerCallback(ctx, "input EIR", "\tinput EIR", std::bind(&Model::ctsCbInputEIR, this, _1));
         mon::Continuous::registerCallback(ctx, "simulated EIR", "\tsimulated EIR",
                                           std::bind(&Model::ctsCbSimulatedEIR, this, _1));
         mon::Continuous::registerCallback(ctx, "human infectiousness", "\thuman infectiousness",

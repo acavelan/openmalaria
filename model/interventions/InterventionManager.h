@@ -46,8 +46,7 @@ namespace interventions {
 class InterventionManager {
   public:
     /** Read XML descriptions. */
-    static void init(Context& ctx, const scnXml::Interventions& intervElt,
-                     Transmission::Model& transmission);
+    static void init(Context& ctx, const scnXml::Interventions& intervElt, Transmission::Model& transmission);
 
     /** Call after loading a checkpoint, passing the intervention-period time.
      * 

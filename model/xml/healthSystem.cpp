@@ -75,8 +75,7 @@ extern double pg_indirRiskCoFactor, pg_severeMalThreshold, pg_comorbIntercept, p
 extern AgeGroupInterpolator pg_NMF_incidence;
 extern bool opt_predetermined_episodes, opt_mueller_pres_model;
 
-void Model::init(Context& ctx, const Parameters& parameters, const scnXml::Clinical& clinical,
-                             bool nmfOnly) {
+void Model::init(Context& ctx, const Parameters& parameters, const scnXml::Clinical& clinical, bool nmfOnly) {
     if (util::ModelOptions::option(util::NON_MALARIA_FEVERS)) {
         if (!clinical.getNonMalariaFevers().present()) {
             throw util::xml_error("NonMalariaFevers element of model->clinical required");
@@ -488,7 +487,7 @@ uint32_t compile_random(CompileCtx& c, const scnXml::DTRandom& node) {
     // the last option.
     if (cum_p < 1.0 || cum_p > 1.001) {
         throw util::xml_error("decision tree (random node): expected probability sum to be 1.0 but found " +
-                                       to_string(cum_p));
+                              to_string(cum_p));
     }
     add_branch_table(c, n, std::move(b));
     return n;
@@ -589,8 +588,8 @@ void ClinicalEventScheduler::init(Context& ctx, const Parameters& parameters, co
         const scnXml::Clinical::NonMalariaFeversType& nmfDesc2 = clinical.getNonMalariaFevers().get();
         if (!nmfDesc2.getPrNeedTreatmentMF().present() || !nmfDesc2.getPrNeedTreatmentNMF().present()) {
             throw util::xml_error("prNeedTreatmentMF and "
-                                           "prNeedTreatmentNMF elements required in model->clinical->"
-                                           "NonMalariaFevers");
+                                  "prNeedTreatmentNMF elements required in model->clinical->"
+                                  "NonMalariaFevers");
         }
         NMF_need_antibiotic.set(ctx.clock, nmfDesc2.getPrNeedTreatmentNMF().get(), "prNeedTreatmentNMF");
         MF_need_antibiotic.set(ctx.clock, nmfDesc2.getPrNeedTreatmentMF().get(), "prNeedTreatmentMF");
@@ -674,8 +673,8 @@ double getHealthSystemACRByName(const scnXml::TreatmentDetails& td, const string
 
     if (!(v >= 0.0 && v <= 1.0)) {
         throw util::xml_error(string("healthSystem initialACR/compliance/nonCompliersEffective: ")
-                                           .append(drug)
-                                           .append(" value must be in range [0,1]"));
+                                  .append(drug)
+                                  .append(" value must be in range [0,1]"));
     }
     return v;
 }
@@ -728,10 +727,10 @@ template <class HS> static void set_access_probabilities(const HS& hsDescription
         CM5DayCommon::accessUCAny[CM5DayCommon::SecondLine] > 1.0 || CM5DayCommon::accessSevere < 0.0 ||
         CM5DayCommon::accessSevere > 1.0) {
         throw util::xml_error("healthSystem: "
-                                       "pSeekOfficialCareUncomplicated1 and pSelfTreatUncomplicated must be"
-                                       " at least 0 and their sum must be at most 1, and"
-                                       "pSeekOfficialCareUncomplicated2 and pSeekOfficialCareSevere must "
-                                       "be in range [0,1]");
+                              "pSeekOfficialCareUncomplicated1 and pSelfTreatUncomplicated must be"
+                              " at least 0 and their sum must be at most 1, and"
+                              "pSeekOfficialCareUncomplicated2 and pSeekOfficialCareSevere must "
+                              "be in range [0,1]");
     }
 }
 // liverStageDrug handling was identical in both setHealthSystem paths:
@@ -855,7 +854,7 @@ void Model::setHS(Context& ctx, const scnXml::HealthSystem& healthSystem) {
     auto need = [](const auto& opt, const char* name) -> decltype(auto) {
         if (!opt.present())
             throw util::xml_error(string("Expected ") + name +
-                                           " section in healthSystem data (initial or intervention)");
+                                  " section in healthSystem data (initial or intervention)");
         return (opt.get()); // parenthesised: stay a reference
     };
     if (opt_event_scheduler)

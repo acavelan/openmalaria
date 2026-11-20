@@ -276,8 +276,7 @@ bool WHCommon::summarize(Host::Human& human) const {
                 else
                     mon::recordStat(mon::measure("totalInfs_Imported"), human, 1, 0, genotype, 0);
 
-                if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), (*inf)->getDensity(),
-                                                                      NaN)) {
+                if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), (*inf)->getDensity(), NaN)) {
                     mon::recordStat(mon::measure("totalPatentInf"), human, 1, 0, genotype, 0);
                     if ((*inf)->origin() == Origin::Indigenous)
                         mon::recordStat(mon::measure("totalPatentInf_Indigenous"), human, 1, 0, genotype, 0);
@@ -308,8 +307,7 @@ bool WHCommon::summarize(Host::Human& human) const {
                 } while (inf != sortedInfs.end() && (*inf)->genotype() == genotype);
                 // we had at least one infection of this genotype
                 mon::recordStat(mon::measure("nInfectByGenotype"), human, 1, 0, genotype, 0);
-                if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), dens,
-                                                                      NaN)) {
+                if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), dens, NaN)) {
                     mon::recordStat(mon::measure("nPatentByGenotype"), human, 1, 0, genotype, 0);
                     mon::recordStat(mon::measure("logDensByGenotype"), human, log(dens), 0, genotype, 0);
                 }
@@ -320,8 +318,7 @@ bool WHCommon::summarize(Host::Human& human) const {
     // Some treatments (simpleTreat with steps=-1) clear infections immediately
     // (and are applied after update()), thus infections.size() may be 0 while
     // totalDensity > 0. Here we report the last calculated density.
-    if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), totalDensity,
-                                                          NaN)) {
+    if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), totalDensity, NaN)) {
         mon::recordStat(mon::measure("nPatent"), human);
         if (infectionType == Origin::Imported)
             mon::recordStat(mon::measure("nPatent_Imported"), human);

@@ -313,7 +313,7 @@ void timed_deploy_nhh_mods(Context& ctx, std::vector<Host::Human>&, Transmission
 
             if (anophModel->nhhInstances.count(intervName) == 0)
                 throw util::xml_error("non human hosts type " + intervName +
-                                               " not deployed during non human hosts intervention deployment");
+                                      " not deployed during non human hosts intervention deployment");
 
             anophModel->reduceNhhAvailability[intervName][instance].deploy(vectorModel->m_rng, ctx.clock.now());
             anophModel->reduceP_B_I[intervName][instance].deploy(vectorModel->m_rng, ctx.clock.now());
@@ -369,7 +369,7 @@ void timed_deploy_add_nhh(Context& ctx, vector<Host::Human>& population, Transmi
 
             if (anophModel->nhhInstances.count(intervName) != 0)
                 throw util::xml_error("non human hosts type " + intervName +
-                                               " already deployed during non human hosts deployment");
+                                      " already deployed during non human hosts deployment");
 
             const AddNhhDeployParams::NhhSpec& p = nhhParams.bySpecies[anophModel->mosq.name];
             const double adultAvail = Transmission::PerHostAnophParams::get(ctx, i).entoAvailability->mean();
@@ -698,7 +698,7 @@ void factors::RelativeAttractiveness::initTwoStage(const scnXml::TwoStageDeterre
         if (!(PF > 0.0)) {
             // we take the log of PF, so it must be positive
             throw util::xml_error("ITN.description.anophelesParams.twoStageDeterrency.entering: "
-                                           "insecticideFactor must be positive since we take its logarithm.");
+                                  "insecticideFactor must be positive since we take its logarithm.");
         }
 
         /* We need to ensure the relative availability is non-negative. However,
@@ -995,17 +995,16 @@ VaccineParams::VaccineParams(Context& ctx, ComponentId component, const scnXml::
 
                 if (allele_code == numeric_limits<uint32_t>::max()) {
                     throw util::xml_error("phenotype has "
-                                                   "restriction on locus " +
-                                                   string(restrictions[j].getOnLocus()) + " allele " +
-                                                   string(restrictions[j].getToAllele()) +
-                                                   " but this locus/allele "
-                                                   "has not been defined in parasiteGenetics section");
+                                          "restriction on locus " +
+                                          string(restrictions[j].getOnLocus()) + " allele " +
+                                          string(restrictions[j].getToAllele()) +
+                                          " but this locus/allele "
+                                          "has not been defined in parasiteGenetics section");
                 }
 
                 if (allele_code >= ctx.genotypes.N())
-                    throw util::xml_error(string("Vaccine phenotype: Invalid Locus ") +
-                                                   restrictions[j].getOnLocus() + string(" and allele ") +
-                                                   restrictions[j].getToAllele());
+                    throw util::xml_error(string("Vaccine phenotype: Invalid Locus ") + restrictions[j].getOnLocus() +
+                                          string(" and allele ") + restrictions[j].getToAllele());
 
                 if (perGenotypeInitialMeanEfficacy[allele_code].size() != 0)
                     throw util::xml_error(string(
@@ -1027,8 +1026,7 @@ VaccineParams::VaccineParams(Context& ctx, ComponentId component, const scnXml::
         // Check that all genotypes have been adressed
         for (size_t i = 0; i < ctx.genotypes.N(); ++i) {
             if (perGenotypeInitialMeanEfficacy[i].size() == 0)
-                throw util::xml_error(
-                    "Vaccine phenotype: missing restriction for at least one locus and allele pair");
+                throw util::xml_error("Vaccine phenotype: missing restriction for at least one locus and allele pair");
         }
     } else {
         perGenotypeInitialMeanEfficacy.resize(1);
@@ -1147,7 +1145,7 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
                 comp.kind = Component::CLEAR_IMMUNITY; // no payload (cf. RecruitOnly)
             else
                 throw util::xml_error("expected intervention.human.component element to have a "
-                                               "child, didn't find it (perhaps I need updating)");
+                                      "child, didn't find it (perhaps I need updating)");
             ctx.humanComponents->push_back(std::move(comp));
         }
 
@@ -1294,8 +1292,8 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
     // Must come after vaccines are initialised:
     if (intervElt.getInsertR_0Case().present()) {
         throw util::xml_error("R_0 code is disabled to reduce "
-                                       "maintenance. If you need it, either use an old OpenMalaria "
-                                       "version (pre 32) or request it be reenabled.");
+                              "maintenance. If you need it, either use an old OpenMalaria "
+                              "version (pre 32) or request it be reenabled.");
         // code disabled (former #if 0 timed-deployment block deleted; search for R_0 to find more blocks like this)
     }
     if (intervElt.getUninfectVectors().present()) {
@@ -1365,9 +1363,8 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
                         check_timed_date(ctx, date);
                         nhh_mods_setup(ctx, instance, elt.getNonHumanHostsName(), elt.getDescription().getAnopheles(),
                                        decay, transmission);
-                        ctx.timed->push_back(
-                            timed_deployment(date, DeploymentKind::NHH_MODS,
-                                             NhhModsDeployParams{instance, elt.getNonHumanHostsName()}));
+                        ctx.timed->push_back(timed_deployment(
+                            date, DeploymentKind::NHH_MODS, NhhModsDeployParams{instance, elt.getNonHumanHostsName()}));
                     }
                     instance++;
                 }
@@ -1387,8 +1384,8 @@ void InterventionManager::init(Context& ctx, const scnXml::Interventions& interv
                         double ratio = deploy.getRatioToHumans();
                         SimTime lifespan = UnitParse::readDuration(ctx.clock, deploy.getLifespan(), UnitParse::NONE);
                         check_timed_date(ctx, date);
-                        ctx.timed->push_back(timed_deployment(date, DeploymentKind::TRAP,
-                                                              TrapDeployParams{instance, ratio, lifespan}));
+                        ctx.timed->push_back(
+                            timed_deployment(date, DeploymentKind::TRAP, TrapDeployParams{instance, ratio, lifespan}));
                     }
                 }
                 instance += 1;

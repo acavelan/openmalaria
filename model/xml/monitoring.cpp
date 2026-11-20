@@ -92,7 +92,7 @@ void initReporting(Context& ctx, const scnXml::Scenario& scenario) {
         if ((om.measure == measure("sumlogDens") || om.measure == measure("logDensByGenotype")) &&
             WithinHost::diagnostics::monitoringDiagnostic(ctx).allowsFalsePositives()) {
             throw util::xml_error("measure " + std::string(optElt.getName()) +
-                                           " may not be used when monitoring diagnostic sensitivity < 1");
+                                  " may not be used when monitoring diagnostic sensitivity < 1");
         }
 
         auto applyCategory = [&](Dim flag, const auto& option, const char* label) {
@@ -100,7 +100,7 @@ void initReporting(Context& ctx, const scnXml::Scenario& scenario) {
                 return;
             if (option.get() && !(om.dims & flag)) {
                 throw util::xml_error("measure " + std::string(optElt.getName()) +
-                                               " does not support categorisation by " + label);
+                                      " does not support categorisation by " + label);
             }
             if (!option.get())
                 om.dims &= ~flag;
@@ -117,8 +117,7 @@ void initReporting(Context& ctx, const scnXml::Scenario& scenario) {
             throw util::xml_error("monitoring output number must not be negative");
         }
         if (!outIds.insert(om.outId).second) {
-            throw util::xml_error("monitoring output number " + std::to_string(om.outId) +
-                                           " used more than once");
+            throw util::xml_error("monitoring output number " + std::to_string(om.outId) + " used more than once");
         }
         if (om.measure == allCauseIMR) {
             runtime.reportIMR = om.outId;
@@ -227,15 +226,15 @@ void initCohorts(Context& ctx, const scnXml::Monitoring& monitoring) {
         const bool inserted = runtime.cohortSubPopIds.insert(std::make_pair(compId, nextId)).second;
         if (!inserted) {
             throw util::xml_error(std::string("cohort specification uses sub-population \"")
-                                               .append(it->getId())
-                                               .append("\" more than once"));
+                                      .append(it->getId())
+                                      .append("\" more than once"));
         }
         const auto number = it->getNumber();
         if (number < 1 || number > maxCohortNumber || !std::has_single_bit(static_cast<uint32_t>(number))) {
             throw util::xml_error(std::string("cohort specification assigns sub-population \"")
-                                               .append(it->getId())
-                                               .append("\" a number which is not a power of 2 between 1 and ")
-                                               .append(std::to_string(maxCohortNumber)));
+                                      .append(it->getId())
+                                      .append("\" a number which is not a power of 2 between 1 and ")
+                                      .append(std::to_string(maxCohortNumber)));
         }
         runtime.cohortSubPopNumbers.push_back(number);
         nextId += 1;

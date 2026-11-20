@@ -216,7 +216,7 @@ void AnophelesModel::initAvailability(size_t species, const vector<NhhParams>& n
 
         if (!(sum_xi > 0.9999 && sum_xi < 1.0001)) {
             throw xml_error("The sum of the relative entomological availability (ξ_i) "
-                                     "across non-human hosts must be 1!");
+                            "across non-human hosts must be 1!");
         }
 
         // equations (14), (15) of paper:

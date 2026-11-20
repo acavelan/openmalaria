@@ -174,7 +174,7 @@ void IncidenceModel::summarize(const Host::Human& human) {
 }
 
 double IncidenceModel::getModelExpectedInfections(LocalRng& rng, double effectiveEIR,
-                                                           const Transmission::PerHost& phTrans) {
+                                                  const Transmission::PerHost& phTrans) {
     switch (kind) {
     case Kind::HetWorkaround: // parity: old HeterogeneityWorkaroundII formula
         return (Sinf + (1 - Sinf) / (1 + effectiveEIR / (ctx.clock.one_TS() * phTrans.rel_avail_het()) * EstarInv)) *

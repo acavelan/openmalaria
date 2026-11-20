@@ -142,8 +142,8 @@ void Model::summarize(const Host::Human& human) {
     mon::recordStat(mon::measure("sumLogPyrogenThres"), human, log(_pyrogenThres + 1.0));
 }
 
-Pathogenesis::StatePair Model::determineState(Host::Human& human, double ageYears,
-                                                          double timeStepMaxDensity, double endDensity, bool isDoomed) {
+Pathogenesis::StatePair Model::determineState(Host::Human& human, double ageYears, double timeStepMaxDensity,
+                                              double endDensity, bool isDoomed) {
     double pMalariaFever = getPEpisode(timeStepMaxDensity, endDensity);
     StatePair result;
     //TODO(performance): would using a single RNG sample and manipulating probabilities be faster?

@@ -119,7 +119,7 @@ void WHVivax::init(Context& ctx, const OM::Parameters& parameters, const scnXml:
     // Check if vivaxClinOption is valid
     if (acceptedOptions.find(vivaxClinOption) == acceptedOptions.end()) {
         throw util::xml_error("Invalid vivaxClinOption: " + vivaxClinOption +
-                                       ". Accepted values are: A1j, A2j, B1j, B2j.");
+                              ". Accepted values are: A1j, A2j, B1j, B2j.");
     }
 
     initNHypnozoites();

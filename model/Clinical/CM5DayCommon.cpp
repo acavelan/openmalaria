@@ -84,8 +84,7 @@ void clinicalUpdate5Day(Model& cm, Context& ctx, Human& human, double ageYears,
         human.removeFirstEvent(interventions::SubPopRemove::ON_FIRST_BOUT);
 }
 
-void severeMalaria(Model& cm, Context& ctx, Human& human, Episode::State pgState, double ageYears,
-                   int& doomed) {
+void severeMalaria(Model& cm, Context& ctx, Human& human, Episode::State pgState, double ageYears, int& doomed) {
     // Probability of getting treatment (only part which is case managment):
     double p2 = CM5DayCommon::accessSevere * cm.m_treatmentSeekingFactor;
     // Probability of getting cured after getting treatment:

@@ -104,7 +104,7 @@ Anopheles::AnophelesModel* createAnophelesModel(Context& ctx, size_t i, const sc
 
     if (util::ModelOptions::option(util::VECTOR_LIFE_CYCLE_MODEL)) {
         throw util::xml_error("VECTOR_LIFE_CYCLE_MODEL not yet "
-                                       "implemented. Use VECTOR_SIMPLE_MPD_MODEL instead.");
+                              "implemented. Use VECTOR_SIMPLE_MPD_MODEL instead.");
         // TODO
         //  * Note: this model is older than SimpleMPD and more complicated.
         //  * Difficulties are in parameterisation and estimation of resources.
@@ -117,22 +117,22 @@ Anopheles::AnophelesModel* createAnophelesModel(Context& ctx, size_t i, const sc
     } else if (util::ModelOptions::option(util::VECTOR_SIMPLE_MPD_MODEL)) {
         if (!anoph.getSimpleMPD().present())
             throw util::xml_error("VECTOR_SIMPLE_MPD_MODEL: requires <simpleMPD> element with "
-                                           "model parameters for each anopheles species");
+                                  "model parameters for each anopheles species");
 
         const scnXml::SimpleMPD& smpd = anoph.getSimpleMPD().get();
 
         SimTime developmentDuration = sim::fromDays(smpd.getDevelopmentDuration().getValue());
         if (!(developmentDuration > sim::zero()))
             throw util::xml_error("entomology.vector.simpleMPD.developmentDuration: "
-                                           "must be positive");
+                                  "must be positive");
         double probPreadultSurvival = smpd.getDevelopmentSurvival().getValue();
         if (!(0.0 <= probPreadultSurvival && probPreadultSurvival <= 1.0))
             throw util::xml_error("entomology.vector.simpleMPD.developmentSurvival: "
-                                           "must be a probability (in range [0,1]");
+                                  "must be a probability (in range [0,1]");
         double fEggsLaidByOviposit = smpd.getFemaleEggsLaidByOviposit().getValue();
         if (!(fEggsLaidByOviposit > 0.0))
             throw util::xml_error("entomology.vector.simpleMPD.femaleEggsLaidByOviposit: "
-                                           "must be positive");
+                                  "must be positive");
 
         anophModel = new Anopheles::AnophelesModel(ctx);
         anophModel->initSimpleMPD(developmentDuration, probPreadultSurvival, fEggsLaidByOviposit);
@@ -245,8 +245,7 @@ Anopheles::AnophelesModel* createAnophelesModel(Context& ctx, size_t i, const sc
         double minEIR = 0.01 * averageEIR(seasM);
 
         if (daily.size() < static_cast<size_t>(sim::oneYear()))
-            throw util::xml_error(
-                "entomology.anopheles.seasonality.dailyValues insufficient daily data for a year");
+            throw util::xml_error("entomology.anopheles.seasonality.dailyValues insufficient daily data for a year");
 
         // EIR for this species, with index 0 refering to value over first interval
         initEIR365.resize(sim::oneYear(), 0.0);
@@ -370,8 +369,8 @@ Model* createVectorModel(Context& ctx, const scnXml::Entomology& entoData, int p
     // Note: in forcedEIR mode species/emergenceRateEstimators are not needed
     // anymore (we have initialisationEIR), but interventions still use them.
 
-    return new Model(ctx, initialisationEIR, interventionMode, std::move(species),
-                                 std::move(emergenceRateEstimators), speciesIndex);
+    return new Model(ctx, initialisationEIR, interventionMode, std::move(species), std::move(emergenceRateEstimators),
+                     speciesIndex);
 }
 
 Model* createTransmissionModel(Context& ctx, const scnXml::Entomology& entoData, int populationSize) {
@@ -404,8 +403,8 @@ Model* createTransmissionModel(Context& ctx, const scnXml::Entomology& entoData,
     return model;
 }
 
-Model::Model(Context& ctx, vector<double> initEIR, int interventionMode,
-                                     const scnXml::NonVector& nonVectorData, int eipDuration)
+Model::Model(Context& ctx, vector<double> initEIR, int interventionMode, const scnXml::NonVector& nonVectorData,
+             int eipDuration)
     : Model(ctx, std::move(initEIR), interventionMode, Kind::NonVector, {}, {}, {}) {
     nSpore = sim::fromDays(eipDuration);
     laggedKappa.resize(ctx.clock.inSteps(nSpore) + 1, 0.0);
@@ -603,8 +602,7 @@ void AnophelesModel::changeEIRIntervention(const scnXml::NonVector& nonVectorDat
     double minEIR = 0.01 * averageEIR(nonVectorData);
 
     if (daily.size() < static_cast<size_t>(sim::oneYear()))
-        throw util::xml_error(
-            "entomology.anopheles.seasonality.dailyValues insufficient daily data for a year");
+        throw util::xml_error("entomology.anopheles.seasonality.dailyValues insufficient daily data for a year");
 
     fill_intervention_eir(ctx, interventionEIR, daily, minEIR, false);
 }

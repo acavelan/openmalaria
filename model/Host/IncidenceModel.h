@@ -70,8 +70,7 @@ class IncidenceModel {
 
   protected:
     /// Create a new model
-    explicit IncidenceModel(Context& ctx, Kind kind)
-        : ctx(ctx), kind(kind), m_pInfected(0.0), m_cumulativeEIRa(0.0) {}
+    explicit IncidenceModel(Context& ctx, Kind kind) : ctx(ctx), kind(kind), m_pInfected(0.0), m_cumulativeEIRa(0.0) {}
 
   public:
     /** Return an availability multiplier, dependant on the model (NegBinom

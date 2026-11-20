@@ -171,8 +171,8 @@ struct LocusSet {
         }
         if (cum_p < 0.999 || cum_p > 1.001)
             throw util::xml_error("expected sum of initial probabilities of alleles to be 1, but for the " +
-                                           to_string(alleles.size()) + " alleles under locus " +
-                                           string(elt_l.getName()) + " this is " + to_string(cum_p));
+                                  to_string(alleles.size()) + " alleles under locus " + string(elt_l.getName()) +
+                                  " this is " + to_string(cum_p));
 
         alleles[0].init_freq += 1.0 - cum_p; // account for any small errors by adjusting the first frequency
     }
@@ -205,13 +205,13 @@ void Genotypes::init(Genotypes& state, const scnXml::Scenario& scenario) {
             state.interv_mode = Genotypes::SAMPLE_TRACKING;
             if (!scenario.getEntomology().getVector().present()) {
                 throw util::xml_error("incompatibility; either use "
-                                               "entomology/vector (not nonVector) or set "
-                                               "parasiteGenetics/samplingMode to \"initial\" (not \"tracking\")");
+                                      "entomology/vector (not nonVector) or set "
+                                      "parasiteGenetics/samplingMode to \"initial\" (not \"tracking\")");
             }
             if (scenario.getEntomology().getMode() != "dynamic") {
                 throw util::xml_error("incompatibility; either set "
-                                               "entomology/mode to \"dynamic\" (not \"forced\") or set "
-                                               "parasiteGenetics/samplingMode to \"initial\" (not \"tracking\")");
+                                      "entomology/mode to \"dynamic\" (not \"forced\") or set "
+                                      "parasiteGenetics/samplingMode to \"initial\" (not \"tracking\")");
             }
         } else {
             throw util::xml_error("parasiteGenetics/samplingMode: expected \"initial\" or \"tracking\"");
@@ -236,8 +236,8 @@ void Genotypes::init(Genotypes& state, const scnXml::Scenario& scenario) {
 
         // Test cum_p is approx. 1.0 in case the input tree is wrong.
         if (cum_p < 0.999 || cum_p > 1.001)
-            throw util::xml_error(
-                "decision tree (random node): expected probability sum to be 1.0 but found " + to_string(cum_p));
+            throw util::xml_error("decision tree (random node): expected probability sum to be 1.0 but found " +
+                                  to_string(cum_p));
 
         // last cum_p might be slightless less than 1 due to arithmetic errors; add a failsafe:
         state.cum_initial_freqs[1.0] = state.genotypes.size() - 1;
@@ -357,8 +357,8 @@ Diagnostic::Diagnostic(const Parameters& parameters, const scnXml::Diagnostic& e
             specificity = elt.getStochastic().get().getSpecificity();
             if (specificity < 0.0 || specificity > 1.0) {
                 throw util::xml_error(string("diagnostics/diagnostic(")
-                                                   .append(elt.getName())
-                                                   .append("): specificity must be in range [0,1]"));
+                                          .append(elt.getName())
+                                          .append("): specificity must be in range [0,1]"));
             }
         }
     } else {
@@ -407,8 +407,7 @@ void diagnostics::init(Context& ctx, const Parameters& parameters, const scnXml:
             bool inserted =
                 diagnostic_set.insert(make_pair(std::move(name), Diagnostic(parameters, diagnostic))).second;
             if (!inserted) {
-                throw util::xml_error(
-                    string("diagnostic with this name already set: ").append(diagnostic.getName()));
+                throw util::xml_error(string("diagnostic with this name already set: ").append(diagnostic.getName()));
             }
         }
     }
@@ -421,7 +420,7 @@ void diagnostics::init(Context& ctx, const Parameters& parameters, const scnXml:
     } else if (surveys.getDetectionLimit().present()) {
         if (surveys.getDiagnostic().present()) {
             throw util::xml_error("monitoring/surveys: do not "
-                                           "specify both detectionLimit and diagnostic");
+                                  "specify both detectionLimit and diagnostic");
         }
         if (util::CommandLine::option(util::CommandLine::DEPRECATION_WARNINGS)) {
             std::cerr << "Deprecation warning: monitoring/surveys: "
@@ -451,18 +450,18 @@ void diagnostics::init(Context& ctx, const Parameters& parameters, const scnXml:
     } else {
         if (!surveys.getDiagnostic().present()) {
             throw util::xml_error("monitoring/surveys: require "
-                                           "either detectionLimit or diagnostic");
+                                  "either detectionLimit or diagnostic");
         }
         if (util::ModelOptions::option(util::GARKI_DENSITY_BIAS)) {
             throw util::xml_error("Use of GARKI_DENSITY_BIAS is not "
-                                           "appropriate when monitoring/surveys/diagnostic is used.");
+                                  "appropriate when monitoring/surveys/diagnostic is used.");
         }
         ctx.monitoring_diagnostic = &get(ctx, surveys.getDiagnostic().get());
     }
 
     if (ctx.monitoring_diagnostic->uses_hrp2) {
         throw util::xml_error("the diagnostic used for "
-                                       "monitoring may not use HRP2 as its mechanism");
+                              "monitoring may not use HRP2 as its mechanism");
     }
 }
 }

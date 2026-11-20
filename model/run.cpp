@@ -87,8 +87,8 @@ void print_errno(const Context& ctx) {
 
 // --save-to FILE: write the checkpoint and exit successfully (main maps
 // cmd_exception code 0 to a clean exit; destructors close the output files).
-void save_and_exit(Context& ctx, Population& population, Model& transmission, checkpoint::Phase phase,
-                   SimTime& endTime, SimTime& estEndTime) {
+void save_and_exit(Context& ctx, Population& population, Model& transmission, checkpoint::Phase phase, SimTime& endTime,
+                   SimTime& estEndTime) {
     checkpoint::writeCheckpoint(ctx, population, transmission, phase, endTime, estEndTime,
                                 util::CommandLine::getSaveName());
     throw util::cmd_exception("checkpoint written to " + util::CommandLine::getSaveName(), util::Error::None);
@@ -107,8 +107,8 @@ void maybe_save(Context& ctx, Population& population, Model& transmission, bool 
 }
 
 // Internal simulation loop
-void run(Context& ctx, Population& population, Model& transmission, SimTime humanWarmupLength,
-         SimTime& endTime, SimTime& estEndTime, bool surveyOnlyNewEp, string phase) {
+void run(Context& ctx, Population& population, Model& transmission, SimTime humanWarmupLength, SimTime& endTime,
+         SimTime& estEndTime, bool surveyOnlyNewEp, string phase) {
     int lastPercent = -1;
     const bool mainPhase = phase == "Intervention period";
 
@@ -258,8 +258,8 @@ void run_simulation(Context& ctx, const std::string& scenarioFile) {
     size_t popSize = scenario->getDemography().getPopSize();
 
     std::unique_ptr<Population> population = std::unique_ptr<Population>(new Population(ctx, popSize));
-    std::unique_ptr<Model> transmission = std::unique_ptr<Model>(
-        Transmission::createTransmissionModel(ctx, scenario->getEntomology(), popSize));
+    std::unique_ptr<Model> transmission =
+        std::unique_ptr<Model>(Transmission::createTransmissionModel(ctx, scenario->getEntomology(), popSize));
 
     registerContinousPopulationCallbacks(ctx);
 
@@ -267,7 +267,7 @@ void run_simulation(Context& ctx, const std::string& scenarioFile) {
     // MDA1D may depend on health system (too complex to verify)
     interventions::InterventionManager::init(ctx, scenario->getInterventions(), *transmission);
     Clinical::Model::setHS(ctx, scenario->getHealthSystem()); // Depends on interventions, PK/PD (from humanPop)
-    mon::initCohorts(ctx, scenario->getMonitoring());                 // Depends on interventions
+    mon::initCohorts(ctx, scenario->getMonitoring());         // Depends on interventions
 
     bool surveyOnlyNewEp = scenario->getMonitoring().getSurveyOptions().getOnlyNewEpisode();
 
