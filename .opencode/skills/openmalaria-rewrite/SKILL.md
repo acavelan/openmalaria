@@ -86,6 +86,10 @@ phase off tag `p(N−1)-green`; ≤5 fix iterations on a red gate, then revert +
 - Checkpoint reproducibility expectations: checkpoint = post-warmup snapshot,
   interventions never checkpointed, restore = event replay ignoring coverage
   filters (plan §6); no phase may serialize per-host intervention state.
+  WHY (user, 2026-11-20): checkpoints are taken after warmup and *before*
+  interventions start, so intervention effects cannot exist at save time —
+  any per-host intervention state on the checkpoint wire is dead weight,
+  delete it, never defend its bytes.
 - **Carrying a "checkpoint bytes frozen" constraint into a phase brief (user
   veto, reiterated: checkpoints may break freely — re-bless the affected box
   goldens from the A0 reference in the same commit + keep one round-trip smoke
