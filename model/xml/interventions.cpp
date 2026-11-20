@@ -107,6 +107,12 @@ namespace interventions {
 
 using namespace util;  // moved code (ITN/IRS/GVI/Vaccine) uses unqualified util names
 
+// Frozen error texts duplicated verbatim in the parse ladders below; single
+// definitions here, every throw site emits the identical bytes (message
+// multiset and first-error order unchanged — punch-list #16).
+static const string min_avail_err = "timed intervention must have 0 <= minAvailability <= maxAvailability <= 100";
+static const string nonvec_err = "vector model interventions can not be used with the non-vector model";
+
 // 7.1: changeHS/changeEIR timed-deployment classes gone; the payload is the
 // schema clone in the TimedDeployment variant, consumed (deleted) on deploy.
 // Never-deployed clones leak at exit — exactly the old classes' behaviour
@@ -189,7 +195,7 @@ HumanDeployParams HumanDeployParams::read( RunContext&, const scnXml::Deployment
             th.maxAge = ctx.clock.from_years_n( mass.getMaxAge().get() );
             
         if( th.minAge < sim::zero() || th.maxAge < th.minAge )
-            throw util::xml_scenario_error("timed intervention must have 0 <= minAvailability <= maxAvailability <= 100");
+            throw util::xml_scenario_error(min_avail_err);
 
         if( mass.getMaxAvailability().present() )
             th.maxAvailability = mass.getMaxAvailability().get();
@@ -198,7 +204,7 @@ HumanDeployParams HumanDeployParams::read( RunContext&, const scnXml::Deployment
             th.minAvailability = mass.getMinAvailability().get();
             
         if( th.minAvailability < sim::zero() || th.maxAvailability < th.minAvailability )
-            throw util::xml_scenario_error("timed intervention must have 0 <= minAvailability <= maxAvailability <= 100");
+            throw util::xml_scenario_error(min_avail_err);
         return th;
     }
 
@@ -237,7 +243,7 @@ HumanDeployParams HumanDeployParams::read( RunContext&, const scnXml::Deployment
             c.minAvailability = elt.getMinAvailability().get();
             
         if( c.minAvailability < sim::zero() || c.maxAvailability < c.minAvailability )
-            throw util::xml_scenario_error("timed intervention must have 0 <= minAvailability <= maxAvailability <= 100");
+            throw util::xml_scenario_error(min_avail_err);
         return c;
     }
 
@@ -324,8 +330,6 @@ void timed_deploy_nhh_mods( RunContext& ctx, std::vector<Host::Human>&,
         }
     }
 }
-const string vec_mode_err = "vector interventions can only be used in dynamic transmission mode (mode=\"dynamic\")";
-
 /// Old TimedAddNonHumanHostsDeployment ctor body (per-species parameter read);
 /// check_timed_date (was the TimedDeployment base ctor) runs first, as before.
 static AddNhhDeployParams read_add_nhh( RunContext& ctx, SimTime date, const string &intervName,
@@ -369,7 +373,7 @@ void timed_deploy_add_nhh( RunContext& ctx, vector<Host::Human>& population,
     if(vectorModel)
     {
         double popSize = population.size();
-        if (vectorModel->interventionMode != Transmission::SimulationMode::dynamicEIR) { throw util::xml_scenario_error(vec_mode_err); }
+        if (vectorModel->interventionMode != Transmission::SimulationMode::dynamicEIR) { throw util::xml_scenario_error(Transmission::vec_mode_err); }
         for (size_t i = 0; i < vectorModel->speciesIndex.size(); ++i)
         {
             Transmission::Anopheles::AnophelesModel *anophModel = vectorModel->species[i].get();
@@ -1370,7 +1374,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             }
         }
         else
-            throw util::xml_scenario_error("vector model interventions can not be used with the non-vector model");
+            throw util::xml_scenario_error(nonvec_err);
     }
     if (intervElt.getAddNonHumanHosts().present())
     {
@@ -1396,7 +1400,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             }
         }
         else
-            throw util::xml_scenario_error("vector model interventions can not be used with the non-vector model");
+            throw util::xml_scenario_error(nonvec_err);
     }
     if (intervElt.getNonHumanHostsModifications().present())
     {
@@ -1426,7 +1430,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             }
         }
         else
-            throw util::xml_scenario_error("vector model interventions can not be used with the non-vector model");
+            throw util::xml_scenario_error(nonvec_err);
     }
     if (intervElt.getVectorTrap().present())
     {
@@ -1453,7 +1457,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             }
         }
         else
-            throw util::xml_scenario_error("vector model interventions can not be used with the non-vector model");
+            throw util::xml_scenario_error(nonvec_err);
     }
 
     // lists must be sorted, increasing

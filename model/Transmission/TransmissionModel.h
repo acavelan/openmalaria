@@ -60,7 +60,10 @@ class Human;
 namespace Transmission
 {
 
-
+/// Shared error text: vector interventions require dynamic mode (defined in
+/// TransmissionModel.cpp; also thrown by xml/interventions.cpp — one string,
+/// bytes unchanged).
+extern const std::string vec_mode_err;
 
 /** Variable describing current simulation mode. */
 enum SimulationMode

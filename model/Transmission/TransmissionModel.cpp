@@ -381,7 +381,7 @@ void TransmissionModel::vectorUpdate_vector(const vector<Host::Human> &populatio
     }
 }
 
-const string vec_mode_err = "vector interventions can only be used in "
+extern const string vec_mode_err = "vector interventions can only be used in "
                             "dynamic transmission mode (mode=\"dynamic\")";
 
 void TransmissionModel::deployVectorPopInterv(size_t instance)
