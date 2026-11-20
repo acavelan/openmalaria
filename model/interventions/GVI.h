@@ -26,47 +26,44 @@
 #include "interventions/ComponentId.h"
 #include "util/DecayFunction.h"
 #include "util/sampler.h"
-namespace scnXml
-{
-    class GVIDescription;
-    class AnophelesParams11;
+namespace scnXml {
+class GVIDescription;
+class AnophelesParams11;
 }
 
-namespace OM { namespace interventions {
-    using util::DecayFunction;
-    using util::LocalRng;
+namespace OM {
+namespace interventions {
+using util::DecayFunction;
+using util::LocalRng;
 
 /** Constant parameters for generic vector intervention model (phase 7.2b:
  * plain Component payload struct — cf. ITNParams; members public: read by
  * the iv_* record functions). */
 struct GVIParams {
-public:
+  public:
     /** Initialise parameters
      * 
      * @param elt Component description from XML
      * @param species_name_map Map of species names to indices.
      */
-    GVIParams( RunContext& ctx, ComponentId, const scnXml::GVIDescription& elt,
-               const map<string,size_t>& species_name_map );
-    
+    GVIParams(RunContext& ctx, ComponentId, const scnXml::GVIDescription& elt,
+              const map<string, size_t>& species_name_map);
+
     /** Per mosquito-species parameters for generic vector intervention model. */
     class GVIAnopheles {
-    public:
-        GVIAnopheles() :
-            proportionProtected( numeric_limits<double>::signaling_NaN() ),
-            proportionUnprotected( numeric_limits<double>::signaling_NaN() ),
-            deterrency( numeric_limits<double>::signaling_NaN() ),
-            preprandialKilling( numeric_limits<double>::signaling_NaN() ),
-            postprandialKilling( numeric_limits<double>::signaling_NaN() ),
-            fecundityReduction( numeric_limits<double>::signaling_NaN() )
-        {}
+      public:
+        GVIAnopheles()
+            : proportionProtected(numeric_limits<double>::signaling_NaN()),
+              proportionUnprotected(numeric_limits<double>::signaling_NaN()),
+              deterrency(numeric_limits<double>::signaling_NaN()),
+              preprandialKilling(numeric_limits<double>::signaling_NaN()),
+              postprandialKilling(numeric_limits<double>::signaling_NaN()),
+              fecundityReduction(numeric_limits<double>::signaling_NaN()) {}
         void init(const scnXml::AnophelesParams11& elt, double proportionUse);
-        
+
         /// Return x*proportionProtected + proportionUnprotected
-        inline double byProtection(double x) const{
-            return x*proportionProtected + proportionUnprotected;
-        }
-        
+        inline double byProtection(double x) const { return x * proportionProtected + proportionUnprotected; }
+
         double proportionProtected;
         double proportionUnprotected;
         double deterrency;
@@ -74,13 +71,13 @@ public:
         double postprandialKilling;
         double fecundityReduction;
     };
-    
+
     unique_ptr<DecayFunction> decay;
-    vector<GVIAnopheles> species;  // vector specific params
-    
+    vector<GVIAnopheles> species; // vector specific params
+
     // This is sparse vector: only indexes corresponding to a GVI component are used
     // No memory management
 };
 
-} }
-
+}
+}

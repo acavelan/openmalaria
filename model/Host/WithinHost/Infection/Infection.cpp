@@ -23,35 +23,33 @@
 #include "RunContext.h"
 #include "Host/WithinHost/Infection/Infection.h"
 
-namespace OM { namespace WithinHost {
+namespace OM {
+namespace WithinHost {
 
 // ———  Dummy variant (was DummyInfection.cpp; simplest density model)  ———
 
-Infection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
-    return new DummyInfection (ctx, protID, origin);
+Infection* createDummyInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+    return new DummyInfection(ctx, protID, origin);
 }
 
-void DummyInfection::init (RunContext& ctx) {
-    ctx.createInfection = &createDummyInfection;
-}
+void DummyInfection::init(RunContext& ctx) { ctx.createInfection = &createDummyInfection; }
 
 // no draws: the old infection_new Dummy case only set the initial density
-DummyInfection::DummyInfection (RunContext& ctx, uint32_t genotype, int origin) :
-    Infection (ctx, genotype, origin, Kind::Dummy)
-{
-    m_density = 16;	// increased by DH to avoid zeros in initialKappa
+DummyInfection::DummyInfection(RunContext& ctx, uint32_t genotype, int origin)
+    : Infection(ctx, genotype, origin, Kind::Dummy) {
+    m_density = 16; // increased by DH to avoid zeros in initialKappa
 }
 
-bool DummyInfection::update( LocalRng& rng, double survivalFactor, SimTime now, double ){
-    SimTime bsAge = now - m_startDate - Infection::s_latentP;	// age of post-latent-period blood stage
-    if( bsAge < sim::zero() )
-        return false;	// latent period (liver stage) — don't do anything
+bool DummyInfection::update(LocalRng& rng, double survivalFactor, SimTime now, double) {
+    SimTime bsAge = now - m_startDate - Infection::s_latentP; // age of post-latent-period blood stage
+    if (bsAge < sim::zero())
+        return false; // latent period (liver stage) — don't do anything
     const double GROWTH_RATE = 8.0;
     const double PARASITE_THRESHOLD = 1;
-    
-    m_density = (mod_nn(int(m_density*GROWTH_RATE), 20000)) * survivalFactor;
+
+    m_density = (mod_nn(int(m_density * GROWTH_RATE), 20000)) * survivalFactor;
     m_cumulativeExposureJ += m_density;
-    
+
     if (m_density < PARASITE_THRESHOLD) {
         return true;
     } else {
@@ -59,4 +57,5 @@ bool DummyInfection::update( LocalRng& rng, double survivalFactor, SimTime now, 
     }
 }
 
-} }
+}
+}

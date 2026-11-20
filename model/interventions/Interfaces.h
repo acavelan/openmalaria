@@ -27,23 +27,27 @@
 #include "mon/Monitoring.h"
 #include "interventions/ComponentId.h"
 
-namespace scnXml{
-    class DeploymentBase;
-    class Component;
-    class Condition;
-    class DTDeploy;
-    class Deploy;
-    class TriggeredDeployments;
+namespace scnXml {
+class DeploymentBase;
+class Component;
+class Condition;
+class DTDeploy;
+class Deploy;
+class TriggeredDeployments;
 }
-namespace xsd{ namespace cxx{ namespace tree{
-    // real declaration: template<typename T, bool fund = fundamental_p<T>::r>
-    // declarations below spell the bool explicitly so no default is needed
-    template<typename T, bool> class sequence;
-} } }
+namespace xsd {
+namespace cxx {
+namespace tree {
+// real declaration: template<typename T, bool fund = fundamental_p<T>::r>
+// declarations below spell the bool explicitly so no default is needed
+template <typename T, bool> class sequence;
+}
+}
+}
 
 namespace OM {
 namespace Host {
-    class Human;
+class Human;
 }
 namespace interventions {
 
@@ -53,9 +57,9 @@ namespace interventions {
 
 /** Specifies limits on the number of existing doses when deciding whether to
  * vaccinate a human. */
-struct VaccineLimits{
-    VaccineLimits() : minPrevDoses( 0 ), maxCumDoses( numeric_limits<uint32_t>::max() ) {}
-    void set( const scnXml::DeploymentBase& );
+struct VaccineLimits {
+    VaccineLimits() : minPrevDoses(0), maxCumDoses(numeric_limits<uint32_t>::max()) {}
+    void set(const scnXml::DeploymentBase&);
     uint32_t minPrevDoses, maxCumDoses;
 };
 
@@ -65,35 +69,29 @@ struct VaccineLimits{
 
 /** A description of a human intervention (as a list of components). */
 class HumanIntervention {
-public:
+  public:
     //NOTE: it would be preferable to use named constructors rather than rely
     // on selection of the correct overloaded constructor here, but doing so
     // would result in an extra copy without C++11's move semantics.
-    
+
     /** Create from a list of XML elements: list of intervention components
      * with unconditional deployment (for triggered deployments). **/
-    explicit HumanIntervention(
-        RunContext& ctx,
-        const xsd::cxx::tree::sequence<scnXml::Component, false>& componentList );
+    explicit HumanIntervention(RunContext& ctx,
+                               const xsd::cxx::tree::sequence<scnXml::Component, false>& componentList);
     /** Create from a list of XML elements: list of intervention components
      * and list of conditions of deployment. **/
-    explicit HumanIntervention(
-        RunContext& ctx,
-        const xsd::cxx::tree::sequence<scnXml::Component, false>& componentList,
-        const xsd::cxx::tree::sequence<scnXml::Condition, false>& conditionList );
+    explicit HumanIntervention(RunContext& ctx, const xsd::cxx::tree::sequence<scnXml::Component, false>& componentList,
+                               const xsd::cxx::tree::sequence<scnXml::Condition, false>& conditionList);
     /** Create from a list of XML elements: list of intervention components
      * with unconditional deployment (for triggered deployments). **/
-    explicit HumanIntervention(
-        RunContext& ctx,
-        const xsd::cxx::tree::sequence<scnXml::DTDeploy, false>& componentList );
-    
+    explicit HumanIntervention(RunContext& ctx, const xsd::cxx::tree::sequence<scnXml::DTDeploy, false>& componentList);
+
     /** Deploy all components to a pre-selected human. */
-    void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method,
-        VaccineLimits vaccLimits ) const;
-    
-    void print_details( std::ostream& out )const;
-    
-protected:
+    void deploy(RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const;
+
+    void print_details(std::ostream& out) const;
+
+  protected:
     // Components to deploy, in type-rank order (contract b). Resolved by id
     // against the run registry at deploy time (InterventionManager owns them).
     vector<ComponentId> components;
@@ -104,25 +102,24 @@ protected:
 //TODO: this class is likely more complicated than it needs to be (e.g. SubList
 // could just store ComponentId instead of inheriting HumanIntervention)
 class TriggeredDeployments {
-public:
-    TriggeredDeployments( RunContext& ctx, const scnXml::TriggeredDeployments& elt );
-    
-    void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method,
-            VaccineLimits vaccLimits )const;
-    
-private:
-    struct SubList : protected HumanIntervention{
-        SubList( RunContext& ctx, const scnXml::Deploy& elt );
-        
-        void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method,
-            VaccineLimits vaccLimits )const;
-        
+  public:
+    TriggeredDeployments(RunContext& ctx, const scnXml::TriggeredDeployments& elt);
+
+    void deploy(RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const;
+
+  private:
+    struct SubList : protected HumanIntervention {
+        SubList(RunContext& ctx, const scnXml::Deploy& elt);
+
+        void deploy(RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const;
+
         // Deployment restrictions:
         SimTime minAge, maxAge;
         double coverage;
     };
-    
+
     vector<SubList> lists;
 };
 
-} }
+}
+}

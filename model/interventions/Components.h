@@ -36,15 +36,19 @@
 #include <variant>
 
 namespace scnXml {
-    class Screen;
-    class DTTreatSimple;
-    class DTTreatPKPD;
-    class DecisionTree;
+class Screen;
+class DTTreatSimple;
+class DTTreatPKPD;
+class DecisionTree;
 }
 
 namespace OM {
-namespace WithinHost { class Diagnostic; }
-namespace Clinical { class FlatTree; }
+namespace WithinHost {
+class Diagnostic;
+}
+namespace Clinical {
+class FlatTree;
+}
 namespace interventions {
 
 /// No state: reports deployment, nothing else. Also the payload for
@@ -55,27 +59,27 @@ struct RecruitOnlyParams {};
 struct ScreenParams {
     const WithinHost::Diagnostic& diagnostic;
     HumanIntervention positive, negative;
-    ScreenParams( RunContext&, const scnXml::Screen& );
+    ScreenParams(RunContext&, const scnXml::Screen&);
 };
 
 /// Simple treatment: no PK/PD, just remove parasites.
 struct TreatSimpleParams {
     SimTime timeLiver, timeBlood;
-    TreatSimpleParams( RunContext&, const scnXml::DTTreatSimple& );
+    TreatSimpleParams(RunContext&, const scnXml::DTTreatSimple&);
 };
 
 /// Treatment via the PK/PD model (single "treatment", cf. CMDTTreatPKPD).
 struct TreatPKPDParams {
-    size_t schedule;    ///< index of the schedule
-    size_t dosage;      ///< index of the dosage table
-    double delay_d;     ///< delay in days
-    TreatPKPDParams( RunContext&, const scnXml::DTTreatPKPD& );
+    size_t schedule; ///< index of the schedule
+    size_t dosage;   ///< index of the dosage table
+    double delay_d;  ///< delay in days
+    TreatPKPDParams(RunContext&, const scnXml::DTTreatPKPD&);
 };
 
 /// Execute a "case management" decision tree.
 struct DecisionTreeParams {
     const Clinical::FlatTree& tree;
-    DecisionTreeParams( RunContext&, const scnXml::DecisionTree& );
+    DecisionTreeParams(RunContext&, const scnXml::DecisionTree&);
 };
 
 /** One human intervention component (plan: dense, by type-rank).
@@ -84,17 +88,19 @@ struct DecisionTreeParams {
 struct ComponentConfig {
     ComponentId id;
     Component::Type kind;
-    SimTime duration = sim::never();    ///< sub-pop removal expireAfter
-    std::variant<RecruitOnlyParams, ScreenParams, TreatSimpleParams,
-        TreatPKPDParams, DecisionTreeParams, VaccineParams, ITNParams,
-        IRSParams, GVIParams> data;};
+    SimTime duration = sim::never(); ///< sub-pop removal expireAfter
+    std::variant<RecruitOnlyParams, ScreenParams, TreatSimpleParams, TreatPKPDParams, DecisionTreeParams, VaccineParams,
+                 ITNParams, IRSParams, GVIParams>
+        data;
+};
 
 /// Deploy component c to human (replaces the old virtual deploy()).
 /// Draws/mon reports happen in the same order as the deleted class bodies.
-void deploy_component( RunContext& ctx, const ComponentConfig& c, Host::Human& human,
-    mon::Deploy::Method method, VaccineLimits vaccLimits );
+void deploy_component(RunContext& ctx, const ComponentConfig& c, Host::Human& human, mon::Deploy::Method method,
+                      VaccineLimits vaccLimits);
 
 /// One-line component description (PRINT_INTERVENTIONS; old print_details()).
-void print_component( std::ostream& out, const ComponentConfig& c );
+void print_component(std::ostream& out, const ComponentConfig& c);
 
-} }
+}
+}

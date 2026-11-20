@@ -48,127 +48,127 @@ namespace checkpoint {
 
 /// Bad/incompatible checkpoint file (clean model error, exit code Checkpoint).
 class checkpoint_error : public util::cmd_exception {
-public:
-    explicit checkpoint_error (const std::string& msg) :
-        cmd_exception (msg, util::Error::Checkpoint) {}
+  public:
+    explicit checkpoint_error(const std::string& msg) : cmd_exception(msg, util::Error::Checkpoint) {}
 };
 
 class Archive {
-public:
+  public:
     /// Read mode: budget = whole file (stream must be at its start).
-    explicit Archive (std::istream& is) : is_ (&is) {
+    explicit Archive(std::istream& is) : is_(&is) {
         is_->clear();
-        is_->seekg (0, std::ios::end);
+        is_->seekg(0, std::ios::end);
         end_ = is_->tellg();
         is_->clear();
-        is_->seekg (0, std::ios::beg);
-        if (is_->fail()) throw checkpoint_error ("cannot size checkpoint input");
+        is_->seekg(0, std::ios::beg);
+        if (is_->fail())
+            throw checkpoint_error("cannot size checkpoint input");
     }
     /// Write mode.
-    explicit Archive (std::ostream& os) : is_ (nullptr), os_ (&os) {}
+    explicit Archive(std::ostream& os) : is_(nullptr), os_(&os) {}
 
     bool reading() const { return is_ != nullptr; }
 
     /// Raw block of n bytes (both directions; the escape hatch for POD
     /// payloads — caller owns the byte layout, keep it to simple structs).
-    void bytes (void* p, std::size_t n) {
+    void bytes(void* p, std::size_t n) {
         if (reading()) {
             if (n > remaining())
-                throw checkpoint_error ("out of data (wanted " +
-                    std::to_string(n) + " bytes, " + std::to_string(remaining()) +
-                    " left at pos " + std::to_string(is_->tellg()) + ")");
-            is_->read (static_cast<char*>(p), std::streamsize(n));
+                throw checkpoint_error("out of data (wanted " + std::to_string(n) + " bytes, " +
+                                       std::to_string(remaining()) + " left at pos " + std::to_string(is_->tellg()) +
+                                       ")");
+            is_->read(static_cast<char*>(p), std::streamsize(n));
             if (is_->gcount() != std::streamsize(n))
-                throw checkpoint_error ("stream read error");
+                throw checkpoint_error("stream read error");
         } else {
-            os_->write (static_cast<const char*>(p), std::streamsize(n));
+            os_->write(static_cast<const char*>(p), std::streamsize(n));
             if (os_->fail())
-                throw checkpoint_error ("stream write error");
+                throw checkpoint_error("stream write error");
         }
     }
 
     /// One fixed-size value (integers, doubles, SimTime, pointers off-wire).
-    template<class T>
-    void value (T& v) {
-        static_assert (std::is_trivially_copyable<T>::value, "value: POD only");
-        static_assert (!std::is_same<T, bool>::value, "bool: use boolean()");
-        bytes (&v, sizeof (T));
+    template <class T> void value(T& v) {
+        static_assert(std::is_trivially_copyable<T>::value, "value: POD only");
+        static_assert(!std::is_same<T, bool>::value, "bool: use boolean()");
+        bytes(&v, sizeof(T));
     }
 
     /// bool on the wire is exactly one byte (0/1).
-    void boolean (bool& v) {
+    void boolean(bool& v) {
         uint8_t b = v ? 1 : 0;
-        value (b);
+        value(b);
         v = b != 0;
         if (reading() && b > 1)
-            throw checkpoint_error ("bool out of range");
+            throw checkpoint_error("bool out of range");
     }
 
     /// Enum as its underlying integer (range-checked on read by the caller
     /// if the domain matters).
-    template<class E>
-    void enumerated (E& e) {
-        static_assert (std::is_enum<E>::value, "enumerated: enum only");
+    template <class E> void enumerated(E& e) {
+        static_assert(std::is_enum<E>::value, "enumerated: enum only");
         using U = typename std::underlying_type<E>::type;
-        U u = static_cast<U> (e);
-        value (u);
-        e = static_cast<E> (u);
+        U u = static_cast<U>(e);
+        value(u);
+        e = static_cast<E>(u);
     }
 
     /// string: u32 length + bytes.
-    void text (std::string& s) {
-        uint32_t n = uint32_t (s.size());
-        value (n);
+    void text(std::string& s) {
+        uint32_t n = uint32_t(s.size());
+        value(n);
         if (reading()) {
             if (n > remaining())
-                throw checkpoint_error ("string longer than remaining data");
-            s.resize (n);
-            if (n) bytes (&s[0], n);
+                throw checkpoint_error("string longer than remaining data");
+            s.resize(n);
+            if (n)
+                bytes(&s[0], n);
         } else {
-            if (n) bytes (&s[0], n);
+            if (n)
+                bytes(&s[0], n);
         }
     }
 
     /// vector of fixed-size values: u64 count + elements; on read the count
     /// is rejected unless that many elements could still fit the file.
-    template<class T>
-    void vector (std::vector<T>& v) {
-        static_assert (std::is_trivially_copyable<T>::value, "vector: POD only");
+    template <class T> void vector(std::vector<T>& v) {
+        static_assert(std::is_trivially_copyable<T>::value, "vector: POD only");
         uint64_t n = v.size();
-        value (n);
+        value(n);
         if (reading()) {
-            if (n > remaining() / sizeof (T))
-                throw checkpoint_error ("vector<" + std::to_string(sizeof (T)) +
-                    "> claims " + std::to_string(n) + " elements; file too small");
-            v.resize (size_t (n));
-            if (n) bytes (v.data(), size_t (n * sizeof (T)));
+            if (n > remaining() / sizeof(T))
+                throw checkpoint_error("vector<" + std::to_string(sizeof(T)) + "> claims " + std::to_string(n) +
+                                       " elements; file too small");
+            v.resize(size_t(n));
+            if (n)
+                bytes(v.data(), size_t(n * sizeof(T)));
         } else {
-            if (n) bytes (v.data(), size_t (n * sizeof (T)));
+            if (n)
+                bytes(v.data(), size_t(n * sizeof(T)));
         }
     }
 
     /// RNG state: the raw 32-byte xoshiro state (binary_checkpoint).
     /// Works for MasterRng, LocalRng — anything with checkpoint(stream).
-    template<class R>
-    void rng (R& r) {
-        if (reading()) r.checkpoint (*is_);
-        else r.checkpoint (*os_);
+    template <class R> void rng(R& r) {
+        if (reading())
+            r.checkpoint(*is_);
+        else
+            r.checkpoint(*os_);
     }
 
     /// Bytes left to read (infinite for write mode).
-    std::streamoff remaining() const {
-        return reading() ? end_ - is_->tellg() : std::streamoff (-1);
-    }
+    std::streamoff remaining() const { return reading() ? end_ - is_->tellg() : std::streamoff(-1); }
 
     /// Fail if anything was left unread (caller bug or file mismatch).
     void checkExhausted() {
-        if (!reading()) return;
+        if (!reading())
+            return;
         if (remaining() != 0)
-            throw checkpoint_error ("checkpoint file has " +
-                std::to_string(remaining()) + " bytes remaining");
+            throw checkpoint_error("checkpoint file has " + std::to_string(remaining()) + " bytes remaining");
     }
 
-private:
+  private:
     std::istream* is_;
     std::ostream* os_ = nullptr;
     std::streamoff end_ = 0;

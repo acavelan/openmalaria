@@ -32,26 +32,25 @@
 #include <vector>
 
 namespace scnXml {
-    class Clinical;
+class Clinical;
 }
 namespace OM {
-    class Population;
+class Population;
 namespace Host {
 
 using util::LocalRng;
 
 class NeonatalMortality {
-public:
-  /// Initialisation
-  static void init( RunContext& ctx, const scnXml::Clinical& clinical );
-  
-  /** Called for each birth; returns true if infant dies due to mother's
+  public:
+    /// Initialisation
+    static void init(RunContext& ctx, const scnXml::Clinical& clinical);
+
+    /** Called for each birth; returns true if infant dies due to mother's
    * infection. */
-  static bool eventNeonatalMortality(LocalRng& rng);
-  
-  /** Calculate risk of a neonatal mortality based on humans 20-25 years old. */
-  static void update (RunContext& ctx, vector<Human>& population);
-  
+    static bool eventNeonatalMortality(LocalRng& rng);
+
+    /** Calculate risk of a neonatal mortality based on humans 20-25 years old. */
+    static void update(RunContext& ctx, vector<Human>& population);
 };
 
 // ———  run state (init in xml/healthSystem.cpp; wire in checkpoint/statics.cpp;
@@ -84,53 +83,53 @@ inline SimTime ageLb = sim::fromYearsI(20), ageUb = sim::fromYearsI(25);
 inline const WithinHost::Diagnostic* neonatalDiagnostic = 0;
 
 inline bool NeonatalMortality::eventNeonatalMortality(LocalRng& rng) {
-  // parity: order — local RNG stream: draw call order fixes stream state
-  return rng.uniform_01() <= riskFromMaternalInfection;
+    // parity: order — local RNG stream: draw call order fixes stream state
+    return rng.uniform_01() <= riskFromMaternalInfection;
 }
 
-inline void NeonatalMortality::update (RunContext& ctx, vector<Host::Human> &population) {
+inline void NeonatalMortality::update(RunContext& ctx, vector<Host::Human>& population) {
     // ———  find potential mothers and their prevalence  ———
     // For individuals in the age range 20-25, we sum:
-    int nCounter=0;	// total number
-    int pCounter=0;	// number with patent infections, needed for prev in 20-25y
-    
-    for (Human& human : population){
+    int nCounter = 0; // total number
+    int pCounter = 0; // number with patent infections, needed for prev in 20-25y
+
+    for (Human& human : population) {
         // diagnosticDefault() gives patency after the last time step's
         // update, so it's appropriate to use age at the beginning of this step.
         SimTime age = human.age(ctx.clock.ts0());
-        
+
         // Note: since we're using a linked list, we have to iterate until we reach
         // the individuals we're interested in. Due to population structure, it's
         // probably quickest to start iterating from the oldest.
-        if( age >= ageUb ) continue;
-        if( age < ageLb ) break;	// Not interested in younger individuals.
-        
-        nCounter ++;
-        if( human.withinHostModel->diagnosticResult(human.rng(), *neonatalDiagnostic) ){
-            pCounter ++;
+        if (age >= ageUb)
+            continue;
+        if (age < ageLb)
+            break; // Not interested in younger individuals.
+
+        nCounter++;
+        if (human.withinHostModel->diagnosticResult(human.rng(), *neonatalDiagnostic)) {
+            pCounter++;
         }
     }
-    
+
     // ———  calculate risk of neonatal mortality  ———
     //default value of prev2025, for use when there are no 20-25 year olds
     double prev2025 = 0.25;
-    if( nCounter > 0 )
+    if (nCounter > 0)
         prev2025 = double(pCounter) / nCounter;
-    
+
     double maxPrev = prev2025;
     //update the vector containing the prevalence by gestational age
     size_t index = ctx.clock.moduloSteps(ctx.clock.ts0(), prevByGestationalAge.size());
     prevByGestationalAge[index] = prev2025;
-    for(size_t i = 0; i < prevByGestationalAge.size(); ++i) {
-        if (prevByGestationalAge[i] > maxPrev) {
-            maxPrev = prevByGestationalAge[i];
-        }
-    }
-    
+    // max is order-free (plain > comparisons, no FP combine) — punch-list #12
+    maxPrev = std::max(maxPrev, *std::max_element(prevByGestationalAge.begin(), prevByGestationalAge.end()));
+
     // equation (2) p 75 AJTMH 75 suppl 2
-    double prevPG= maxPrev / (critPrevPrim + maxPrev);
+    double prevPG = maxPrev / (critPrevPrim + maxPrev);
     // equation (1) p 75 AJTMH 75 suppl 2 including 30% multiplier
-    riskFromMaternalInfection = y * (1.0-exp(prevPG * z));
+    riskFromMaternalInfection = y * (1.0 - exp(prevPG * z));
 }
 
-} }
+}
+}

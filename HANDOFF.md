@@ -1,3 +1,86 @@
+# P8-collapse HANDOFF — collapse-sweep: bug fix, punch-list, xml hard-read, clang-format reflow (branch `p8-collapse` off `rewrite` HEAD)
+
+SOURCE OF WORK: `/tmp/opencode/ponytail_collapse.md` (ranked punch-list #1–#23).
+User order: fix the audited assert bug, execute the punch-list (T1-gated),
+dedicated hard-read pass on `model/xml/interventions.cpp`, then ONE
+whitespace-only clang-format reflow commit.
+
+## Environment
+- Worktree `/tmp/opencode/p8collapse`, build `build-cl/` = Release `-O3 -DNDEBUG
+  -ffp-contract=off -DOM_BOXTEST_BINARY=ON`; ignored symlink `build -> build-cl`
+  REQUIRED (parity.py resolves generated XSD via REPO/build/schema).
+- Gates per commit: build 0 errors; `ctest` in build-cl (64);
+  `cd build-cl/unittest && ./unittest` → ".OK!" (MUST run from that dir —
+  suites open data files relative to CWD); T1 `python3 util/parity.py --old
+  /tmp/opencode/om-ref/A0/openMalaria --new build-cl/openMalaria --recipe
+  /tmp/opencode/om-ref/A0/recipe.json --tiers a -j12` (53/53); + `--tiers b
+  --seeds 1-4` on deployment-parse commits. Commits unsigned.
+- Baseline at branch start: all gates green, model 17,192 code LOC / 115 files.
+- Trap re-confirmed: gate outputs are stale-binary traps — check the build
+  compiled clean BEFORE trusting ctest/parity.
+
+## Result: model 17,192 -> 16,939 code LOC (−253), 115 files unchanged.
+Final gates at HEAD 8738f0c1: build 0 err, ctest 64/64, unittest .OK!,
+T1 tier-a 53/53 bit-exact vs A0.
+
+| Commit | item | LOC |
+|---|---|---|
+| 5e22eb3f | BUGFIX punch #23: bogus `assert(simulationMode==forcedEIR)` inside the transientEIRknown branch (TransmissionModel.cpp:307) — assert builds abort on any scenario with transient EIR + non-forced mode; deleted (release builds never saw it; assert-build-only = T1-safe) | −1 |
+| a382cc38 | #2: 9 VecStat cts callbacks -> one `ctsCbVecStat(VecStat, stream)` | −48 |
+| 820b9904 | #3: 5 identical nhh reduce loops -> applyReduces member-pointer lambda (+ loop-invariant hoist inside) | −25 |
+| 2f4f17c1 | #4: dead XML_ASSERT/OM_ASSERT_EQ*/do_assertion* family deleted from errors.h (grep: zero uses) | −19 |
+| c61178a8 | #5: ctsCbAlpha/P_B/P_CD -> shared meanOver left-fold helper | −9 |
+| e5d3125d | #11: cts column-header block -> ctsHeads(prefix) lambda (dropped never-registered ctsIRSEffects) | −20 |
+| a3cad600 | #7: nhhInstances expiry purge -> std::erase_if | −8 |
+| 831c5489 | #9/#10/#18/#20: range-fors, find_if, tautological asserts in TransmissionModel.cpp | −13 |
+| 275a5141 | #12: NeonatalMortality running-max -> max_element | −4 |
+| c0efd522 | #13: updateSurveyNumbers scan -> find_if + ternary | −2 |
+| b9fcb66c / 5e38a49a / a7f8eba4 / 98d7b2bd | #14 vaccinate() scan -> ranges::find_if; #15 isValidCondition -> any_of; #17 vectors::sum -> accumulate + scale range-for; #22 SpeciesIndexChecker insert-then-check (batched gates) | −11 |
+| 99d0de06 | #16: shared consts for byte-frozen duplicated error messages in xml/interventions.cpp (multiset-diff proof of identical emitted strings; +2 LOC, punch est −3: literals were inline throw args) | +2 |
+| 57fb3558 | xml hard-read: ITN init_kill ladder -> lambda; read_avail_limits ladder dup fold | −17 |
+| 226b5c9c | #21 + extras: range-fors in xml/interventions.cpp (incl. redundant `size()>0` guards dropped) | −8 |
+| 8738f0c1 | clang-format reflow (see below) | −70 |
+
+## Skipped / rejected (with proof)
+- #1 CalcNvO, #6 WHVivax cout traces, WithinHost/LSTMDrug/Clinical bodies:
+  user veto / other agent owns. Untouched by design.
+- #8 Deployments.h copula try/catch unwrap: **UNSAFE** — `set_gsl_handler`
+  (run.cpp:226) converts GSL errors to traced_exception; `rng().beta`
+  (ux≥1 branch) and `gsl_cdf_beta_Pinv` can throw outside the alpha<0||beta<0
+  guard (guard misses alpha==0 and lives only in the ux<1 branch); unwrapping
+  would change message + exit code on those inputs. Proof in commit msg
+  a3cad600.
+- #19 writeRows/countRows: filters diverge (ValueType-enum vs isDouble);
+  shared lambda would be LONGER than the two bodies.
+- Percentile hoist (getEntoAvailabilityPercentile out of deploy loops):
+  REJECTED — its throw is conditioned on reaching a human in the age window;
+  hoisting fires on inputs that today deploy fine (validation-order law).
+- Line-count-neutral/unreadable folds rejected: nhh_mods_setup 5-map resize
+  ladder, AnophelesModel currentNhh loop, xml :312/:373 loops.
+- Other model/xml/*.cpp duplicate messages: only 1–2-site inline-arg dups —
+  dedup would cost LOC; noted, not folded.
+
+## Reflow commit 8738f0c1 (formatting-only)
+- `.clang-format` at repo root: LLVM base, IndentWidth 4, ColumnLimit 120,
+  UseTab Never, PointerAlignment Left, SortIncludes Never, ReflowComments
+  false, **FixNamespaceComments false** (else clang-format 23 injects
+  `} // namespace X` = non-whitespace), **BreakStringLiterals false**.
+- 134 of 144 checked-in files formatted; 10 left byte-identical:
+  9 where clang-format must inject non-whitespace to re-wrap (macro
+  continuation backslashes: errors.h, ExtraAsserts.h, MolineauxInfectionSuite.h,
+  PkPdComplianceSuite.h, ClinicalModel.h, LSTMDrugType.h, LSTMMedicate.h,
+  IRS.h, ITN.h) + unittest/TestPaths.h (configure_file template: clang-format
+  reads `@CMAKE_VAR@` as an Obj-C attribute, inserts a space, breaks @ONLY
+  substitution — the ONLY place whitespace is semantic here).
+- PROOF (run before commit): for every touched file
+  `git show HEAD~:<f> | tr -d '[:space:]' | md5sum` == working-file md5 → 0
+  mismatches. Generated schema/configured headers untouched.
+- Model LOC after reflow: **16,939 / 115**; unittest 3,590.
+- NOTE for future formats: re-exclude those 10 files (or wrap in
+  `// clang-format off`, which is a non-whitespace change — separate commit).
+
+---
+
 # P8-files HANDOFF — merge files that belong (branch `p8-files` off `rewrite` HEAD = p8-sweep green ad640d22)
 
 User order (verbatim): "don't touch CalcNvO, review the structure again and try

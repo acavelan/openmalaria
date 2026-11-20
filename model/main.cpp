@@ -26,44 +26,46 @@
 
 #include "util/errors.h"
 #include "util/CommandLine.h"
-#include "xml/DocumentLoader.h"  // facade: xsd tree exception types for the catch chain below
+#include "xml/DocumentLoader.h" // facade: xsd tree exception types for the catch chain below
 
 using namespace OM;
 
 /// main() — parses the command line, runs the simulation (run.cpp),
 /// reports errors (error texts and order unchanged from the old main()).
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
     int exitStatus = EXIT_SUCCESS;
 
     string scenarioFile;
-    RunContext ctx;   // everything this run owns (plan §5)
-    
+    RunContext ctx; // everything this run owns (plan §5)
+
     try {
-        scenarioFile = util::CommandLine::parse (argc, argv);
+        scenarioFile = util::CommandLine::parse(argc, argv);
         run_simulation(ctx, scenarioFile);
     } catch (const OM::util::cmd_exception& e) {
-        if( e.getCode() == 0 ){
+        if (e.getCode() == 0) {
             // this is not an error, but exiting due to command line
             std::cerr << e.what() << "; exiting..." << endl;
-        }else{
-            std::cerr << "Command-line error: "<<e.what();
+        } else {
+            std::cerr << "Command-line error: " << e.what();
             exitStatus = e.getCode();
         }
     } catch (const ::xsd::cxx::tree::exception<char>& e) {
-        if (errno == 2) // Errno value 2 corresponds to "No such file or directory" i.e. this is not a mismatch between scenario contents and schema rules.
+        if (errno ==
+            2) // Errno value 2 corresponds to "No such file or directory" i.e. this is not a mismatch between scenario contents and schema rules.
         {
             // We don't print the content of the xsdcxx exception since the error messages are not relevant to the user in this case.
-            std::cerr << "Parsing scenario file failed.\n\tLikely the XSD schema file is not present at an expected location/with expected filename." << std::endl;
-        }
-        else
-        {
+            std::cerr
+                << "Parsing scenario file failed.\n\tLikely the XSD schema file is not present at an expected location/with expected filename."
+                << std::endl;
+        } else {
             // e.what() returns a concise error message e.g. "instance document parsing failed".
             // Whereas inserting e into a stream inserts the (possibly long and repetitive) list of error messages arising from the parsing attempt.
             std::cerr << "XSD error: " << e.what() << '\n' << e << endl;
 
             // We print this *after* the above since users are more likely to take note of the tail of stderr/stdout output than the head.
-            std::cerr << "Parsing scenario file failed.\n\tLikely the XSD schema is named/located correctly but the scenario does not conform to the schema." << std::endl;
+            std::cerr
+                << "Parsing scenario file failed.\n\tLikely the XSD schema is named/located correctly but the scenario does not conform to the schema."
+                << std::endl;
         }
         exitStatus = OM::util::Error::XSD;
     } catch (const OM::util::traced_exception& e) {
@@ -85,10 +87,10 @@ int main(int argc, char* argv[])
         std::cerr << "Unknown error" << endl;
         exitStatus = EXIT_FAILURE;
     }
-    
+
     // If we get to here, we already know an error occurred.
-    if( errno != 0 )
-        std::perror( "OpenMalaria" );
-    
+    if (errno != 0)
+        std::perror("OpenMalaria");
+
     return exitStatus;
 }

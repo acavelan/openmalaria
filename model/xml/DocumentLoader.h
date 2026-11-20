@@ -33,46 +33,39 @@
 #include <string>
 #include <memory>
 
-namespace OM
-{ 
-    namespace util
-    {
-        static const int SCHEMA_VERSION = 50;
+namespace OM {
+namespace util {
+static const int SCHEMA_VERSION = 50;
 
-        inline std::unique_ptr<scnXml::Scenario> loadScenario(std::string lXmlFile)
-        {
-            std::ifstream fileStream(lXmlFile.c_str(), ios::binary);
-            if (!fileStream.good())
-            {
-                std::string msg = "Error: unable to open " + lXmlFile;
-                throw util::xml_scenario_error(msg);
-            }
-            std::unique_ptr<scnXml::Scenario> scenario = scnXml::parseScenario (fileStream);
-            fileStream.close ();
-            const int scenarioVersion = scenario->getSchemaVersion();
-            if (scenarioVersion < SCHEMA_VERSION) {
-                std::cerr<<"Warning: "<<lXmlFile<<" uses an old schema version (latest is "<<SCHEMA_VERSION<<")."<<endl;
-            }
-            else if (scenarioVersion > SCHEMA_VERSION)
-                throw util::xml_scenario_error ("Error: new schema version unsupported");
-            return scenario;
-        }
+inline std::unique_ptr<scnXml::Scenario> loadScenario(std::string lXmlFile) {
+    std::ifstream fileStream(lXmlFile.c_str(), ios::binary);
+    if (!fileStream.good()) {
+        std::string msg = "Error: unable to open " + lXmlFile;
+        throw util::xml_scenario_error(msg);
     }
+    std::unique_ptr<scnXml::Scenario> scenario = scnXml::parseScenario(fileStream);
+    fileStream.close();
+    const int scenarioVersion = scenario->getSchemaVersion();
+    if (scenarioVersion < SCHEMA_VERSION) {
+        std::cerr << "Warning: " << lXmlFile << " uses an old schema version (latest is " << SCHEMA_VERSION << ")."
+                  << endl;
+    } else if (scenarioVersion > SCHEMA_VERSION)
+        throw util::xml_scenario_error("Error: new schema version unsupported");
+    return scenario;
+}
+}
 }
 
 // ———  post-load checks (was xml/XMLChecker.h)  ———
 
-namespace OM
-{
-    namespace util
-    {
-        class XMLChecker
-        {
-        public:
-            XMLChecker(){}
-            ~XMLChecker(){}
+namespace OM {
+namespace util {
+class XMLChecker {
+  public:
+    XMLChecker() {}
+    ~XMLChecker() {}
 
-            /*
+    /*
             * Should be called after the input XML has been loaded and before all subsequent
             * initialisation. I.e. well before the simulation starts running.
             *
@@ -88,42 +81,34 @@ namespace OM
             *  - identify certain problems in the input XML as early as possible, and
             *  - enable the user to obtain a more informative error message.
             */
-            void PerformPostValidationChecks(const scnXml::Scenario& scenario)
-            {
-                CheckModelOptionsAndParams(scenario);
-            }
-        private:
+    void PerformPostValidationChecks(const scnXml::Scenario& scenario) { CheckModelOptionsAndParams(scenario); }
 
-            /*
+  private:
+    /*
             * Verifies that, if no model name is written in input XML, then both parameters and
             * model options and written explicitly.
             */
-            void CheckModelOptionsAndParams(const scnXml::Scenario& scenario)
-            {
-                // For each relevant element, determine whether it's specified explicitly in XML.
-                const bool modelName = scenario.getModel().getModelName().present();
-                const bool parameters = scenario.getModel().getParameters().present();
-                const bool modelOptions = scenario.getModel().getModelOptions().present();
-                if (!modelName && (!parameters || !modelOptions))
-                {
-                    throw util::xml_scenario_error(
-                        "If a model name is not specified then both <ModelOptions> and <parameters> must be specified");
-                }
-                if (parameters)
-                {
-                    // Same rule ModelOptions::compatCheck() applies later, checked before the
-                    // clock is initialised (a bogus interval would divide by zero there).
-                    const int interval = scenario.getModel().getParameters().get().getInterval();
-                    if (interval != 1 && interval != 5)
-                    {
-                        throw util::xml_scenario_error(
-                            "Time step set to " + std::to_string(interval)
-                            + " days but only 1 and 5 days are supported.");
-                    }
-                }
+    void CheckModelOptionsAndParams(const scnXml::Scenario& scenario) {
+        // For each relevant element, determine whether it's specified explicitly in XML.
+        const bool modelName = scenario.getModel().getModelName().present();
+        const bool parameters = scenario.getModel().getParameters().present();
+        const bool modelOptions = scenario.getModel().getModelOptions().present();
+        if (!modelName && (!parameters || !modelOptions)) {
+            throw util::xml_scenario_error(
+                "If a model name is not specified then both <ModelOptions> and <parameters> must be specified");
+        }
+        if (parameters) {
+            // Same rule ModelOptions::compatCheck() applies later, checked before the
+            // clock is initialised (a bogus interval would divide by zero there).
+            const int interval = scenario.getModel().getParameters().get().getInterval();
+            if (interval != 1 && interval != 5) {
+                throw util::xml_scenario_error("Time step set to " + std::to_string(interval) +
+                                               " days but only 1 and 5 days are supported.");
             }
-        };
+        }
     }
+};
+}
 }
 
 // ———  shared latentP read (was xml/latentP.h; defined in xml/scenario.cpp)  ———
@@ -132,6 +117,6 @@ namespace OM {
 
 /// Default 15d, else model/parameters/latentP; wraps parse errors as
 /// "model/parameters/latentP: <msg>" exactly as both callers did.
-SimTime read_latentP( const SimClock& clock, const scnXml::Model& model );
+SimTime read_latentP(const SimClock& clock, const scnXml::Model& model);
 
 } // namespace OM

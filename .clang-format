@@ -1,0 +1,15 @@
+# Measured winner (clang-format 23.1.4, full model+unittest dry-run):
+# LLVM/4/120/Attach packs short continuations: raw-line saving, lowest churn.
+# Alternatives on this tree: PointerAlignment Right -1 line; ColumnLimit 100
+# grows the tree (+719 raw); Allman function braces grow ~1.4k raw lines.
+# SortIncludes: Never — include order is load-bearing around the XSD cone.
+# ReflowComments: false — keeps // parity: anchors and aligned tables stable.
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 120
+UseTab: Never
+PointerAlignment: Left
+SortIncludes: Never
+ReflowComments: false
+FixNamespaceComments: false  # adding "} // namespace X" is a NON-whitespace change
+BreakStringLiterals: false

@@ -22,23 +22,22 @@
 
 #pragma once
 
-namespace scnXml { class Model; }
+namespace scnXml {
+class Model;
+}
 #include "util/errors.h"
 
-namespace OM
-{
-    namespace util
-    {
-        /*
+namespace OM {
+namespace util {
+/*
         * It is intended that this holds the entire collection of named models.
         */
-        enum class ModelNames
-        {
-            none, // Represents the case where input XML contains no model name.
-            base
-        };
+enum class ModelNames {
+    none, // Represents the case where input XML contains no model name.
+    base
+};
 
-        /*
+/*
         * Stores model name (if any) specified in XML at initialization time
         * then exposes it as an enum class.  This is exists so that clients
         * don't have to hardcode strings referring (or possibly, erroneously,
@@ -47,11 +46,9 @@ namespace OM
         * If new named models are added, support for them should be added to
         * this class.
         */
-        struct ModelNameProvider
-        {
-            ModelNameProvider( const scnXml::Model& model );
-            ModelNames modelInUse = ModelNames::none;
-        };
-    }
+struct ModelNameProvider {
+    ModelNameProvider(const scnXml::Model& model);
+    ModelNames modelInUse = ModelNames::none;
+};
 }
-
+}

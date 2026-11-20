@@ -58,34 +58,27 @@
 
 /// Implementation of Xoshiro256+
 class Xoshiro256P {
-public:
+  public:
     typedef uint64_t result_type;
-    
+
     Xoshiro256P(uint64_t a, uint64_t b = 0x220b5e8d, uint64_t c = 0x712a58a2, uint64_t d = 0x712a58a2) {
         this->seed(a, b, c, d);
     }
 
-//     template<class Sseq>
-//     explicit Xoshiro256P(Sseq& seq);
-    
-    template<typename R>
-    explicit Xoshiro256P(R& source) {
-        seed(source);
-    }
+    //     template<class Sseq>
+    //     explicit Xoshiro256P(Sseq& seq);
+
+    template <typename R> explicit Xoshiro256P(R& source) { seed(source); }
 
     // Disable copying
     Xoshiro256P(const Xoshiro256P&) = delete;
     Xoshiro256P& operator=(const Xoshiro256P&) = delete;
 
     /// Allow moving, with explicit functions
-    Xoshiro256P(Xoshiro256P&& other) {
-        memcpy(s, other.s, sizeof s);
-    }
-    void operator=(Xoshiro256P&& other) {
-        memcpy(s, other.s, sizeof s);
-    }
+    Xoshiro256P(Xoshiro256P&& other) { memcpy(s, other.s, sizeof s); }
+    void operator=(Xoshiro256P&& other) { memcpy(s, other.s, sizeof s); }
 
-//     template<class Sseq> void seed(Sseq& seq);
+    //     template<class Sseq> void seed(Sseq& seq);
 
     void seed(uint64_t a, uint64_t b = 0x220b5e8d, uint64_t c = 0x712a58a2, uint64_t d = 0x712a58a2) {
         s[0] = a;
@@ -94,8 +87,7 @@ public:
         s[3] = d;
     }
 
-    template<typename R>
-    void seed(R& source) {
+    template <typename R> void seed(R& source) {
         s[0] = source.gen_u64();
         s[1] = source.gen_u64();
         s[2] = source.gen_u64();
@@ -106,27 +98,24 @@ public:
     uint32_t gen_u32();
     double gen_double();
 
-
-    void binary_checkpoint(ostream& stream) {
-        stream.write (reinterpret_cast<char*>(&s[0]), sizeof(s));
-    }
+    void binary_checkpoint(ostream& stream) { stream.write(reinterpret_cast<char*>(&s[0]), sizeof(s)); }
     void binary_checkpoint(istream& stream) {
-        stream.read (reinterpret_cast<char*>(&s[0]), sizeof(s));
+        stream.read(reinterpret_cast<char*>(&s[0]), sizeof(s));
         if (!stream || stream.gcount() != sizeof(s))
-            throw runtime_error ("Xoshiro256P::binary_checkpoint: stream read error");
+            throw runtime_error("Xoshiro256P::binary_checkpoint: stream read error");
     }
 
     static constexpr uint64_t min() { return std::numeric_limits<uint64_t>::min(); }
     static constexpr uint64_t max() { return std::numeric_limits<uint64_t>::max(); }
 
-public:
+  public:
     void generate_block();
     void chacha_core();
 
     uint64_t s[4];
 };
 
-// template<class Sseq> 
+// template<class Sseq>
 // inline Xoshiro256P::Xoshiro256P(Sseq& seq) {
 //     seed(seq);
 // }
@@ -135,10 +124,7 @@ public:
 //     seq.generate(s, s + 4);
 // }
 
-
-static inline uint64_t rotl(const uint64_t x, int k) {
-    return (x << k) | (x >> (64 - k));
-}
+static inline uint64_t rotl(const uint64_t x, int k) { return (x << k) | (x >> (64 - k)); }
 
 inline uint64_t Xoshiro256P::operator()() {
     const uint64_t result = s[0] + s[3];
@@ -170,11 +156,11 @@ inline double Xoshiro256P::gen_double() {
     return (x >> 11) * v;
 }
 
-
 // Implement <random> interface.
 inline bool operator==(const Xoshiro256P& lhs, const Xoshiro256P& rhs) {
     for (int i = 0; i < 4; ++i) {
-        if (lhs.s[i] != rhs.s[i]) return false;
+        if (lhs.s[i] != rhs.s[i])
+            return false;
     }
 
     return true;
@@ -206,67 +192,60 @@ inline bool operator!=(const Xoshiro256P& lhs, const Xoshiro256P& rhs) { return 
 //     return is;
 // }
 
-
-namespace OM { namespace util {
+namespace OM {
+namespace util {
 
 // Support functions
 // Note: GSL  doesn't really seem to be interested in RNGs producing more than
 // 32-bits of state. This implementation serves two underlying generators.
-template<class T>
-long unsigned int sample_ulong (void *ptr) {
-    T *rng = reinterpret_cast<T*>(ptr);
+template <class T> long unsigned int sample_ulong(void* ptr) {
+    T* rng = reinterpret_cast<T*>(ptr);
     return rng->gen_u32();
 }
-template<class T>
-double sample_double01 (void *ptr) {
-    T *rng = reinterpret_cast<T*>(ptr);
+template <class T> double sample_double01(void* ptr) {
+    T* rng = reinterpret_cast<T*>(ptr);
     return rng->gen_double();
 }
 
-template<class T>
-gsl_rng_type make_gsl_rng_type() {
-    return {
-        "OM_RNG",		// name
-        std::numeric_limits<uint32_t>::max(),
-        std::numeric_limits<uint32_t>::min(),
-        0,				// size of state; not used here
-        nullptr,			// re-seed function; don't use
-        &sample_ulong<T>,
-        &sample_double01<T>
-    };
+template <class T> gsl_rng_type make_gsl_rng_type() {
+    return {"OM_RNG", // name
+            std::numeric_limits<uint32_t>::max(),
+            std::numeric_limits<uint32_t>::min(),
+            0,       // size of state; not used here
+            nullptr, // re-seed function; don't use
+            &sample_ulong<T>,
+            &sample_double01<T>};
 }
 
 /// Our random number generator.
-template<class T>
-struct RNG {
+template <class T> struct RNG {
     ///@brief Construction and checkpointing
     //@{
     /// Seeding constructor: use given seed and stream
-    /// 
+    ///
     /// Note: we don't expose a seed-only constructor to prevent accidental
     /// seeding with only a 64-bit seed. Since many instances of the LocalRng
     /// are used, 128-bit seeds are recommended to reduce chance of overlapping
     /// sections of RNG output.
-    explicit RNG(uint64_t seed, uint64_t stream): m_rng(seed, stream) {
+    explicit RNG(uint64_t seed, uint64_t stream) : m_rng(seed, stream) {
         m_gsl_type = make_gsl_rng_type<T>();
         m_gsl_gen.type = &m_gsl_type;
         m_gsl_gen.state = reinterpret_cast<void*>(&m_rng);
     }
-    
+
     /// Seed via another RNG
-    template<class S>
-    explicit RNG(RNG<S>& source): m_rng(source.m_rng) {
+    template <class S> explicit RNG(RNG<S>& source) : m_rng(source.m_rng) {
         m_gsl_type = make_gsl_rng_type<T>();
         m_gsl_gen.type = &m_gsl_type;
         m_gsl_gen.state = reinterpret_cast<void*>(&m_rng);
     }
-    
+
     // Disable copying
     RNG(const RNG&) = delete;
     RNG& operator=(const RNG&) = delete;
-  
+
     /// Allow moving, with explicit functions
-    RNG(RNG&& other): m_rng(std::move(other.m_rng)) {
+    RNG(RNG&& other) : m_rng(std::move(other.m_rng)) {
         m_gsl_type = other.m_gsl_type;
         // The following point into instance of this RNG:
         m_gsl_gen.type = &m_gsl_type;
@@ -279,42 +258,31 @@ struct RNG {
         m_gsl_gen.type = &m_gsl_type;
         m_gsl_gen.state = reinterpret_cast<void*>(&m_rng);
     }
-    
+
     /// Seed with given 128-bit input (see notes on constructor)
-    void seed(uint64_t seed, uint64_t stream) {
-        m_rng.seed(seed, stream);
-    }
-    
+    void seed(uint64_t seed, uint64_t stream) { m_rng.seed(seed, stream); }
+
     /// Checkpointing
-    /// 
+    ///
     /// Note: this relies on the RNG having been constructed with the same seed.
-    template<class S>
-    void checkpoint(S& stream) {
-        m_rng.binary_checkpoint(stream);
-    }
+    template <class S> void checkpoint(S& stream) { m_rng.binary_checkpoint(stream); }
     //@}
-    
+
     ///@brief Random number distributions
     //@{
     /** Generate a random number in the range [0,1). */
     // parity: order — one gen_double per call = one stream position; basis of every contract
-    inline double uniform_01 () {
-        return m_rng.gen_double();
-    }
-    
+    inline double uniform_01() { return m_rng.gen_double(); }
+
     /** This function returns a Gaussian random variate, with mean mean and
      * standard deviation std. The sampled value x ~ N(mean, std^2) . */
     // parity: F2 — GSL gsl_ran_gaussian on wrapped stream — value sequence depends on GSL version (F2)
-    double gauss (double mean, double std){
-        return gsl_ran_gaussian(&m_gsl_gen,std)+mean;
-    }
-    
+    double gauss(double mean, double std) { return gsl_ran_gaussian(&m_gsl_gen, std) + mean; }
+
     /** This function returns a random variate from the gamma distribution. */
     // parity: F2 — GSL gsl_ran_gamma on wrapped stream (F2)
-    double gamma (double a, double b){
-        return gsl_ran_gamma(&m_gsl_gen, a, b);
-    }
-    
+    double gamma(double a, double b) { return gsl_ran_gamma(&m_gsl_gen, a, b); }
+
     /** This function returns a random variate from the lognormal distribution.
      * 
      * Mean is log(mean) - (sigma^2)/2.
@@ -324,10 +292,8 @@ struct RNG {
      * @param sigma sigma-log
      */
     // parity: F2 — GSL gsl_ran_lognormal on wrapped stream (F2)
-    double log_normal (double meanlog, double stdlog){
-        return gsl_ran_lognormal (&m_gsl_gen, meanlog, stdlog);
-    }
-    
+    double log_normal(double meanlog, double stdlog) { return gsl_ran_lognormal(&m_gsl_gen, meanlog, stdlog); }
+
     /** Return the maximum over multiple log-normal samples.
      *
      * @param start Initial value for running maximum (returns max of this and
@@ -337,7 +303,7 @@ struct RNG {
      * @param stdlog standard deviation of underlying Gaussian
      */
     // parity: order — exactly ONE uniform_01 + one ugaussian_Pinv; CDF-inversion identity frozen
-    double max_multi_log_normal (double start, int n, double meanlog, double stdlog){
+    double max_multi_log_normal(double start, int n, double meanlog, double stdlog) {
         // Used for performance reasons. Calling GSL's log_normal 5 times is 50% slower.
         // For random variables X1, .., Xn with identical distribution X and
         // Mn = max(X1, .., Xn), the CDF:
@@ -345,54 +311,52 @@ struct RNG {
         //              = P(X1 ≤ x) P(X2 ≤ x) .. P(Xn ≤ x)
         //              = F_X(x) ^ n
         // Thus for u = F_Mn(x) = F_X(x) ^ n, u^(1/n) = F_X(x).
-        double normp = pow( uniform_01(), 1.0 / n );
-        double zval = gsl_cdf_ugaussian_Pinv (normp);
+        double normp = pow(uniform_01(), 1.0 / n);
+        double zval = gsl_cdf_ugaussian_Pinv(normp);
         double multi_sample = exp(meanlog + stdlog * zval);
         return std::max(start, multi_sample);
     }
-    
+
     /** This function returns a random variate from the beta distribution. */
     // parity: F2 — GSL gsl_ran_beta on wrapped stream (F2)
-    double beta(double a, double b){
-        return gsl_ran_beta (&m_gsl_gen,a,b);
-    }
-    
+    double beta(double a, double b) { return gsl_ran_beta(&m_gsl_gen, a, b); }
+
     /** This function wraps beta(), setting b=b and a such that m is the mean
      * of the distribution. */
     // parity: order — wraps beta() — one beta draw; a=m*b/(1-m) algebra frozen
     inline double betaWithMean(double m, double b) {
         //TODO(performance): could do this calculation externally, and feed in a,b instead of mean,b
         double a = m * b / (1.0 - m);
-        return beta(a,b);
+        return beta(a, b);
     }
-    
+
     /** This function returns a random integer from the Poisson distribution with mean lambda. */
     // parity: F2 — GSL gsl_ran_poisson on wrapped stream (F2)
-    int poisson(double lambda){
-        if( !(std::isfinite)(lambda) ){
+    int poisson(double lambda) {
+        if (!(std::isfinite)(lambda)) {
             //This would lead to an inifinite loop
-            throw TRACED_EXCEPTION( "lambda is inf", Error::InfLambda );
+            throw TRACED_EXCEPTION("lambda is inf", Error::InfLambda);
         }
-        return gsl_ran_poisson (&m_gsl_gen, lambda);
+        return gsl_ran_poisson(&m_gsl_gen, lambda);
     }
 
     /** This function returns true with probability prob or 0 with probability
      * 1-prob (Bernoulli distribution). */
     // parity: a/d/e — consumes exactly ONE uniform_01 (prob compare) — basis of contracts a/d/e
-    bool bernoulli(double prob){
-        assert( (std::isfinite)(prob) );
+    bool bernoulli(double prob) {
+        assert((std::isfinite)(prob));
         // return true iff our variate is less than the probability
         return uniform_01() < prob;
     }
-    
+
     /** This function returns an integer from 0 to 1-n, where every value has
      * equal probability of being sampled. */
     // parity: a/d/e — consumes exactly ONE uniform_01 (scaled int) — do not reorder vs bernoulli
-    inline int uniform (int n) {
-        assert( (std::isfinite)(n) );
-        return static_cast<int>( uniform_01() * n );
+    inline int uniform(int n) {
+        assert((std::isfinite)(n));
+        return static_cast<int>(uniform_01() * n);
     }
-    
+
     /**
      * Return a variate sampled from the Weibull distribution.
      * 
@@ -402,16 +366,15 @@ struct RNG {
      * @param k is the shape parameter
      */
     // parity: F2 — GSL gsl_ran_weibull on wrapped stream (F2)
-    double weibull( double lambda, double k ){
-        return gsl_ran_weibull( &m_gsl_gen, lambda, k );
-    }
+    double weibull(double lambda, double k) { return gsl_ran_weibull(&m_gsl_gen, lambda, k); }
     //@}
-    
-public:
+
+  public:
     /// Engine state. Public by design: cross-RNG seeding (above) and state
     /// comparison read it directly; no friend needed.
     T m_rng;
-private:
+
+  private:
     // Hooks for GSL distributions
     gsl_rng_type m_gsl_type;
     gsl_rng m_gsl_gen;
@@ -423,5 +386,5 @@ typedef RNG<ChaCha<8>> MasterRng;
 /// The master RNG, used only for seeding local RNGs
 // parity: order — single extern master stream declaration
 
-
-} }
+}
+}

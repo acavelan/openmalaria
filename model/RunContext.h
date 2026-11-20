@@ -26,10 +26,10 @@
 #include "util/mod.h"
 #include "util/random.h"
 #include "Host/WithinHost/Genotypes.h"
-#include "Host/WithinHost/Diagnostic.h"      // leaf (Clock, random)
+#include "Host/WithinHost/Diagnostic.h" // leaf (Clock, random)
 #include "PkPd/LSTMDrugType.h"
 #include "PkPd/LSTMMedicate.h"
-#include "interventions/ComponentId.h"       // leaf (Clock, checkpoint)
+#include "interventions/ComponentId.h" // leaf (Clock, checkpoint)
 #include "PopulationAgeStructure.h"
 #include <fstream>
 #include <functional>
@@ -51,19 +51,29 @@ namespace OM {
 // class scope, so any member whose type is incomplete here is a raw pointer
 // created by RunContext's out-of-line ctor and deleted by its out-of-line
 // dtor (model/run.cpp).
-namespace Clinical { struct FlatTree; }
-namespace Host { class ImportedInfections; }
-namespace Transmission { class PerHostAnophParams; }
-namespace interventions {
-    struct ComponentConfig;
-    struct ContinuousHumanDeployment;
-    struct TimedDeployment;
-    struct ITNParams;
-    struct IRSParams;
-    struct GVIParams;
-    class VaccineParams;
+namespace Clinical {
+struct FlatTree;
 }
-namespace mon { namespace internal { struct RuntimeState; } }
+namespace Host {
+class ImportedInfections;
+}
+namespace Transmission {
+class PerHostAnophParams;
+}
+namespace interventions {
+struct ComponentConfig;
+struct ContinuousHumanDeployment;
+struct TimedDeployment;
+struct ITNParams;
+struct IRSParams;
+struct GVIParams;
+class VaccineParams;
+}
+namespace mon {
+namespace internal {
+struct RuntimeState;
+}
+}
 class Population;
 namespace util {
 class ModelNameProvider;
@@ -82,9 +92,9 @@ struct Infection;
  * state, monitoring, continuous output. Owned by the caller of
  * run_simulation(); never a global. */
 class RunContext {
-public:
-    RunContext();     // out-of-line: news the pointer members (run.cpp)
-    ~RunContext();    // out-of-line: deletes them (incomplete types here)
+  public:
+    RunContext();  // out-of-line: news the pointer members (run.cpp)
+    ~RunContext(); // out-of-line: deletes them (incomplete types here)
 
     SimClock clock;
     /** Master RNG. // parity: order — constructed here (0, 0), matching the
@@ -115,8 +125,7 @@ public:
     /// WithinHost::Treatments option registry (built while reading XML).
     std::vector<WithinHost::Treatments>* whTreatments;
     /// Within-host infection factory, set by the active model's init.
-    WithinHost::Infection* (*createInfection)
-        (RunContext&, util::LocalRng&, uint32_t, int) = nullptr;
+    WithinHost::Infection* (*createInfection)(RunContext&, util::LocalRng&, uint32_t, int) = nullptr;
     /// Unittest backend for WithinHost::WHInterface Kind::Mock (installed by
     /// unittest/WHMock.cpp; null in production, where Kind::Mock is never
     /// created). Same fn-pointer-table idiom as createInfection above.
@@ -124,11 +133,9 @@ public:
         void* state = nullptr;
         void (*treatment)(void* state);
         bool (*treatSimple)(void* state, SimTime timeLiver, SimTime timeBlood);
-        void (*treatPkPd)(void* state, RunContext& ctx, size_t schedule,
-            size_t dosages, double age, double delay_d);
+        void (*treatPkPd)(void* state, RunContext& ctx, size_t schedule, size_t dosages, double age, double delay_d);
         double (*getTotalDensity)(const void* state);
-        bool (*diagnosticResult)(const void* state, util::LocalRng& rng,
-            const WithinHost::Diagnostic& diagnostic);
+        bool (*diagnosticResult)(const void* state, util::LocalRng& rng, const WithinHost::Diagnostic& diagnostic);
     };
     const WHMockHooks* whMock = nullptr;
     /// Diagnostics registry (built while reading XML / from defaults).
@@ -159,8 +166,7 @@ public:
     std::vector<const interventions::GVIParams*> gviComponents;
     std::vector<const interventions::VaccineParams*> vaccineComponents;
     /// Which vaccine component deployment monitoring reports on.
-    interventions::ComponentId vaccineReportComponent =
-        interventions::ComponentId::wholePop();
+    interventions::ComponentId vaccineReportComponent = interventions::ComponentId::wholePop();
 
     // ——— entomology parameters (was: PerHostAnophParams statics) ———
     /// Per-species host-availability/biting parameters (XML read).
@@ -171,10 +177,8 @@ public:
     /// Continuous-output file; its resume position; callback registry.
     std::fstream ctsOStream;
     std::streamoff ctsStreamOffset = 0;
-    std::map<std::string, std::tuple<std::string,
-        std::function<void(Population&, std::ostream&)>>> ctsRegistered;
-    std::vector<std::tuple<std::string,
-        std::function<void(Population&, std::ostream&)>>> ctsToReport;
+    std::map<std::string, std::tuple<std::string, std::function<void(Population&, std::ostream&)>>> ctsRegistered;
+    std::vector<std::tuple<std::string, std::function<void(Population&, std::ostream&)>>> ctsToReport;
     SimTime ctsPeriod = sim::zero();
     bool ctsDuringInit = false;
 
