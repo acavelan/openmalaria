@@ -20,6 +20,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+// p8-q3: Kind-switched flat class -> LSTMDrug base + OneComp/ThreeComp/
+// Conversion classes (p8-poly pattern). Ctor bodies = the old per-kind switch
+// cases verbatim (RNG draw points AND order unchanged: the base ctor draws
+// nothing, each derived ctor reproduces its kind's sequence exactly). All
+// formula bodies byte-for-byte verbatim.
+
 #include "PkPd/LSTMDrug.h"
 #include "PkPd/LSTMDrugType.h"
 #include "Host/WithinHost/Infection/Infection.h"
@@ -40,92 +46,10 @@ using namespace std;
 namespace OM {
 namespace PkPd {
 
-LSTMDrug::LSTMDrug(Kind kind, const LSTMDrugType& type, const LSTMDrugType* metabolite, LocalRng& rng)
-    : kind(kind), typeData(&type), metaboliteData(metabolite) {
-    switch (kind) {
-    case Kind::OneComp:
-        vol_dist = type.sample_Vd(rng);
-        concentration = 0.0;
-        neg_elim_sample = -type.sample_elim_rate(rng);
-        break;
-    case Kind::ThreeComp:
-        vol_dist = type.sample_Vd(rng);
-        concA = 0.0;
-        concB = 0.0;
-        concC = 0.0;
-        concABC = 0.0;
-        elim_sample = type.sample_elim_rate(rng);
-        k12 = type.sample_k12(rng);
-        k21 = type.sample_k21(rng);
-        k13 = type.sample_k13(rng);
-        k31 = type.sample_k31(rng);
-        nka = -type.sample_ka(rng);
-        last_bm = numeric_limits<double>::quiet_NaN();
-        na = numeric_limits<double>::quiet_NaN();
-        nb = numeric_limits<double>::quiet_NaN();
-        ng = numeric_limits<double>::quiet_NaN();
-        A = numeric_limits<double>::quiet_NaN();
-        B = numeric_limits<double>::quiet_NaN();
-        C = numeric_limits<double>::quiet_NaN();
-        break;
-    case Kind::Conversion:
-        vol_dist = type.sample_Vd(rng);
-        qtyG = 0.0;
-        qtyP = 0.0;
-        qtyM = 0.0;
-        nka = -type.sample_ka(rng);
-        nkP_sample = -type.sample_elim_rate(rng);
-        nconv_sample = -type.sample_conv_rate(rng);
-        nkM_sample = -metaboliteData->sample_elim_rate(rng);
-        vol_dist_metabolite = metaboliteData->sample_Vd(rng);
-        break;
-    }
-}
+// ———  LSTMDrug base (state every variant shares)  ———
 
 size_t LSTMDrug::getIndex() const {
     return typeData->index; // Conversion: parent drug's index
-}
-
-double LSTMDrug::getConcentration(size_t index) const {
-    switch (kind) {
-    case Kind::OneComp:
-        return index == typeData->index ? concentration : 0.0;
-    case Kind::ThreeComp:
-        return index == typeData->index ? conc() : 0.0;
-    case Kind::Conversion:
-        if (index == typeData->index)
-            return getParentConcentration();
-        else if (index == metaboliteData->index)
-            return getMetaboliteConcentration();
-        else
-            return 0.0;
-    }
-    return 0.0;
-}
-
-double LSTMDrug::calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const {
-    switch (kind) {
-    case Kind::OneComp:
-        return drugFactor_oneComp(rng, inf, body_mass);
-    case Kind::ThreeComp:
-        return drugFactor_threeComp(rng, inf, body_mass);
-    default:
-        return drugFactor_conversion(rng, inf, body_mass);
-    }
-}
-
-void LSTMDrug::updateConcentration(double body_mass) {
-    switch (kind) {
-    case Kind::OneComp:
-        updateConcentration_oneComp(body_mass);
-        break;
-    case Kind::ThreeComp:
-        updateConcentration_threeComp(body_mass);
-        break;
-    case Kind::Conversion:
-        updateConcentration_conversion(body_mass);
-        break;
-    }
 }
 
 bool comp(pair<double, double> lhs, pair<double, double> rhs) { return lhs.first < rhs.first; }
@@ -142,11 +66,22 @@ void LSTMDrug::medicate(double time, double qty) {
     assert(is_sorted(doses.begin(), doses.end(), comp));
 }
 
-// ———  OneComp kind (was LSTMDrugOneComp.cpp)  ———
+// ———  LSTMDrugOneComp variant (was LSTMDrugOneComp.cpp)  ———
+
+// parity: draw order — old ctor's Kind::OneComp case body, verbatim
+LSTMDrugOneComp::LSTMDrugOneComp(const LSTMDrugType& type, LocalRng& rng) : LSTMDrug(Kind::OneComp, type) {
+    vol_dist = type.sample_Vd(rng);
+    concentration = 0.0;
+    neg_elim_sample = -type.sample_elim_rate(rng);
+}
+
+double LSTMDrugOneComp::getConcentration(size_t index) const {
+    return index == typeData->index ? concentration : 0.0;
+}
 
 // TODO: in high transmission, is this going to get called more often than updateConcentration?
 // When does it make sense to try to optimise (avoid doing decay calcuations here)?
-double LSTMDrug::drugFactor_oneComp(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const {
+double LSTMDrugOneComp::calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const {
     if (concentration == 0.0 && doses.size() == 0)
         return 1.0; // nothing to do
 
@@ -186,7 +121,7 @@ double LSTMDrug::drugFactor_oneComp(LocalRng& rng, WithinHost::Infection* inf, d
     return totalFactor; // Drug effect per day per drug per parasite
 }
 
-void LSTMDrug::updateConcentration_oneComp(double body_mass) {
+void LSTMDrugOneComp::updateConcentration(double body_mass) {
     if (concentration == 0.0 && doses.size() == 0)
         return; // nothing to do
 
@@ -218,9 +153,35 @@ void LSTMDrug::updateConcentration_oneComp(double body_mass) {
     }
 }
 
-// ———  ThreeComp kind (was LSTMDrugThreeComp.cpp)  ———
+// ———  LSTMDrugThreeComp variant (was LSTMDrugThreeComp.cpp)  ———
 
-void LSTMDrug::updateCached(double body_mass) const {
+// parity: draw order — old ctor's Kind::ThreeComp case body, verbatim
+LSTMDrugThreeComp::LSTMDrugThreeComp(const LSTMDrugType& type, LocalRng& rng) : LSTMDrug(Kind::ThreeComp, type) {
+    vol_dist = type.sample_Vd(rng);
+    concA = 0.0;
+    concB = 0.0;
+    concC = 0.0;
+    concABC = 0.0;
+    elim_sample = type.sample_elim_rate(rng);
+    k12 = type.sample_k12(rng);
+    k21 = type.sample_k21(rng);
+    k13 = type.sample_k13(rng);
+    k31 = type.sample_k31(rng);
+    nka = -type.sample_ka(rng);
+    last_bm = numeric_limits<double>::quiet_NaN();
+    na = numeric_limits<double>::quiet_NaN();
+    nb = numeric_limits<double>::quiet_NaN();
+    ng = numeric_limits<double>::quiet_NaN();
+    A = numeric_limits<double>::quiet_NaN();
+    B = numeric_limits<double>::quiet_NaN();
+    C = numeric_limits<double>::quiet_NaN();
+}
+
+double LSTMDrugThreeComp::getConcentration(size_t index) const {
+    return index == typeData->index ? conc() : 0.0;
+}
+
+void LSTMDrugThreeComp::updateCached(double body_mass) const {
     if (last_bm == body_mass)
         return;
 
@@ -289,7 +250,7 @@ gsl_integration_workspace* gsl_intgr_wksp = gsl_integration_workspace_alloc(GSL_
 //NOTE: we "should" free, but mem-leaks at end of program aren't really important
 // gsl_integration_workspace_free (gsl_intgr_wksp);
 
-double LSTMDrug::calculateFactor_fC(const Params_fC& p, double duration) const {
+double LSTMDrugThreeComp::calculateFactor_fC(const Params_fC& p, double duration) const {
     gsl_function F;
     F.function = &func_fC;
     // gsl_function doesn't accept const; we re-apply const later
@@ -318,7 +279,7 @@ double LSTMDrug::calculateFactor_fC(const Params_fC& p, double duration) const {
 
 // TODO: in high transmission, is this going to get called more often than updateConcentration?
 // When does it make sense to try to optimise (avoid doing decay calcuations here)?
-double LSTMDrug::drugFactor_threeComp(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const {
+double LSTMDrugThreeComp::calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const {
     if (conc() == 0.0 && doses.size() == 0)
         return 1.0; // nothing to do
     updateCached(body_mass);
@@ -371,7 +332,7 @@ double LSTMDrug::drugFactor_threeComp(LocalRng& rng, WithinHost::Infection* inf,
     return totalFactor;
 }
 
-void LSTMDrug::updateConcentration_threeComp(double body_mass) {
+void LSTMDrugThreeComp::updateConcentration(double body_mass) {
     if (conc() == 0.0 && doses.size() == 0)
         return; // nothing to do
     updateCached(body_mass);
@@ -414,12 +375,35 @@ void LSTMDrug::updateConcentration_threeComp(double body_mass) {
     }
 }
 
-// ———  Conversion kind (parent + metabolite) (was LSTMDrugConversion.cpp)  ———
+// ———  LSTMDrugConversion variant (parent + metabolite; was LSTMDrugConversion.cpp)  ———
 
-double LSTMDrug::getParentConcentration() const { return qtyP / (vol_dist * last_bm); }
-double LSTMDrug::getMetaboliteConcentration() const { return qtyM / (vol_dist_metabolite * last_bm); }
+// parity: draw order — old ctor's Kind::Conversion case body, verbatim
+LSTMDrugConversion::LSTMDrugConversion(const LSTMDrugType& type, const LSTMDrugType* metabolite, LocalRng& rng)
+    : LSTMDrug(Kind::Conversion, type), metaboliteData(metabolite) {
+    vol_dist = type.sample_Vd(rng);
+    qtyG = 0.0;
+    qtyP = 0.0;
+    qtyM = 0.0;
+    nka = -type.sample_ka(rng);
+    nkP_sample = -type.sample_elim_rate(rng);
+    nconv_sample = -type.sample_conv_rate(rng);
+    nkM_sample = -metaboliteData->sample_elim_rate(rng);
+    vol_dist_metabolite = metaboliteData->sample_Vd(rng);
+}
 
-/// Parameters for func_convFactor and LSTMDrug::calculateFactor_conv
+double LSTMDrugConversion::getConcentration(size_t index) const {
+    if (index == typeData->index)
+        return getParentConcentration();
+    else if (index == metaboliteData->index)
+        return getMetaboliteConcentration();
+    else
+        return 0.0;
+}
+
+double LSTMDrugConversion::getParentConcentration() const { return qtyP / (vol_dist * last_bm); }
+double LSTMDrugConversion::getMetaboliteConcentration() const { return qtyM / (vol_dist_metabolite * last_bm); }
+
+/// Parameters for func_convFactor and LSTMDrugConversion::calculateFactor_conv
 struct Params_convFactor {
     // Quantities of parent in gut, parent in circulation and metabolite in
     // circulation, in mg (A, B, C in paper):
@@ -484,7 +468,7 @@ const size_t GSL_INTG_CONV_MAX_ITER = 1000; // 10 seems enough, but no harm in u
 gsl_integration_workspace* gsl_intgr_conv_wksp = gsl_integration_workspace_alloc(GSL_INTG_CONV_MAX_ITER);
 //NOTE: we "should" free, but mem-leaks at end of program aren't really important
 // gsl_integration_workspace_free (gsl_intgr_conv_wksp);
-double LSTMDrug::calculateFactor_conv(const Params_convFactor& p, double duration) const {
+double LSTMDrugConversion::calculateFactor_conv(const Params_convFactor& p, double duration) const {
     gsl_function F;
     F.function = &func_convFactor;
     // gsl_function doesn't accept const; we re-apply const later
@@ -509,7 +493,7 @@ double LSTMDrug::calculateFactor_conv(const Params_convFactor& p, double duratio
     return exp(-intfC); // drug factor
 }
 
-void LSTMDrug::setConversionParameters(Params_convFactor& p, double body_mass) const {
+void LSTMDrugConversion::setConversionParameters(Params_convFactor& p, double body_mass) const {
     p.qtyG = qtyG;
     p.qtyP = qtyP;
     p.qtyM = qtyM;
@@ -533,7 +517,7 @@ void LSTMDrug::setConversionParameters(Params_convFactor& p, double body_mass) c
     p.invVdM = 1.0 / (vol_dist_metabolite * body_mass);
 }
 
-void LSTMDrug::setKillingParameters(LocalRng& rng, Params_convFactor& p, WithinHost::Infection* inf) const {
+void LSTMDrugConversion::setKillingParameters(LocalRng& rng, Params_convFactor& p, WithinHost::Infection* inf) const {
     uint32_t genotype = inf->genotype();
     const LSTMDrugPD &pdP = typeData->getPD(genotype), &pdM = metaboliteData->getPD(genotype);
     p.nP = pdP.slope();
@@ -561,7 +545,7 @@ void LSTMDrug::setKillingParameters(LocalRng& rng, Params_convFactor& p, WithinH
 
 // TODO: in high transmission, is this going to get called more often than updateConcentration?
 // When does it make sense to try to optimise (avoid doing decay calcuations here)?
-double LSTMDrug::drugFactor_conversion(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const {
+double LSTMDrugConversion::calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const {
     if (qtyG == 0.0 && qtyP == 0.0 && qtyM == 0.0 && doses.size() == 0) {
         return 1.0; // nothing to do
     }
@@ -601,7 +585,7 @@ double LSTMDrug::drugFactor_conversion(LocalRng& rng, WithinHost::Infection* inf
     return totalFactor;
 }
 
-void LSTMDrug::updateConcentration_conversion(double body_mass) {
+void LSTMDrugConversion::updateConcentration(double body_mass) {
     if (qtyG == 0.0 && qtyP == 0.0 && qtyM == 0.0 && doses.size() == 0) {
         return; // nothing to do
     }

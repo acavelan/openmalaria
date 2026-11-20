@@ -31,6 +31,10 @@ namespace scnXml{
     class HealthSystem;
 }
 namespace OM {
+namespace WithinHost {
+namespace Pathogenesis {
+    struct StatePair;
+} }
 namespace Clinical {
 
 /// Positive values of doomed (codes). (parity: old ClinicalModel members)
@@ -55,8 +59,15 @@ enum DoomedCause {
  * Patient outcomes include full recovery, recovery with sequelae and death.
  * 
  * Reporting includes patient outcome and potentially drug usage and use of
- * RDTs (Rapid Diagnostic Tests) for costing purposes. */\
-class ClinicalModel final
+ * RDTs (Rapid Diagnostic Tests) for costing purposes.
+ *
+ * Base of the case-management variant hierarchy (p8-poly pattern): holds the
+ * state every variant shares (treatment-seeking factor, episode report/state,
+ * doomed codes, column bind) and draws NO random numbers; each XML-selected
+ * variant is a clearly independent derived class below with its own update
+ * functions. createClinicalModel() selects the variant (one create-line
+ * each). */\
+class ClinicalModel
 {
 protected:
     /// The run this clinical model belongs to (clock accessed as ctx.clock).
@@ -125,32 +136,42 @@ public:
      * Human::set_row for renumber rebinds). */
     void bind_columns( HumanColumns& c, size_t r ) { cols = &c; row = r; }
     
-    /** Construct a per-human instance. Kind selects behaviour; the
-     * EventScheduler kind rejects treatment-seeking heterogeneity. */
+    /** Construct a per-human instance (base: no RNG draws; the EventScheduler
+     * variant rejects treatment-seeking heterogeneity in its own ctor). */
     ClinicalModel (RunContext& ctx, double tSF, Kind kind);
+
+    virtual ~ClinicalModel() {}
+
+    /// Variant behaviour (public: the shared 5-day free function
+    /// clinicalUpdate5Day dispatches through uncomplicatedEvent).
+    /// Base bodies never run: every variant overrides.
+
+    /// Per-kind clinical update tail (old virtual doClinicalUpdate; the
+    /// shared preamble of update() ends here).
+    virtual void doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) {
+        assert(false); // no variant updates through the bare base
+    }
+
+    /// Uncomplicated-case handling (old virtual uncomplicatedEvent); reached
+    /// only by the two 5-day kinds.
+    virtual void uncomplicatedEvent (Human& human, Episode::State pgState) {
+        assert(false); // 5-day kinds only
+    }
+
+    /// isExistingCase() memory clock (ES keeps its own column).
+    virtual SimTime timeOfLastTreatment() const { return t_last_treatment(); }
 
 protected:
 
 public:
-    /// Per-human State (public: the kind's update free function
+    /// Per-human State (public: the variant's update free function
     /// [clinicalUpdate5Day / esClinicalUpdate] reads/writes it directly).
-    Kind kind;
+    const Kind kind;
     /// treatment seeking for heterogeneity (5-day kinds; ES kind: always 1)
     double m_treatmentSeekingFactor;
     /** Last episode; report to survey pending a new episode or human's death. */
     Episode latestReport;
     Episode::State latestState;
-
-    /** EventScheduler-kind state (parity: old ClinicalEventScheduler members;
-     * unused by the other kinds, never serialized there — bytes unchanged). */
-    Episode::State esPgState;                    ///< current sickness state
-    /// ES bout clock/state (old esCaseStartTime/esTimeOfRecovery/
-    /// esTimeLastTreatment SimTime members; column row refs, same syntax).
-    SimTime& es_case_start() const { return cols->es_case_start[row]; }
-    SimTime& es_time_recovery() const { return cols->es_time_recovery[row]; }
-    SimTime& es_time_treatment() const { return cols->es_time_treatment[row]; }
-    /// Total density last time step (old esPreviousDensity; column).
-    double& es_prev_density() const { return cols->es_prev_density[row]; }
 
     /// The host human's SoA columns/row (bind_columns; re-bound by
     /// Human::set_row — stale mirror = wrong host after renumber).
@@ -190,6 +211,50 @@ public:
     /// Note: out-patients have currently have the same probabilities of sequelae
     static util::AgeGroupInterpolator pSequelaeInpatient;
     //@}
+};
+
+/** DecisionTree5Day health system (old ClinicalDecisionTree5Day):
+ * uncomplicated-case access by fixed function, treatment by the compiled
+ * decision tree. Case-management config statics live in CM5DayCommon /
+ * DecisionTree5Day; bodies in CM5DayCommon.cpp. */
+class CMDecisionTree5Day final : public ClinicalModel {
+  public:
+    CMDecisionTree5Day(RunContext& ctx, double tSF) : ClinicalModel(ctx, tSF, Kind::DecisionTree5Day) {}
+    void doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) override;
+    void uncomplicatedEvent(Human& human, Episode::State pgState) override;
+};
+
+/** ImmediateOutcomes health system (old ClinicalImmediateOutcomes): all-or-
+ * nothing treatment, no decision tree. Config statics live in
+ * ImmediateOutcomes; bodies in CM5DayCommon.cpp. */
+class CMImmediateOutcomes final : public ClinicalModel {
+  public:
+    CMImmediateOutcomes(RunContext& ctx, double tSF) : ClinicalModel(ctx, tSF, Kind::ImmediateOutcomes) {}
+    void doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) override;
+    void uncomplicatedEvent(Human& human, Episode::State pgState) override;
+};
+
+/** EventScheduler health system (old ClinicalEventScheduler): continuous-time
+ * bouts with scheduled recovery; case management via compiled trees. Config
+ * statics live in ClinicalEventScheduler / ESCaseManagement; body in
+ * EventScheduler.cpp. Owns the ES bout state (parity: old
+ * ClinicalEventScheduler members; the other kinds never had these fields). */
+class CMEventScheduler final : public ClinicalModel {
+  public:
+    /// Rejects treatment-seeking heterogeneity (old ES ctor guard).
+    CMEventScheduler(RunContext& ctx, double tSF);
+    void doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) override;
+    SimTime timeOfLastTreatment() const override;
+
+  public: // run state; wire in checkpoint/humans.cpp
+    Episode::State esPgState = Episode::NONE;    ///< current sickness state
+    /// ES bout clock/state (old esCaseStartTime/esTimeOfRecovery/
+    /// esTimeLastTreatment SimTime members; column row refs, same syntax).
+    SimTime& es_case_start() const { return cols->es_case_start[row]; }
+    SimTime& es_time_recovery() const { return cols->es_time_recovery[row]; }
+    SimTime& es_time_treatment() const { return cols->es_time_treatment[row]; }
+    /// Total density last time step (old esPreviousDensity; column).
+    double& es_prev_density() const { return cols->es_prev_density[row]; }
 };
 
 

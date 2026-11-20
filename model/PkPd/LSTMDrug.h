@@ -37,21 +37,26 @@ class LSTMDrugType;
 struct Params_convFactor;
 struct Params_fC;
 
-/** A class holding pkpd drug use info.
+/** Base of the pkpd drug-use hierarchy; one instance per human per drug
+ * present in their blood.
  *
- * Each human has an instance for each type of drug present in their blood.
- *
- * One final per-human State class, behaviour chosen by DATA (Kind): the old
- * polymorphic quartet collapsed — OneComp / ThreeComp / Conversion (parent +
- * metabolite). Config lives in LSTMDrugType (typeData / metaboliteData point
- * there); sampled constants and concentrations are per-instance state. */
-class LSTMDrug final {
+ * The base holds only state every variant shares (drug type link, dose list,
+ * parent volume of distribution) and draws NO random numbers: per-kind
+ * sampling lives in the derived constructors at the exact old stream slots
+ * (per-kind RNG draw order parity-frozen, plan §3d). The virtual destructor
+ * replaces the old freeLSTMDrug* kind dispatch. Config lives in
+ * LSTMDrugType; sampled constants and concentrations are per-kind state.
+ * DrugRegistry::createInstance() selects the variant (one create-line each). */
+class LSTMDrug {
   public:
     enum class Kind { OneComp, ThreeComp, Conversion };
 
-    /** Create a new instance, sampling from the drug type(s). RNG draw order
-     * per kind is parity-frozen (plan §3d). metabolite: Conversion kind only. */
-    LSTMDrug(Kind kind, const LSTMDrugType& type, const LSTMDrugType* metabolite, LocalRng& rng);
+    /// Always links a drug instance to its drug-type data (Conversion kind:
+    /// typeData = parent; the metabolite link is on LSTMDrugConversion)
+    const LSTMDrugType* typeData;
+
+    LSTMDrug(Kind kind, const LSTMDrugType& type) : kind(kind), typeData(&type) {}
+    virtual ~LSTMDrug() {}
 
     /// Get the drug type's index.
     size_t getIndex() const;
@@ -70,7 +75,7 @@ class LSTMDrug final {
      * compartments with active PD; zero if drug index doesn't match that used).
      * 
      * @returns Concentration in the blood serum, in mg/l. */
-    double getConcentration(size_t index) const;
+    virtual double getConcentration(size_t index) const = 0;
 
     /** Returns the total drug factor for one drug over one day.
      *
@@ -83,39 +88,15 @@ class LSTMDrug final {
      * @param inf A pointer to the infection of interest
      * @param body_mass Weight of patient in kg
      */
-    double calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const;
+    virtual double calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const = 0;
 
     /** Updates concentration variable and clears day's doses.
      * 
      * @param body_mass Weight of patient in kg */
-    void updateConcentration(double body_mass);
-
-  private:
-    // ---- OneComp kind (behaviour defined in LSTMDrugOneComp.cpp) ----
-    double drugFactor_oneComp(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const;
-    void updateConcentration_oneComp(double body_mass);
-
-    // ---- ThreeComp kind (LSTMDrugThreeComp.cpp) ----
-    inline double conc() const { return concA + concB + concC - concABC; }
-    void updateCached(double bm) const; // update cache; bm: body mass (kg)
-    double calculateFactor_fC(const Params_fC& p, double duration) const;
-    double drugFactor_threeComp(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const;
-    void updateConcentration_threeComp(double body_mass);
-
-    // ---- Conversion kind (LSTMDrugConversion.cpp) ----
-    double getParentConcentration() const;
-    double getMetaboliteConcentration() const;
-    double calculateFactor_conv(const Params_convFactor& p, double duration) const;
-    void setConversionParameters(Params_convFactor& p, double body_mass) const;
-    void setKillingParameters(LocalRng& rng, Params_convFactor& p, WithinHost::Infection* inf) const;
-    double drugFactor_conversion(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const;
-    void updateConcentration_conversion(double body_mass);
+    virtual void updateConcentration(double body_mass) = 0;
 
   public: // run state; wire in checkpoint/humans.cpp
-    Kind kind;
-    /// Always links a drug instance to its drug-type data (Conversion kind:
-    /// typeData = parent, metaboliteData = metabolite)
-    const LSTMDrugType *typeData, *metaboliteData;
+    const Kind kind;
 
     /// First is time (days), second is additional concentration (mg / l; for
     /// one- and three-compartment models) or quantity (mg; for conversion model)
@@ -126,36 +107,93 @@ class LSTMDrug final {
      * Read in calculateDrugFactor, and updated in updateConcentration(). */
     DoseVec doses;
 
-    /// Volume of distribution (parent's for Conversion), sampled at creation.
+    /// Volume of distribution (parent's for Conversion), sampled at creation
+    /// by the per-kind constructor.
     double vol_dist;
+};
 
-    // ---- per-kind state (unassigned for the other kinds, parity: absent before) ----
-    /// OneComp: concentration in blood; units: mg / l.
+/** One-compartment drug variant (was LSTMDrugOneComp.cpp): instantaneous
+ * absorption, first-order elimination. */
+class LSTMDrugOneComp final : public LSTMDrug {
+  public:
+    LSTMDrugOneComp(const LSTMDrugType& type, LocalRng& rng);
+
+    double getConcentration(size_t index) const override;
+    double calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const override;
+    void updateConcentration(double body_mass) override;
+
+  public: // run state; wire in checkpoint/humans.cpp
+    /// Concentration in blood; units: mg / l.
     double concentration;
-    /// OneComp: sampled elimination rate constant
+    /// Sampled elimination rate constant
     double neg_elim_sample;
+};
 
-    /// ThreeComp: concentrations in the blood and other compartments
+/** Three-compartment drug variant (was LSTMDrugThreeComp.cpp): gut compartment
+ * plus two peripheral compartments, drug factor by GSL quadrature. */
+class LSTMDrugThreeComp final : public LSTMDrug {
+  public:
+    LSTMDrugThreeComp(const LSTMDrugType& type, LocalRng& rng);
+
+    double getConcentration(size_t index) const override;
+    double calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const override;
+    void updateConcentration(double body_mass) override;
+
+  private:
+    inline double conc() const { return concA + concB + concC - concABC; }
+    void updateCached(double bm) const; // update cache; bm: body mass (kg)
+    double calculateFactor_fC(const Params_fC& p, double duration) const;
+
+  public: // run state; wire in checkpoint/humans.cpp
+    /// Concentrations in the blood and other compartments
     /// (see "Permutation of the three-compartment equation", Diggory Hardy,
     /// Swiss TPH, February 3, 2015)
     double concA, concB, concC, concABC;
-    /// ThreeComp: sampled constants
+    /// Sampled constants
     double elim_sample;
     double k12, k21, k13, k31;
-    /// nka: -k_a (ThreeComp and Conversion kinds)
+    /// nka: -k_a
     double nka;
-    /// ThreeComp: cache updated by updateCached(); Conversion: last body mass (kg)
+    /// Cache updated by updateCached()
     mutable double last_bm;
     mutable double na, nb, ng; // -α, -β, -γ
     mutable double A, B, C;    // A, B, C
+};
 
-    /// Conversion: amount of parent drug in gut, parent drug in circulation
+/** Conversion drug variant (was LSTMDrugConversion.cpp): parent drug converted
+ * to an active metabolite; parent + metabolite quantities by GSL quadrature. */
+class LSTMDrugConversion final : public LSTMDrug {
+  public:
+    /** Create a new instance, sampling from parent and metabolite types.
+     * Draw order parity-frozen (plan §3d). */
+    LSTMDrugConversion(const LSTMDrugType& type, const LSTMDrugType* metabolite, LocalRng& rng);
+
+    double getConcentration(size_t index) const override;
+    double calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const override;
+    void updateConcentration(double body_mass) override;
+
+  private:
+    double getParentConcentration() const;
+    double getMetaboliteConcentration() const;
+    double calculateFactor_conv(const Params_convFactor& p, double duration) const;
+    void setConversionParameters(Params_convFactor& p, double body_mass) const;
+    void setKillingParameters(LocalRng& rng, Params_convFactor& p, WithinHost::Infection* inf) const;
+
+  public: // run state; wire in checkpoint/humans.cpp
+    /// Metabolite's drug-type data (typeData = parent)
+    const LSTMDrugType* metaboliteData;
+
+    /// Amount of parent drug in gut, parent drug in circulation
     /// and metabolite in circulation; units: mg (A, B, C in the paper).
     double qtyG, qtyP, qtyM;
-    /// Conversion: sampled elimination/conversion rate constants
+    /// Sampled elimination/conversion rate constants
     double nkP_sample, nconv_sample, nkM_sample;
-    /// Conversion: volume of distribution of metabolite (parent uses vol_dist)
+    /// Volume of distribution of metabolite (parent uses vol_dist)
     double vol_dist_metabolite;
+    /// nka: -k_a
+    double nka;
+    /// Last body mass (kg), used by the concentration getters
+    double last_bm;
 };
 
 }

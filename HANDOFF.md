@@ -551,3 +551,91 @@ wire/common state, derived = kind payloads, ctor layering = old stream order,
 checkpoint static_casts on the kind tag. Anchors for whoever picks it up:
 model/PkPd/LSTMDrug.{h,cpp} (freeLSTMDrug* = the dtor bodies),
 model/Clinical/ClinicalModel.{h,cpp} (Kind ctor + treatment-episode guard).
+
+---
+
+# P8-q3 HANDOFF — LSTMDrug + ClinicalModel Kind-dispatch -> class hierarchies (branch `p8-q3` off `rewrite` HEAD 1b8661a0)
+
+User order behind the wave: model-option variants as clearly independent
+classes, per-approach functions; shared data structure on the base where
+genuine. p8-poly pattern applied; laws honoured: formula bodies VERBATIM (FP
+veto), RNG draw points+order unchanged (base ctors draw nothing; derived ctor
+bodies = old per-Kind case bodies verbatim), checkpoint STAYS free-function
+self-contained (kind tag + `static_cast`, zero serialisation decls in the
+classes), ALL variants kept, error strings verbatim, mock hooks untouched
+(nothing converted is mocked — WHMock covers WHInterface only).
+
+## Commits
+| commit | scope | model code LOC / files |
+|---|---|---|
+| baseline 1b8661a0 | | 16,759 / 115 |
+| `f9f7bd44` | LSTMDrug -> base + `LSTMDrugOneComp`/`LSTMDrugThreeComp`/`LSTMDrugConversion` (same TU; ~59-TU cone keeps bodies in .cpp) | 16,759 / 115 (delta 0) |
+| `dcd89ea5` | ClinicalModel -> base + `CMDecisionTree5Day`/`CMImmediateOutcomes`/`CMEventScheduler` | 16,805 / 115 (+46) |
+
+## LSTMDrug shape
+- Base holds ONLY what every variant shares: `const Kind kind`, `typeData`,
+  `doses` (+ `medicate`), `vol_dist`; non-virtual `getIndex`; virtual
+  getConcentration/calculateDrugFactor/updateConcentration + virtual dtor.
+  The old `freeLSTMDrug*` dtor dispatch was already retired in p8-files
+  (`vector<unique_ptr<LSTMDrug>>` owns destruction); the virtual dtor is its
+  class-shaped replacement.
+- Old switch-body -> method map: ctor case X = derived X ctor body;
+  getConcentration case = override body (base dead `return 0.0` fell away);
+  `drugFactor_X`/`updateConcentration_X` = `calculateDrugFactor`/
+  `updateConcentration` overrides verbatim; per-kind helpers (updateCached,
+  calculateFactor_fC / parent+metabolite getters, calculateFactor_conv,
+  set*Parameters) private in the owning class; `metaboliteData` moved to
+  LSTMDrugConversion; GSL workspaces + func_* integrands unchanged file-scope.
+- Ctor/stream proof: each derived ctor body is the old case body line-for-
+  line (OneComp: Vd→elim; ThreeComp: Vd→elim→k12→k21→k13→k31→ka; Conversion:
+  Vd→ka→elim→conv→metab elim→metab Vd), base draws nothing ⇒ stream
+  bit-identical (PkPdCompliance/LSTMPkPd suites + T1 63/63 confirm).
+- Factory: `DrugRegistry::createInstance` — one create-line per variant,
+  selection condition unchanged (conversion_rate / k12).
+- Checkpoint (`checkpoint/humans.cpp`): kind tag written from a local copy
+  (`kind` is const now); read tag discarded — the factory rebuilds the same
+  kind from the same type config; per-kind field order/names identical.
+
+## ClinicalModel inventory (model/Clinical/)
+Converted: the one instance family — Kind { DecisionTree5Day,
+ImmediateOutcomes, EventScheduler }, selected by `opt_event_scheduler`/
+`opt_imm_outcomes` (healthSystem XML). All four dispatch points became
+virtuals: update() tail -> `doClinicalUpdate()`; the two
+`kind==ImmediateOutcomes` branches inside `clinicalUpdate5Day` ->
+`uncomplicatedEvent()` (public: shared free function dispatches through it);
+`isExistingCase()` ES-clock pick -> `timeOfLastTreatment()` (ES override).
+ES payload (esPgState + es_* column accessors) -> CMEventScheduler; ES ctor
+guard (verbatim error) -> CMEventScheduler ctor; `esClinicalUpdate` now takes
+`CMEventScheduler&` (body byte-identical). Override bodies are one-liners
+onto the untouched free-function bodies, in ClinicalModel.cpp (the TU
+resolving the include cycle; same-file rule).
+Ruled out (already clearly-identifiable / not instance variants):
+- `DTKind` switch in CMDecisionTree.h — compiled decision-tree node
+  interpreter (phase-4a frozen design), node kinds ≠ model-option variants.
+- CM5DayCommon / DecisionTree5Day / ImmediateOutcomes / ClinicalEventScheduler
+  / ESCaseManagement — per-approach STATIC config classes, each with its own
+  init/setHealthSystem already; no per-instance kind state.
+- ClinicalModel::init/setHS static selectors — scenario config loading (which
+  XML section feeds which family), the factory input itself; not behaviour
+  dispatch.
+
+## Wire notes (checkpoint bytes unchanged both commits; wire may break freely
+per contract, kept identical anyway)
+- LSTMDrug: tag+doses+vol_dist+per-kind fields byte-identical.
+- ClinicalModel: esPgState slot symmetric — ES writes/reads its payload via
+  static_cast; 5-day variants write/read the old always-NONE int via a local.
+
+## Gates (per commit + final)
+build 0 err; ctest 64/64 incl Resume_* 12/12; unittest .OK!; T1 tier-a 53/53;
+tier-b seeds 1-4 after each (both commits touch factory/ctor); FINAL tier-a +
+tier-b seeds 1-10 = 63/63 identical. No bench (structural; storage and
+per-day dispatch counts unchanged by construction — ClinicalModel update()
+now takes ONE virtual call where the free functions took the same work;
+LSTMDrug per-drug virtuals replace switch jumps, same call count).
+
+## Left open / notes
+- PERF.md untouched (main-session ledger): honest LOC delta +46 total.
+- `unittest/` needed zero re-homing (no suite constructed LSTMDrug or
+  ClinicalModel instances directly; only statics/factories, unchanged).
+- Parallel-agent landmine respected: random.h untouched; no RNG call site
+  moved except the verbatim ctor-case relocation inside these two families.
