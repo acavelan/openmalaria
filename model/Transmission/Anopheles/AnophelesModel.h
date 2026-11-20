@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_AnophelesModel
-#define Hmod_AnophelesModel
+#pragma once
 
 #include "Clock.h"
 #include "RunContext.h"
@@ -42,7 +41,6 @@ namespace scnXml
 }
 
 namespace OM {
-namespace checkpoint { class Archive; }
 namespace Transmission {
 namespace Anopheles {
     using std::numeric_limits;
@@ -185,9 +183,6 @@ struct TrapData {
 class AnophelesModel
 {
 public:
-    /// Run-state save/restore (model/checkpoint/transmission.cpp)
-    void checkpoint (checkpoint::Archive& a);
-
     /// The run this model belongs to (clock accessed as ctx.clock).
     RunContext& ctx;
 
@@ -643,4 +638,3 @@ public:
 }
 }
 }
-#endif

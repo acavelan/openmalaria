@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_UtilVectors
-#define Hmod_UtilVectors
+#pragma once
 
 #include "Clock.h"
 #include "util/errors.h"
@@ -182,4 +181,3 @@ ostream& operator<< (ostream& out, vector<T> vec) {
 }
 
 } }
-#endif

@@ -31,8 +31,7 @@
 // moved verbatim (contract a: the RNG draw stays the LAST filter test).
 
 // The includes here are more for documentation than required.
-#ifndef OM_INTERVENTIONS_DEPLOYMENTS_H
-#define OM_INTERVENTIONS_DEPLOYMENTS_H
+#pragma once
 
 #include "Clock.h"
 #include "RunContext.h"
@@ -468,4 +467,3 @@ inline const ByDeployTime byDeployTime{};
 
 } }
 
-#endif

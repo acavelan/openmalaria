@@ -26,8 +26,7 @@
 // Deployment and detail-printing are the deploy_component/print_component
 // switches (model/xml/HumanInterventionComponents.h, one-TU pattern).
 
-#ifndef Hmod_interventions_Components
-#define Hmod_interventions_Components
+#pragma once
 
 #include "interventions/Interfaces.h"
 #include "interventions/Vaccine.h"
@@ -99,4 +98,3 @@ void deploy_component( RunContext& ctx, const ComponentConfig& c, Host::Human& h
 void print_component( std::ostream& out, const ComponentConfig& c );
 
 } }
-#endif

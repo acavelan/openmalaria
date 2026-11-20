@@ -1,3 +1,77 @@
+# P8-files HANDOFF — merge files that belong (branch `p8-files` off `rewrite` HEAD = p8-sweep green ad640d22)
+
+User order (verbatim): "don't touch CalcNvO, review the structure again and try
+to merge files that belong".
+
+## Environment
+- Worktree `/tmp/opencode/p8files`, build `build-fl/` = Release `-O3 -DNDEBUG
+  -ffp-contract=off -DOM_BOXTEST_BINARY=ON`; ignored symlink `build -> build-fl`
+  present (parity.py resolves generated XSD via REPO/build/schema).
+- Gates per merge commit: `cmake --build build-fl -j14` (0 errors);
+  `cd build-fl && ctest -j12` (64); `cd build-fl/unittest && ./unittest`
+  (".OK!"); T1 `python3 util/parity.py --old /tmp/opencode/om-ref/A0/openMalaria
+  --new build-fl/openMalaria --recipe /tmp/opencode/om-ref/A0/recipe.json
+  --tiers a -j12` (53); + `--tiers b --seeds 1-4` on commits moving
+  WithinHost/Clinical/PkPd BODIES. Final: tiers a + b seeds 1-10 = 63/63.
+  Commits unsigned (`--no-gpg-sign`). No bench (structural, include-level only).
+- Baseline at HEAD before first merge: build ✓, ctest 64/64, unittest .OK!,
+  tier-a 53/53, model 17,545 code LOC / 140 files.
+- TU-count tool (demography-trap check): transitive .cpp-include closure,
+  RunContext.h cone = 58/65 TUs; anything inside that cone stays a cpp.
+
+## Merge ledger (one commit per group)
+
+| # | merge | files Δ | gates |
+|---|---|---|---|
+| G12b | interventions: IRS/ITN/Vaccine/InterventionManager.cpp -> their headers (class A x4, cones 3-6 TU: each file was the header's non-XML behaviour — XML ctors stay xml/interventions.cpp (schema boundary); all moved defs inline; Vaccine.h +Host/Human.h, using-namespace OM::util dropped (was TU-local); bodies + error strings verbatim; one components-mega-file REJECTED: distinct component concepts, Components.h is their TOC) | -4 | build, ctest 64/64, unittest .OK!, T1a 53/53 |
+| G12 | mon/Continuous.cpp -> Continuous.h (class A: the 4 live functions — 3 registerCallback overloads + update — inlined into the namespace's header, 14-TU cone; init() already lives xml-side; dead xml_scenario_error using dropped; Monitoring.h merge REJECTED: Continuous.h includes Population.h, pushing it into Monitoring.h's 44-TU cone) | -1 | build, ctest 64/64 (Resume_* compares ctsout), unittest .OK!, T1a 53/53 |
+| G11 | Host/WithinHost/State.h -> PathogenesisModel.h (class B: the Pathogenesis::State enum + StatePair live in the Pathogenesis namespace the model file declares — pre-7g they were one directory; 4 includers repointed; no new includes reach the 37-TU cone beyond Parameters.h/random.h which it already had via WHInterface/Infection.h) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 + T1b 1-4 |
+| G10 | run.h -> RunContext.h (class B: run_simulation is the run-core entry declared beside the context it takes; decl-only, +10 LOC to the lean header, no new includes) | -1 | build, ctest 64/64 (TwoRunsSuite), unittest .OK!, T1a 53/53 |
+| G9 | PkPd: LSTMTreatments.h -> LSTMMedicate.h (class B: the loader declaration for exactly the registry LSTMMedicate.h defines — Schedule/DosageTable/TreatmentRegistry + LSTMTreatments::init read as one 'drug course config' file; decl-only, scnXml fwd-decl kept at global scope) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 |
+| G8 | PkPd: LSTMDrugOneComp/ThreeComp/Conversion.cpp -> LSTMDrug.cpp (class A cpp->cpp: all four files are the body of the ONE LSTMDrug final class, split by Kind when the old hierarchy collapsed; every variant equation + both GSL workspaces verbatim, per-file include sets unioned; LSTMDrug.h cone is 59 TU, so bodies stay out of headers) | -3 | build, ctest 64/64, unittest .OK! (LSTMPkPd/PkPdCompliance suites), T1a 53/53 + T1b 1-4 |
+| G7 | Host/WithinHost/Infection/DummyInfection.cpp -> Infection.cpp (class A cpp->cpp: Dummy is the dispatcher's own simplest Kind; Infection.h is a 43-TU header, so bodies stay in the cpp — Dummy variant + infection_new/infection_update dispatch now one file; stale empty 'checkpointing' section comment replaced; bodies verbatim) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 + T1b 1-4 |
+| G6 | Host/NeonatalMortality.cpp -> .h (class A: model math + update loop inline; run-state globals become C++20 inline vars, external linkage kept for the extern refs in xml/healthSystem.cpp:init and checkpoint/statics.cpp:staticCheckpoint — both files untouched; 6-TU cone) | -1 | build, ctest 64/64 (Resume_* incl. neonatal wire), unittest .OK!, T1a 53/53 + T1b 1-4 |
+| G5 | Clinical/CMDecisionTree.cpp -> CMDecisionTree.h (class A: the flat node-array interpreter is the header's own API — exec_decision_tree inline; anon-namespace helpers keep internal linkage; compile_decision_tree stays in xml/healthSystem.cpp (schema boundary); ClinicalModel.h include dropped (unreferenced); all consumers already under ClinicalModel/WHInterface cone) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 + T1b 1-4 |
+| G4 | Clinical/ESCaseManagement.h -> EventScheduler.h (only consumer; same EventScheduler chain — ES trees + execute() sit after esClinicalUpdate). healthSystem.cpp/HumanInterventionComponents.h/unittest suite re-pointed (include line only; no fixture edits) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 + T1b 1-4 |
+| G1 | util/SpeciesIndexChecker.cpp -> .h (both methods inline; std:: ostringstream qualification only) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 |
+| G3 | 5-day chain: DecisionTree5Day.{h,cpp}+ImmediateOutcomes.{h,cpp}+CM5DayCommon.{h,cpp} -> CM5DayCommon.{h,cpp} (bodies verbatim; local enum CaseType -> CM5DayCommon::CaseType, value-identical; trees statics stay extern for xml/healthSystem.cpp) | -4 | build, ctest 64/64, unittest .OK!, T1a 53/53 + T1b 1-4 |
+| G2 | util/DecayFunction.cpp -> .h (formula switch + sampler inlined; bodies verbatim except std:: qualifications) | -1 | build, ctest 64/64 (incl. T2 DecayFunctionSuite), unittest .OK!, T1a 53/53 |
+
+## Rejected (belonging/TU tests)
+- errors.cpp(118 LOC/67 TU), Genotypes.cpp(68/59), Diagnostic.cpp(54/58),
+  LSTMDrugType.cpp(78/59), LSTMModel.cpp(83/58), PopulationAgeStructure.cpp(126/58),
+  UnitParse.cpp(127/39), PerHost.cpp(106/33), InfectionIncidenceModel.cpp(156/33):
+  cpp→header = demography-class (body lands in the wide RunContext/PerHost cone).
+- IvState.cpp→IvState.h: 199 LOC + documented leaf header (cycle break); fold
+  would drag ITN/IRS/GVI registries into the leaf. Keep cpp.
+- Continuous.h+Monitoring.h: Continuous.h includes Population.h (16 TU) —
+  merging pushes it into Monitoring.h's 44-TU cone. Keep separate.
+- ImmediateOutcomes.h+ESCaseManagement.h: different health-system families
+  (5-day vs EventScheduler). ESCaseManagement.h merged into EventScheduler.h
+  instead (its only consumer + same ES concept).
+- transmission.h→TransmissionModel.h: it is the xml/entomology.cpp factory TOC
+  incl. AnophelesModel+EmergenceRateEstimator includes; folding drags vector
+  machinery into the model header. Keep.
+- NeonatalMortality.h+InfectionIncidenceModel.h: different concepts (neonatal
+  death event vs FOI config model); InfectionIncidenceModel.h cone = 33 TU.
+- xml/util.h incl. UnitParse.h: DocumentLoader/XMLChecker pull <schema>;
+  UnitParse.h cone = 39 TU → schema would hit all of them (generated-schema
+  bloat rule). XMLChecker+latentP+DocumentLoader merge together instead
+  (all schema-reading, ≤5 TU); name kept DocumentLoader.h (xml/util.h would
+  mislabel xml/util.cpp, whose API deliberately lives in consumer headers).
+- ModelNameProvider.h→ModelOptions.h: different concepts (name registry vs
+  option bits); fold pushes ModelOptions.h (340 lines) into Parameters.h cone.
+- One interventions "components" mega-file: IRS/ITN/GVI/Vaccine are distinct
+  component concepts; Components.h is already their TOC. Per-file folds only.
+- ClinicalModel.cpp/Episode.cpp→headers: cycle (Episode.h←ClinicalModel.h,
+  EventScheduler.h→ClinicalModel.h). Keep cpp.
+- Exclusions honoured: CalcNvO.{h,cpp}, EmergenceRateEstimator.h,
+  model/checkpoint/ internals, demography.cpp, mod.h/checkpoint usings,
+  ComponentId.h leaf, RunContext.h lean, all variants alive, formula bodies +
+  error strings verbatim.
+
+---
+
 # P8-sweep HANDOFF — ponytail audit sweep (branch `p8-sweep` off `rewrite` HEAD incl. p8-CK merge; green-stop at HEAD)
 
 SOURCE OF WORK: `/tmp/opencode/ponytail_audit.md` (ranked ledger, auditor-verified).
@@ -301,3 +375,16 @@ p8-structure deletes files p8ckpt edits → delete/modify + contextual conflicts
 - `.opencode/skills/openmalaria-rewrite/SKILL.md` target-layout still lists
   `model/core/` — contract-doc update is the main session's call.
 - PERF.md untouched (main-session ledger). Report the +9 here.
+
+**8-Q1 dead-weight note (from G16, NOT touched here):** in the engine block now in util/random.h — commented-out `Sseq` ctor/seed + `operator<<`/`>>` blocks, `generate_block()`/`chacha_core()` declarations with no definitions anywhere, and `rotl`'s file-static placement; plus random.h's `<chacha.h>` include + `MasterRng` typedef are only referenced by checkpoint RNG export — prune candidates with proof there.
+
+**Class-design-pass anchors (queued after p8-files; definitions were moved between files here, designs untouched — these are the cohabited sections to split/rework):**
+- `model/Host/WithinHost/Infection/Infection.cpp` — Kind-dispatch ctor/update + the Dummy kind section (was DummyInfection.cpp, G7) in one file.
+- `model/PkPd/LSTMDrug.cpp` — all four Kind bodies (OneComp/ThreeComp/Conversion sections marked `// ———`) + shared ctor (G8); `updateCached`/GSL workspace file-scope state lives here.
+- `model/Clinical/CM5DayCommon.cpp` — DecisionTree5Day + ImmediateOutcomes + shared CM5Day helpers (G3 5-day chain merge); `i`/`l` twin code blocks per kind live in the WH files.
+- `model/Host/WithinHost/WHInterface.h` — VivaxBrood + SlotAllocator (G15) + WHInterface now share one header; brood/allocator design review happens there.
+- `model/Transmission/TransmissionModel.h` — flat Kind-switched class; vector/non-vector halves are comment-marked.
+
+**Rulings on Human/HostColumns/Population (user-approved, final — do not re-litigate):**
+- Human→Population merge: REJECTED. Human is the SoA row-handle facade (typed accessors over HumanColumns + row-object identity, doB/rng/infIncidence/withinHostModel/clinicalModel members), not a data blob. Include graph: Human.h is a widely-used leaf read by ~26 TUs; Population.h is an 11-TU consumer that includes Human.h — merging Human into Population would bloat every Human reader with population/demography internals for zero LOC gain. The SoA question doesn't remove the handle: callers name per-human behaviour (ageYears, rng, infect…), not column indices.
+- HostColumns.h → owning container's header (Population.h holds the only `HumanColumns cols` member): REJECTED by include-cycle, verified: HostColumns.h is included by Human.h, WHInterface.h, PerHost.h, HumanComponents.h, IvState.h, Vaccine.h + Population.h; Population.h includes Human.h, so the merged header would require Human.h -> Population.h -> Human.h. The vocabulary a row-handle and column-readers below Population consume cannot live in the container header above them. HostColumns.h stays the deliberate leaf it is (3 records, ~116 LOC, trivial includes) — matching the ComponentId.h leaf rule.

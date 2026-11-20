@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_checkpoint_h
-#define Hmod_checkpoint_h
+#pragma once
 
 // Run-state checkpointing (plan v3.3 phase 8-CK, redone xml/-style).
 //
@@ -80,4 +79,3 @@ void readCheckpoint (RunContext& ctx, Population& population,
 
 } // namespace checkpoint
 } // namespace OM
-#endif

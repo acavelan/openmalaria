@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+// p8-files (documented leaf header): IvState.h is the SoA vocabulary; the
+// iv_deploy/iv_* effect tables stay here, keyed on intervention type.
 #include "Clock.h"
 #include "RunContext.h"
 #include "interventions/IvState.h"

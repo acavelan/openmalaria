@@ -27,8 +27,7 @@
 // ITN/IRS/GVI parameter registries; 7.2b made the parameters plain public
 // structs, so no friend declarations are needed).
 
-#ifndef Hmod_interventions_IvState
-#define Hmod_interventions_IvState
+#pragma once
 
 #include "Clock.h"
 #include "Host/HostColumns.h"  // IvRecord
@@ -55,4 +54,3 @@ double iv_postprandial_survival( RunContext& ctx, const IvRecord& r, size_t spec
 double iv_rel_fecundity( RunContext& ctx, const IvRecord& r, size_t species );
 
 } }
-#endif

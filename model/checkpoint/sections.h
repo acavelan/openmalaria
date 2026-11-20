@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_checkpoint_sections
-#define Hmod_checkpoint_sections
+#pragma once
 
 // Module-private section functions (one per wire section; the Archive
 // carries the direction — write each field exactly once, in this order:
@@ -43,4 +42,3 @@ void ckHumans (Archive&, RunContext&, Population&);
 
 } // namespace checkpoint
 } // namespace OM
-#endif

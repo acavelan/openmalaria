@@ -20,12 +20,15 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef OM_INTERVENTIONS_IRS
-#define OM_INTERVENTIONS_IRS
+#pragma once
 
 #include "RunContext.h"
 #include "interventions/ComponentId.h"
 #include "util/DecayFunction.h"
+#include <cmath>
+#include "R_nmath/qnorm.h"
+#include "util/SpeciesIndexChecker.h"
+#include "util/errors.h"
 namespace scnXml
 {
     class IRSDescription;
@@ -145,6 +148,61 @@ public:
     // No memory management
 };
 
+// ———  implementation (was IRS.cpp)  ———
+
+
+
+// (phase 7.2b: deploy/componentType/print_details virtuals are gone — the
+// deploy_component switch calls iv_deploy + the mon report)
+
+inline IRSParams::IRSAnopheles::RelativeAttractiveness::RelativeAttractiveness() :
+    lPF( numeric_limits< double >::signaling_NaN() ),
+    insecticideScaling( numeric_limits< double >::signaling_NaN() )
+{}
+inline IRSParams::IRSAnopheles::SurvivalFactor::SurvivalFactor() :
+    BF( numeric_limits< double >::signaling_NaN() ),
+    PF( numeric_limits< double >::signaling_NaN() ),
+    insecticideScaling( numeric_limits< double >::signaling_NaN() ),
+    invBaseSurvival( numeric_limits< double >::signaling_NaN() )
+{}
+inline void IRSParams::IRSAnopheles::SurvivalFactor::init1(){
+    BF = 0.0;
+    PF = 0.0;
+    insecticideScaling = 0.0;
+    invBaseSurvival = 1.0;
+}
+inline double IRSParams::IRSAnopheles::RelativeAttractiveness::relativeAttractiveness(
+        double insecticideContent
+) const {
+    double insecticideComponent = 1.0 - exp(-insecticideContent*insecticideScaling);
+    double relAvail = exp( lPF*insecticideComponent );
+    assert( relAvail>=0.0 );
+    return relAvail;
+}
+inline double IRSParams::IRSAnopheles::SurvivalFactor::survivalFactor(
+        double insecticideContent
+) const {
+    double insecticideComponent = 1.0 - exp(-insecticideContent*insecticideScaling);
+    double killingEffect = BF + PF*insecticideComponent;
+    double survivalFactor = (1.0 - killingEffect) * invBaseSurvival;
+    assert( survivalFactor >= 0.0 );
+    assert( survivalFactor <= 1.0 );
+    return survivalFactor;
+}
+
+inline double IRSParams::sampleInitialInsecticide(LocalRng& rng) const{
+    double sample = initialInsecticide.sample(rng);
+    if( sample < 0.0 )
+        sample = 0.0;       // avoid negative samples
+    if( sample > maxInsecticide )
+        sample = maxInsecticide;
+    return sample;
+}
+
+
+// ———  per-human data  ———
+// (phase 7.2a: the HumanIRS class is gone; its draws live in iv_deploy and
+// its effects in iv_* — interventions/IvState.cpp)
+
 } }
 
-#endif

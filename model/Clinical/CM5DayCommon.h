@@ -1,5 +1,7 @@
+
+
 /* This file is part of OpenMalaria.
- * 
+ *
  * Copyright (C) 2005-2026 Swiss Tropical and Public Health Institute
  * Copyright (C) 2005-2015 Liverpool School Of Tropical Medicine
  * Copyright (C) 2020-2026 University of Basel
@@ -9,27 +11,31 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or (at
  * your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_CM5DayCommon
-#define Hmod_CM5DayCommon
+// The 5-day case-management family: shared config (CM5DayCommon) plus the
+// two 5-day health-system kinds DecisionTree5Day and ImmediateOutcomes
+// (their headers were one-include away from this one; merged here).
+
+#pragma once
 
 #include "RunContext.h"
-#include "Host/WithinHost/State.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "mon/Monitoring.h"
 
+namespace scnXml { class HSDT5Day; class HSImmediateOutcomes; }
 namespace OM {
 namespace Clinical {
 using Host::Human;
@@ -66,6 +72,66 @@ void clinicalUpdate5Day (ClinicalModel& cm, RunContext& ctx, Human& human,
 void severeMalaria (ClinicalModel& cm, RunContext& ctx, Human& human,
                  Episode::State pgState, double ageYears, int& doomed);
 
+
+/**
+ * This models case management with 5-day time steps, optionally including
+ * PK/PD modeling for uncomplicated cases.
+ * 
+ * Uncomplicated cases: access, otherwise known as "seeking any type of
+ * treatment", is determined by a fixed-function decision, which may be
+ * modified by a treatment-seeking factor. Treatment decisions (type of
+ * treatment, use of diagnostics, effectiveness) are determined by a
+ * programmable decision tree.
+ * 
+ * Severe cases: all decisions and outcomes are calculated via a fixed-function
+ * probability tree, using the same logic for handling severe cases as has long
+ * been used.
+ */
+class DecisionTree5Day
+{
+public:
+    /** Load health system data from initial data or an intervention's data (both from XML).
+     * (Re)loads all data affected by this healthSystem element. */
+    static void setHealthSystem (RunContext& ctx, const scnXml::HSDT5Day& hsDescription);
+};
+
+/// Uncomplicated-case handling for the DecisionTree5Day kind (old
+/// DecisionTree5Day::uncomplicatedEvent).
+void treeUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx, Human& human,
+                             Episode::State pgState);
+
+/**
+ * This models case management at a 5-day time step with all-or-nothing
+ * treatment.
+ * 
+ * Uncomplicated cases: access, otherwise known as "seeking any type of
+ * treatment", is determined by a fixed-function decision, which may be
+ * modified by a treatment-seeking factor. Treatment decisions are also fixed
+ * function.
+ * 
+ * Severe cases: all decisions and outcomes are calculated via a fixed-function
+ * probability tree, using the same logic for handling severe cases as has long
+ * been used.
+ * 
+ * NOTE: this provides a strict subset of the functionality of DecisionTree5Day.
+ */
+class ImmediateOutcomes
+{
+public:
+    /** Load health system data from initial data or an intervention's data (both from XML).
+     * (Re)loads all data affected by this healthSystem element. */
+    static void setHealthSystem (RunContext& ctx, const scnXml::HSImmediateOutcomes& hsioData);
+    
+    static double cureRateUCOfficial[CM5DayCommon::NumCaseTypes];
+    static double cureRateUCSelfTreat[CM5DayCommon::NumCaseTypes];
+    static WithinHost::TreatmentId treatmentUC[CM5DayCommon::NumCaseTypes];
+    static bool useDiagnosticUC;
+};
+
+/// Uncomplicated-case handling for the ImmediateOutcomes kind (old
+/// ImmediateOutcomes::uncomplicatedEvent).
+void immOutUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx, Human& human,
+                               Episode::State pgState);
+
 }
 }
-#endif

@@ -25,15 +25,14 @@
 
 #include "Clock.h"
 
-#include "run.h"
+#include "RunContext.h"
 
 #include "util/errors.h"
 #include "util/CommandLine.h"
 #include "util/ModelOptions.h"
 #include "util/ModelNameProvider.h"
 #include "util/StreamValidator.h"
-#include "xml/DocumentLoader.h"
-#include "xml/XMLChecker.h"
+#include "xml/DocumentLoader.h"  // + XMLChecker + (not latentP)
 
 #include "checkpoint/checkpoint.h"
 #include "mon/Continuous.h"

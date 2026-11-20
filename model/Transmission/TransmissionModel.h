@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_TransmissionModel
-#define Hmod_TransmissionModel
+#pragma once
 
 #include <string.h>
 #include <fstream>
@@ -54,7 +53,6 @@ using namespace std::placeholders;
 namespace OM
 {
 class Population;
-namespace checkpoint { class Archive; }
 namespace Host
 {
 class Human;
@@ -523,7 +521,7 @@ public:
      * Checkpointed. */
     double annualEIR;
 
-private:
+public:  // wire state (checkpoint/transmission.cpp)
     /*! annAvgKappa is the overall proportion of mosquitoes that get infected
      * allowing for the different densities in different seasons (approximating
      * relative mosquito density with the EIR).
@@ -556,6 +554,7 @@ private:
     /// For "num transmitting humans" cts output.
     int numTransmittingHumans;
 
+private:
     // Reporting data. Doesn't need checkpointing due to reset every time-step.
     // accumulator for time step EIR of adults
     double tsAdultEntoInocs = 0.0, tsAdultEntoInocs_i = 0.0, tsAdultEntoInocs_l = 0.0;
@@ -590,9 +589,6 @@ private:
     void ctsCbResRequirements(ostream &stream);
 
 public:
-    /// Run-state save/restore (definition in model/checkpoint/transmission.cpp)
-    void checkpoint (checkpoint::Archive& a);
-
     /// RNG used by the transmission model (vector kind)
     LocalRng m_rng;
     /// Number of iterations performed during initialization (vector kind).
@@ -646,4 +642,3 @@ public:
 
 } // namespace Transmission
 } // namespace OM
-#endif

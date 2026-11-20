@@ -20,25 +20,24 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_WithinHost_Interface
-#define Hmod_WithinHost_Interface
+#pragma once
 
 #include "Clock.h"
 #include "RunContext.h"
 #include "Host/HostColumns.h"
-#include "Host/WithinHost/SlotAllocator.h"
 #include "util/random.h"
 #include "util/sampler.h"
 #include "util/errors.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
-#include "Host/WithinHost/State.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Infection/Infection.h"
 
 #include "Parameters.h"
 
 #include "PkPd/LSTMModel.h"
 
+#include <algorithm>
 #include <list>
 #include <memory>
 
@@ -54,7 +53,6 @@ class UnittestUtil;
 class InfectionImmunitySuite;
 
 namespace OM {
-namespace checkpoint { class Archive; }
 namespace Host {
     class Human;
 }
@@ -62,6 +60,43 @@ namespace WithinHost {
 namespace Pathogenesis {
     class PathogenesisModel;
 }
+
+/** Sole owner of the per-host infection-slot cap (plan §5: "MAX_INFECTIONS=21
+ * lives in one place"). The only real reason for the limit is to prevent
+ * bad input from making the number of infections balloon stupidly.
+ *
+ * The cap has TWO RNG-visible modes which must never be conflated
+ * (census fact 2, latent-bugs.md #4; pinned by unittest/SlotAllocatorSuite.h):
+ *  A. import mode  — try_import(): at the cap the caller skips the entire
+ *     create, including the genotype draw (0 draws consumed).
+ *     // parity: CommonWithinHost.cpp:111, DescriptiveWithinHost.cpp:81
+ *  B. update mode  — clamp_new(): the caller's Poisson draw was already
+ *     consumed, so counts are clamped draw-then-drop; _l clamps first, then
+ *     _i against what remains.
+ *     // parity: CommonWithinHost.cpp:131-132, DescriptiveWithinHost.cpp:104-105
+ */
+struct SlotAllocator {
+    /// Exact constraint is: _MOI <= MAX_INFECTIONS.
+    static constexpr int MAX_INFECTIONS = 21;
+
+    /// Free slots for a host with num_infs infections (0 at the cap).
+    static constexpr int free_slots(int num_infs) { return MAX_INFECTIONS - num_infs; }
+
+    /// Mode A: true iff an import may proceed (genotype draw included).
+    static constexpr bool try_import(int num_infs) { return num_infs < MAX_INFECTIONS; }
+
+    /// Mode B: clamp to-create counts in place (_l first — order is load-bearing).
+    static inline void clamp_new(int& n_i, int& n_l, int num_infs) {
+        n_l = std::min(n_l, free_slots(num_infs));
+        n_i = std::min(n_i, free_slots(num_infs) - n_l);
+    }
+
+    /// Clamp a stand-alone drawn count (post-draw; no rng effect).
+    /// parity: InfectionIncidenceModel.cpp:257-258
+    static constexpr int clamp_count(int want) {
+        return want > MAX_INFECTIONS ? MAX_INFECTIONS : want;
+    }
+};
 
 class WHInterface;
 
@@ -126,9 +161,6 @@ public:
 
     VivaxBrood( RunContext& ctx, LocalRng& rng, int origin, WHInterface *host );
     ~VivaxBrood();
-    /** Save a checkpoint. */
-    /** Create from checkpoint. */
-    
     struct UpdResult{
         UpdResult() : newPrimaryBS(false), newRelapseBS(false), newRelapsebBS(false), newBS(false) {}
         bool newPrimaryBS, newRelapseBS, newRelapsebBS, newBS, isFinished;
@@ -161,10 +193,7 @@ public:
     /** Fully clear liver stage parasites. */
     void treatmentLS();
 
-    /// Save/restore wire state (model/checkpoint/humans.cpp).
-    void checkpoint (checkpoint::Archive& a);
-
-private:
+public:  // run state; wire in checkpoint/humans.cpp
     
     // list of times at which the merozoite and hypnozoites release, ordered by
     // time of release, soonest last (i.e. last element is next one to release)
@@ -348,7 +377,7 @@ public:
     InfectionOrigin getInfectionOrigin() const;
 
     /** The maximum number of infections a human can have: owned by
-     * SlotAllocator (model/Host/WithinHost/SlotAllocator.h), the single clamp
+     * SlotAllocator (above), the single clamp
      * owner; see its comment for the two RNG-visible modes. */
 
 public:	// simple data + per-kind fragments (test suites and WH models touch these directly)
@@ -561,4 +590,3 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
 
 }
 }
-#endif

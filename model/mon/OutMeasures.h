@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef H_OM_mon_OutMeasures
-#define H_OM_mon_OutMeasures
+#pragma once
 
 #include <cstdint>
 #include <limits>
@@ -379,4 +378,3 @@ inline bool isValidCondition(Measure measure)
 } // namespace mon
 } // namespace OM
 
-#endif

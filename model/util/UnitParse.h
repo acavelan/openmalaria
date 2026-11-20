@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_OM_util_timeConversions
-#define Hmod_OM_util_timeConversions
+#pragma once
 
 #include "Clock.h"
 #include "RunContext.h"
@@ -93,4 +92,3 @@ namespace UnitParse {
 
 }
 
-#endif

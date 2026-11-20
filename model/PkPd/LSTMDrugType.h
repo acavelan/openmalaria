@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_LSTMDrugType
-#define Hmod_LSTMDrugType
+#pragma once
 
 #include "Clock.h"
 #include "util/sampler.h"
@@ -237,4 +236,3 @@ struct DrugRegistry {
 };
 
 } }
-#endif

@@ -23,8 +23,7 @@
 // Utility for unittests: touches model state directly (model types are plain
 // structs/classes with public state; no "friend" grants exist in the model).
 
-#ifndef Hmod_UnittestUtil
-#define Hmod_UnittestUtil
+#pragma once
 
 #include "Clock.h"
 #include "util/ModelOptions.h"
@@ -33,7 +32,7 @@
 #include "Host/Human.h"
 #include "PkPd/LSTMModel.h"
 #include "PkPd/LSTMDrugType.h"
-#include "PkPd/LSTMTreatments.h"
+#include "PkPd/LSTMMedicate.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "Host/WithinHost/Infection/Infection.h"
@@ -495,4 +494,3 @@ public:
     static void resetModelOptions(){ util::ModelOptions::reset(); }
 };
 
-#endif

@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_AgeGroupInterpolationSuite
-#define Hmod_AgeGroupInterpolationSuite
+#pragma once
 
 #include <cxxtest/TestSuite.h>
 #include "UnittestUtil.h"
@@ -106,4 +105,3 @@ const double AgeGroupInterpolationSuite::linearInterpValues[] = {
     6.0800000000000001, 3.0489999999999999, 5.4100000000000001, 4.938533333333333
 };
 
-#endif

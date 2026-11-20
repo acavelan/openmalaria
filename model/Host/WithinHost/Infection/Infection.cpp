@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "RunContext.h"
 #include "Host/WithinHost/Infection/Infection.h"
 
 namespace OM { namespace WithinHost {
@@ -72,6 +73,28 @@ bool infection_update( Infection& inf, LocalRng& rng, double survivalFactor, Sim
     }
 }
 
-// ———  checkpointing  ———
+// ———  Dummy kind (was DummyInfection.cpp; simplest density model)  ———
+
+Infection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+    return infection_new (ctx, rng, protID, origin, Infection::Kind::Dummy);
+}
+
+void infection_init_dummy (RunContext& ctx) {
+    ctx.createInfection = &createDummyInfection;
+}
+
+bool update_density_dummy( Infection& inf, LocalRng& rng, double survivalFactor, SimTime, double ){
+    const double GROWTH_RATE = 8.0;
+    const double PARASITE_THRESHOLD = 1;
+    
+    inf.m_density = (mod_nn(int(inf.m_density*GROWTH_RATE), 20000)) * survivalFactor;
+    inf.m_cumulativeExposureJ += inf.m_density;
+    
+    if (inf.m_density < PARASITE_THRESHOLD) {
+        return true;
+    } else {
+        return false;
+    }
+}
 
 } }

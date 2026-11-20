@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_TestPaths
-#define Hmod_TestPaths
+#pragma once
 // If this file is included unconfigured, this will fail.
 // When configured, @CMAKE_CONFIGURED@ is replaced by 1.
 #if @CMAKE_CONFIGURED@ != 1
@@ -30,4 +29,3 @@ assert (false);
 
 const char* UnittestSourceDir = "@CMAKE_CURRENT_SOURCE_DIR@/";	// must end with '/'
 const char* UnittestScenario = "@CMAKE_CURRENT_BINARY_DIR@/configured/scenario.xml";
-#endif

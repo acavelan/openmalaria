@@ -23,8 +23,9 @@
 // Wire sections: statics (run-modified globals) and monitoring (continuous
 // output position + survey/report accumulators).
 //
-// Member definitions for the subsystem statics deliberately live here (in
-// their home namespaces) so all wire knowledge stays in model/checkpoint/.
+// Free wire helpers for the subsystem statics deliberately live here (in
+// their home namespaces) so all wire knowledge stays in model/checkpoint/:
+// the model headers declare nothing checkpoint-related.
 
 #include "sections.h"
 
@@ -52,20 +53,24 @@ namespace Host {
 }
 
 namespace Host {
-void NeonatalMortality::staticCheckpoint (checkpoint::Archive& a) {
+/// NeonatalMortality run state (was NeonatalMortality::staticCheckpoint).
+void neonatalStatics (checkpoint::Archive& a) {
     a.value (riskFromMaternalInfection);
     a.vector (prevByGestationalAge);
 }
-void InfectionIncidenceModel::staticCheckpoint (checkpoint::Archive& a) {
-    a.value (ctsNewInfections);
+/// InfectionIncidenceModel run counter (was InfectionIncidenceModel::staticCheckpoint).
+void infectionIncidenceStatics (checkpoint::Archive& a) {
+    a.value (InfectionIncidenceModel::ctsNewInfections);
 }
-void ImportedInfections::checkpoint (checkpoint::Archive& a) {
-    a.value (lastIndex);
+/// ImportedInfections rate-table cursor (was ImportedInfections::checkpoint).
+void checkpoint (checkpoint::Archive& a, ImportedInfections& ii) {
+    a.value (ii.lastIndex);
 }
 } // namespace Host
 
 namespace Clinical {
-void InfantMortality::staticCheckpoint (checkpoint::Archive& a) {
+/// InfantMortality death/risk summaries (was InfantMortality::staticCheckpoint).
+void infantMortalityStatics (checkpoint::Archive& a) {
     a.vector (infantDeaths);
     a.vector (infantIntervalsAtRisk);
 }
@@ -74,15 +79,15 @@ void InfantMortality::staticCheckpoint (checkpoint::Archive& a) {
 namespace checkpoint {
 
 void ckStatics (Archive& a, RunContext& ctx) {
-    Host::NeonatalMortality::staticCheckpoint (a);
-    Host::InfectionIncidenceModel::staticCheckpoint (a);
-    Clinical::InfantMortality::staticCheckpoint (a);
+    Host::neonatalStatics (a);
+    Host::infectionIncidenceStatics (a);
+    Clinical::infantMortalityStatics (a);
     int32_t mode = ctx.genotypes.current_mode;   // int on wire (enum domain)
     a.value (mode);
     if (a.reading())
         ctx.genotypes.current_mode =
             WithinHost::Genotypes::SampleMode (mode);
-    ctx.importedInfections->checkpoint (a);
+    Host::checkpoint (a, *ctx.importedInfections);
 }
 
 namespace {

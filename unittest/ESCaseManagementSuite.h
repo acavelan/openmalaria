@@ -22,11 +22,10 @@
 
 // Unittest for the EventScheduler case management
 
-#ifndef Hmod_ESCaseManagementSuite
-#define Hmod_ESCaseManagementSuite
+#pragma once
 
 #include <cxxtest/TestSuite.h>
-#include "Clinical/ESCaseManagement.h"
+#include "Clinical/EventScheduler.h"
 #include "UnittestUtil.h"
 #include "ExtraAsserts.h"
 #include <list>
@@ -230,4 +229,3 @@ private:
 };
 #endif
 
-#endif

@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_AnophelesModelSuite
-#define Hmod_AnophelesModelSuite
+#pragma once
 
 #include "Clock.h"
 #include "configured/TestPaths.h"	// from config; but must be included from the build dir
@@ -280,4 +279,3 @@ private:
   list<Host::Human> *population;
 };
 
-#endif

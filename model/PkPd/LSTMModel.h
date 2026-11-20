@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_LSTMPkPdModel
-#define Hmod_LSTMPkPdModel
+#pragma once
 
 #include <list>
 #include <memory>
@@ -149,4 +148,3 @@ public:	// simple state record; test util reads the queue directly
 };
 
 } }
-#endif

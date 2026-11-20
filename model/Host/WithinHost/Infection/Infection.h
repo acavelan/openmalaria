@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_Infection
-#define Hmod_Infection
+#pragma once
 
 #include "Clock.h"
 #include "RunContext.h"
@@ -31,7 +30,6 @@
 #include <list>
 
 namespace OM {
-namespace checkpoint { class Archive; }
 namespace WithinHost {
 
 using util::LocalRng;
@@ -90,9 +88,6 @@ struct Infection final {
     /// the checkpointing factory function pointer carries the kind across a
     /// resume).
     Kind kind;
-
-    /// Save/restore wire state (model/checkpoint/humans.cpp).
-    void checkpoint (checkpoint::Archive& a);
 
     /// Pre-erythrocytic latent period (instantiated in WHFalciparum.cpp)
     inline static void init( SimTime latentP ){
@@ -381,4 +376,3 @@ InfectionOrigin get_infection_origin(const std::list<T*> &infections)
 }
 
 } }
-#endif

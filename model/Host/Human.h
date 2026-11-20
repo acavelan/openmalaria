@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_human
-#define Hmod_human
+#pragma once
 #include "Clock.h"
 #include "RunContext.h"
 #include "Host/HostColumns.h"
@@ -100,10 +99,6 @@ public:
 
     /** Remove host from expired cohorts */
     void updateCohortSet();
-
-    /** Checkpoint (read) */
-
-    /** Checkpoint (write) */
 
     /** Contains per-species vector data (VectorModel only). */
     Transmission::PerHost perHostTransmission;
@@ -225,4 +220,3 @@ inline void Human::kill() {
 }
 
 } }
-#endif

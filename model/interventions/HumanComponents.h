@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_interventions_HumanComponents
-#define Hmod_interventions_HumanComponents
+#pragma once
 
 #include "Clock.h"
 #include "interventions/Interfaces.h"
@@ -74,4 +73,3 @@ namespace Vaccine{
 
 }
 }
-#endif
