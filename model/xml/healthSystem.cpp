@@ -24,7 +24,7 @@
 // modules: non-malaria fevers (PathogenesisModel), neonatal mortality,
 // diagnostic selection, within-host treatment options and the whole
 // decision-tree / case-management construction from scnXml.
-// Moved verbatim from Host/WithinHost/Pathogenesis/PathogenesisModel.cpp,
+// Moved verbatim from Host/WithinHost/PathogenesisModel.cpp,
 // Host/NeonatalMortality.cpp and Host/WithinHost/Treatments.cpp. State stays
 // defined in the original files (extern re-declared below).
 
@@ -34,7 +34,7 @@
 #include "Parameters.h"
 #include "Host/NeonatalMortality.h"
 #include "Host/WithinHost/Diagnostic.h"
-#include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Clinical/CM5DayCommon.h"

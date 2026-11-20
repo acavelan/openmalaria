@@ -54,7 +54,6 @@ using namespace std::placeholders;
 
 namespace OM
 {
-class Summary;
 class Population;
 namespace Host
 {

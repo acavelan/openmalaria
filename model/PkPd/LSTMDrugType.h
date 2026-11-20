@@ -216,9 +216,6 @@ struct DrugRegistry {
     /** Clear previous data. Only needed for testing. */
     void clear();
     
-    /** Get the number of drug types. */
-    size_t numDrugTypes() const;
-    
     /** Find a DrugType by its abbreviation, and returns its index.
      *
      * Throws if the drug isn't found, so you can rely on it returning a valid

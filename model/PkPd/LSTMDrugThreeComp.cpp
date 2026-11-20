@@ -24,9 +24,9 @@
 // "Mathematical Expressions of the Pharmacokinetic and Pharmacodynamic Models
 // implemented in the Monolix software", Julie Bertrand and France Mentré, Sept
 // 2008. From page 37, in particular equation (1.72) p44.
-#include "PkPd/Drug/LSTMDrug.h"
+#include "PkPd/LSTMDrug.h"
 #include "util/checkpoint.h"
-#include "PkPd/Drug/LSTMDrugType.h"
+#include "PkPd/LSTMDrugType.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/errors.h"
 #include "util/StreamValidator.h"

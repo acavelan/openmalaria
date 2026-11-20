@@ -24,7 +24,7 @@
 #define Hmod_Episode
 
 #include "Clock.h"
-#include "Host/WithinHost/Pathogenesis/State.h"
+#include "Host/WithinHost/State.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "mon/Monitoring.h"
 #include "util/ModelOptions.h"

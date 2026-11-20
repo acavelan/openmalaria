@@ -23,7 +23,7 @@
 #ifndef Hmod_LSTMPkPdModel
 #define Hmod_LSTMPkPdModel
 
-#include "PkPd/Drug/LSTMDrug.h"
+#include "PkPd/LSTMDrug.h"
 
 class UnittestUtil;
 namespace scnXml{

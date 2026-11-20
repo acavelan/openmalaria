@@ -28,7 +28,6 @@
 
 class UnittestUtil;
 namespace scnXml {
-    class Diagnostics;
     class Diagnostic;
 }
 

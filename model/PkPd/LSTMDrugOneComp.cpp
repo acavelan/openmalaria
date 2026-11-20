@@ -21,9 +21,9 @@
  */
 
 // LSTMDrug OneComp kind (was LSTMDrugOneComp; hierarchy collapsed phase 4b)
-#include "PkPd/Drug/LSTMDrug.h"
+#include "PkPd/LSTMDrug.h"
 #include "util/checkpoint.h"
-#include "PkPd/Drug/LSTMDrugType.h"
+#include "PkPd/LSTMDrugType.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/errors.h"
 #include "util/StreamValidator.h"

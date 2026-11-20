@@ -35,7 +35,7 @@
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/Infection.h"
-#include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "mon/Monitoring.h"
 #include "util/AgeGroupInterpolation.h"
