@@ -1,3 +1,48 @@
+# P8-sweep HANDOFF — ponytail audit sweep (branch `p8-sweep` off `rewrite` HEAD incl. p8-CK merge; green-stop at HEAD)
+
+SOURCE OF WORK: `/tmp/opencode/ponytail_audit.md` (ranked ledger, auditor-verified).
+All T1-safe ledger items executed except the exclusions below.
+
+## Environment
+- Worktree `/tmp/opencode/p8sweep`, build `build-sw/` = Release `-O3 -DNDEBUG
+  -ffp-contract=off -DOM_BOXTEST_BINARY=ON`. Ignored symlink `build -> build-sw`
+  REQUIRED (parity.py resolves generated XSD via REPO/build/schema).
+- Gates per commit: `cmake --build build-sw -j14`; `cd build-sw && ctest -j12`
+  (64); `cd build-sw/unittest && ./unittest` (".OK!"); T1
+  `python3 util/parity.py --old /tmp/opencode/om-ref/A0/openMalaria --new
+  build-sw/openMalaria --recipe /tmp/opencode/om-ref/A0/recipe.json --tiers a -j12`
+  (53); + `--tiers b --seeds 1-4` on within-host/clinical commits.
+  Commits unsigned (`-c commit.gpgsign=false`, headless pinentry).
+
+## Result: model 17,632 -> 17,545 code LOC (-87). FINAL GATES AT HEAD:
+build 0 err, ctest 64/64 (incl. 12 Resume_*), unittest .OK!,
+T1 tiers a+b seeds 1-10 = 63/63 bit-identical vs A0.
+
+| Commit | item | LOC | gates |
+|---|---|---|---|
+| HostColumns erase_at fold (audit #3) | 25×col.erase -> lambda + packed member list | -18 | a |
+| WithinHost twin folds (#5,#7,#8,#13,#14) | i/l new-infection twins fold over 2-elem Side array (draw-order proof in msg: each side draws fully before the next starts, nothing draws between); tautological `else if (opt_vaccine_genotype == false)` x4 -> else; y_lag blocks -> `WHInterface::cache_y_lag()`; InfGenotypeSorter -> lambda | -31 | a+b1-4 |
+| EmpiricalInfection CSV (#6) | 7-field unroll -> loop; field/value order + error strings verbatim | -9 | a+b1-4 |
+| EventScheduler (#9,#10) | const-true inHospital branches dropped (getCommunityCFR still live at subsequent-days site + CM5DayCommon); pTreatment/treatmentEffectMult (=1.0) killed, **uniform_01 DRAW KEPT** as bare call | -7 | a+b1-4 |
+| Wrapper inlines (#11,#12,#15,#17,#19-part) | getLatestReport/getLatestState -> public members; getDOB -> `cols->dob[row]` at run.cpp; getBaseModelOptions -> `options.reset()`; LSTMDrugType::getIndex -> public `index` at 10 sites (LSTMDrug::getIndex is a DIFFERENT API — kept) | -18 | a |
+| Deletions (#16,#18,#19) | WHInterface move ctor (grep proof: std::move only on unique_ptr holders); totalInfectionrateVariance (comment-only use); nYearsWarmupData inlined at single use | -4 | a |
+
+## Exclusions / honest skips
+- CalcNvO.cpp dead solver variants (`solve_Nv0_linear`,
+  `CalcXP_pre_performance_patch`, stale `maybe_unused` on `solve_Nv0_rootfind`):
+  **AWAITING USER DECISION — untouched by design, not skipped by oversight.**
+- Audit #2 create*/Infection factory merge: the checkpoint redo already killed
+  `checkpointedInfection` + its wrappers; the 4 surviving `create*Infection`
+  wrappers are live glue feeding the `RunContext::createInfection` fn-pointer
+  (5 CommonWithinHost sites + unittest) — grep proves nothing dead, removal
+  would be a factory redesign (out of scope). Stale comment Infection.h:103
+  still names the gone `infection_new_checkpointed` (comment-only, left).
+- [phase8] / [string-audit] rows and everything vetoed: not touched. Formula
+  bodies, error strings, checkpoint wire untouched (no touched field
+  serialization: Resume_* green throughout).
+
+---
+
 # Phase 8-CK HANDOFF — kill checkpointing, redo it xml-style (branch `p8-checkpoint` off `rewrite` HEAD = `p7g-green` e34997f1)
 
 User order (verbatim): "kill checkpointing entirely (one commit) then redo the
