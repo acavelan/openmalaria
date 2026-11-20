@@ -23,8 +23,7 @@
 //parse the xml scenario file
 //
 
-#ifndef Hmod_util_DocumentLoader
-#define Hmod_util_DocumentLoader
+#pragma once
 
 #include "Clock.h"
 #include "RunContext.h"
@@ -136,4 +135,3 @@ namespace OM {
 SimTime read_latentP( const SimClock& clock, const scnXml::Model& model );
 
 } // namespace OM
-#endif

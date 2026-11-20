@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_interventions_Vaccine
-#define Hmod_interventions_Vaccine
+#pragma once
 
 #include "interventions/HumanComponents.h"
 #include "Host/Human.h"
@@ -202,4 +201,3 @@ inline bool vaccinate( RunContext& ctx, Host::Human& human,
 
 }
 }
-#endif

@@ -31,8 +31,7 @@
  *    update markers). Owned by OM::RunContext; init/initInterval defined in
  *    run.cpp.
  **/
-#ifndef Hmod_Clock
-#define Hmod_Clock
+#pragma once
 
 #include <cassert>
 #include <cmath>
@@ -233,4 +232,3 @@ public:
 };
 
 }
-#endif

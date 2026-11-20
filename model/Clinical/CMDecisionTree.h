@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_ESDecisionTree
-#define Hmod_ESDecisionTree
+#pragma once
 
 #include "RunContext.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -292,4 +291,3 @@ inline CMDTOut exec_decision_tree( const FlatTree& tree, DTExecCtx& e )
 }
 
 } }
-#endif

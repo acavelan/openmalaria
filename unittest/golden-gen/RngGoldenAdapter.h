@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_RngGoldenAdapter
-#define Hmod_RngGoldenAdapter
+#pragma once
 
 /* Minimal adapter around the model's own RNG primitives, used by
  * golden-gen/rng_goldens_gen.cpp (CSV generator) and RngGoldenSuite.h (replay
@@ -251,4 +250,3 @@ inline double golden_draw(Rng& rng, const DrawSpec& s) {
 }
 
 }
-#endif

@@ -26,8 +26,7 @@
 // two 5-day health-system kinds DecisionTree5Day and ImmediateOutcomes
 // (their headers were one-include away from this one; merged here).
 
-#ifndef Hmod_CM5DayCommon
-#define Hmod_CM5DayCommon
+#pragma once
 
 #include "RunContext.h"
 #include "Host/WithinHost/PathogenesisModel.h"
@@ -136,4 +135,3 @@ void immOutUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx, Human& human,
 
 }
 }
-#endif

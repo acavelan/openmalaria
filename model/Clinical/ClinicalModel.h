@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_ClinicalModel
-#define Hmod_ClinicalModel
+#pragma once
 
 #include "Host/Human.h"
 #include "Episode.h"
@@ -216,4 +215,3 @@ public:
 
 
 } }
-#endif

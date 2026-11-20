@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_util_mod
-#define Hmod_util_mod
+#pragma once
 
 #include <cassert>
 
@@ -53,4 +52,3 @@ inline int mod_nn (int a, int b) {
 
 namespace OM { using util::mod; using util::mod_nn; }
 
-#endif

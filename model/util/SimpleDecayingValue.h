@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_SimpleDecayingValue
-#define Hmod_SimpleDecayingValue
+#pragma once
 
 #include "Clock.h"
 #include "util/DecayFunction.h"
@@ -88,4 +87,3 @@ public:  // wire state (checkpoint/transmission.cpp)
 };
 
 } }
-#endif

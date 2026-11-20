@@ -24,8 +24,7 @@
  * This file contains code internal to the LSTM PK/PD model to do with
  * dosing/scheduling.
  */
-#ifndef Hmod_LSTMMedicate
-#define Hmod_LSTMMedicate
+#pragma once
 
 #include "Clock.h"
 #include "PkPd/LSTMModel.h"
@@ -123,4 +122,3 @@ private:
 };
 
 } }
-#endif

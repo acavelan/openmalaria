@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_WithinHost_Interface
-#define Hmod_WithinHost_Interface
+#pragma once
 
 #include "Clock.h"
 #include "RunContext.h"
@@ -591,4 +590,3 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
 
 }
 }
-#endif

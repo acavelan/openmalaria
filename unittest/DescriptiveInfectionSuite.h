@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_DescriptiveInfectionSuite
-#define Hmod_DescriptiveInfectionSuite
+#pragma once
 
 /* Revived 2026-11-19. The previous version of this file was a test-less
  * skeleton (only setUp/tearDown) and no longer compiled: it called
@@ -100,4 +99,3 @@ public:
     }
 };
 
-#endif

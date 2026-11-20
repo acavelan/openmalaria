@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_RunContext
-#define Hmod_RunContext
+#pragma once
 
 #include "Clock.h"
 #include "util/mod.h"
@@ -196,4 +195,3 @@ public:
 void run_simulation(RunContext& ctx, const std::string& scenarioFile);
 
 }
-#endif

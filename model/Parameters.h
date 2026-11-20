@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_InputParameters
-#define Hmod_InputParameters
+#pragma once
 
 #include <map>
 #include <optional>
@@ -314,4 +313,3 @@ private:
 };
 
 }
-#endif

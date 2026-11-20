@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_util_CommandLine
-#define Hmod_util_CommandLine
+#pragma once
 
 #include "Clock.h"
 #include <string>
@@ -140,4 +139,3 @@ private:
 	static string resumeName;
 };
 } }
-#endif

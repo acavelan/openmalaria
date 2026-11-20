@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_PathogenesisModel
-#define Hmod_PathogenesisModel
+#pragma once
 
 #include "Clock.h"
 #include "Parameters.h"
@@ -133,4 +132,3 @@ public:
 };
 
 } } }
-#endif

@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_Infection
-#define Hmod_Infection
+#pragma once
 
 #include "Clock.h"
 #include "RunContext.h"
@@ -377,4 +376,3 @@ InfectionOrigin get_infection_origin(const std::list<T*> &infections)
 }
 
 } }
-#endif

@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_ClinicalEventSchduler
-#define Hmod_ClinicalEventSchduler
+#pragma once
 
 #include "Clock.h"
 #include "RunContext.h"
@@ -144,4 +143,3 @@ public:
 
 }
 }
-#endif

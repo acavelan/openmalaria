@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef OM_INTERVENTIONS_INTERFACES
-#define OM_INTERVENTIONS_INTERFACES
+#pragma once
 
 #include "Clock.h"
 #include "RunContext.h"
@@ -127,4 +126,3 @@ private:
 };
 
 } }
-#endif

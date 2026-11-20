@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef OM_UTIL_SPECIES_INDEX_CHECKER
-#define OM_UTIL_SPECIES_INDEX_CHECKER
+#pragma once
 
 #include "Clock.h"
 #include "util/errors.h"
@@ -87,4 +86,3 @@ inline void SpeciesIndexChecker::checkNoneMissed() const{
 }
 
 } }
-#endif

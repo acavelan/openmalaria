@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_InfectionIncidence
-#define Hmod_InfectionIncidence
+#pragma once
 
 #include "Clock.h"
 #include "Transmission/PerHost.h"
@@ -152,4 +151,3 @@ public:  // run state; wire in checkpoint/humans.cpp + statics.cpp
 };
 
 } }
-#endif

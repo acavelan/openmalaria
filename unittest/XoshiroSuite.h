@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_XoshiroSuite
-#define Hmod_XoshiroSuite
+#pragma once
 
 #include <cxxtest/TestSuite.h>
 #include "util/random.h"  // Xoshiro256P engine (was util/xoshiro.h)
@@ -55,4 +54,3 @@ public:
     }
 };
 
-#endif

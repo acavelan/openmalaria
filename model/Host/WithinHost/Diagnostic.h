@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef HS_DIAGNOSTIC
-#define HS_DIAGNOSTIC
+#pragma once
 
 #include "Clock.h"
 #include "util/random.h"
@@ -94,4 +93,3 @@ public:
 };
 
 } }
-#endif

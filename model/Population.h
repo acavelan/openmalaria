@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_Population
-#define Hmod_Population
+#pragma once
 
 #include "Clock.h"
 #include "PopulationAgeStructure.h"
@@ -83,4 +82,3 @@ void ctsIRSCoverage (Population &population, ostream& stream);
 void ctsGVICoverage (Population &population, ostream& stream);
 
 }
-#endif

@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef OM_INTERVENTIONS_GVI
-#define OM_INTERVENTIONS_GVI
+#pragma once
 
 #include "RunContext.h"
 #include "interventions/ComponentId.h"
@@ -85,4 +84,3 @@ public:
 
 } }
 
-#endif

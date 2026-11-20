@@ -22,8 +22,7 @@
 
 // Unittest for the LSTM drug model
 
-#ifndef Hmod_PkPdComplianceSuite
-#define Hmod_PkPdComplianceSuite
+#pragma once
 
 #include <cxxtest/TestSuite.h>
 #include "PkPd/LSTMModel.h"
@@ -340,4 +339,3 @@ private:
     std::multimap<size_t, pair<double, double> > schedule; // < day, pair < part of day, dosage > >
 };
 
-#endif

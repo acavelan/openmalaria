@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_UtilVectorsSuite
-#define Hmod_UtilVectorsSuite
+#pragma once
 
 #include <cxxtest/TestSuite.h>
 #include "ExtraAsserts.h"
@@ -50,4 +49,3 @@ public:
     }
 };
 
-#endif

@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_NeonatalMortality
-#define Hmod_NeonatalMortality
+#pragma once
 
 #include "Clock.h"
 #include "util/random.h"
@@ -135,4 +134,3 @@ inline void NeonatalMortality::update (RunContext& ctx, vector<Host::Human> &pop
 }
 
 } }
-#endif

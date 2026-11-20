@@ -1,5 +1,4 @@
-#ifndef Hmod_WithinHost_Mock
-#define Hmod_WithinHost_Mock
+#pragma once
 
 #include "Clock.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -34,4 +33,3 @@ unique_ptr<WithinHost::WHInterface> makeWHMock(RunContext& ctx);
 
 }
 }
-#endif

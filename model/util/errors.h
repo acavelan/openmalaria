@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef OM_util_errors
-#define OM_util_errors
+#pragma once
 
 #include <stdexcept>
 #include <vector>
@@ -220,4 +219,3 @@ namespace OM { namespace util {
         }
     }
 } }
-#endif

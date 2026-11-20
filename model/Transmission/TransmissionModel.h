@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_TransmissionModel
-#define Hmod_TransmissionModel
+#pragma once
 
 #include <string.h>
 #include <fstream>
@@ -643,4 +642,3 @@ public:
 
 } // namespace Transmission
 } // namespace OM
-#endif

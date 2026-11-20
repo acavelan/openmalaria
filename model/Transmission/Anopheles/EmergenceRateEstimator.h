@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_EmergenceRateEstimator
-#define Hmod_EmergenceRateEstimator
+#pragma once
 
 #include "Clock.h"
 #include "Transmission/PerHost.h"
@@ -275,4 +274,3 @@ public:  // run state; wire in checkpoint/transmission.cpp
 }
 }
 }
-#endif

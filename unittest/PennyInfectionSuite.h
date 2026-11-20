@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_PennyInfectionSuite
-#define Hmod_PennyInfectionSuite
+#pragma once
 
 #include <cxxtest/TestSuite.h>
 #include "UnittestUtil.h"
@@ -102,4 +101,3 @@ private:
     LocalRng m_rng;
 };
 
-#endif

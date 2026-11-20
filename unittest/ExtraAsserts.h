@@ -48,8 +48,7 @@
  * ETS_* versions are included, but not [E]TSM_* versions since extending the
  * asserts like this gives nicer results than using functions to run tests,
  * passing messages. */
-#ifndef Hmod_ExtraAsserts
-#define Hmod_ExtraAsserts
+#pragma once
 
 #include "Clock.h"
 #include <algorithm>
@@ -247,4 +246,3 @@ namespace ExtraAsserts {
 // The convertor script is too simplistic to do this:
 #define ExtraAssertsSuite ExtraAsserts::ExtraAssertsSuite
 
-#endif

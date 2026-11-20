@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_Output_Continuous
-#define Hmod_Output_Continuous
+#pragma once
 
 #include "Clock.h"
 #include "RunContext.h"
@@ -130,4 +129,3 @@ namespace Continuous {
 } // namespace Continuous
 } // namespace mon
 } // namespace OM
-#endif

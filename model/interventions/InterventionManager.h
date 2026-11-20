@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef OM_INTERVENTIONS_INTERVENTIONS
-#define OM_INTERVENTIONS_INTERVENTIONS
+#pragma once
 
 #include "Clock.h"
 #include "util/errors.h"
@@ -130,4 +129,3 @@ inline void InterventionManager::deploy(RunContext& ctx, vector<Host::Human>& po
 }
 
 } }
-#endif

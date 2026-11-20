@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef OM_util_random
-#define OM_util_random
+#pragma once
 
 /* This module contains the random-number generator and distributions wrapper.
  *
@@ -426,4 +425,3 @@ typedef RNG<ChaCha<8>> MasterRng;
 
 
 } }
-#endif

@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_PercentileCFRSuite
-#define Hmod_PercentileCFRSuite
+#pragma once
 
 /* Closes two hard gaps from T2FixtureManifest.md (percentile table, CFR):
  * both functions are reachable through public headers, so the goldens are
@@ -120,4 +119,3 @@ public:
     }
 };
 
-#endif

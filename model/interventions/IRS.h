@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef OM_INTERVENTIONS_IRS
-#define OM_INTERVENTIONS_IRS
+#pragma once
 
 #include "RunContext.h"
 #include "interventions/ComponentId.h"
@@ -207,4 +206,3 @@ inline double IRSParams::sampleInitialInsecticide(LocalRng& rng) const{
 
 } }
 
-#endif

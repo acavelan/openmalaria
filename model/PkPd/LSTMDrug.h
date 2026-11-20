@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_LSTMDrug
-#define Hmod_LSTMDrug
+#pragma once
 
 #include "Clock.h"
 #include "util/random.h"
@@ -165,4 +164,3 @@ public:  // run state; wire in checkpoint/humans.cpp
 
 }
 }
-#endif

@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_MosqLifeCycleSuite
-#define Hmod_MosqLifeCycleSuite
+#pragma once
 
 #include <cxxtest/TestSuite.h>
 #include "UnittestUtil.h"
@@ -516,4 +515,3 @@ private:
     vector<double> periodicResourceAvailability;
 };
 
-#endif
