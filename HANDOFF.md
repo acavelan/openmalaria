@@ -142,6 +142,10 @@ report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
   Vectorization = elementwise maps only; every += accumulator stays scalar.
 - Checkpoints may break freely (re-bless from A0 ref in same commit + round-trip smoke).
 - Untracked PROMPT.md/email = user files, leave alone.
+- SHARED BRANCH: second agent lands commits (7e-* xml compaction, p7d benching on c3) while
+  I work — ALWAYS re-check `git log -3` + rebuild + re-gate immediately before any gate claim;
+  my binary mtime must beat HEAD time. a2p needs full two-pass redo after tree settles
+  (incremental = gcda coverage-mismatch on changed TUs; p7d traps 1-3 apply).
 - ≤5 fix iterations per divergence, then revert+log.
 ## 7d addendum — INDEPENDENT PGO RE-TEST (branch `p7d-pgo` off `p7b-green` = 0c895755; worktree `/home/razlock/.local/share/opencode/worktree/3fb2ad/p7d-pgo`)
 
