@@ -214,3 +214,9 @@ order of side-effecting calls all preserved explicitly.
 - scenario.cpp 485->481 + vivax.cpp 119->108 + new latentP.h 9 (net -6): the
   byte-identical latentP read/try/catch block shared via read_latentP; hand-rolled
   contains() template -> std::find. Latent literals moved verbatim. Same gates.
+- healthSystem.cpp 643->642 (-1): duplicate PathogenesisModel.h include.
+FINAL 7e-F: model/xml 4287->4049 (-238), model 18617->18379. Final gate on HEAD:
+ctest 52/52, unittest .OK!, T1 tiers a+b 63/63 bit-identical; runtime sanity
+12.20 s vs A0 12.29 s (load-phase-only layer, binary outputs identical). Honest
+call: the 2,600-LOC xml budget is unreachable without behavior-changing risk —
+what remains is unique per-reader code with per-element error texts. PERF row 7e-F.
