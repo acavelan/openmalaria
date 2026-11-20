@@ -37,7 +37,8 @@ struct AgeStructureState {
     /*! Field-data age groups: ageGroupBounds[i] is the lower bound of
         group i (bounds has ngroups+1 entries), ageGroupPercent[i] the
         percentage of the population in group i. Set by
-        estimateRemovalRates(), used by setDemoParameters(). */
+        estimateRemovalRates(), read by the fit objective (file-local in
+        PopulationAgeStructure.cpp). */
     std::vector<double> ageGroupBounds, ageGroupPercent;
     /// Parameters defining the smooth target age-distribution curve.
     double mu0 = 0.0, mu1 = 0.0, alpha0 = 0.0, alpha1 = 0.0;
@@ -61,12 +62,6 @@ class AgeStructure {
     /** Return the expected population size of individuals aged ageTSteps or
         * older, based on a total population size of targetPop. */
     static int targetCumPop(RunContext& ctx, size_t ageTSteps, int targetPop);
-
-    /** For input values for alpha1 and mu1, the fit to field data
-        * (residualSS) is calculated and returned. Called back by the GSL
-        * minimiser during estimateRemovalRates (via wCalcRSS's void*
-        * params); not for general use. */
-    static double setDemoParameters(RunContext& ctx, double param1, double param2);
 
   private:
     static void estimateRemovalRates(RunContext& ctx, const scnXml::Demography& demography);
