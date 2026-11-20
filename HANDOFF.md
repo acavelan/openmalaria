@@ -97,6 +97,10 @@ report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
 - Per-structure commits, measure on build-p7c-a2 rebuild (same recipe = 11.98 baseline),
   keep only >floor wins, revert+log the rest.
 
+- [x] 7c-E: FINAL GATE GREEN — gate build T1 a+b 63/63, ctest 52/52, unittest OK; a2p (final
+      tree, fresh two-pass profiles) also 63/63 + ctest + unittest. Perf: dgemm 21.15 % top
+      (phase-8 flip intact). Scoreboard row 7c-F. **Phase 7c CLOSED.**
+
 ## Gates log
 - (setup) 3 builds configured; gate build: ctest 52/52 ✓, unittest .OK! ✓; a2 bench 11.98
   (raw 11.96–12.00) = yardstick reproduced.
@@ -109,6 +113,16 @@ report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
 - (7c-PGO) a2p two-pass: pass-1 corpus ctest 52/52 + unittest + example seeds 1–4; pass-2
   clean rebuild 0 profile warnings; ctest 52/52, unittest OK, T1 tier-a 53/53 + tier-b s1–10
   10/10; bench n=20 median 11.02 (10.98–11.09). KEPT as yardstick.
+- (7c-Da) dead −22 LOC: gate green (first attempt caught by build fail — case-sensitive
+  deadscan nearly killed `setHadEvent` callers; unittest-run-from-repo-cwd trap logged).
+- (C6 restore, user ruling 1) 1fbf788a: tier-a 53/53; loaded interleave 11.98 vs a2g 12.04.
+- (7c-C-P) perf stat/record + cachegrind/callgrind (tiny pop=10 scenario) + p5 callgrind A/B:
+  artifacts /tmp/opencode/{cg_a2g_d.out,cg7c_curr.out,cg7c_p5.out,p7c_rec.data}; PERF §7c-C-P.
+- (7c-Db) LSTM checkpoint templating −36 LOC: ctest incl. checkpoint goldens, tier-a 53/53.
+- (7c-E) final: gate build T1 a+b **63/63**; a2p rebuilt fresh two-pass on final tree (81 gcda,
+  0 profile warnings) → ctest 52/52, unittest OK, T1 **63/63**; a2p-vs-a2 interleaved −5.9 %;
+  final perf record: dgemm 21.15 % top. Ledger 7c-F. NOTE: first p7d merge clobbered 7c rows
+  in PERF/HANDOFF — restored in cc3f23ba; re-check after merges.
 
 ## Traps (inherited, all live, + new)
 - NEW: benches only from `/tmp/opencode/om-bench` cwd; never overlap bench with any other load.
@@ -128,6 +142,10 @@ report. Full p7b handoff: `git show p7b-green:HANDOFF.md`.
   Vectorization = elementwise maps only; every += accumulator stays scalar.
 - Checkpoints may break freely (re-bless from A0 ref in same commit + round-trip smoke).
 - Untracked PROMPT.md/email = user files, leave alone.
+- SHARED BRANCH: second agent lands commits (7e-* xml compaction, p7d benching on c3) while
+  I work — ALWAYS re-check `git log -3` + rebuild + re-gate immediately before any gate claim;
+  my binary mtime must beat HEAD time. a2p needs full two-pass redo after tree settles
+  (incremental = gcda coverage-mismatch on changed TUs; p7d traps 1-3 apply).
 - ≤5 fix iterations per divergence, then revert+log.
 ## 7d addendum — INDEPENDENT PGO RE-TEST (branch `p7d-pgo` off `p7b-green` = 0c895755; worktree `/home/razlock/.local/share/opencode/worktree/3fb2ad/p7d-pgo`)
 
@@ -152,3 +170,53 @@ PGO wiring traps (each cost an experiment — do not re-learn):
 3. Never build pass-2 with `-Wno-missing-profile`; missing-profile warnings are the ONLY symptom of a dead profile (that's how 7b shipped LTO-only believing it was PGO). Verify loading instead: gcda count + clean log + inline-dump control (see PERF 7d-A-amended; control artifacts `/tmp/opencode/p7d-ctl/{lto-link,pgo-link}/`).
 
 Corpus that produced the 81 gcda (keep representative of the benchmark): gen-build ctest 52 (all box scenarios exercise checkpoint stop/resume) + unittest 94 + example@2000 `--seed 1..4` + scenarioVecFullTest ×2 + example@2000 seed 1 `--checkpoint-stop` then `--checkpoint` resume (run from a dir holding the XSD).
+
+## 7e addendum — model/xml LOC compaction (branch p7e-xmlcompact, gate build build-p7e = A0-class)
+Baseline (p7e off rewrite HEAD 8f132bc4): model/xml 4287 code LOC, model 18617.
+Gate: build-p7e/ (Release -O3 -DNDEBUG -ffp-contract=off -DOM_BOXTEST_BINARY=ON),
+`ln -sfn build-p7e build` for parity XSD. Baseline verified green: ctest 52/52,
+unittest .OK!, T1 tier-a 53/53.
+Strategy: file-local static/lambda helpers merging the verbatim-duplicated reader
+idioms (no shared kit header — nothing big enough repeats cross-file); dead glue
+deleted only with grep proof. Error strings/order, RNG draw order, evaluation
+order of side-effecting calls all preserved explicitly.
+- interventions.cpp 1236->1100 (-136): component dispatch if-init; changeHS/changeEIR
+  timed-deploy loops merged (try/catch per entry kept); #if 0 R_0 block deleted;
+  read_propUse/set_protected/per_species merge ITN/IRS/GVI triples; nhh_slot merges
+  the 5 present/range/set blocks (resize-before-if kept: operator[] insertion is
+  observable); vectorModel brace wrappers flattened; subPop-read lambda shared by
+  continuous+timed; bounds-not-met msg blocks one-lined (deterrent third-check
+  quirk a.PF+a.HF preserved verbatim); VaccineLimits nonneg helper.
+- healthSystem.cpp 668->643 (-25): set_access_probabilities<HS> merges the
+  ImmediateOutcomes/DecisionTree5Day duplicate blocks; set_liver_stage merges the
+  two liverStageDrug blocks; getHealthSystemACRByName one-lined. String-literal
+  multiset audited against baseline per file: only 2->1 counts from the shared
+  helpers, zero text changes. Gate: ctest 52/52, unittest OK, T1 tier-a 53/53.
+- entomology.cpp 460->435 (-25): averageEIR overloads share averageEIR_seq;
+  both changeEIRIntervention variants share fill_intervention_eir (cerr variant
+  kept via flag; minEIR hoist in the non-vector variant is unobservable since
+  EIRDaily has minOccurs=1); four initVectorInterv range-check+set blocks ->
+  set_interv_decay (resizes kept at call sites before present(); sugar slot's
+  seekingDeathRateIncrease tag quirk and "intrevention" typo verbatim);
+  duplicate include + empty forcedEIR if-block removed. Gate: 52/52, OK, 53/53.
+- util.cpp 396->373 (-23): Emax present/validation blocks via need/chk lambdas
+  (message bytes + check order unchanged); require1DayTS single-bit bitset loop
+  -> direct CLINICAL_EVENT_SCHEDULER check (msg identical); empty 1-day-TS
+  branch inverted away. Gate: 52/52, OK, 53/53.
+- monitoring.cpp 251->242 (-9): dead extern Continuous block deleted (all state
+  now bound from ctx.ext-> inside Continuous::init; grep proof: names only
+  referenced via those locals) + duplicate using internal::SurveyDate. Same gates.
+- pharmacology.cpp 311->301 (-10): phenotype-name if/else repeated 3x -> one
+  lazy pheno_name lambda (still evaluated only at the original use points).
+  Gate: 52/52, OK, 53/53.
+- HumanInterventionComponents.h 229->226 (-3): conditions ctor delegates to the
+  components ctor (identical operation order). Gate: 52/52, OK, 53/53.
+- scenario.cpp 485->481 + vivax.cpp 119->108 + new latentP.h 9 (net -6): the
+  byte-identical latentP read/try/catch block shared via read_latentP; hand-rolled
+  contains() template -> std::find. Latent literals moved verbatim. Same gates.
+- healthSystem.cpp 643->642 (-1): duplicate PathogenesisModel.h include.
+FINAL 7e-F: model/xml 4287->4049 (-238), model 18617->18379. Final gate on HEAD:
+ctest 52/52, unittest .OK!, T1 tiers a+b 63/63 bit-identical; runtime sanity
+12.20 s vs A0 12.29 s (load-phase-only layer, binary outputs identical). Honest
+call: the 2,600-LOC xml budget is unreachable without behavior-changing risk —
+what remains is unique per-reader code with per-element error texts. PERF row 7e-F.

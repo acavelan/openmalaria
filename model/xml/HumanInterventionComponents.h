@@ -82,13 +82,9 @@ HumanIntervention::HumanIntervention(
 HumanIntervention::HumanIntervention(
     RunContext& ctx,
     const xsd::cxx::tree::sequence<scnXml::Component>& componentList,
-    const xsd::cxx::tree::sequence<scnXml::Condition>& conditionList )
+    const xsd::cxx::tree::sequence<scnXml::Condition>& conditionList ) :
+    HumanIntervention( ctx, componentList )
 {
-    components.reserve( componentList.size() );
-    for( auto it = componentList.begin(), end = componentList.end(); it != end; ++it )
-        components.push_back( component_id( ctx, it->getId() ) );
-    sort_components( ctx, components );
-    
     for( auto it = conditionList.begin(), end = conditionList.end(); it != end; ++it ) {
         double min = it->getMinValue().present() ? it->getMinValue().get() : -numeric_limits<double>::infinity();
         double max = it->getMaxValue().present() ? it->getMaxValue().get() : numeric_limits<double>::infinity();

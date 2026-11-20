@@ -664,29 +664,21 @@ void ESCaseManagement::setHealthSystem(RunContext& ctx, const scnXml::HSEventSch
 
 double getHealthSystemACRByName (const scnXml::TreatmentDetails& td, const string& drug)
 {
-    double val;
-    if (drug == "CQ")
-        val = td.getCQ().present() ? td.getCQ().get().getValue() : 0;
-    else if (drug == "SP")
-        val = td.getSP().present() ? td.getSP().get().getValue() : 0;
-    else if (drug == "AQ")
-        val = td.getAQ().present() ? td.getAQ().get().getValue() : 0;
-    else if (drug == "SPAQ")
-        val = td.getSPAQ().present() ? td.getSPAQ().get().getValue() : 0;
-    else if (drug == "ACT")
-        val = td.getACT().present() ? td.getACT().get().getValue() : 0;
-    else if (drug == "QN")
-        val = td.getQN().present() ? td.getQN().get().getValue() : 0;
-    else if (drug == "selfTreatment")
-        val = td.getSelfTreatment().getValue();
-    else {
-        throw util::xml_scenario_error ("healthSystem.drugRegimen: firstLine / secondLine / inpatient has bad value");
-    }
+    auto val = [](const auto& d){ return d.present() ? d.get().getValue() : 0; };
+    double v;
+    if (drug == "CQ") v = val(td.getCQ());
+    else if (drug == "SP") v = val(td.getSP());
+    else if (drug == "AQ") v = val(td.getAQ());
+    else if (drug == "SPAQ") v = val(td.getSPAQ());
+    else if (drug == "ACT") v = val(td.getACT());
+    else if (drug == "QN") v = val(td.getQN());
+    else if (drug == "selfTreatment") v = td.getSelfTreatment().getValue();
+    else throw util::xml_scenario_error ("healthSystem.drugRegimen: firstLine / secondLine / inpatient has bad value");
     
-    if( !(val >= 0.0 && val <= 1.0) ){
+    if( !(v >= 0.0 && v <= 1.0) ){
         throw util::xml_scenario_error (string("healthSystem initialACR/compliance/nonCompliersEffective: ").append(drug).append(" value must be in range [0,1]"));
     }
-    return val;
+    return v;
 }
 
 // note: "CQOptional" is the same type as for other drugs
@@ -712,13 +704,11 @@ WithinHost::TreatmentId getHealthSystemTreatmentByName( RunContext& ctx, const s
 
 // ———  static, init  ———
 
-void ImmediateOutcomes::setHealthSystem (RunContext& ctx, const scnXml::HSImmediateOutcomes& hsDescription) {
-    const string &firstLine = hsDescription.getDrugRegimen().getFirstLine(),
-        &secondLine = hsDescription.getDrugRegimen().getSecondLine(),
-        &inpatient = hsDescription.getDrugRegimen().getInpatient();
-    
-    // ———  calculate probability of getting treatment  ———
-
+// Access probabilities: ImmediateOutcomes and DecisionTree5Day computed these
+// from identically-named getters, byte-identical code (merged; the checks and
+// error string travel verbatim):
+template<class HS>
+static void set_access_probabilities(const HS& hsDescription){
     double accessUCOfficial1 = hsDescription.getPSeekOfficialCareUncomplicated1().getValue();
     double accessUCOfficial2 = hsDescription.getPSeekOfficialCareUncomplicated2().getValue();
     // Note: this asymmetry is historical, and probably matters little:
@@ -738,6 +728,24 @@ void ImmediateOutcomes::setHealthSystem (RunContext& ctx, const scnXml::HSImmedi
             "pSeekOfficialCareUncomplicated2 and pSeekOfficialCareSevere must "
             "be in range [0,1]");
     }
+}
+// liverStageDrug handling was identical in both setHealthSystem paths:
+static void set_liver_stage(RunContext& ctx, const xsd::cxx::tree::optional<scnXml::LiverStageDrug>& elt){
+    if( ModelOptions::option(util::VIVAX_SIMPLE_MODEL) ){
+        WithinHost::WHInterface::setHSParametersVivax( elt.present() ? &elt.get() : 0 );
+    }else if( elt.present() ){
+        throw util::xml_scenario_error( "health-system's liverStageDrug element only supported by vivax" );
+    }
+}
+
+void ImmediateOutcomes::setHealthSystem (RunContext& ctx, const scnXml::HSImmediateOutcomes& hsDescription) {
+    const string &firstLine = hsDescription.getDrugRegimen().getFirstLine(),
+        &secondLine = hsDescription.getDrugRegimen().getSecondLine(),
+        &inpatient = hsDescription.getDrugRegimen().getInpatient();
+    
+    // ———  calculate probability of getting treatment  ———
+
+    set_access_probabilities(hsDescription);
     
     // ———  calculate probability of clearing parasites  ———
     
@@ -781,34 +789,10 @@ void ImmediateOutcomes::setHealthSystem (RunContext& ctx, const scnXml::HSImmedi
     
     useDiagnosticUC = hsDescription.getUseDiagnosticUC();
     
-    if( ModelOptions::option(util::VIVAX_SIMPLE_MODEL) ){
-        WithinHost::WHInterface::setHSParametersVivax(
-            hsDescription.getLiverStageDrug().present() ?
-            &hsDescription.getLiverStageDrug().get() : 0 );
-    }else if( hsDescription.getLiverStageDrug().present() ){
-        throw util::xml_scenario_error( "health-system's liverStageDrug element only supported by vivax" );
-    }
+    set_liver_stage(ctx, hsDescription.getLiverStageDrug());
 }
 void DecisionTree5Day::setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& hsDescription){
-    double accessUCOfficial1 = hsDescription.getPSeekOfficialCareUncomplicated1().getValue();
-    double accessUCOfficial2 = hsDescription.getPSeekOfficialCareUncomplicated2().getValue();
-    // Note: this asymmetry is historical, and probably matters little:
-    CM5DayCommon::accessUCSelfTreat[CM5DayCommon::FirstLine] = hsDescription.getPSelfTreatUncomplicated().getValue();
-    CM5DayCommon::accessUCSelfTreat[CM5DayCommon::SecondLine] = 0.0;
-    CM5DayCommon::accessUCAny[CM5DayCommon::FirstLine] = accessUCOfficial1 + CM5DayCommon::accessUCSelfTreat[CM5DayCommon::FirstLine];
-    CM5DayCommon::accessUCAny[CM5DayCommon::SecondLine] = accessUCOfficial1 + CM5DayCommon::accessUCSelfTreat[CM5DayCommon::SecondLine];
-    CM5DayCommon::accessSevere = hsDescription.getPSeekOfficialCareSevere().getValue();
-    
-    if( accessUCOfficial1 < 0.0 || CM5DayCommon::accessUCSelfTreat[CM5DayCommon::FirstLine] < 0.0 || CM5DayCommon::accessUCAny[CM5DayCommon::FirstLine] > 1.0 ||
-        accessUCOfficial2 < 0.0 || CM5DayCommon::accessUCSelfTreat[CM5DayCommon::SecondLine] < 0.0 || CM5DayCommon::accessUCAny[CM5DayCommon::SecondLine] > 1.0 ||
-        CM5DayCommon::accessSevere < 0.0 || CM5DayCommon::accessSevere > 1.0 )
-    {
-        throw util::xml_scenario_error ("healthSystem: "
-            "pSeekOfficialCareUncomplicated1 and pSelfTreatUncomplicated must be"
-            " at least 0 and their sum must be at most 1, and"
-            "pSeekOfficialCareUncomplicated2 and pSeekOfficialCareSevere must "
-            "be in range [0,1]");
-    }
+    set_access_probabilities(hsDescription);
     
     treeUCOfficial = &compile_decision_tree( ctx, hsDescription.getTreeUCOfficial(), true );
     treeUCSelfTreat = &compile_decision_tree( ctx, hsDescription.getTreeUCSelfTreat(), true );
@@ -816,13 +800,7 @@ void DecisionTree5Day::setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& 
     CM5DayCommon::cureRateSevere = hsDescription.getCureRateSevere().getValue();
     CM5DayCommon::treatmentSevere = WHInterface::addTreatment( ctx, hsDescription.getTreatmentSevere() );
     
-    if( ModelOptions::option(util::VIVAX_SIMPLE_MODEL) ){
-        WithinHost::WHInterface::setHSParametersVivax(
-            hsDescription.getLiverStageDrug().present() ?
-            &hsDescription.getLiverStageDrug().get() : 0 );
-    }else if( hsDescription.getLiverStageDrug().present() ){
-        throw util::xml_scenario_error( "health-system's liverStageDrug element only supported by vivax" );
-    }
+    set_liver_stage(ctx, hsDescription.getLiverStageDrug());
 }
 void ClinicalModel::init( RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario ) {
     const scnXml::Clinical& clinical = scenario.getModel().getClinical();

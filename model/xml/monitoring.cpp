@@ -47,23 +47,8 @@
 #include <set>
 #include <vector>
 
-// Continuous.cpp file-scope state (external linkage; declared here so the
-// moved init can reach it; definitions remain in mon/Continuous.cpp):
-namespace OM { namespace mon { namespace Continuous {
-    extern std::fstream ctsOStream;
-    extern std::streamoff streamOffset;
-    extern std::map<std::string, std::tuple<std::string, std::function<void(Population&, std::ostream&)>>> registered;
-    extern std::vector< std::tuple<std::string, std::function<void(Population&, std::ostream&)>> > toReport;
-    extern SimTime ctsPeriod;
-    extern bool duringInit;
-} } }
-
 namespace OM {
 namespace mon {
-
-using internal::SurveyDate;
-
-
 
 using internal::SurveyDate;
 
