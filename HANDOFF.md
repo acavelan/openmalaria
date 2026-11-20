@@ -41,7 +41,7 @@ Old wire format is DEAD: checkpoint bytes may break freely (plan clause);
 re-bless/round-trip goldens = the new resume tests below.
 Gates on kill commit: build ✓, ctest 52/52, unittest .OK!, T1 tier-a 53/53.
 
-## REDO design (in progress — see checkboxes)
+## REDO design (landed C1–C4; C5 = this wrap-up)
 New module `model/checkpoint/` (mirror of `model/xml/` conventions): free
 functions, per-subsystem files, ONE orchestrator listing the section order.
 - `Stream.h` — header magic+version u32, templated rd/wr primitives for
@@ -82,9 +82,11 @@ functions, per-subsystem files, ONE orchestrator listing the section order.
       case = clean rc73 error, never UB. Also fixed: kill leftovers
       Genotypes.cpp assert `state.current_mode` (only breaks assert builds)
       and Infection-descriptive restore (factory unset → direct infection_new).
-- [x] C4 (partial): magic/version/budget/count checks → clean errors, proven
-      in resume.py (truncated) + manual junk/bad-magic/wrong-scenario runs.
-      v2 (boost/gzstream) file → magic error (message could name it nicer).
+- [x] C4 corrupt-checkpoint suite, proven per scenario in resume.py (21
+      checks/scenario): truncated, junk, bad magic, bad format version
+      (byte bumped), wrong scenario (store count mismatch) — all clean
+      rc73, no output file, no UB (budget-checked reads). Old v2
+      boost/gzstream files hit the magic check.
 - [x] C2 scripted save days per scenario in resume.py: main-start,
       mid-main (mainStart+50d, chained), late-main (end-25d, chained),
       mid-warmup (mainStart/2). Chains exercise resume→save→resume.
@@ -94,13 +96,12 @@ functions, per-subsystem files, ONE orchestrator listing the section order.
       own iseed, NOT --seed 112), SimpleMPDTest (MPD state),
       HetVecDailyEIR, MolPairwise (multi-clone variants).
       Interventions-heavy = still the documented gap (skill law).
-- [ ] C3 corpus: example, DecisionTree(5Day), Vivax, HetVecDailyEIR /
-      vector-full (AnophelesModel + ExactNv0), Molineaux/Penny, Empirical,
-      interventions-heavy (IvState global + replay), MSAT/Genotypes.
-- [ ] C4 bad/old/truncated checkpoint file → clean model error (never UB);
-      version mismatch message.
-- [ ] C5 final: full resume-equivalence suite green, LOC before/after report,
-      tier-a clean. PERF.md NOT touched (main-session ledger).
+- [x] C5 final wrap-up: suite green (ctest 64/64, unittest .OK!, tier-a
+      53/53), LOC report: raw model LOC 29,094 (kill commit) → 30,438
+      (+1,344 for the whole checkpoint module incl. licence headers);
+      PERF.md NOT touched (main-session ledger).
+- Remaining (documented gap, not scheduled): interventions checkpoint/replay
+  — see Known limits.
 
 ## Proven round-trips (update every green commit)
 C2/C3 (all byte-identical vs uninterrupted, output.bin AND ctsout.txt,
@@ -111,20 +112,25 @@ late-main end-25d, mid-warmup) + truncated-file rejection for:
 - 1 (NonVector EIR), VecTest, Genotypes (tracking mode), ExactNv0 (exact
   emergence estimator), SimpleMPDTest (SimpleMPD state), HetVecDailyEIR,
   MolPairwise
-- corrupt: truncated → rc73; junk/bad magic → rc73; wrong scenario → rc73
-  (measure store count mismatch) — no UB, no output file.
+- corrupt (per scenario, in resume.py): truncated, junk, bad magic, bad
+  version byte, wrong scenario → all rc73, no output file, no UB.
 Gates at C1: build ✓, ctest 57/57, unittest .OK!, tier-a 53/53.
 Gates at C2/C3: ctest 64/64, unittest .OK! (model binary byte-identical to
-the C1 parity-verified one — no model/ change, so tier-a not re-run).
+the C1 parity-verified one).
+Final gates (HEAD): build ✓, ctest 64/64 (12 Resume_* + 52 legacy),
+unittest .OK!, tier-a 53/53 bit-identical vs A0.
 
-## Known limits (honest partial — extend in C3+)
-- NO interventions section yet (skill law): --resume on a scenario that
-  deploys anything is UNSUPPORTED (nextTimed/IvState/continuous deployments
-  not on the wire; deployments never replayed either). Proven days are all
+## Known limits (honest partial)
+- NO interventions section (skill law 2026-11-20): --resume on a scenario
+  that deploys anything is UNSUPPORTED. Deployment schedules
+  (Interventions::Deployments / InterventionManager) and global IvState are
+  not on the wire and deployments are not replayed after resume, so state
+  created by a deployment before the save point is lost. Exception:
+  per-infection drug dose records (TreatInfectionsWithDrug / LSTMDrug
+  queues) ARE on the wire with the infection. Proven days are all
   intervention-free scenarios.
-- SimpleDecayingValue: writes deploy_t + het-presence flag; RESUMING a
-  scenario with a SAMPLED decay deployment throws a clean
-  "sampled decay deployment not yet supported" error.
-- Cohorts intervention-column state is config-rebuilt (empty), not wire.
+- Intervention-derived side state not on the wire (same gap): human cohort
+  intervention columns, AnophelesModel SimpleDecayingValue sugar-feeding
+  values, vaccine/vector control registries. All config-rebuilt = empty.
 - cts resume overwrites file content past the saved offset (rows the later
   part of a previous longer run wrote are replaced; fine for save+exit use).
