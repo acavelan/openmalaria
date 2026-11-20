@@ -47,50 +47,10 @@ void TransmissionModel::ctsCbN_v0(ostream &stream)
     for (size_t i = 0; i < speciesIndex.size(); ++i)
         stream << '\t' << species[i]->getLastN_v0();
 }
-void TransmissionModel::ctsCbP_A(ostream &stream)
+void TransmissionModel::ctsCbVecStat(Anopheles::VecStat vs, ostream &stream)
 {
     for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << species[i]->getLastVecStat(Anopheles::PA);
-}
-void TransmissionModel::ctsCbP_Amu(ostream &stream)
-{
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << species[i]->getLastVecStat(Anopheles::PAmu);
-}
-void TransmissionModel::ctsCbP_A1(ostream &stream)
-{
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << species[i]->getLastVecStat(Anopheles::PA1);
-}
-void TransmissionModel::ctsCbP_Ah(ostream &stream)
-{
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << species[i]->getLastVecStat(Anopheles::PAh);
-}
-void TransmissionModel::ctsCbP_df(ostream &stream)
-{
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << species[i]->getLastVecStat(Anopheles::PDF);
-}
-void TransmissionModel::ctsCbP_dif(ostream &stream)
-{
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << species[i]->getLastVecStat(Anopheles::PDIF);
-}
-void TransmissionModel::ctsCbN_v(ostream &stream)
-{
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << species[i]->getLastVecStat(Anopheles::NV);
-}
-void TransmissionModel::ctsCbO_v(ostream &stream)
-{
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << species[i]->getLastVecStat(Anopheles::OV);
-}
-void TransmissionModel::ctsCbS_v(ostream &stream)
-{
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << species[i]->getLastVecStat(Anopheles::SV);
+        stream << '\t' << species[i]->getLastVecStat(vs);
 }
 void TransmissionModel::ctsCbAlpha(const vector<Host::Human> &population, ostream &stream)
 {
@@ -192,15 +152,15 @@ TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, in
     }
 
     mon::Continuous::registerCallback(ctx, "N_v0", ctsNv0.str(), std::bind( &TransmissionModel::ctsCbN_v0, this, _1));
-    mon::Continuous::registerCallback(ctx, "P_A", ctsPA.str(), std::bind( &TransmissionModel::ctsCbP_A, this, _1));
-    mon::Continuous::registerCallback(ctx, "P_Amu", ctsPAmu.str(), std::bind( &TransmissionModel::ctsCbP_Amu, this, _1));
-    mon::Continuous::registerCallback(ctx, "P_A1", ctsPA1.str(), std::bind( &TransmissionModel::ctsCbP_A1, this, _1));
-    mon::Continuous::registerCallback(ctx, "P_Ah", ctsPAh.str(), std::bind( &TransmissionModel::ctsCbP_Ah, this, _1));
-    mon::Continuous::registerCallback(ctx, "P_df", ctsPdf.str(), std::bind( &TransmissionModel::ctsCbP_df, this, _1));
-    mon::Continuous::registerCallback(ctx, "P_dif", ctsPdif.str(), std::bind( &TransmissionModel::ctsCbP_dif, this, _1));
-    mon::Continuous::registerCallback(ctx, "N_v", ctsNv.str(), std::bind( &TransmissionModel::ctsCbN_v, this, _1));
-    mon::Continuous::registerCallback(ctx, "O_v", ctsOv.str(), std::bind( &TransmissionModel::ctsCbO_v, this, _1));
-    mon::Continuous::registerCallback(ctx, "S_v", ctsSv.str(), std::bind( &TransmissionModel::ctsCbS_v, this, _1));
+    mon::Continuous::registerCallback(ctx, "P_A", ctsPA.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PA, _1));
+    mon::Continuous::registerCallback(ctx, "P_Amu", ctsPAmu.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PAmu, _1));
+    mon::Continuous::registerCallback(ctx, "P_A1", ctsPA1.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PA1, _1));
+    mon::Continuous::registerCallback(ctx, "P_Ah", ctsPAh.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PAh, _1));
+    mon::Continuous::registerCallback(ctx, "P_df", ctsPdf.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PDF, _1));
+    mon::Continuous::registerCallback(ctx, "P_dif", ctsPdif.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PDIF, _1));
+    mon::Continuous::registerCallback(ctx, "N_v", ctsNv.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::NV, _1));
+    mon::Continuous::registerCallback(ctx, "O_v", ctsOv.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::OV, _1));
+    mon::Continuous::registerCallback(ctx, "S_v", ctsSv.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::SV, _1));
 
     // availability to mosquitoes relative to other humans, excluding age factor
     mon::Continuous::registerCallback(ctx, "alpha", ctsAlpha.str(), std::bind( &TransmissionModel::ctsCbAlpha, this, _1, _2));

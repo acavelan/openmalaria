@@ -573,15 +573,7 @@ private:
     void changeEIRIntervention_vector(const scnXml::NonVector &nonVectorData);
 
     void ctsCbN_v0(ostream &stream);
-    void ctsCbP_A(ostream &stream);
-    void ctsCbP_Amu(ostream &stream);
-    void ctsCbP_A1(ostream &stream);
-    void ctsCbP_Ah(ostream &stream);
-    void ctsCbP_df(ostream &stream);
-    void ctsCbP_dif(ostream &stream);
-    void ctsCbN_v(ostream &stream);
-    void ctsCbO_v(ostream &stream);
-    void ctsCbS_v(ostream &stream);
+    void ctsCbVecStat(Anopheles::VecStat, ostream &stream);
     void ctsCbAlpha(const vector<Host::Human> &population, ostream &stream);
     void ctsCbP_B(const vector<Host::Human> &population, ostream &stream);
     void ctsCbP_CD(const vector<Host::Human> &population, ostream &stream);
