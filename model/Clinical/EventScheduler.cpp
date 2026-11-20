@@ -43,12 +43,12 @@ vector<double> ClinicalEventScheduler::cumDailyPrImmUCTS;
 double ClinicalEventScheduler::neg_v;
 double ClinicalEventScheduler::alpha;
 
-double ClinicalEventScheduler::logOddsAbBase = std::numeric_limits<double>::signaling_NaN();
-double ClinicalEventScheduler::logOddsAbNegTest = std::numeric_limits<double>::signaling_NaN();
-double ClinicalEventScheduler::logOddsAbPosTest = std::numeric_limits<double>::signaling_NaN();
-double ClinicalEventScheduler::logOddsAbNeed = std::numeric_limits<double>::signaling_NaN();
-double ClinicalEventScheduler::logOddsAbInformal = std::numeric_limits<double>::signaling_NaN();
-double ClinicalEventScheduler::oneMinusEfficacyAb = std::numeric_limits<double>::signaling_NaN();
+double ClinicalEventScheduler::logOddsAbBase = sNaN;
+double ClinicalEventScheduler::logOddsAbNegTest = sNaN;
+double ClinicalEventScheduler::logOddsAbPosTest = sNaN;
+double ClinicalEventScheduler::logOddsAbNeed = sNaN;
+double ClinicalEventScheduler::logOddsAbInformal = sNaN;
+double ClinicalEventScheduler::oneMinusEfficacyAb = sNaN;
 AgeGroupInterpolator ClinicalEventScheduler::severeNmfMortality;
 
 bool opt_non_malaria_fevers = false;

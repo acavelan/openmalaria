@@ -42,14 +42,14 @@ using namespace OM::util;
 // depends on lognormal/gamma distribution for first_local_max
 static bool first_local_maximum_gamma = false;
 // mean/shape and sd/scale of the first local maximum density for lognormal/gamma distribution
-static double mean_shape_first_local_max = std::numeric_limits<double>::signaling_NaN();
-static double sd_scale_first_local_max = std::numeric_limits<double>::signaling_NaN();
+static double mean_shape_first_local_max = sNaN;
+static double sd_scale_first_local_max = sNaN;
 
 // depends on between lognormal/gamma distribution for mean_duration diff_pos_days
 static bool mean_duration_gamma = false;
 // mean/shape and sd/scale of the difference between last positive and first positive days for lognormal/gamma distribution
-static double mean_shape_diff_pos_days = std::numeric_limits<double>::signaling_NaN();
-static double sd_scale_diff_pos_days = std::numeric_limits<double>::signaling_NaN();
+static double mean_shape_diff_pos_days = sNaN;
+static double sd_scale_diff_pos_days = sNaN;
 
 // boolean choosing between gamma and lognormal distribution for equation 11
 static bool multi_factor_gamma = false;

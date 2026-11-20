@@ -36,6 +36,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstddef>
+#include <limits>
 
 #include "util/mod.h"
 
@@ -49,6 +50,11 @@ class Scenario;
 typedef int SimTime;
 
 namespace OM {
+
+/// Short numeric constants (~110 sites spelled out std::numeric_limits before).
+inline constexpr double sNaN = std::numeric_limits<double>::signaling_NaN();
+inline constexpr double NaN = std::numeric_limits<double>::quiet_NaN();
+inline constexpr double INF = std::numeric_limits<double>::infinity();
 
 class Context; // SimClock::init takes a reference (defined in Context.h)
 

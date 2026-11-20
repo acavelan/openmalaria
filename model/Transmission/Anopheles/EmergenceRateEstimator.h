@@ -59,7 +59,7 @@ inline double findAngle(const double EIRRotageAngle, const std::vector<double>& 
 
     double delta = 2.0 * M_PI / 365.0;
 
-    double min = std::numeric_limits<double>::infinity();
+    double min = INF;
     double minAngle = 0.0;
     for (double angle = -M_PI; angle < M_PI; angle += delta) {
         vectors::expIDFT(temp, FSCoeffic, EIRRotageAngle + angle);

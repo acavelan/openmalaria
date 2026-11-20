@@ -37,8 +37,8 @@ using namespace std;
 namespace OM {
 namespace WithinHost {
 
-double hetMassMultStdDev = std::numeric_limits<double>::signaling_NaN();
-double minHetMassMult = std::numeric_limits<double>::signaling_NaN();
+double hetMassMultStdDev = sNaN;
+double minHetMassMult = sNaN;
 util::AgeGroupInterpolator massByAge;
 
 bool reportInfectedOrPatentInfected = false;
@@ -277,7 +277,7 @@ bool WHCommon::summarize(Host::Human& human) const {
                     mon::recordStat(mon::measure("totalInfs_Imported"), human, 1, 0, genotype, 0);
 
                 if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), (*inf)->getDensity(),
-                                                                      std::numeric_limits<double>::quiet_NaN())) {
+                                                                      NaN)) {
                     mon::recordStat(mon::measure("totalPatentInf"), human, 1, 0, genotype, 0);
                     if ((*inf)->origin() == Origin::Indigenous)
                         mon::recordStat(mon::measure("totalPatentInf_Indigenous"), human, 1, 0, genotype, 0);
@@ -309,7 +309,7 @@ bool WHCommon::summarize(Host::Human& human) const {
                 // we had at least one infection of this genotype
                 mon::recordStat(mon::measure("nInfectByGenotype"), human, 1, 0, genotype, 0);
                 if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), dens,
-                                                                      std::numeric_limits<double>::quiet_NaN())) {
+                                                                      NaN)) {
                     mon::recordStat(mon::measure("nPatentByGenotype"), human, 1, 0, genotype, 0);
                     mon::recordStat(mon::measure("logDensByGenotype"), human, log(dens), 0, genotype, 0);
                 }
@@ -321,7 +321,7 @@ bool WHCommon::summarize(Host::Human& human) const {
     // (and are applied after update()), thus infections.size() may be 0 while
     // totalDensity > 0. Here we report the last calculated density.
     if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), totalDensity,
-                                                          std::numeric_limits<double>::quiet_NaN())) {
+                                                          NaN)) {
         mon::recordStat(mon::measure("nPatent"), human);
         if (infectionType == Origin::Imported)
             mon::recordStat(mon::measure("nPatent_Imported"), human);

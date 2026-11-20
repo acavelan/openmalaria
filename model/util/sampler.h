@@ -151,12 +151,12 @@ class Sampler final {
     Kind kind = Kind::Lognormal;
     // Lognormal kind: log-space mu, sigma. Gamma kind: mean mu, k, theta.
     // CV / variance are the configuring inputs; truncate caps samples.
-    double mu = std::numeric_limits<double>::signaling_NaN();
-    double sigma = std::numeric_limits<double>::signaling_NaN();
-    double k = std::numeric_limits<double>::signaling_NaN();
-    double theta = std::numeric_limits<double>::signaling_NaN();
-    double variance = std::numeric_limits<double>::signaling_NaN();
-    double CV = std::numeric_limits<double>::signaling_NaN();
+    double mu = sNaN;
+    double sigma = sNaN;
+    double k = sNaN;
+    double theta = sNaN;
+    double variance = sNaN;
+    double CV = sNaN;
     std::optional<double> truncate = std::nullopt;
 };
 

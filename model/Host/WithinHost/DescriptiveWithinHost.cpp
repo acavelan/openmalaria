@@ -232,7 +232,7 @@ bool WHDescriptive::summarize(Host::Human& human) const {
         if (reportPatentInfected) {
             for (auto inf = infections.begin(); inf != infections.end(); ++inf) {
                 if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), (*inf)->getDensity(),
-                                                                      std::numeric_limits<double>::quiet_NaN())) {
+                                                                      NaN)) {
                     mon::recordStat(mon::measure("totalPatentInf"), human);
                     if ((*inf)->origin() == Origin::Indigenous)
                         mon::recordStat(mon::measure("totalPatentInf_Indigenous"), human);
@@ -253,7 +253,7 @@ bool WHDescriptive::summarize(Host::Human& human) const {
                 // we had at least one infection of this genotype
                 mon::recordStat(mon::measure("nInfectByGenotype"), human, 1, 0, gtype.first, 0);
                 if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), gtype.second,
-                                                                      std::numeric_limits<double>::quiet_NaN())) {
+                                                                      NaN)) {
                     mon::recordStat(mon::measure("nPatentByGenotype"), human, 1, 0, gtype.first, 0);
                     mon::recordStat(mon::measure("logDensByGenotype"), human, log(gtype.second), 0, gtype.first, 0);
                 }
@@ -265,7 +265,7 @@ bool WHDescriptive::summarize(Host::Human& human) const {
     // (and are applied after update()), thus infections.size() may be 0 while
     // totalDensity > 0. Here we report the last calculated density.
     if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), totalDensity,
-                                                          std::numeric_limits<double>::quiet_NaN())) {
+                                                          NaN)) {
         mon::recordStat(mon::measure("nPatent"), human);
         if (infectionType == Origin::Imported)
             mon::recordStat(mon::measure("nPatent_Imported"), human);

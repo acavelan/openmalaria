@@ -177,7 +177,7 @@ inline double DecayFunction::compute_with(double effectiveAge, double factor) co
     case Kind::Constant:
         // parity: xml/util.cpp:163 (old ConstantDecayFunction) — note: all decay
         // functions must return 0 when time > 0 and default-constructed.
-        if (effectiveAge * factor == std::numeric_limits<double>::infinity())
+        if (effectiveAge * factor == INF)
             return 0.0;
         return 1.0;
     case Kind::Step: // parity: xml/util.cpp:187

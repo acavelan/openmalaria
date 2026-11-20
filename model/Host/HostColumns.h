@@ -151,12 +151,12 @@ struct HumanColumns {
         es_case_start.push_back(sim::never());
         es_time_recovery.push_back(sim::never());
         es_time_treatment.push_back(sim::never());
-        es_prev_density.push_back(std::numeric_limits<double>::quiet_NaN());
+        es_prev_density.push_back(NaN);
         anoph_ento_raw.emplace_back();
         anoph_ento_avail.emplace_back();
         anoph_prob_biting.emplace_back();
         anoph_prob_resting.emplace_back();
-        rel_avail_het.push_back(std::numeric_limits<double>::signaling_NaN());
+        rel_avail_het.push_back(sNaN);
         outside_trans.push_back(0u);
         iv.emplace_back();
         vac.emplace_back();
