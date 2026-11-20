@@ -25,8 +25,7 @@
 #include "Clinical/CM5DayCommon.h"
 
 #include "Clinical/EventScheduler.h"
-#include "Clinical/ImmediateOutcomes.h"
-#include "Clinical/DecisionTree5Day.h"
+#include "Clinical/CM5DayCommon.h"
 #include "Host/NeonatalMortality.h"
 #include "mon/Monitoring.h"
 #include "util/ModelOptions.h"

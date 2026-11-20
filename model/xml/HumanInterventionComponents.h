@@ -31,7 +31,7 @@
 #include "util/ModelOptions.h"
 #include "util/errors.h"
 #include "Clinical/ESCaseManagement.h"
-#include "Clinical/ImmediateOutcomes.h"
+#include "Clinical/CM5DayCommon.h"
 #include "Host/Human.h"
 #include "Transmission/TransmissionModel.h"
 #include "Host/WithinHost/Diagnostic.h"
