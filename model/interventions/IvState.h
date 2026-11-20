@@ -54,11 +54,5 @@ double iv_preprandial_survival( RunContext& ctx, const IvRecord& r, size_t speci
 double iv_postprandial_survival( RunContext& ctx, const IvRecord& r, size_t species );
 double iv_rel_fecundity( RunContext& ctx, const IvRecord& r, size_t species );
 
-/// Record-list checkpointing. Wire NOT frozen (user ruling, phase 7): one
-/// uniform record layout replaces the old per-class streams; decay pointer
-/// is recovered from the component registry on read.
-void iv_checkpoint( RunContext& ctx, std::vector<IvRecord>& iv, ostream& stream );
-void iv_checkpoint( RunContext& ctx, std::vector<IvRecord>& iv, istream& stream );
-
 } }
 #endif

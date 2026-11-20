@@ -85,8 +85,6 @@ private:
     // free functions (below) read it and the registries:
     friend double vaccine_factor( RunContext&, const std::vector<VacRecord>&, Vaccine::Types, uint32_t );
     friend bool vaccinate( RunContext&, Host::Human&, ComponentId, VaccineLimits );
-    friend void vac_checkpoint( RunContext&, std::vector<VacRecord>&, ostream& );
-    friend void vac_checkpoint( RunContext&, std::vector<VacRecord>&, istream& );
 };
 
 /** Get one minus the (decayed) efficacy of the given vaccine type: product
@@ -101,10 +99,6 @@ double vaccine_factor( RunContext& ctx, const std::vector<VacRecord>& vac,
  * @returns true when the vaccine is administered */
 bool vaccinate( RunContext& ctx, Host::Human& human, ComponentId componentId,
                 VaccineLimits vaccLimits );
-
-/// Dose-record checkpointing (wire NOT frozen: uniform record layout).
-void vac_checkpoint( RunContext& ctx, std::vector<VacRecord>& vac, ostream& stream );
-void vac_checkpoint( RunContext& ctx, std::vector<VacRecord>& vac, istream& stream );
 
 }
 }

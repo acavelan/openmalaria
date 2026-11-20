@@ -235,7 +235,8 @@ void Human::checkpoint(istream &stream)
     clinicalModel & stream;
     rng().checkpoint(stream);
     cols->dob[row] & stream;
-    interventions::vac_checkpoint( *ctx, cols->vac[row], stream );
+    // vac records not on the wire: interventions carry zero checkpoint bytes
+    // (restore re-applies by event replay; checkpoint is pre-intervention).
     cols->mon_age_group[row] & stream;
     cols->cohort_set[row] & stream;
     cols->next_cts_dist[row] & stream;
@@ -261,7 +262,8 @@ void Human::checkpoint(ostream &stream)
     clinicalModel & stream;
     rng().checkpoint(stream);
     cols->dob[row] & stream;
-    interventions::vac_checkpoint( *ctx, cols->vac[row], stream );
+    // vac records not on the wire: interventions carry zero checkpoint bytes
+    // (restore re-applies by event replay; checkpoint is pre-intervention).
     cols->mon_age_group[row] & stream;
     cols->cohort_set[row] & stream;
     cols->next_cts_dist[row] & stream;

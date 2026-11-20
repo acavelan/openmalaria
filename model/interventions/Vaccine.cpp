@@ -145,40 +145,5 @@ bool vaccinate( RunContext& ctx, Host::Human& human,
     return true;
 }
 
-void vac_checkpoint( RunContext&, std::vector<VacRecord>& vac, ostream& stream )
-{
-    using namespace OM::util::checkpoint;
-    vac.size() & stream;
-    for( VacRecord& r : vac ) {   // non-const: the vector wire template takes by ref
-        r.id & stream;
-        r.num_doses & stream;
-        r.time_last & stream;
-        r.per_genotype_eff & stream;
-        r.decay_factor & stream;
-    }
-}
-
-void vac_checkpoint( RunContext& ctx, std::vector<VacRecord>& vac, istream& stream )
-{
-    using namespace OM::util::checkpoint;
-    size_t n;
-    n & stream;
-    validateListSize( n );
-    vac.clear();
-    for( size_t i = 0; i < n; ++i ) {
-        VacRecord r;
-        r.id & stream;
-        r.num_doses & stream;
-        r.time_last & stream;
-        r.per_genotype_eff & stream;
-        r.decay_factor & stream;
-        // decay config pointer: from the registry (bad value = old error)
-        if( r.id.id < ctx.ext->vaccineComponents.size() && ctx.ext->vaccineComponents[r.id.id] )
-            r.decay = ctx.ext->vaccineComponents[r.id.id]->decayFunc.get();
-        else throw util::checkpoint_error( "bad value in checkpoint file" );
-        vac.push_back( r );
-    }
-}
-
 }
 }

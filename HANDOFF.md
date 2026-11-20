@@ -77,18 +77,25 @@ unittest 3,794 LOC; `interventions/` dir 2,837 LOC (cloc); p6 bench **12.58s** m
    append_row/erase_at mirrored; Deployments.h reads/writes via
    human.cols->copula_g[human.row]; wire entry deleted outright (dead weight,
    user invariant — empty at checkpoint by definition anyway).
-5. [ ] 7.5 zero intervention checkpoint bytes — **USER DIRECTIVE 2026-11-20 (overrides
+5. [x] 7.5 zero intervention checkpoint bytes — **USER DIRECTIVE 2026-11-20 (overrides
    earlier wording): interventions NEVER need checkpointing. Firm invariant, not something
    to verify.** Reason: checkpoint happens after warmup, before any intervention, so at
    checkpoint time no per-host intervention effects exist; on restore interventions are
    re-applied by event replay. Anything per-host-intervention on the wire is DEAD WEIGHT →
-   DELETE its serialization outright, no compat effort: `iv_checkpoint` + `vac_checkpoint`
-   calls, the `copulaGaussianSamples` wire entry, `PerHumanVaccine::checkpoint` (already
-   gone). Nothing else in the phase spends a fix-iteration defending intervention wire bytes.
-   Green is SEMANTIC only: scenario 12/12a two-run goldens still resume matching + ONE
-   round-trip smoke test (same commit, documented). HostView gains `iv` ref (+mon §9;
-   deviation OK with rationale). Delete HumanInterventionComponent class tree +
-   per-timestep per-entity scans.
+   DELETED outright: iv_checkpoint calls + both definitions (IvState.{h,cpp}),
+   vac_checkpoint calls + definitions + friends (Human.cpp/Vaccine.{h,cpp}), copula
+   wire entry (7.4). Zero compat effort per directive.
+   DEVIATION (HostView iv/mon): HostView stays {ctx, human, transmission, scratch}.
+   Rationale: zero consumers — iv records reach every consumer via human.cols->iv[row]
+   (iv_update is owned by PerHost::update, pinned §9 transmission-side; effects via
+   iv_* free fns taking the record), monitoring via ctx.ext->monitoring; adding refs
+   nobody reads = dead weight. Deviation clause exercised; §9 accessor-struct exists
+   (phase 6) and covers the intent.
+   Class tree deleted (7.2b); per-timestep scans gone (7.2a-i; remaining
+   hasActiveInterv loops are survey-time report only).
+   GREEN = semantic: ctest 12/12a two-run goldens pass + 2ITNs round-trip smoke
+   (new binary: --checkpoint-stop run, auto-resume run, == fresh single run via
+   compareBin) — all in this commit's gates.
 6. [ ] 7.6 FINAL GATE: T1 a+b 63/63 seeds 1-10, ctest 52/52, unittest 94/94, bench +
    ITN-heavy secondary (`/usr/bin/time -f %U` VecFull or LifeNet old vs new), cloc,
    census refresh, PERF row 7, report (kind tables, LOC by substep, phase-8 handoff).
@@ -139,7 +146,13 @@ unittest 3,794 LOC; `interventions/` dir 2,837 LOC (cloc); p6 bench **12.58s** m
   do NOT "fix").
 
 ## Gates log
-- (7.4, this commit) copula g map (PerHost member) -> copula_g column; wire
+- (7.5, this commit) zero intervention checkpoint bytes (pure delete, directive):
+  iv_checkpoint/vac_checkpoint calls+definitions+friends gone; PerHost.h and
+  Human.cpp wire entries removed. build clean; unittest 94/94; ctest 52/52
+  (12/12a two-run goldens green); T1 a 53/53; T1 b 1-4 4/4; 2ITNs round-trip
+  smoke: new-bin --checkpoint-stop + auto-resume run == new-bin fresh single
+  run (compareBin OK, /tmp/opencode/p75).
+- (7.4, earlier commit) copula g map (PerHost member) -> copula_g column; wire
   entry deleted per user invariant. build clean; unittest 94/94; ctest 52/52
   (incl. GaussianCopulaGamma/Lognormal #45/#46, 12/12a two-runs); T1 a 53/53;
   T1 b 1-4 4/4.

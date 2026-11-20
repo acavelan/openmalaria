@@ -27,7 +27,6 @@
 #include "core/RunContext.h"
 #include "humans/HostColumns.h"  // leaf: SoA columns owned by Population (IvRecord)
 #include "interventions/ComponentId.h"  // leaf: Component::Type + ComponentId only
-#include "interventions/IvState.h"  // iv_checkpoint used by the wire template below
 #include "util/AgeGroupInterpolation.h"
 #include "util/sampler.h"
 #include "util/checkpoint_containers.h"
@@ -230,7 +229,9 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
         // 7.4: copulaGaussianSamples moved to the copula_g column (and its
         // wire entry deleted: interventions carry zero checkpoint bytes —
         // user invariant; restore re-applies via event replay).
-        interventions::iv_checkpoint( *ctx, cols->iv[row], stream );
+        // iv records not on the wire: interventions carry zero checkpoint
+        // bytes (restore re-applies by event replay; checkpoint is
+        // pre-intervention — user invariant).
     }
     //@}
     
