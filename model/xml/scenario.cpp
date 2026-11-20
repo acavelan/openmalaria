@@ -43,7 +43,7 @@
 #include "util/ModelNameProvider.h"
 #include "util/UnitParse.h"
 #include "util/errors.h"
-#include "xml/latentP.h"
+#include "xml/DocumentLoader.h"
 #include "schema/scenario.h"
 
 #include <cassert>

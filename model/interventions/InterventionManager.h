@@ -24,6 +24,11 @@
 #define OM_INTERVENTIONS_INTERVENTIONS
 
 #include "Clock.h"
+#include "util/errors.h"
+#include "util/CommandLine.h"
+#include "Population.h"
+#include "Host/ImportedInfections.h"
+#include "interventions/Deployments.h"
 #include "interventions/Interfaces.h"
 #include "Transmission/TransmissionModel.h"
 namespace scnXml { class Interventions; }
@@ -60,6 +65,69 @@ public:
      * If textId is unknown, an xml_scenario_error is thrown. */
     static ComponentId getComponentId( RunContext& ctx, const std::string textId );
 };
+
+// ———  implementation (was InterventionManager.cpp)  ———
+
+
+
+// ———  InterventionManager  ———
+
+// static functions:
+
+inline ComponentId InterventionManager::getComponentId(RunContext& ctx, const string textId)
+{
+    auto it = ctx.identifierMap.find(textId);
+    if (it == ctx.identifierMap.end())
+    {
+        ostringstream msg;
+        msg << "unable to find an intervention component with id \"" << textId
+            << "\" (wrong name, no definition or used before definition?)";
+        throw util::xml_scenario_error(msg.str());
+    }
+    return it->second;
+}
+
+
+inline void InterventionManager::deploy(RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel &transmission)
+{
+    if (ctx.clock.interv < sim::zero()) return;
+
+    // deploy imported infections (not strictly speaking an intervention)
+    ctx.importedInfections->import(ctx, population);
+
+    // deploy timed interventions
+    SimTime now = ctx.clock.interv_date();
+    while ((*ctx.timed)[ctx.nextTimed].date <= now)
+    {
+        if (util::CommandLine::option(util::CommandLine::VERBOSE))
+        {
+            cout << "deploy::" << now << "::Timed";
+            print_timed_details(cout, (*ctx.timed)[ctx.nextTimed]);
+            cout << endl;
+        }
+
+        (*ctx.timed)[ctx.nextTimed].deploy(ctx, population, transmission);
+        ctx.nextTimed += 1;
+    }
+
+    // deploy continuous interventions
+    for (Host::Human &human : population)
+    {
+        uint32_t nextCtsDist = human.nextCtsDist();
+        // deploy continuous interventions
+        while (nextCtsDist < ctx.continuous->size())
+        {
+            if (util::CommandLine::option(util::CommandLine::VERBOSE))
+            {
+                cout << "deploy::" << now << "::Continuous";
+                (*ctx.continuous)[nextCtsDist].print_details(cout);
+                cout << endl;
+            }
+            if (!(*ctx.continuous)[nextCtsDist].filterAndDeploy(ctx, human)) break; // deployment (and all remaining) happens in the future
+            nextCtsDist = ++human.nextCtsDist();
+        }
+    }
+}
 
 } }
 #endif
