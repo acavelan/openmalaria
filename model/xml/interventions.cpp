@@ -72,10 +72,10 @@ void ImportedInfections::init( RunContext& ctx, const scnXml::ImportedInfections
             }
             rate.reserve( tElt.getRate().size() );
             try{
-                for( auto it = tElt.getRate().begin(); it != tElt.getRate().end(); ++it ){
-                    SimTime date = UnitParse::readDate(ctx.clock,  it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/ );
+                for( const auto& rateElt : tElt.getRate() ){
+                    SimTime date = UnitParse::readDate(ctx.clock,  rateElt.getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/ );
                     // convert to per-time-step, per-person
-                    double rateVal = it->getValue() * ctx.clock.years_per_step * (1.0 / 1000.0);
+                    double rateVal = rateElt.getValue() * ctx.clock.years_per_step * (1.0 / 1000.0);
                     rate.push_back( Rate( date - ctx.clock.start_date, rateVal ) );
                 }
                 sort( rate.begin(), rate.end() );
@@ -1117,9 +1117,8 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
         const scnXml::HumanInterventions &human = intervElt.getHuman().get();
 
         // 1. Read components
-        for (auto it = human.getComponent().begin(), end = human.getComponent().end(); it != end; ++it)
+        for (const scnXml::HumanInterventionComponent &component : human.getComponent())
         {
-            const scnXml::HumanInterventionComponent &component = *it;
             if (ctx.identifierMap.count(component.getId()) > 0)
             {
                 ostringstream msg;
@@ -1189,9 +1188,8 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             }
             return std::make_pair(subPop, complement);
         };
-        for (auto it = human.getDeployment().begin(), end = human.getDeployment().end(); it != end; ++it)
+        for (const scnXml::Deployment &elt : human.getDeployment())
         {
-            const scnXml::Deployment &elt = *it;
             // 2.a intervention components
             auto intervention = shared_ptr<HumanIntervention>(new HumanIntervention(ctx, elt.getComponent(), elt.getCondition()));
 
@@ -1321,15 +1319,12 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
     if (intervElt.getUninfectVectors().present())
     {
         const scnXml::UninfectVectors &elt = intervElt.getUninfectVectors().get();
-        if (elt.getTimedDeployment().size() > 0)
+        // timed deployments:
+        for (const auto &it : elt.getTimedDeployment())
         {
-            // timed deployments:
-            for (auto it = elt.getTimedDeployment().begin(); it != elt.getTimedDeployment().end(); ++it)
-            {
-                SimTime date = UnitParse::readDate(ctx.clock, it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
-                check_timed_date(ctx, date);
-                ctx.timed->push_back(timed_deployment(date, TimedDeploymentKind::UNINFECT_VECTORS));
-            }
+            SimTime date = UnitParse::readDate(ctx.clock, it.getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
+            check_timed_date(ctx, date);
+            ctx.timed->push_back(timed_deployment(date, TimedDeploymentKind::UNINFECT_VECTORS));
         }
     }
     if (intervElt.getVectorPop().present())
@@ -1340,9 +1335,8 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             typedef scnXml::VectorPop::InterventionSequence SeqT;
             const SeqT &seq = intervElt.getVectorPop().get().getIntervention();
             size_t instance = 0;
-            for (auto it = seq.begin(), end = seq.end(); it != end; ++it)
+            for (const scnXml::VectorIntervention &elt : seq)
             {
-                const scnXml::VectorIntervention &elt = *it;
                 if (elt.getTimed().present())
                 {
                     initVectorInterv(*vectorModel, elt.getDescription().getAnopheles(), instance, elt.getName());
@@ -1368,9 +1362,8 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
         {
             typedef scnXml::AddNonHumanHosts::NonHumanHostsSequence SeqT;
             const SeqT &seq = intervElt.getAddNonHumanHosts().get().getNonHumanHosts();
-            for (auto it = seq.begin(), end = seq.end(); it != end; ++it)
+            for (const scnXml::NonHumanHosts2 &elt : seq)
             {
-                const scnXml::NonHumanHosts2 &elt = *it;
                 if (elt.getTimed().present())
                 {
                     for (const scnXml::Deploy2 &deploy : elt.getTimed().get().getDeploy())
@@ -1395,9 +1388,8 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             typedef scnXml::NonHumanHostsModifications::InterventionSequence SeqT;
             const SeqT &seq = intervElt.getNonHumanHostsModifications().get().getIntervention();
             size_t instance = 0;
-            for (auto it = seq.begin(), end = seq.end(); it != end; ++it)
+            for (const scnXml::NonHumanHostsIntervention &elt : seq)
             {
-                const scnXml::NonHumanHostsIntervention &elt = *it;
                 if (elt.getTimed().present())
                 {
                     const scnXml::DecayFunction &decay = elt.getDecay();
