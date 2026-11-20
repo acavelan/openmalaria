@@ -63,25 +63,26 @@ using namespace OM::util;
 
 // Arithmetic mean of a whole daily-EIR sequence (both overloads read it from
 // the .XML file the same way); noneMsg is the pedantic empty-vector check text.
-template<class Seq>
-static double averageEIR_seq(const Seq& daily, const char* noneMsg)
-{
+template <class Seq> static double averageEIR_seq(const Seq& daily, const char* noneMsg) {
     double valaverageEIR = 0.0;
     size_t i = 0;
-    for (; i < daily.size(); ++i) valaverageEIR += (double)daily[i];
-    if (i == 0) throw util::xml_scenario_error(noneMsg);
+    for (; i < daily.size(); ++i)
+        valaverageEIR += (double)daily[i];
+    if (i == 0)
+        throw util::xml_scenario_error(noneMsg);
     return valaverageEIR / i;
 }
 
-inline double averageEIR(const scnXml::NonVector &nonVectorData)
-{ return averageEIR_seq(nonVectorData.getEIRDaily(), "no EIRDaily values given"); }
+inline double averageEIR(const scnXml::NonVector& nonVectorData) {
+    return averageEIR_seq(nonVectorData.getEIRDaily(), "no EIRDaily values given");
+}
 
-inline double averageEIR(const scnXml::DailyValues &vectorData)
-{ return averageEIR_seq(vectorData.getValue(), "no daily values given"); }
+inline double averageEIR(const scnXml::DailyValues& vectorData) {
+    return averageEIR_seq(vectorData.getValue(), "no daily values given");
+}
 
-TransmissionModel *createNonVectorModel(RunContext& ctx, const scnXml::Entomology &entoData)
-{
-    const scnXml::NonVector &nonVectorData = entoData.getNonVector().get();
+TransmissionModel* createNonVectorModel(RunContext& ctx, const scnXml::Entomology& entoData) {
+    const scnXml::NonVector& nonVectorData = entoData.getNonVector().get();
 
     int interventionMode = readMode(entoData.getMode());
     int eipDuration = nonVectorData.getEipDuration();
@@ -92,17 +93,16 @@ TransmissionModel *createNonVectorModel(RunContext& ctx, const scnXml::Entomolog
     return new TransmissionModel(ctx, initialisationEIR, interventionMode, nonVectorData, eipDuration);
 }
 
-bool anophelesCompare(const scnXml::AnophelesParams &a1, const scnXml::AnophelesParams &a2)
-{
+bool anophelesCompare(const scnXml::AnophelesParams& a1, const scnXml::AnophelesParams& a2) {
     return (a1.getSeasonality().getAnnualEIR().get() > a2.getSeasonality().getAnnualEIR().get());
 }
 
-Anopheles::AnophelesModel *createAnophelesModel(RunContext& ctx, size_t i, const scnXml::AnophelesParams &anoph, vector<double>& initialisationEIR, int populationSize, int interventionMode)
-{
-    Anopheles::AnophelesModel *anophModel;
+Anopheles::AnophelesModel* createAnophelesModel(RunContext& ctx, size_t i, const scnXml::AnophelesParams& anoph,
+                                                vector<double>& initialisationEIR, int populationSize,
+                                                int interventionMode) {
+    Anopheles::AnophelesModel* anophModel;
 
-    if (util::ModelOptions::option(util::VECTOR_LIFE_CYCLE_MODEL))
-    {
+    if (util::ModelOptions::option(util::VECTOR_LIFE_CYCLE_MODEL)) {
         throw util::xml_scenario_error("VECTOR_LIFE_CYCLE_MODEL not yet "
                                        "implemented. Use VECTOR_SIMPLE_MPD_MODEL instead.");
         // TODO
@@ -114,9 +114,7 @@ Anopheles::AnophelesModel *createAnophelesModel(RunContext& ctx, size_t i, const
         //         "model parameters for each anopheles species");
         // emergence = unique_ptr<EmergenceModel>( new LCEmergence() );
         // emergence->initLifeCycle( lcOpt.get() );
-    }
-    else if (util::ModelOptions::option(util::VECTOR_SIMPLE_MPD_MODEL))
-    {
+    } else if (util::ModelOptions::option(util::VECTOR_SIMPLE_MPD_MODEL)) {
         if (!anoph.getSimpleMPD().present())
             throw util::xml_scenario_error("VECTOR_SIMPLE_MPD_MODEL: requires <simpleMPD> element with "
                                            "model parameters for each anopheles species");
@@ -126,23 +124,22 @@ Anopheles::AnophelesModel *createAnophelesModel(RunContext& ctx, size_t i, const
         SimTime developmentDuration = sim::fromDays(smpd.getDevelopmentDuration().getValue());
         if (!(developmentDuration > sim::zero()))
             throw util::xml_scenario_error("entomology.vector.simpleMPD.developmentDuration: "
-                "must be positive");
+                                           "must be positive");
         double probPreadultSurvival = smpd.getDevelopmentSurvival().getValue();
         if (!(0.0 <= probPreadultSurvival && probPreadultSurvival <= 1.0))
             throw util::xml_scenario_error("entomology.vector.simpleMPD.developmentSurvival: "
-                "must be a probability (in range [0,1]");
+                                           "must be a probability (in range [0,1]");
         double fEggsLaidByOviposit = smpd.getFemaleEggsLaidByOviposit().getValue();
         if (!(fEggsLaidByOviposit > 0.0))
             throw util::xml_scenario_error("entomology.vector.simpleMPD.femaleEggsLaidByOviposit: "
-                "must be positive");
+                                           "must be positive");
 
         anophModel = new Anopheles::AnophelesModel(ctx);
         anophModel->initSimpleMPD(developmentDuration, probPreadultSurvival, fEggsLaidByOviposit);
-    }
-    else
+    } else
         anophModel = new Anopheles::AnophelesModel(ctx);
 
-    const scnXml::Seasonality &seasonality = anoph.getSeasonality();
+    const scnXml::Seasonality& seasonality = anoph.getSeasonality();
 
     if (seasonality.getInput() != "EIR")
         throw util::xml_scenario_error("entomology.anopheles.seasonality.input: must be EIR (for now)");
@@ -151,22 +148,20 @@ Anopheles::AnophelesModel *createAnophelesModel(RunContext& ctx, size_t i, const
     vector<double> FSCoeffic;
     double EIRRotateAngle = 0;
     double targetEIR = seasonality.getAnnualEIR().get();
-    if (seasonality.getFourierSeries().present())
-    {
-        const scnXml::FourierSeries &seasFC = seasonality.getFourierSeries().get();
-        const scnXml::FourierSeries::CoefficSequence &fsCoeffic = seasFC.getCoeffic();
+    if (seasonality.getFourierSeries().present()) {
+        const scnXml::FourierSeries& seasFC = seasonality.getFourierSeries().get();
+        const scnXml::FourierSeries::CoefficSequence& fsCoeffic = seasFC.getCoeffic();
 
         FSCoeffic.reserve(2 * fsCoeffic.size() + 1);
 
         FSCoeffic.push_back(0.0); // value doesn't matter; EIR will be scaled
-        for (auto it = fsCoeffic.begin(); it != fsCoeffic.end(); ++it)
-        {
+        for (auto it = fsCoeffic.begin(); it != fsCoeffic.end(); ++it) {
             FSCoeffic.push_back(it->getA());
             FSCoeffic.push_back(it->getB());
         }
 
         EIRRotateAngle = 0;
-        if(seasFC.getEIRRotateAngle().present())
+        if (seasFC.getEIRRotateAngle().present())
             EIRRotateAngle = seasFC.getEIRRotateAngle().get();
 
         // EIR for this species, with index 0 refering to value over first interval
@@ -175,34 +170,30 @@ Anopheles::AnophelesModel *createAnophelesModel(RunContext& ctx, size_t i, const
         // Now we rescale to get an EIR of targetEIR.
         // Calculate current sum as is usually done.
         vectors::expIDFT(initEIR365, FSCoeffic, EIRRotateAngle);
-        
+
         // And scale (also acts as a unit conversion):
         FSCoeffic[0] += log(targetEIR / vectors::sum(initEIR365));
 
         // Calculate forced EIR for pre-intervention phase from FSCoeffic:
         vectors::expIDFT(initEIR365, FSCoeffic, EIRRotateAngle);
-    }
-    else if (seasonality.getMonthlyValues().present())
-    {
-        const scnXml::MonthlyValues &seasM = seasonality.getMonthlyValues().get();
-        if (seasM.getSmoothing() == "fourier")
-        {
+    } else if (seasonality.getMonthlyValues().present()) {
+        const scnXml::MonthlyValues& seasM = seasonality.getMonthlyValues().get();
+        if (seasM.getSmoothing() == "fourier") {
             const size_t N_m = 12;
             const scnXml::MonthlyValues::ValueSequence seq = seasM.getValue();
             assert(seq.size() == N_m); // enforced by schema
             vector<double> months(N_m);
             double maxEIR = months[0];
-            for (size_t i = 0; i < N_m; ++i)
-            {
+            for (size_t i = 0; i < N_m; ++i) {
                 months[i] = seq[i];
-                if(months[i] > maxEIR)
+                if (months[i] > maxEIR)
                     maxEIR = months[i];
             }
             // arbitrary minimum we allow (cannot have zeros since we take the logarithm)
             double min = maxEIR / 100.0;
-            for (size_t i = 0; i < N_m; ++i)
-            {
-                if (months[i] < min) months[i] += min;
+            for (size_t i = 0; i < N_m; ++i) {
+                if (months[i] < min)
+                    months[i] += min;
             }
 
             FSCoeffic.assign(5, 0.0);
@@ -214,7 +205,7 @@ Anopheles::AnophelesModel *createAnophelesModel(RunContext& ctx, size_t i, const
 
             // Assume the values are for the start of the month
             EIRRotateAngle = 0;
-            if(seasM.getEIRRotateAngle().present())
+            if (seasM.getEIRRotateAngle().present())
                 EIRRotateAngle = seasM.getEIRRotateAngle().get();
 
             // EIR for this species, with index 0 refering to value over first interval
@@ -228,49 +219,40 @@ Anopheles::AnophelesModel *createAnophelesModel(RunContext& ctx, size_t i, const
 
             // Calculate forced EIR for pre-intervention phase from FSCoeffic:
             vectors::expIDFT(initEIR365, FSCoeffic, EIRRotateAngle);
-        }
-        else if(seasM.getSmoothing() == "none")
-        {
-            if (interventionMode != forcedEIR)
-            {
+        } else if (seasM.getSmoothing() == "none") {
+            if (interventionMode != forcedEIR) {
                 throw util::xml_scenario_error(
                     "entomology.anopheles.seasonality.monthlyValues.smoothing: smoothing mode \"none\" is not allowed with monthly EIR values");
             }
-        }
-        else
-        {
-            if (interventionMode != forcedEIR)
-            {
+        } else {
+            if (interventionMode != forcedEIR) {
                 throw util::xml_scenario_error(
                     "entomology.anopheles.seasonality.monthlyValues.smoothing: unknown smoothing mode");
             }
         }
-    }
-    else
-    {
+    } else {
         assert(seasonality.getDailyValues().present()); // XML loading code should enforce this
 
-        if (interventionMode != forcedEIR)
-        {
+        if (interventionMode != forcedEIR) {
             throw util::xml_scenario_error(
                 "entomology.anopheles.seasonality.dailyValues: daily values are only allowed with forced EIR");
         }
 
-        const scnXml::DailyValues &seasM = seasonality.getDailyValues().get();
-        const scnXml::DailyValues::ValueSequence &daily = seasM.getValue();
+        const scnXml::DailyValues& seasM = seasonality.getDailyValues().get();
+        const scnXml::DailyValues::ValueSequence& daily = seasM.getValue();
 
         // The minimum EIR allowed in the array. The product of the average EIR and a constant.
         double minEIR = 0.01 * averageEIR(seasM);
 
         if (daily.size() < static_cast<size_t>(sim::oneYear()))
-            throw util::xml_scenario_error("entomology.anopheles.seasonality.dailyValues insufficient daily data for a year");
+            throw util::xml_scenario_error(
+                "entomology.anopheles.seasonality.dailyValues insufficient daily data for a year");
 
         // EIR for this species, with index 0 refering to value over first interval
         initEIR365.resize(sim::oneYear(), 0.0);
         vector<int> nDays(sim::oneYear(), 0.0);
-        
-        for (SimTime d = sim::zero(), endDay = daily.size(); d < endDay; d = d + sim::oneDay())
-        {
+
+        for (SimTime d = sim::zero(), endDay = daily.size(); d < endDay; d = d + sim::oneDay()) {
             double EIRdaily = std::max(static_cast<double>(daily[d]), minEIR);
 
             // Index 0 of initialisationEIR refers to the EIR affecting the
@@ -292,7 +274,7 @@ Anopheles::AnophelesModel *createAnophelesModel(RunContext& ctx, size_t i, const
         throw util::xml_scenario_error("entomology.anopheles.seasonality.annualEIR is required at the moment");
 
     // -----  Set model variables  -----
-    const scnXml::Mosq &mosq = anoph.getMosq();
+    const scnXml::Mosq& mosq = anoph.getMosq();
 
     Anopheles::MosquitoParams mosqParams;
     mosqParams.name = anoph.getMosquito();
@@ -309,28 +291,27 @@ Anopheles::AnophelesModel *createAnophelesModel(RunContext& ctx, size_t i, const
     mosqParams.EIPDuration = sim::fromDays(mosq.getExtrinsicIncubationPeriod().getValue());
     mosqParams.minInfectedThreshold = mosq.getMinInfectedThreshold();
 
-    if (sim::oneDay() > mosqParams.restDuration || mosqParams.restDuration * 2 >= mosqParams.EIPDuration)
-    {
+    if (sim::oneDay() > mosqParams.restDuration || mosqParams.restDuration * 2 >= mosqParams.EIPDuration) {
         // TODO: limit was EIPDuration >= mosqRestDuration >= 1
         // but in usage of ftauArray this wasn't enough. Check why.
         throw util::xml_scenario_error("Code expects EIPDuration > 2*mosqRestDuration >= 2");
     }
 
-    const scnXml::AnophelesParams::NonHumanHostsSequence &xmlSeqNNHs = anoph.getNonHumanHosts();
+    const scnXml::AnophelesParams::NonHumanHostsSequence& xmlSeqNNHs = anoph.getNonHumanHosts();
 
     vector<Anopheles::NhhParams> nhhs;
-    for (const scnXml::NonHumanHosts &xmlNNH : xmlSeqNNHs)
-    {
+    for (const scnXml::NonHumanHosts& xmlNNH : xmlSeqNNHs) {
         Anopheles::NhhParams nhh;
         nhh.mosqRelativeEntoAvailability = xmlNNH.getMosqRelativeEntoAvailability().getValue();
         nhh.mosqProbBiting = xmlNNH.getMosqProbBiting().getValue();
         nhh.mosqProbFindRestSite = xmlNNH.getMosqProbFindRestSite().getValue();
         nhh.mosqProbResting = xmlNNH.getMosqProbResting().getValue();
-        nhh.hostFecundityFactor = xmlNNH.getHostFecundityFactor().present() ? xmlNNH.getHostFecundityFactor().get().getValue() : 1.0;
+        nhh.hostFecundityFactor =
+            xmlNNH.getHostFecundityFactor().present() ? xmlNNH.getHostFecundityFactor().get().getValue() : 1.0;
         nhh.name = xmlNNH.getName();
         nhhs.push_back(nhh);
     }
-    
+
     // Initial estimate of the proportion of mosquitoes which are infectious, s: S_v(t) = s*N_v(t). Used as a starting value and then fit.
     double propInfectious = 0.021;
     // Initial guess of the proportion of mosquitoes which are infected, o: O_v(t) = o*N_v(t). Only used as a starting value.
@@ -346,9 +327,8 @@ Anopheles::AnophelesModel *createAnophelesModel(RunContext& ctx, size_t i, const
     return anophModel;
 }
 
-TransmissionModel *createVectorModel(RunContext& ctx, const scnXml::Entomology &entoData, int populationSize)
-{
-    const scnXml::Vector &vectorData = entoData.getVector().get();
+TransmissionModel* createVectorModel(RunContext& ctx, const scnXml::Entomology& entoData, int populationSize) {
+    const scnXml::Vector& vectorData = entoData.getVector().get();
     scnXml::Vector::AnophelesSequence anophelesList = vectorData.getAnopheles();
 
     int interventionMode = readMode(entoData.getMode());
@@ -362,23 +342,24 @@ TransmissionModel *createVectorModel(RunContext& ctx, const scnXml::Entomology &
 
     size_t numSpecies = anophelesList.size();
 
-    if (numSpecies < 1) throw util::xml_scenario_error("Can't use Vector model without data for at least one anopheles species!");
+    if (numSpecies < 1)
+        throw util::xml_scenario_error("Can't use Vector model without data for at least one anopheles species!");
 
     // Sort Anopheles by Decreasing EIR
     sort(anophelesList.begin(), anophelesList.end(), anophelesCompare);
 
-    for (size_t i = 0; i < numSpecies; ++i)
-    {
+    for (size_t i = 0; i < numSpecies; ++i) {
         auto anoph = anophelesList[i];
 
         PerHostAnophParams::init(ctx, anoph.getMosq());
 
-        Anopheles::AnophelesModel *anophModel = createAnophelesModel(ctx, i, anoph, initialisationEIR, populationSize, interventionMode);
+        Anopheles::AnophelesModel* anophModel =
+            createAnophelesModel(ctx, i, anoph, initialisationEIR, populationSize, interventionMode);
         std::unique_ptr<Anopheles::EmergenceRateEstimator> estimator =
             std::make_unique<Anopheles::EmergenceRateEstimator>(
-                util::ModelOptions::option(util::USE_EXACT_NV0_SOLVER) ?
-                    Anopheles::EmergenceRateEstimator::Kind::Solver
-                  : Anopheles::EmergenceRateEstimator::Kind::AdaptiveFitter,
+                util::ModelOptions::option(util::USE_EXACT_NV0_SOLVER)
+                    ? Anopheles::EmergenceRateEstimator::Kind::Solver
+                    : Anopheles::EmergenceRateEstimator::Kind::AdaptiveFitter,
                 *anophModel, populationSize);
 
         species.push_back(std::unique_ptr<Anopheles::AnophelesModel>(anophModel));
@@ -389,33 +370,32 @@ TransmissionModel *createVectorModel(RunContext& ctx, const scnXml::Entomology &
     // Note: in forcedEIR mode species/emergenceRateEstimators are not needed
     // anymore (we have initialisationEIR), but interventions still use them.
 
-    return new TransmissionModel(ctx, initialisationEIR, interventionMode, std::move(species), std::move(emergenceRateEstimators), speciesIndex);
+    return new TransmissionModel(ctx, initialisationEIR, interventionMode, std::move(species),
+                                 std::move(emergenceRateEstimators), speciesIndex);
 }
 
-TransmissionModel *createTransmissionModel(RunContext& ctx, const scnXml::Entomology &entoData, int populationSize)
-{
+TransmissionModel* createTransmissionModel(RunContext& ctx, const scnXml::Entomology& entoData, int populationSize) {
     // Entomology contains either a list of at least one anopheles or a list of at
     // least one EIRDaily.
-    TransmissionModel *model;
+    TransmissionModel* model;
     if (entoData.getVector().present())
         model = createVectorModel(ctx, entoData, populationSize);
-    else
-    {
+    else {
         if (!entoData.getNonVector().present()) // should be a validation error, but anyway...
             throw util::xml_scenario_error("Neither vector nor non-vector data present in the XML!");
-        if (util::ModelOptions::option(util::VECTOR_LIFE_CYCLE_MODEL) || util::ModelOptions::option(util::VECTOR_SIMPLE_MPD_MODEL))
-            throw util::xml_scenario_error("VECTOR_*_MODEL is only compatible with the vector model (and non-vector data is present).");
+        if (util::ModelOptions::option(util::VECTOR_LIFE_CYCLE_MODEL) ||
+            util::ModelOptions::option(util::VECTOR_SIMPLE_MPD_MODEL))
+            throw util::xml_scenario_error(
+                "VECTOR_*_MODEL is only compatible with the vector model (and non-vector data is present).");
         model = createNonVectorModel(ctx, entoData);
     }
 
-    if (entoData.getScaledAnnualEIR().present())
-    {
+    if (entoData.getScaledAnnualEIR().present()) {
         model->scaleEIR(entoData.getScaledAnnualEIR().get() / model->annualEIR);
         assert(util::vectors::approxEqual(model->annualEIR, entoData.getScaledAnnualEIR().get()));
     }
 
-    if (util::CommandLine::option(util::CommandLine::PRINT_ANNUAL_EIR))
-    {
+    if (util::CommandLine::option(util::CommandLine::PRINT_ANNUAL_EIR)) {
         // Note: after internal scaling (which doesn't imply exit)
         // but before external scaling.
         cout << "Total annual EIR: " << model->annualEIR << endl;
@@ -424,62 +404,60 @@ TransmissionModel *createTransmissionModel(RunContext& ctx, const scnXml::Entomo
     return model;
 }
 
-TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode, const scnXml::NonVector &nonVectorData, int eipDuration)
-        : TransmissionModel(ctx, std::move(initEIR), interventionMode, Kind::NonVector, {}, {}, {})
-    {
-        nSpore = sim::fromDays(eipDuration);
-        laggedKappa.resize(ctx.clock.inSteps(nSpore) + 1, 0.0);
+TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode,
+                                     const scnXml::NonVector& nonVectorData, int eipDuration)
+    : TransmissionModel(ctx, std::move(initEIR), interventionMode, Kind::NonVector, {}, {}, {}) {
+    nSpore = sim::fromDays(eipDuration);
+    laggedKappa.resize(ctx.clock.inSteps(nSpore) + 1, 0.0);
 
-        vector<int> nDays(ctx.clock.steps_per_year, 0);
-        // The minimum EIR allowed in the array. The product of the average EIR and a constant.
-        double minEIR = min_EIR_mult * averageEIR(nonVectorData);
+    vector<int> nDays(ctx.clock.steps_per_year, 0);
+    // The minimum EIR allowed in the array. The product of the average EIR and a constant.
+    double minEIR = min_EIR_mult * averageEIR(nonVectorData);
 
-        const scnXml::NonVector::EIRDailySequence &daily = nonVectorData.getEIRDaily();
-        if (daily.size() < static_cast<size_t>(sim::oneYear()))
-            throw util::xml_scenario_error("insufficient EIRDaily data for a year");
+    const scnXml::NonVector::EIRDailySequence& daily = nonVectorData.getEIRDaily();
+    if (daily.size() < static_cast<size_t>(sim::oneYear()))
+        throw util::xml_scenario_error("insufficient EIRDaily data for a year");
 
-        for (SimTime mpcday = sim::zero(), endDay = sim::fromDays(daily.size()); mpcday < endDay; mpcday = mpcday + sim::oneDay())
-        {
-            double EIRdaily = std::max(static_cast<double>(daily[mpcday]), minEIR);
+    for (SimTime mpcday = sim::zero(), endDay = sim::fromDays(daily.size()); mpcday < endDay;
+         mpcday = mpcday + sim::oneDay()) {
+        double EIRdaily = std::max(static_cast<double>(daily[mpcday]), minEIR);
 
-            // Index 0 of initialisationEIR refers to the EIR affecting the
-            // first day(s) of the year. Correspondingly, the first 1 or 5 values
-            // of EIRDaily affect this (1- or 5-day) time-step.
-            size_t i = mod_nn(ctx.clock.inSteps(mpcday), ctx.clock.steps_per_year);
+        // Index 0 of initialisationEIR refers to the EIR affecting the
+        // first day(s) of the year. Correspondingly, the first 1 or 5 values
+        // of EIRDaily affect this (1- or 5-day) time-step.
+        size_t i = mod_nn(ctx.clock.inSteps(mpcday), ctx.clock.steps_per_year);
 
-            nDays[i] += 1;
-            initialisationEIR[i] += EIRdaily;
-        }
-
-        // Calculate total annual EIR
-        // divide by number of records assigned to each interval (usually one per day)
-        for (size_t indTS = 0; indTS < ctx.clock.steps_per_year; indTS += 1)
-        {
-            initialisationEIR[indTS] *= ctx.clock.one_TS() / static_cast<double>(nDays[indTS]);
-            annualEIR += initialisationEIR[indTS];
-        }
-
-        initialKappa.assign(ctx.clock.inSteps(sim::fromYearsI(5)), 0.0);   // 5y warmup data (was nYearsWarmupData)
+        nDays[i] += 1;
+        initialisationEIR[i] += EIRdaily;
     }
+
+    // Calculate total annual EIR
+    // divide by number of records assigned to each interval (usually one per day)
+    for (size_t indTS = 0; indTS < ctx.clock.steps_per_year; indTS += 1) {
+        initialisationEIR[indTS] *= ctx.clock.one_TS() / static_cast<double>(nDays[indTS]);
+        annualEIR += initialisationEIR[indTS];
+    }
+
+    initialKappa.assign(ctx.clock.inSteps(sim::fromYearsI(5)), 0.0); // 5y warmup data (was nYearsWarmupData)
+}
 
 // Shared loop tail of both changeEIRIntervention variants: fills
 // interventionEIR with the per-interval mean of max(daily, minEIR). The
 // days_cerr flag reproduces the extra diagnostic of the non-vector variant.
 static void fill_intervention_eir(RunContext& ctx, vector<double>& interventionEIR,
-    const scnXml::NonVector::EIRDailySequence &daily, double minEIR, bool days_cerr)
-{
+                                  const scnXml::NonVector::EIRDailySequence& daily, double minEIR, bool days_cerr) {
     vector<int> nDays(ctx.clock.inSteps(sim::fromDays(daily.size() - 1)) + 1, 0);
     interventionEIR.assign(nDays.size(), 0.0);
     size_t required_days = static_cast<size_t>((ctx.clock.end_date - ctx.clock.start_date) + 1);
-    if (daily.size() < required_days)
-    {
+    if (daily.size() < required_days) {
         if (days_cerr)
-            cerr << "Days: " << daily.size() << "\nIntervals: " << nDays.size() << "\nRequired: " << required_days << endl;
+            cerr << "Days: " << daily.size() << "\nIntervals: " << nDays.size() << "\nRequired: " << required_days
+                 << endl;
         throw util::xml_scenario_error("Insufficient intervention phase EIR values provided");
     }
     // The minimum EIR allowed in the array. The product of the average EIR and a constant.
-    for (SimTime mpcday = sim::zero(), endDay = sim::fromDays(daily.size()); mpcday < endDay; mpcday = mpcday + sim::oneDay())
-    {
+    for (SimTime mpcday = sim::zero(), endDay = sim::fromDays(daily.size()); mpcday < endDay;
+         mpcday = mpcday + sim::oneDay()) {
         double EIRdaily = std::max(static_cast<double>(daily[mpcday]), minEIR);
 
         // istep is the time period to which the day is assigned.
@@ -488,58 +466,57 @@ static void fill_intervention_eir(RunContext& ctx, vector<double>& interventionE
         interventionEIR[istep] += EIRdaily;
     }
     // divide by number of records assigned to each interval (usually one per day)
-    for (size_t i = 0; i < interventionEIR.size(); ++i)
-    {
+    for (size_t i = 0; i < interventionEIR.size(); ++i) {
         interventionEIR[i] *= ctx.clock.one_TS() / static_cast<double>(nDays[i]);
     }
 }
 
-void TransmissionModel::changeEIRIntervention_nonVector(const scnXml::NonVector &nonVectorData)
-    {
-        // Note: requires ctx.clock.interv >= sim::zero(), but this can only be
-        // called in intervention period anyway.
-        simulationMode = transientEIRknown;
+void TransmissionModel::changeEIRIntervention_nonVector(const scnXml::NonVector& nonVectorData) {
+    // Note: requires ctx.clock.interv >= sim::zero(), but this can only be
+    // called in intervention period anyway.
+    simulationMode = transientEIRknown;
 
-        if (nSpore != sim::fromDays(nonVectorData.getEipDuration()))
-            throw util::xml_scenario_error("change-of-EIR intervention cannot change EIP duration");
+    if (nSpore != sim::fromDays(nonVectorData.getEipDuration()))
+        throw util::xml_scenario_error("change-of-EIR intervention cannot change EIP duration");
 
-        // EIRDaily is schema-required (minOccurs=1), so computing the average
-        // before the insufficient-days check cannot change which error is seen.
-        fill_intervention_eir(ctx, interventionEIR, nonVectorData.getEIRDaily(),
-            min_EIR_mult * averageEIR(nonVectorData), true);
+    // EIRDaily is schema-required (minOccurs=1), so computing the average
+    // before the insufficient-days check cannot change which error is seen.
+    fill_intervention_eir(ctx, interventionEIR, nonVectorData.getEIRDaily(), min_EIR_mult * averageEIR(nonVectorData),
+                          true);
 
-        // I've no idea what this should be, so until someone asks it can be NaN.
-        // It was -9.99 and later 0.0. It could of course be recalculated from interventionEIR.
-        annualEIR = numeric_limits<double>::quiet_NaN();
-    }
+    // I've no idea what this should be, so until someone asks it can be NaN.
+    // It was -9.99 and later 0.0. It could of course be recalculated from interventionEIR.
+    annualEIR = numeric_limits<double>::quiet_NaN();
+}
 
-PerHostAnophParams::PerHostAnophParams (const scnXml::Mosq& mosq) {
-    if(mosq.getAvailability().getDistr() != "const" && (util::ModelOptions::option(NEGATIVE_BINOMIAL_MASS_ACTION) || util::ModelOptions::option(LOGNORMAL_MASS_ACTION) || util::ModelOptions::option(COMORB_TRANS_HET)))
-        throw util::xml_scenario_error( "PerHostAnophParams::PerHostAnophParams(): ModelOptions NEGATIVE_BINOMIAL_MASS_ACTION, LOGNORMAL_MASS_ACTION, COMORB_TRANS_HET are not compatible with ento-availability heterogeneity distributions other than \"const\"");
+PerHostAnophParams::PerHostAnophParams(const scnXml::Mosq& mosq) {
+    if (mosq.getAvailability().getDistr() != "const" &&
+        (util::ModelOptions::option(NEGATIVE_BINOMIAL_MASS_ACTION) ||
+         util::ModelOptions::option(LOGNORMAL_MASS_ACTION) || util::ModelOptions::option(COMORB_TRANS_HET)))
+        throw util::xml_scenario_error(
+            "PerHostAnophParams::PerHostAnophParams(): ModelOptions NEGATIVE_BINOMIAL_MASS_ACTION, LOGNORMAL_MASS_ACTION, COMORB_TRANS_HET are not compatible with ento-availability heterogeneity distributions other than \"const\"");
 
     entoAvailability = util::createSampler(1.0, mosq.getAvailability());
-    probMosqBiting.setParams( mosq.getMosqProbBiting() );
-    probMosqFindRestSite.setParams( mosq.getMosqProbFindRestSite() );
-    probMosqSurvivalResting.setParams( mosq.getMosqProbResting() );
+    probMosqBiting.setParams(mosq.getMosqProbBiting());
+    probMosqFindRestSite.setParams(mosq.getMosqProbFindRestSite());
+    probMosqSurvivalResting.setParams(mosq.getMosqProbResting());
 }
 
-void PerHost::init ( RunContext& ctx, const scnXml::AgeGroupValues& availabilityToMosquitoes ) {
-    relAvailAge.set( ctx.clock, availabilityToMosquitoes, "availabilityToMosquitoes" );
+void PerHost::init(RunContext& ctx, const scnXml::AgeGroupValues& availabilityToMosquitoes) {
+    relAvailAge.set(ctx.clock, availabilityToMosquitoes, "availabilityToMosquitoes");
 }
 
-void initVectorInterv(TransmissionModel &vm, const scnXml::Description::AnophelesSequence &list, size_t instance, const string &name)
-{
+void initVectorInterv(TransmissionModel& vm, const scnXml::Description::AnophelesSequence& list, size_t instance,
+                      const string& name) {
     SpeciesIndexChecker checker(name, vm.speciesIndex);
-    for (const scnXml::VectorSpeciesIntervention &anoph : list)
-    {
-        const string &mosq = anoph.getMosquito();
+    for (const scnXml::VectorSpeciesIntervention& anoph : list) {
+        const string& mosq = anoph.getMosquito();
         vm.species[checker.getIndex(mosq)]->initVectorInterv(anoph, instance);
     }
     checker.checkNoneMissed();
 }
-void initVectorTrap(TransmissionModel &vm, const scnXml::VectorTrap::DescriptionSequence list, size_t instance,
-                                 const scnXml::VectorTrap::NameOptional name_opt)
-{
+void initVectorTrap(TransmissionModel& vm, const scnXml::VectorTrap::DescriptionSequence list, size_t instance,
+                    const scnXml::VectorTrap::NameOptional name_opt) {
     stringstream name_ss;
     if (name_opt.present())
         name_ss << name_opt.get();
@@ -547,22 +524,20 @@ void initVectorTrap(TransmissionModel &vm, const scnXml::VectorTrap::Description
         name_ss << "vector trap intervention " << (instance + 1);
     string name = name_ss.str();
     SpeciesIndexChecker checker(name, vm.speciesIndex);
-    for (const scnXml::Description1 &anoph : list)
-    {
-        const string &mosq = anoph.getMosquito();
+    for (const scnXml::Description1& anoph : list) {
+        const string& mosq = anoph.getMosquito();
         vm.species[checker.getIndex(mosq)]->initVectorTrap(anoph, instance);
     }
     checker.checkNoneMissed();
 }
 
-void TransmissionModel::changeEIRIntervention_vector(const scnXml::NonVector &nonVectorData)
-{
-    if((simulationMode != forcedEIR) && (simulationMode != transientEIRknown))
+void TransmissionModel::changeEIRIntervention_vector(const scnXml::NonVector& nonVectorData) {
+    if ((simulationMode != forcedEIR) && (simulationMode != transientEIRknown))
         throw util::xml_scenario_error("changeEIR intervention can only be used in forced EIR mode");
 
     simulationMode = transientEIRknown;
 
-    if(speciesIndex.size() != 1)
+    if (speciesIndex.size() != 1)
         throw util::xml_scenario_error("changeEIR intervention can only be used with a single anopheles species");
 
     species[0]->changeEIRIntervention(nonVectorData);
@@ -574,40 +549,45 @@ namespace Anopheles {
 // resizes stay at the call sites, before the present() checks, as before;
 // the bound pair reproduces each original check exactly -- NaN initial
 // fails none of them either way).
-template<class V, class E2>
-static void set_interv_decay(SimClock& clock, V& slot, size_t instance, const E2& elt2,
-    double lo, double hi, const char* rangeMsg, const char* tag)
-{
+template <class V, class E2>
+static void set_interv_decay(SimClock& clock, V& slot, size_t instance, const E2& elt2, double lo, double hi,
+                             const char* rangeMsg, const char* tag) {
     double initial = elt2.getInitial();
-    if (initial < lo || initial > hi) throw util::xml_scenario_error(rangeMsg);
+    if (initial < lo || initial > hi)
+        throw util::xml_scenario_error(rangeMsg);
     slot[instance].set(clock, initial, elt2.getDecay(), tag);
 }
 
-void AnophelesModel::initVectorInterv(const scnXml::VectorSpeciesIntervention &elt, size_t instance)
-{
-    if (emergenceReduction.size() <= instance) emergenceReduction.resize(instance + 1);
+void AnophelesModel::initVectorInterv(const scnXml::VectorSpeciesIntervention& elt, size_t instance) {
+    if (emergenceReduction.size() <= instance)
+        emergenceReduction.resize(instance + 1);
     if (elt.getEmergenceReduction().present())
         set_interv_decay(ctx.clock, emergenceReduction, instance, elt.getEmergenceReduction().get(),
-            -numeric_limits<double>::infinity(), 1.0,
-            "emergenceReduction intervention: initial effect must be ≤ 1", "emergenceReduction");
-    if (probAdditionalDeathSugarFeedingIntervs.size() <= instance) probAdditionalDeathSugarFeedingIntervs.resize(instance + 1);
-    if (seekingDeathRateIntervs.size() <= instance) seekingDeathRateIntervs.resize(instance + 1);
-    if (probDeathOvipositingIntervs.size() <= instance) probDeathOvipositingIntervs.resize(instance + 1);
+                         -numeric_limits<double>::infinity(), 1.0,
+                         "emergenceReduction intervention: initial effect must be ≤ 1", "emergenceReduction");
+    if (probAdditionalDeathSugarFeedingIntervs.size() <= instance)
+        probAdditionalDeathSugarFeedingIntervs.resize(instance + 1);
+    if (seekingDeathRateIntervs.size() <= instance)
+        seekingDeathRateIntervs.resize(instance + 1);
+    if (probDeathOvipositingIntervs.size() <= instance)
+        probDeathOvipositingIntervs.resize(instance + 1);
 
     if (elt.getProbAdditionalDeathSugarFeeding().present())
-        set_interv_decay(ctx.clock, probAdditionalDeathSugarFeedingIntervs, instance, elt.getProbAdditionalDeathSugarFeeding().get(),
-            -1.0, numeric_limits<double>::infinity(),
-            "probAdditionalDeathSugarFeeding intervention: initial effect must be ≥ -1", "seekingDeathRateIncrease");
+        set_interv_decay(ctx.clock, probAdditionalDeathSugarFeedingIntervs, instance,
+                         elt.getProbAdditionalDeathSugarFeeding().get(), -1.0, numeric_limits<double>::infinity(),
+                         "probAdditionalDeathSugarFeeding intervention: initial effect must be ≥ -1",
+                         "seekingDeathRateIncrease");
     if (elt.getSeekingDeathRateIncrease().present())
-        set_interv_decay(ctx.clock, seekingDeathRateIntervs, instance, elt.getSeekingDeathRateIncrease().get(),
-            -1.0, numeric_limits<double>::infinity(),
-            "seekingDeathRateIncrease intervention: initial effect must be ≥ -1", "seekingDeathRateIncrease");
+        set_interv_decay(ctx.clock, seekingDeathRateIntervs, instance, elt.getSeekingDeathRateIncrease().get(), -1.0,
+                         numeric_limits<double>::infinity(),
+                         "seekingDeathRateIncrease intervention: initial effect must be ≥ -1",
+                         "seekingDeathRateIncrease");
     if (elt.getProbDeathOvipositing().present())
-        set_interv_decay(ctx.clock, probDeathOvipositingIntervs, instance, elt.getProbDeathOvipositing().get(),
-            0.0, 1.0, "probDeathOvipositing intrevention: initial effect must be in range [0,1]", "probDeathOvipositing");
+        set_interv_decay(ctx.clock, probDeathOvipositingIntervs, instance, elt.getProbDeathOvipositing().get(), 0.0,
+                         1.0, "probDeathOvipositing intrevention: initial effect must be in range [0,1]",
+                         "probDeathOvipositing");
 }
-void AnophelesModel::initVectorTrap(const scnXml::Description1 &desc, size_t instance)
-{
+void AnophelesModel::initVectorTrap(const scnXml::Description1& desc, size_t instance) {
     assert(trapParams.size() == instance); // if triggered, this is a code error not XML
     TrapParams params;
     params.relAvail = desc.getRelativeAvailability().getValue();
@@ -615,16 +595,16 @@ void AnophelesModel::initVectorTrap(const scnXml::Description1 &desc, size_t ins
     trapParams.push_back(std::move(params));
 }
 
-void AnophelesModel::changeEIRIntervention(const scnXml::NonVector &nonVectorData)
-{
+void AnophelesModel::changeEIRIntervention(const scnXml::NonVector& nonVectorData) {
     // assert(nonVectorData.getEIRDaily().present()); // XML loading code should enforce this
-    const scnXml::NonVector::EIRDailySequence &daily = nonVectorData.getEIRDaily();
+    const scnXml::NonVector::EIRDailySequence& daily = nonVectorData.getEIRDaily();
 
     // The minimum EIR allowed in the array. The product of the average EIR and a constant.
     double minEIR = 0.01 * averageEIR(nonVectorData);
 
     if (daily.size() < static_cast<size_t>(sim::oneYear()))
-        throw util::xml_scenario_error("entomology.anopheles.seasonality.dailyValues insufficient daily data for a year");
+        throw util::xml_scenario_error(
+            "entomology.anopheles.seasonality.dailyValues insufficient daily data for a year");
 
     fill_intervention_eir(ctx, interventionEIR, daily, minEIR, false);
 }

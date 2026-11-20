@@ -31,13 +31,13 @@
 
 namespace OM {
 namespace Clinical {
-    class ClinicalModel;
+class ClinicalModel;
 }
 namespace WithinHost {
-    class WHInterface;
+class WHInterface;
 }
 namespace Transmission {
-    class TransmissionModel;
+class TransmissionModel;
 }
 
 namespace Host {
@@ -46,7 +46,7 @@ namespace Host {
  *
  * Still contains some data, but most is now contained in sub-models. */
 class Human {
-public:
+  public:
     /// The run this human belongs to (clock: ctx->clock). Set at
     /// construction; a pointer so Human stays move-assignable.
     RunContext* ctx;
@@ -73,10 +73,10 @@ public:
     Human& operator=(const Human&) = delete;
 
     /** Get human's age with respect to some time. */
-    inline SimTime age( SimTime time ) const;
+    inline SimTime age(SimTime time) const;
 
     /** Return true if human is a member of the sub-population. */
-    inline bool isInSubPop( interventions::ComponentId id ) const;
+    inline bool isInSubPop(interventions::ComponentId id) const;
 
     inline uint32_t getCohortSet() const;
 
@@ -119,13 +119,12 @@ public:
     inline util::LocalRng& rng();
 
     /** Set the column row index (Population-only; see Population::update). */
-    void set_row( size_t r );
+    void set_row(size_t r);
 
     /** Vaccine factor: one minus the (decayed) efficacy, multiplied over this
      * human's dose records of the given vaccine type in insertion order
      * (1 for no effect, 0 for full effect). Interventions/Vaccine.cpp. */
-    double vaccine_factor( interventions::Vaccine::Types type,
-                           uint32_t genotype = 0 ) const;
+    double vaccine_factor(interventions::Vaccine::Types type, uint32_t genotype = 0) const;
 
     /** True if this human has any vaccine dose record. vaccine_factor() returns
      * exactly 1.0 when false (empty product), so hot loops can hoist the call. */
@@ -140,7 +139,7 @@ public:
     inline uint32_t& nextCtsDist();
 };
 
-void summarize(RunContext& ctx, Human &human, bool surveyOnlyNewEp);
+void summarize(RunContext& ctx, Human& human, bool surveyOnlyNewEp);
 
 /** Per-sweep scratch reused across humans within a time step (owned by the
  * sweep caller — the run loop). Holds the EIR-per-genotype out-vectors that
@@ -175,48 +174,36 @@ void host_within_host_update(HostView& v);
 void host_clinical_update(HostView& v);
 void host_update_infant_deaths(HostView& v);
 
-void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& transmission, HostScratch& scratch);
+void update(RunContext& ctx, Human& human, Transmission::TransmissionModel& transmission, HostScratch& scratch);
 
-inline SimTime Human::age( SimTime time ) const { 
-    return time - cols->dob[row]; 
-}
+inline SimTime Human::age(SimTime time) const { return time - cols->dob[row]; }
 
-inline util::LocalRng& Human::rng() {
-    return cols->rng[row];
-}
+inline util::LocalRng& Human::rng() { return cols->rng[row]; }
 
-inline uint16_t& Human::monitoringAgeGroup() {
-    return cols->mon_age_group[row];
-}
+inline uint16_t& Human::monitoringAgeGroup() { return cols->mon_age_group[row]; }
 
-inline uint16_t& Human::monitoringAgeGroup() const {
-    return cols->mon_age_group[row];
-}
+inline uint16_t& Human::monitoringAgeGroup() const { return cols->mon_age_group[row]; }
 
-inline uint32_t& Human::nextCtsDist() {
-    return cols->next_cts_dist[row];
-}
+inline uint32_t& Human::nextCtsDist() { return cols->next_cts_dist[row]; }
 
-inline bool Human::isInSubPop( interventions::ComponentId id ) const {
+inline bool Human::isInSubPop(interventions::ComponentId id) const {
     // Definition (unchanged from the old std::map): member if (id,expiry) is
     // present with expiry >= nowOrTs0(). Few spans per host; linear is fine.
-    for( auto const& span : cols->cohorts[row] ) {
-        if( span.first == id ) return span.second >= ctx->clock.nowOrTs0();
+    for (auto const& span : cols->cohorts[row]) {
+        if (span.first == id)
+            return span.second >= ctx->clock.nowOrTs0();
     }
-    return false;   // no history of membership
+    return false; // no history of membership
 }
 
-inline uint32_t Human::getCohortSet() const { 
-    return cols->cohort_set[row]; 
-}
+inline uint32_t Human::getCohortSet() const { return cols->cohort_set[row]; }
 
-inline bool Human::isDead() const {
-    return cols->death[row] != sim::never();
-}
+inline bool Human::isDead() const { return cols->death[row] != sim::never(); }
 
 inline void Human::kill() {
     // A human cannot be revived: only Population::update erases the row.
     cols->death[row] = ctx->clock.nowOrTs1();
 }
 
-} }
+}
+}

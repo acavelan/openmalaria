@@ -30,20 +30,16 @@
 #include <memory>
 #include <vector>
 
-namespace scnXml
-{
+namespace scnXml {
 class Entomology;
 class AnophelesParams;
 }
 
-namespace OM
-{
-namespace Transmission
-{
-    using namespace OM::util;
+namespace OM {
+namespace Transmission {
+using namespace OM::util;
 
-inline SimulationMode readMode(const string &str)
-{
+inline SimulationMode readMode(const string& str) {
     if (str == "forced")
         return forcedEIR;
     else if (str == "dynamic")
@@ -55,11 +51,12 @@ inline SimulationMode readMode(const string &str)
 }
 
 // Factory functions are defined in model/xml/entomology.cpp.
-TransmissionModel *createNonVectorModel(RunContext& ctx, const scnXml::Entomology &entoData);
-bool anophelesCompare(const scnXml::AnophelesParams &a1, const scnXml::AnophelesParams &a2);
-Anopheles::AnophelesModel *createAnophelesModel(RunContext& ctx, size_t i, const scnXml::AnophelesParams &anoph, vector<double>& initialisationEIR, int populationSize, int interventionMode);
-TransmissionModel *createVectorModel(RunContext& ctx, const scnXml::Entomology &entoData, int populationSize);
-TransmissionModel *createTransmissionModel(RunContext& ctx, const scnXml::Entomology &entoData, int populationSize);
+TransmissionModel* createNonVectorModel(RunContext& ctx, const scnXml::Entomology& entoData);
+bool anophelesCompare(const scnXml::AnophelesParams& a1, const scnXml::AnophelesParams& a2);
+Anopheles::AnophelesModel* createAnophelesModel(RunContext& ctx, size_t i, const scnXml::AnophelesParams& anoph,
+                                                vector<double>& initialisationEIR, int populationSize,
+                                                int interventionMode);
+TransmissionModel* createVectorModel(RunContext& ctx, const scnXml::Entomology& entoData, int populationSize);
+TransmissionModel* createTransmissionModel(RunContext& ctx, const scnXml::Entomology& entoData, int populationSize);
 } // namespace Transmission
 } // namespace OM
-

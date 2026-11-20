@@ -32,7 +32,9 @@
 
 namespace OM {
 
-namespace util { class DecayFunction; }
+namespace util {
+class DecayFunction;
+}
 
 /** Per-host vector-intervention record (ITN/IRS/GVI), stored in DEPLOY-HISTORY
  * order (parity: c — the effect FP products multiply in this exact order;
@@ -44,18 +46,18 @@ namespace util { class DecayFunction; }
 struct IvRecord {
     /// ComponentId has no default ctor; max() = never-a-valid-id (records are
     /// filled field-by-field at deploy/checkpoint-read before use).
-    IvRecord() : id( std::numeric_limits<size_t>::max() ) {}
+    IvRecord() : id(std::numeric_limits<size_t>::max()) {}
     interventions::ComponentId id;
-    interventions::Component::Type kind;   // type-rank (ITN/IRS/GVI)
-    SimTime deploy = sim::never();         // time of last (re)deployment
-    SimTime disposal = sim::never();       // ITN attrition time
-    int n_holes = 0;                       // ITN: total holes
-    double hole_index = 0.0;               // ITN: number+size measure
-    double initial_insecticide = 0.0;      // ITN/IRS mg/m² (resampled per deploy)
-    double hole_rate = 0.0;                // ITN holes/step (sampled once per human)
-    double rip_rate = 0.0;                 // ITN rips/hole/step (ditto)
-    const util::DecayFunction* decay = nullptr;  // component config (never owned)
-    double decay_factor = 0.0;             // per-human het sample of decay
+    interventions::Component::Type kind;        // type-rank (ITN/IRS/GVI)
+    SimTime deploy = sim::never();              // time of last (re)deployment
+    SimTime disposal = sim::never();            // ITN attrition time
+    int n_holes = 0;                            // ITN: total holes
+    double hole_index = 0.0;                    // ITN: number+size measure
+    double initial_insecticide = 0.0;           // ITN/IRS mg/m² (resampled per deploy)
+    double hole_rate = 0.0;                     // ITN holes/step (sampled once per human)
+    double rip_rate = 0.0;                      // ITN rips/hole/step (ditto)
+    const util::DecayFunction* decay = nullptr; // component config (never owned)
+    double decay_factor = 0.0;                  // per-human het sample of decay
 };
 
 /** Per-human vaccine dose record (old PerEffectPerHumanVaccine): one per
@@ -63,13 +65,13 @@ struct IvRecord {
  * vaccine_factor multiplies effects in (parity: c; redeploy updates the
  * matching record in place, never reorders). */
 struct VacRecord {
-    VacRecord() : id( std::numeric_limits<size_t>::max() ) {}
+    VacRecord() : id(std::numeric_limits<size_t>::max()) {}
     interventions::ComponentId id;
-    uint32_t num_doses = 0;                // doses administered (EPI-schedule guard)
-    SimTime time_last = sim::never();      // time of last vaccination
-    std::vector<double> per_genotype_eff;  // efficacy at last deployment (undecayed)
-    const util::DecayFunction* decay = nullptr;  // component config (never owned)
-    double decay_factor = 0.0;             // per-human het sample (sampled once)
+    uint32_t num_doses = 0;                     // doses administered (EPI-schedule guard)
+    SimTime time_last = sim::never();           // time of last vaccination
+    std::vector<double> per_genotype_eff;       // efficacy at last deployment (undecayed)
+    const util::DecayFunction* decay = nullptr; // component config (never owned)
+    double decay_factor = 0.0;                  // per-human het sample (sampled once)
 };
 
 /** Persistent per-host SoA columns (plan §7 row 6 pinned list; owner module,
@@ -107,14 +109,12 @@ struct HumanColumns {
     std::vector<uint32_t> cum_prim_inf;
     /// Clinical timestamps (old ClinicalModel m_tLastTreatment + ES-kind
     /// esCaseStartTime/esTimeOfRecovery/esTimeLastTreatment, SimTime).
-    std::vector<SimTime> t_last_treatment, es_case_start, es_time_recovery,
-                         es_time_treatment;
+    std::vector<SimTime> t_last_treatment, es_case_start, es_time_recovery, es_time_treatment;
     /// ES total density last time step (old ClinicalModel esPreviousDensity).
     std::vector<double> es_prev_density;
     /// Per-species transmission params (old PerHost anoph* vectors; nested:
     /// one vector<double> per row, resized by PerHost::initialise).
-    std::vector<std::vector<double>> anoph_ento_raw, anoph_ento_avail,
-                                     anoph_prob_biting, anoph_prob_resting;
+    std::vector<std::vector<double>> anoph_ento_raw, anoph_ento_avail, anoph_prob_biting, anoph_prob_resting;
     /// Availability heterogeneity factor (old relativeAvailabilityHet;
     /// signaling_NaN until PerHost::initialise, like the old member).
     std::vector<double> rel_avail_het;
@@ -135,29 +135,29 @@ struct HumanColumns {
     /** Add a row for a newly constructed Human, at the exact moment of its old
      * member inits: rng is copy-seeded from `master` HERE (RNG RULE); dob set;
      * everything else at construction defaults (alive, no cohorts). */
-    size_t append_row( SimTime dateOfBirth, util::MasterRng& master ) {
-        rng.emplace_back( master );
-        dob.push_back( dateOfBirth );
-        death.push_back( sim::never() );
-        cohort_set.push_back( 0u );
+    size_t append_row(SimTime dateOfBirth, util::MasterRng& master) {
+        rng.emplace_back(master);
+        dob.push_back(dateOfBirth);
+        death.push_back(sim::never());
+        cohort_set.push_back(0u);
         cohorts.emplace_back();
-        mon_age_group.push_back( 0u );
-        next_cts_dist.push_back( 0u );
-        imm_h.push_back( 0.0 );
-        imm_Y.push_back( 0.0 );
-        imm_Y_lag.push_back( 0.0 );
-        cum_prim_inf.push_back( 0u );
-        t_last_treatment.push_back( sim::never() );
-        es_case_start.push_back( sim::never() );
-        es_time_recovery.push_back( sim::never() );
-        es_time_treatment.push_back( sim::never() );
-        es_prev_density.push_back( std::numeric_limits<double>::quiet_NaN() );
+        mon_age_group.push_back(0u);
+        next_cts_dist.push_back(0u);
+        imm_h.push_back(0.0);
+        imm_Y.push_back(0.0);
+        imm_Y_lag.push_back(0.0);
+        cum_prim_inf.push_back(0u);
+        t_last_treatment.push_back(sim::never());
+        es_case_start.push_back(sim::never());
+        es_time_recovery.push_back(sim::never());
+        es_time_treatment.push_back(sim::never());
+        es_prev_density.push_back(std::numeric_limits<double>::quiet_NaN());
         anoph_ento_raw.emplace_back();
         anoph_ento_avail.emplace_back();
         anoph_prob_biting.emplace_back();
         anoph_prob_resting.emplace_back();
-        rel_avail_het.push_back( std::numeric_limits<double>::signaling_NaN() );
-        outside_trans.push_back( 0u );
+        rel_avail_het.push_back(std::numeric_limits<double>::signaling_NaN());
+        outside_trans.push_back(0u);
         iv.emplace_back();
         vac.emplace_back();
         copula_g.emplace_back();
@@ -166,14 +166,33 @@ struct HumanColumns {
 
     /// Drop row `r` from every column (Population-only; mirrors humans.erase).
     /// Adding a column: append to one of the e(...) calls below.
-    void erase_at( size_t r ) {
-        const auto e = [r]( auto& col ) { col.erase( col.begin() + r ); };
-        e(rng); e(dob); e(death); e(cohort_set); e(cohorts); e(mon_age_group);
-        e(next_cts_dist); e(imm_h); e(imm_Y); e(imm_Y_lag); e(cum_prim_inf);
-        e(t_last_treatment); e(es_case_start); e(es_time_recovery);
-        e(es_time_treatment); e(es_prev_density); e(anoph_ento_raw);
-        e(anoph_ento_avail); e(anoph_prob_biting); e(anoph_prob_resting);
-        e(rel_avail_het); e(outside_trans); e(iv); e(vac); e(copula_g);
+    void erase_at(size_t r) {
+        const auto e = [r](auto& col) { col.erase(col.begin() + r); };
+        e(rng);
+        e(dob);
+        e(death);
+        e(cohort_set);
+        e(cohorts);
+        e(mon_age_group);
+        e(next_cts_dist);
+        e(imm_h);
+        e(imm_Y);
+        e(imm_Y_lag);
+        e(cum_prim_inf);
+        e(t_last_treatment);
+        e(es_case_start);
+        e(es_time_recovery);
+        e(es_time_treatment);
+        e(es_prev_density);
+        e(anoph_ento_raw);
+        e(anoph_ento_avail);
+        e(anoph_prob_biting);
+        e(anoph_prob_resting);
+        e(rel_avail_het);
+        e(outside_trans);
+        e(iv);
+        e(vac);
+        e(copula_g);
     }
 };
 

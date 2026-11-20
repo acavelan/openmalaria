@@ -36,24 +36,22 @@ using namespace OM::util;
 
 AgeGroupInterpolator PerHost::relAvailAge;
 
-
 // -----  PerHost non-static -----
 
-PerHost::PerHost ()
-{
+PerHost::PerHost() {
     // Transmission state lives in HumanColumns (bind_columns); old member
     // inits (outsideTransmission=false, relativeAvailabilityHet=signaling_NaN)
     // are now the column defaults in append_row.
 }
 
-void PerHost::initialise (RunContext& ctx, LocalRng& rng, double availabilityFactor) {
+void PerHost::initialise(RunContext& ctx, LocalRng& rng, double availabilityFactor) {
     rel_avail_het() = availabilityFactor;
     anoph_ento_raw().resize(PerHostAnophParams::numSpecies(ctx));
     anoph_ento_avail().resize(PerHostAnophParams::numSpecies(ctx));
     anoph_prob_biting().resize(PerHostAnophParams::numSpecies(ctx));
     anoph_prob_resting().resize(PerHostAnophParams::numSpecies(ctx));
 
-    for(size_t i = 0; i < PerHostAnophParams::numSpecies(ctx); ++i) {
+    for (size_t i = 0; i < PerHostAnophParams::numSpecies(ctx); ++i) {
         const PerHostAnophParams& base = PerHostAnophParams::get(ctx, i);
         anoph_ento_raw()[i] = base.entoAvailability->sample(rng);
         anoph_ento_avail()[i] = base.entoAvailabilityFactor * anoph_ento_raw()[i] * availabilityFactor;
@@ -64,9 +62,7 @@ void PerHost::initialise (RunContext& ctx, LocalRng& rng, double availabilityFac
     }
 }
 
-void PerHost::update(Host::Human& human){
-    interventions::iv_update( *ctx, human );
-}
+void PerHost::update(Host::Human& human) { interventions::iv_update(*ctx, human); }
 
 // Note: deployment goes straight to interventions::iv_deploy (record list on
 // HumanColumns.iv); update and the effect accessors below multiply over
@@ -78,36 +74,36 @@ void PerHost::update(Host::Human& human){
 // rounded to a double. Performance-wise it's perhaps slightly slower than using
 // an if() when interventions aren't present.
 // parity: c — history-ordered iv-record FP product — multiply in vector order, not reassociated
-double PerHost::entoAvailabilityHetVecItv (size_t species) const {
+double PerHost::entoAvailabilityHetVecItv(size_t species) const {
     double alpha_i = anoph_ento_avail()[species];
-    for( const IvRecord& r : cols->iv[row] )
-        alpha_i *= interventions::iv_rel_attractiveness( *ctx, r, species );
+    for (const IvRecord& r : cols->iv[row])
+        alpha_i *= interventions::iv_rel_attractiveness(*ctx, r, species);
     return alpha_i;
 }
-double PerHost::probMosqBiting (size_t species) const {
+double PerHost::probMosqBiting(size_t species) const {
     double P_B_i = anoph_prob_biting()[species];
-    for( const IvRecord& r : cols->iv[row] )
-        P_B_i *= interventions::iv_preprandial_survival( *ctx, r, species );
+    for (const IvRecord& r : cols->iv[row])
+        P_B_i *= interventions::iv_preprandial_survival(*ctx, r, species);
     return P_B_i;
 }
-double PerHost::probMosqResting (size_t species) const {
+double PerHost::probMosqResting(size_t species) const {
     double pRest = anoph_prob_resting()[species];
-    for( const IvRecord& r : cols->iv[row] )
-        pRest *= interventions::iv_postprandial_survival( *ctx, r, species );
+    for (const IvRecord& r : cols->iv[row])
+        pRest *= interventions::iv_postprandial_survival(*ctx, r, species);
     return pRest;
 }
 
-double PerHost::relMosqFecundity (size_t species) const {
+double PerHost::relMosqFecundity(size_t species) const {
     double relFecundity = 1.0;
-    for( const IvRecord& r : cols->iv[row] )
-        relFecundity *= interventions::iv_rel_fecundity( *ctx, r, species );
+    for (const IvRecord& r : cols->iv[row])
+        relFecundity *= interventions::iv_rel_fecundity(*ctx, r, species);
     return relFecundity;
 }
 
-bool PerHost::hasActiveInterv(interventions::Component::Type type) const{
+bool PerHost::hasActiveInterv(interventions::Component::Type type) const {
     // kind is recorded on the record: no component-registry lookup needed
-    for( const IvRecord& r : cols->iv[row] )
-        if( r.kind == type && r.deploy != sim::never() )
+    for (const IvRecord& r : cols->iv[row])
+        if (r.kind == type && r.deploy != sim::never())
             return true;
     return false;
 }
@@ -117,25 +113,22 @@ bool PerHost::hasActiveInterv(interventions::Component::Type type) const{
 
 // ———  PerHostAnophParams registry ((*ctx.anophParams))  ———
 
-namespace OM { namespace Transmission {
+namespace OM {
+namespace Transmission {
 
-void PerHostAnophParams::init (RunContext& ctx, const scnXml::Mosq& mosq) {
-    ctx.anophParams->emplace_back(mosq);
-}
+void PerHostAnophParams::init(RunContext& ctx, const scnXml::Mosq& mosq) { ctx.anophParams->emplace_back(mosq); }
 
-size_t PerHostAnophParams::numSpecies (RunContext& ctx) {
-    return ctx.anophParams->size();
-}
+size_t PerHostAnophParams::numSpecies(RunContext& ctx) { return ctx.anophParams->size(); }
 
-const PerHostAnophParams& PerHostAnophParams::get (RunContext& ctx, size_t species) {
+const PerHostAnophParams& PerHostAnophParams::get(RunContext& ctx, size_t species) {
     return (*ctx.anophParams)[species];
 }
 
-void PerHostAnophParams::setEntoAvailabilityFactor(RunContext& ctx, size_t species, double entoAvailability){
+void PerHostAnophParams::setEntoAvailabilityFactor(RunContext& ctx, size_t species, double entoAvailability) {
     (*ctx.anophParams)[species].entoAvailabilityFactor = entoAvailability;
 }
 
-void PerHostAnophParams::calcAvailabilityPercentiles(RunContext& ctx){
+void PerHostAnophParams::calcAvailabilityPercentiles(RunContext& ctx) {
     auto& params = (*ctx.anophParams);
     auto& entoAvailabilityPercentiles = ctx.entoAvailabilityPercentiles;
     int nSamples = 100000;
@@ -150,10 +143,9 @@ void PerHostAnophParams::calcAvailabilityPercentiles(RunContext& ctx){
     util::LocalRng rng(seed);
 
     // Sample
-    for(int i=0; i<nSamples; i++)
-    {
+    for (int i = 0; i < nSamples; i++) {
         double avail = 0.0;
-        for(size_t s = 0; s < params.size(); ++s)
+        for (size_t s = 0; s < params.size(); ++s)
             avail += params[s].entoAvailabilityFactor * params[s].entoAvailability->sample(rng);
         samples[i] = avail;
     }
@@ -164,18 +156,21 @@ void PerHostAnophParams::calcAvailabilityPercentiles(RunContext& ctx){
     entoAvailabilityPercentiles.resize(100);
 
     // Calc percetiles threshold values
-    for(int i=0; i<100; i++)
-        entoAvailabilityPercentiles[i] = samples[int(i*nSamples/100)];
+    for (int i = 0; i < 100; i++)
+        entoAvailabilityPercentiles[i] = samples[int(i * nSamples / 100)];
     entoAvailabilityPercentiles[0] = 0.0;
 }
 
-double PerHostAnophParams::getEntoAvailabilityPercentile(RunContext& ctx, int p){
+double PerHostAnophParams::getEntoAvailabilityPercentile(RunContext& ctx, int p) {
     auto& entoAvailabilityPercentiles = ctx.entoAvailabilityPercentiles;
-    if(p >= 0 && p < 100)
+    if (p >= 0 && p < 100)
         return entoAvailabilityPercentiles[p];
-    else if(p == 100)
+    else if (p == 100)
         return std::numeric_limits<double>::max();
-    else throw util::xml_scenario_error("Availability percentiles in intervention specifications can only be in [0 and 100]");
+    else
+        throw util::xml_scenario_error(
+            "Availability percentiles in intervention specifications can only be in [0 and 100]");
 }
 
-} }
+}
+}

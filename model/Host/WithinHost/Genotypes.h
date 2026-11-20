@@ -28,74 +28,75 @@
 #include <map>
 #include <set>
 
-namespace scnXml { class Scenario; }
+namespace scnXml {
+class Scenario;
+}
 
-namespace OM { namespace WithinHost {
+namespace OM {
+namespace WithinHost {
 
 using util::LocalRng;
 
 /** Represents infection genotypes. */
 class Genotypes {
-public:
+  public:
     /// Represent a combination of alleles, each from a different locus
-    struct Genotype{
-        Genotype( uint32_t allele, double iFreq, double fit, bool hrp2_del ):
-            init_freq(iFreq), fitness(fit), hrp2_deficient(hrp2_del)
-        {
+    struct Genotype {
+        Genotype(uint32_t allele, double iFreq, double fit, bool hrp2_del)
+            : init_freq(iFreq), fitness(fit), hrp2_deficient(hrp2_del) {
             alleles.insert(allele);
         }
-        Genotype cross( const Genotype& that )const;
-        std::set<uint32_t> alleles;      // set of codes of all alleles
+        Genotype cross(const Genotype& that) const;
+        std::set<uint32_t> alleles; // set of codes of all alleles
         double init_freq;
         double fitness;
         bool hrp2_deficient;
     };
-    
+
     /** Initialise with a single genotype. */
     void initSingle();
-    
+
     /** Switch to whichever mode has been enabled for the main simulation. */
     void preMainSimInit();
-    
+
     /** Map a locus name and allele name to an allele code.
      * 
      * Note that two alleles from different loci will always have different
      * codes.
      * 
      * Returns max value when no match is found. */
-    uint32_t findAlleleCode( const string& locus, const string& allele ) const;
-    
-    
+    uint32_t findAlleleCode(const string& locus, const string& allele) const;
+
     /** Sample the genotype using the configured approach.
      * 
      * @param genotype_weights When in tracking mode, this vector gives the
      *  weights of each genotype for use in sampling. Total need not be one.
      *  Also, passing a zero-length vector is a signal to use initial
      *  frequencies in sampling. */
-    uint32_t sampleGenotype( LocalRng& rng, std::vector<double>& genotype_weights );
-    
+    uint32_t sampleGenotype(LocalRng& rng, std::vector<double>& genotype_weights);
+
     /** Get the number of genotypes. Functions like sampleGenotype use values
      * from 0 to one less than this. */
     size_t N() const { return N_genotypes; }
-    
+
     /** Get the initial frequency of some genotype. */
-    double initialFreq( size_t genotype ) const;
-    
+    double initialFreq(size_t genotype) const;
+
     /** Initialise from XML data (defined in model/xml/scenario.cpp); call on
      * a fresh Genotypes before any other use. */
-    static void init( Genotypes& state, const scnXml::Scenario& scenario );
-    
+    static void init(Genotypes& state, const scnXml::Scenario& scenario);
+
     /// Sample mode: which genotype-sampling strategy is active.
-    enum SampleMode{
-        SAMPLE_FIRST,      // always choose first genotype (essentially the off switch)
-        SAMPLE_INITIAL,    // sample from initial probabilities
-        SAMPLE_TRACKING    // sample from tracked success at genotype level (no recombination)
+    enum SampleMode {
+        SAMPLE_FIRST,   // always choose first genotype (essentially the off switch)
+        SAMPLE_INITIAL, // sample from initial probabilities
+        SAMPLE_TRACKING // sample from tracked success at genotype level (no recombination)
     };
-    
+
     // keys are cumulative probabilities; last entry should equal 1; values are genotype codes
-    map<double,uint32_t> cum_initial_freqs;
+    map<double, uint32_t> cum_initial_freqs;
     /// we give each allele of each loci a unique code
-    map<string, map<string, uint32_t> > alleleCodes;
+    map<string, map<string, uint32_t>> alleleCodes;
     uint32_t nextAlleleCode = 0;
     vector<Genotype> genotypes;
     /// Mode to use now (until switched) and from the start of the intervention period.

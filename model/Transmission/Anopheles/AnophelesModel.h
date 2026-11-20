@@ -33,18 +33,17 @@
 #include <vector>
 #include <limits>
 
-namespace scnXml
-{
-    class VectorSpeciesIntervention;
-    class Description1;
-    class NonVector;
+namespace scnXml {
+class VectorSpeciesIntervention;
+class Description1;
+class NonVector;
 }
 
 namespace OM {
 namespace Transmission {
 namespace Anopheles {
-    using std::numeric_limits;
-    using namespace OM::util;
+using std::numeric_limits;
+using namespace OM::util;
 
 enum VecStat { PA, PAmu, PA1, PAh, PDF, PDIF, NV, OV, SV };
 
@@ -78,14 +77,13 @@ enum VecStat { PA, PAmu, PA1, PAh, PDF, PDIF, NV, OV, SV };
  * P_dif = σ_dif α_d P_E
  */
 
-struct MosquitoParams
-{
+struct MosquitoParams {
     // Proportion of host-seeking parous mosquitoes (those who have laid eggs) which laid eggs that day:
     double laidEggsSameDayProportion;
     // Probability that the mosquito survives the feeding cycle.
     // Note: Pf = M, the parous rate (prop mosqs which have laid eggs):
     double survivalFeedingCycleProbability;
-    double humanBloodIndex;    // χ (chi)
+    double humanBloodIndex; // χ (chi)
     // Cycle probabilities, when biting a human:
     // B: Host encountered
     double probBiting;
@@ -165,49 +163,41 @@ struct Nhh {
 };
 
 struct TrapParams {
-    TrapParams(): relAvail(numeric_limits<double>::signaling_NaN()) {}
-    TrapParams(TrapParams&& o): relAvail(o.relAvail), availDecay(std::move(o.availDecay)) {}
-    
-    double relAvail; // Initial availability of a trap relative to an adult
+    TrapParams() : relAvail(numeric_limits<double>::signaling_NaN()) {}
+    TrapParams(TrapParams&& o) : relAvail(o.relAvail), availDecay(std::move(o.availDecay)) {}
+
+    double relAvail;                            // Initial availability of a trap relative to an adult
     unique_ptr<util::DecayFunction> availDecay; // Decay of availability
 };
 
 struct TrapData {
-    size_t instance; // index in trapParams
-    double initialAvail; // initial availability (avail per trap * num traps)
+    size_t instance;                    // index in trapParams
+    double initialAvail;                // initial availability (avail per trap * num traps)
     unique_ptr<DecayFunction> availHet; // parameter for decay of availability
-    SimTime deployTime = sim::never(); // deploy time (for decay function)
-    SimTime expiry = sim::never(); // date at which this intervention should be deleted
+    SimTime deployTime = sim::never();  // deploy time (for decay function)
+    SimTime expiry = sim::never();      // date at which this intervention should be deleted
 };
 
-class AnophelesModel
-{
-public:
+class AnophelesModel {
+  public:
     /// The run this model belongs to (clock accessed as ctx.clock).
     RunContext& ctx;
 
-
     ///@brief Initialisation and destruction
     //@{
-    AnophelesModel (RunContext& ctx) :
-            ctx(ctx),
-            nhh_avail(numeric_limits<double>::signaling_NaN()),
-            nhh_sigma_df(numeric_limits<double>::signaling_NaN()),
-            nhh_sigma_dff(numeric_limits<double>::signaling_NaN()),
-            // EmergenceModel
-            EIRRotateAngle(numeric_limits<double>::quiet_NaN()),
-            initNvFromSv(numeric_limits<double>::quiet_NaN()),
-            initOvFromSv(numeric_limits<double>::quiet_NaN()),
-            initNv0FromSv(numeric_limits<double>::quiet_NaN()),
-            // MosqTransmission
-            N_v_length(0),
-            timeStep_N_v0(0.0)
-    {
-        forcedS_v.resize (sim::oneYear());
-        quinquennialS_v.resize (sim::fromYearsI(5), 0.0);
-        mosqEmergeRate.resize (sim::oneYear(), 0.0);
+    AnophelesModel(RunContext& ctx)
+        : ctx(ctx), nhh_avail(numeric_limits<double>::signaling_NaN()),
+          nhh_sigma_df(numeric_limits<double>::signaling_NaN()), nhh_sigma_dff(numeric_limits<double>::signaling_NaN()),
+          // EmergenceModel
+          EIRRotateAngle(numeric_limits<double>::quiet_NaN()), initNvFromSv(numeric_limits<double>::quiet_NaN()),
+          initOvFromSv(numeric_limits<double>::quiet_NaN()), initNv0FromSv(numeric_limits<double>::quiet_NaN()),
+          // MosqTransmission
+          N_v_length(0), timeStep_N_v0(0.0) {
+        forcedS_v.resize(sim::oneYear());
+        quinquennialS_v.resize(sim::fromYearsI(5), 0.0);
+        mosqEmergeRate.resize(sim::oneYear(), 0.0);
     }
-    
+
     AnophelesModel(const AnophelesModel&) = delete;            //disable copy-constructor
     AnophelesModel& operator=(const AnophelesModel&) = delete; //disable copy-assignment
     AnophelesModel(AnophelesModel&&) = default;
@@ -216,8 +206,8 @@ public:
      * the size of the human population is known but that population has not
      * yet been constructed. Called whether data is loaded from a check-point
      * or not. */
-    void initialise (MosquitoParams mosqParams);
-    
+    void initialise(MosquitoParams mosqParams);
+
     ///@brief Initialisation helper functions
     //@{
     /** Calculate availability rate of hosts (α_i) and death rate while seeking
@@ -231,28 +221,29 @@ public:
      * @param nonHumanHostPopulations Size of each non-human population
      * @param populationSize Size of the human population (assumed constant)
      */
-    void initAvailability(size_t species, const vector<NhhParams> &nhhs, int populationSize);
+    void initAvailability(size_t species, const vector<NhhParams>& nhhs, int populationSize);
 
-    void initEIR(const vector<double>& initEIR365, vector<double> FSCoefficInit, double EIRRotateAngleInit, double propInfectious, double propInfected);
+    void initEIR(const vector<double>& initEIR365, vector<double> FSCoefficInit, double EIRRotateAngleInit,
+                 double propInfectious, double propInfected);
 
     /** Scale the internal EIR representation by factor; used as part of
      * initialisation. */
-    inline void scaleEIR( double factor ){
-        FSCoeffic[0] += log( factor );
+    inline void scaleEIR(double factor) {
+        FSCoeffic[0] += log(factor);
         vectors::scale(partialInitEIR, factor);
         vectors::scale(speciesEIR, factor);
     }
 
-    void scale(double factor)
-    {
-        vectors::scale (N_v, factor);
-        vectors::scale (O_v_i, factor);
-        vectors::scale (O_v_l, factor);
-        vectors::scale (S_v_i, factor);
-        vectors::scale (S_v_l, factor);
-        if (simpleMPD) vectors::scale (simpleMPD->nOvipositingDelayed, factor);
+    void scale(double factor) {
+        vectors::scale(N_v, factor);
+        vectors::scale(O_v_i, factor);
+        vectors::scale(O_v_l, factor);
+        vectors::scale(S_v_i, factor);
+        vectors::scale(S_v_l, factor);
+        if (simpleMPD)
+            vectors::scale(simpleMPD->nOvipositingDelayed, factor);
     }
-    
+
     /** Initialisation which must wait until a human population is available.
      * This is only called when a checkpoint is not loaded.
      *
@@ -266,15 +257,14 @@ public:
      *
      * Can only usefully run its calculations when not checkpointing, due to
      * population not being the same when loaded from a checkpoint. */
-    void init2 (int nHumans, double meanPopAvail,
-        double sum_avail, double sigma_f, double sigma_df, double sigma_dff);
-    
+    void init2(int nHumans, double meanPopAvail, double sum_avail, double sigma_f, double sigma_df, double sigma_dff);
+
     /** Set up the non-host-specific interventions. */
-    void initVectorInterv( const scnXml::VectorSpeciesIntervention& elt, size_t instance );
-    
+    void initVectorInterv(const scnXml::VectorSpeciesIntervention& elt, size_t instance);
+
     /** Set up trap parameters. */
-    void initVectorTrap( const scnXml::Description1& desc, size_t instance );
-    
+    void initVectorTrap(const scnXml::Description1& desc, size_t instance);
+
     /** Work out whether another interation is needed for initialisation and if
      * so, make necessary changes.
      *
@@ -291,18 +281,20 @@ public:
      * @param sigma_dff sum_i α_i * N_i * P_Bi * P_Ci * P_Di * rel_mosq_fecundity for human hosts i
      * @param isDynamic True to use full model; false to drive model from current contents of S_v.
      */
-    void advancePeriod (double sum_avail, double sigma_df, vector<double>& sigma_dif_i, vector<double>& sigma_dif_l, double sigma_dff, bool isDynamic);
+    void advancePeriod(double sum_avail, double sigma_df, vector<double>& sigma_dif_i, vector<double>& sigma_dif_l,
+                       double sigma_dff, bool isDynamic);
 
     /// Intermediatary from vector model equations used to calculate EIR
-    inline double getInitPartialEIR() const{ return partialInitEIR[ctx.clock.moduloYearSteps(ctx.clock.ts0())] / initAvail; }
+    inline double getInitPartialEIR() const {
+        return partialInitEIR[ctx.clock.moduloYearSteps(ctx.clock.ts0())] / initAvail;
+    }
     //@}
-
 
     ///@brief Functions called to deploy interventions
     //@{
-    void deployVectorPopInterv (LocalRng& rng, size_t instance);
+    void deployVectorPopInterv(LocalRng& rng, size_t instance);
     /// Deploy some traps
-    /// 
+    ///
     /// @param instance Index of this type of trap
     /// @param number The number of traps to deploy
     /// @param lifespan Time until these traps are removed/replaced/useless
@@ -310,13 +302,11 @@ public:
 
     /** (Re) allocate and initialise some state variables. Must be called
      * before model is run. */
-    void initState ( double tsP_A, double tsP_Amu, double tsP_A1, double tsP_Ah,
-                     double tsP_df, double tsP_dff,
-                     double initNvFromSv, double initOvFromSv,
-                     const std::vector<double>& forcedS_v);
-    
+    void initState(double tsP_A, double tsP_Amu, double tsP_A1, double tsP_Ah, double tsP_df, double tsP_dff,
+                   double initNvFromSv, double initOvFromSv, const std::vector<double>& forcedS_v);
+
     /// Emergence rate at start of day d0 (SimpleMPD kind: density-dependent).
-    double getEmergenceRate(const SimTime &d0, const std::vector<double>& mosqEmergeRate, double nOvipositing);
+    double getEmergenceRate(const SimTime& d0, const std::vector<double>& mosqEmergeRate, double nOvipositing);
 
     /** Update by one day (may be called multiple times for 1 time-step update).
      * 
@@ -329,60 +319,55 @@ public:
      *  S_v values are multiplied by EIR_factor and added to this.
      * @param EIR_factor see parameter partialEIR
      */
-    void update( SimTime d0, double tsP_A, double tsP_Amu, double tsP_A1, double tsP_Ah, double tsP_df,
-                   const vector<double> &tsP_dif_i, const vector<double> &tsP_dif_l, double tsP_dff,
-                   bool isDynamic,
-                   vector<double>& partialEIR_i, vector<double>& partialEIR_l, double EIR_factor);
-    
+    void update(SimTime d0, double tsP_A, double tsP_Amu, double tsP_A1, double tsP_Ah, double tsP_df,
+                const vector<double>& tsP_dif_i, const vector<double>& tsP_dif_l, double tsP_dff, bool isDynamic,
+                vector<double>& partialEIR_i, vector<double>& partialEIR_l, double EIR_factor);
+
     /// Intermediatary from vector model equations used to calculate EIR in intervention mode
-    inline double getInterventionEIR() const{ return interventionEIR[ctx.clock.inSteps(ctx.clock.interv)] / initAvail; }
+    inline double getInterventionEIR() const {
+        return interventionEIR[ctx.clock.inSteps(ctx.clock.interv)] / initAvail;
+    }
     //@}
 
-    void changeEIRIntervention(const scnXml::NonVector &nonVectorData);
+    void changeEIRIntervention(const scnXml::NonVector& nonVectorData);
 
     ///@brief Interventions and reporting
     //@{
     void uninfectVectors();
     //@}
-    
+
     ///@brief Functions used in reporting
     //@{
     /// Reset per-time-step statistics before running time-step updates
-    inline void resetTSStats() {
-        timeStep_N_v0 = 0.0;
-    }
+    inline void resetTSStats() { timeStep_N_v0 = 0.0; }
 
     /// Get mean emergence per day during last time-step
-    inline double getLastN_v0 () const{
-        return timeStep_N_v0 / ctx.clock.one_TS();
-    }
-    
+    inline double getLastN_v0() const { return timeStep_N_v0 / ctx.clock.one_TS(); }
+
     /// Get mean P_A/P_df/P_dif/N_v/O_v/S_v during last time-step
     /// @param vs PA, PDF, PDIF, NV, OV or SV
-    double getLastVecStat( VecStat vs )const;
-    
+    double getLastVecStat(VecStat vs) const;
+
     double getResAvailability() const {
-        if (!simpleMPD) return numeric_limits<double>::quiet_NaN();
+        if (!simpleMPD)
+            return numeric_limits<double>::quiet_NaN();
         // TODO: why offset by one time step? This is effectively getting the resources available on the last time step
         // TODO: only have to add one year because of offset
         const SimpleMPDState& sm = *simpleMPD;
         SimTime start = ctx.clock.now() - ctx.clock.one_TS() + sim::oneYear();
         double total = 0;
-        for (SimTime i = start, end = start + ctx.clock.one_TS(); i < end; i = i + sim::oneDay())
-        {
+        for (SimTime i = start, end = start + ctx.clock.one_TS(); i < end; i = i + sim::oneDay()) {
             SimTime dYear1 = mod_nn(i, sim::oneYear());
             total += 1.0 / sm.invLarvalResources[dYear1];
         }
         return total / ctx.clock.one_TS();
     }
-    double getResRequirements() const {
-        return numeric_limits<double>::quiet_NaN();
-    }
-    
+    double getResRequirements() const { return numeric_limits<double>::quiet_NaN(); }
+
     /// Write some per-species summary information.
-    void summarize( RunContext& ctx, size_t species )const;
+    void summarize(RunContext& ctx, size_t species) const;
     //@}
-    
+
     MosquitoParams mosq;
 
     // sum_i N_i * α_i for i in NHH types: total availability of non-human hosts
@@ -415,10 +400,9 @@ public:
     * Doesn't need to be checkpointed (is calculated during initialization). */
     std::vector<double> interventionEIR;
 
-
     // Emergence Model
     // -----  parameters (constant after initialisation)  -----
-    
+
     ///@brief Descriptions of transmission, used primarily during warmup
     //@{
     /// Angle (in radians) to rotate series generated by FSCoeffic by, for EIR.
@@ -445,7 +429,7 @@ public:
      *
      * Should be checkpointed. */
     std::vector<double> forcedS_v;
-    
+
     /** Conversion factor from forcedS_v to (initial values of) N_v (1 / ρ_S).
      * Should be checkpointed. */
     double initNvFromSv;
@@ -453,7 +437,7 @@ public:
     /** Used to estimate S_v from EIR during initialization 
      * Should be checkpointed. */
     double initSvFromEIR;
-    
+
     /** Conversion factor from forcedS_v to (initial values of) O_v (ρ_O / ρ_S).
      * Should be checkpointed. */
     double initOvFromSv;
@@ -468,13 +452,13 @@ public:
      *
      * Units: inoculations. */
     std::vector<double> quinquennialS_v;
-    
+
     /** Conversion factor from forcedS_v to mosqEmergeRate.
      *
      * Should be checkpointed. */
     double initNv0FromSv;
     //@}
-    
+
     /** Emergence rate of new mosquitoes, for every day of the year (N_v0).
      * 
      * Has annual periodicity: length is 365. First value (index 0) corresponds
@@ -486,7 +470,7 @@ public:
      *
      * Should be checkpointed. */
     std::vector<double> mosqEmergeRate;
-    
+
     /** N_v_length-1 is the number of previous days for which some parameters are
      * stored: P_A, P_df, P_dif, N_v, O_v and S_v. This is longer than some of
      * the arrays need to be, but simplifies code with no real impact.
@@ -496,9 +480,9 @@ public:
      *
      * Set by initialise; no need to checkpoint. */
     int N_v_length;
-    
+
     // -----  variable model state  -----
-    
+
     /** @brief Variable arrays N_v_length long.
      *
      * P_A, P_df, P_dif, N_v, O_v and S_v are set in advancePeriod() and have
@@ -515,24 +499,24 @@ public:
     //@{
     /** Probability of a mosquito not finding a host one night. */
     std::vector<double> P_A;
-    
+
     /** P_df is the probability of a mosquito finding a host and completing a
      * feeding cycle without being killed. */
     std::vector<double> P_df;
-    
+
     /** P_dif is the probability of a mosquito finding a host, getting
      * infected, and successfully completing a feeding cycle. 
      * 
      * We keep separate the probability of a mosquito being infected by an
      * imported infection _i and a local infection _l */
     std::vector<double> P_dif_i, P_dif_l;
-    
+
     /** Like P_df but including fertility factors */
     std::vector<double> P_dff;
-    
+
     /** Numbers of host-seeking mosquitos each day */
     std::vector<double> N_v;
-    
+
     /** Numbers of infected host-seeking mosquitoes */
     std::vector<double> O_v_i, O_v_l;
 
@@ -548,7 +532,7 @@ public:
     /** Probability of a mosquito finding a non-human host type*/
     std::vector<double> P_Ah;
     //@}
-    
+
     ///@brief Working memory
     /** Used for calculations within advancePeriod. Only saved for optimisation.
      *
@@ -569,12 +553,12 @@ public:
     std::vector<double> ftauArray;
     std::vector<double> uninfected_v;
     //@}
-    
+
     /** Variables tracking data to be reported. */
     double timeStep_N_v0;
 
     /** Active Non-Human hosts instances in the simulation. */
-    map<string,Nhh> nhhInstances;
+    map<string, Nhh> nhhInstances;
 
     /** Parameters for trap interventions. Doesn't need checkpointing. */
     vector<TrapParams> trapParams;
@@ -595,7 +579,8 @@ public:
      * date; total availability is the sum. */
     list<TrapData> baitedTraps;
 
-    map<string,vector<util::SimpleDecayingValue>> reduceNhhAvailability, reduceP_B_I, reduceP_C_I, reduceP_D_I, reduceFecundity;
+    map<string, vector<util::SimpleDecayingValue>> reduceNhhAvailability, reduceP_B_I, reduceP_C_I, reduceP_D_I,
+        reduceFecundity;
 
     /** Description of intervention killing effects on emerging pupae */
     vector<util::SimpleDecayingValue> emergenceReduction;
@@ -622,7 +607,7 @@ public:
         std::vector<double> nOvipositingDelayed;
     };
 
-    void initSimpleMPD (SimTime developmentDuration, double probPreadultSurvival, double fEggsLaidByOviposit) {
+    void initSimpleMPD(SimTime developmentDuration, double probPreadultSurvival, double fEggsLaidByOviposit) {
         simpleMPD.reset(new SimpleMPDState());
         simpleMPD->developmentDuration = developmentDuration;
         simpleMPD->probPreadultSurvival = probPreadultSurvival;

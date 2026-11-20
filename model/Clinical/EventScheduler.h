@@ -25,11 +25,14 @@
 #include "Clock.h"
 #include "RunContext.h"
 #include "Clinical/ClinicalModel.h"
-#include "Clinical/CMDecisionTree.h"    // needed for FlatTree/CMDTOut (ESCaseManagement)
+#include "Clinical/CMDecisionTree.h" // needed for FlatTree/CMDTOut (ESCaseManagement)
 #include "Host/WithinHost/WHInterface.h"
 #include "util/AgeGroupInterpolation.h"
 
-namespace scnXml { class Clinical; class HSEventScheduler; }
+namespace scnXml {
+class Clinical;
+class HSEventScheduler;
+}
 
 #include <list>
 
@@ -45,11 +48,10 @@ using util::AgeGroupInterpolator;
  * bout. It's possible that memory usage could be reduced by storing them
  * externally in a temporary object during episodes (but unlikely worth doing).
  */
-class ClinicalEventScheduler
-{
-public:
-    static void init (RunContext& ctx, const OM::Parameters& parameters, const scnXml::Clinical& clinical);
-    static void setParameters (const SimClock& clock, const scnXml::HSEventScheduler& esData);
+class ClinicalEventScheduler {
+  public:
+    static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Clinical& clinical);
+    static void setParameters(const SimClock& clock, const scnXml::HSEventScheduler& esData);
 
     // All remaining statics are run-parameter state, read directly by
     // esClinicalUpdate (EventScheduler.cpp) and the readers:
@@ -72,7 +74,7 @@ public:
     static double neg_v;
     /// Parameter
     static double alpha;
-    
+
     /** Base log odds of treatment of non-malarial fevers in absense of a
      * malaria diagnostic and irrespective of whether treatment is needed.
      * 
@@ -97,7 +99,7 @@ public:
     /** Case fatality rate of non-malaria fevers requiring treatment given that
      * the case is not treated. */
     static AgeGroupInterpolator severeNmfMortality;
-    
+
     /// Probability that an NMF needs antibiotic treatment and could lead to death.
     static AgeGroupInterpolator NMF_need_antibiotic;
     /** Probability that a malarial fever classified as uncomplicated requires
@@ -107,12 +109,11 @@ public:
     static AgeGroupInterpolator MF_need_antibiotic;
 };
 
-
 /// Per-human update for the EventScheduler kind (old
 /// ClinicalEventScheduler::doClinicalUpdate); state lives on the ClinicalModel
 /// (es* fields).
-void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human,
-                       double ageYears, WithinHost::Pathogenesis::StatePair &pg);
+void esClinicalUpdate(ClinicalModel& cm, RunContext& ctx, Human& human, double ageYears,
+                      WithinHost::Pathogenesis::StatePair& pg);
 
 // ———  ESCaseManagement (was Clinical/ESCaseManagement.h; same ES chain)  ———
 
@@ -126,18 +127,16 @@ inline const FlatTree *escm_uncomplicated = 0, *escm_complicated = 0;
  * medicates treatment, determines patient recovery, death and sequelae.
  *****************************************************************************/
 class ESCaseManagement {
-public:
+  public:
     /** Load health system data from initial data or an intervention's data (both from XML).
     * (Re)loads all data affected by this healthSystem element. */
-    static void setHealthSystem (RunContext& ctx, const scnXml::HSEventScheduler& esData);
-    
-    static CMDTOut execute( RunContext& ctx, Host::Human& human,
-        double ageYears, Episode::State pgState ) {
-        assert (pgState & Episode::SICK);
-        const FlatTree& tree = (pgState & Episode::COMPLICATED) ?
-            *escm_complicated : *escm_uncomplicated;
-        DTExecCtx ec( ctx, human, ageYears, pgState );
-        return exec_decision_tree( tree, ec );
+    static void setHealthSystem(RunContext& ctx, const scnXml::HSEventScheduler& esData);
+
+    static CMDTOut execute(RunContext& ctx, Host::Human& human, double ageYears, Episode::State pgState) {
+        assert(pgState & Episode::SICK);
+        const FlatTree& tree = (pgState & Episode::COMPLICATED) ? *escm_complicated : *escm_uncomplicated;
+        DTExecCtx ec(ctx, human, ageYears, pgState);
+        return exec_decision_tree(tree, ec);
     }
 };
 

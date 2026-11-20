@@ -24,14 +24,16 @@
 
 #include "Clock.h"
 #include "RunContext.h"
-#include "Host/HostColumns.h"  // leaf: SoA columns owned by Population (IvRecord)
-#include "interventions/ComponentId.h"  // leaf: Component::Type + ComponentId only
+#include "Host/HostColumns.h"          // leaf: SoA columns owned by Population (IvRecord)
+#include "interventions/ComponentId.h" // leaf: Component::Type + ComponentId only
 #include "util/AgeGroupInterpolation.h"
 #include "util/sampler.h"
 
 #include "util/random.h"
 
-namespace scnXml { class Mosq; }
+namespace scnXml {
+class Mosq;
+}
 
 namespace OM {
 namespace Transmission {
@@ -39,14 +41,13 @@ namespace Transmission {
 using util::AgeGroupInterpolator;
 using util::LocalRng;
 
-
 /** Stores vector model data applicable between a category of host and a
  * mosquito species: intervention descriptions and model parameters.
  *
  * Parameters are read from XML, and the availability rate is adjusted. */
 class PerHostAnophParams {
-public:
-    PerHostAnophParams (const scnXml::Mosq& mosq);
+  public:
+    PerHostAnophParams(const scnXml::Mosq& mosq);
 
     PerHostAnophParams(PerHostAnophParams&&) noexcept = default;
     PerHostAnophParams& operator=(PerHostAnophParams&&) noexcept = default;
@@ -55,14 +56,14 @@ public:
     PerHostAnophParams& operator=(const PerHostAnophParams&) = delete;
 
     /// Register one species' parameters (registry: (*ctx.anophParams)).
-    static void init (RunContext& ctx, const scnXml::Mosq& mosq);
-    
+    static void init(RunContext& ctx, const scnXml::Mosq& mosq);
+
     /// Get the number of vector species
-    static size_t numSpecies (RunContext& ctx);
-    
+    static size_t numSpecies(RunContext& ctx);
+
     /// Get parameters for the given vector species
-    static const PerHostAnophParams& get (RunContext& ctx, size_t species);
-    
+    static const PerHostAnophParams& get(RunContext& ctx, size_t species);
+
     /** entoAvailability is calculated externally, then set after other
      * parameters have been initialised.
      * 
@@ -101,36 +102,34 @@ public:
      * (P_D_i). */
     util::BetaSampler probMosqSurvivalResting;
     //@}
-    
-    // (no per-type data here: the registry lives in RunContext::anophParams)
 
+    // (no per-type data here: the registry lives in RunContext::anophParams)
 };
 
 /** Contains TransmissionModel parameters which need to be stored per host.
  *
  * Currently many members are public and directly accessed. */
-class PerHost
-{
-public:
+class PerHost {
+  public:
     /// @brief Static member functions
     //@{
     /** Static initialisation. */
-    static void init (RunContext& ctx, const scnXml::AgeGroupValues& availabilityToMosquitoes);
+    static void init(RunContext& ctx, const scnXml::AgeGroupValues& availabilityToMosquitoes);
     //@}
-    
+
     ///@brief Initialisation / checkpionting
     //@{
-RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoint restore
-    PerHost ();
-    ~PerHost () = default;
-    PerHost (PerHost&&) = default;
-    PerHost& operator= (PerHost&&) = default;
-    void initialise (RunContext& ctx, LocalRng& rng, double availabilityFactor);
+    RunContext* ctx = nullptr; ///< set by the owning Human ctor; used on checkpoint restore
+    PerHost();
+    ~PerHost() = default;
+    PerHost(PerHost&&) = default;
+    PerHost& operator=(PerHost&&) = default;
+    void initialise(RunContext& ctx, LocalRng& rng, double availabilityFactor);
     //@}
-    
+
     /// Call once per time step. Updates net holes (interventions/IvState.cpp).
     void update(Host::Human& human);
-  
+
     /** Calculates the adjustment for body size in exposure to mosquitoes,
      * relative to an average adult.
      * 
@@ -145,10 +144,10 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
      * mean population availability (that is, 1.0/invMeanPopAvail).
      * 
      * Also has a switch to put individuals entirely outside transmission. */
-    inline double relativeAvailabilityAge (double ageYears) const {
-        return outside_trans() ? 0.0 : relAvailAge.eval( ageYears );
+    inline double relativeAvailabilityAge(double ageYears) const {
+        return outside_trans() ? 0.0 : relAvailAge.eval(ageYears);
     }
-    
+
     /** Get the availability of this host to mosquitoes relative to an average
      * adult (including heterogeneity and age effects).
      *
@@ -157,10 +156,10 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
      * 
      * Mean output is less than 1.0 (roughly 1.0/invMeanPopAvail).
      */
-    inline double relativeAvailabilityHetAge (double ageYears) const {
-        return rel_avail_het() * relativeAvailabilityAge (ageYears);
+    inline double relativeAvailabilityHetAge(double ageYears) const {
+        return rel_avail_het() * relativeAvailabilityAge(ageYears);
     }
-    
+
     /** Availability rate of human to mosquitoes (α_i). Equals 
      * entoAvailabilityHetVecItv()*getRelativeAvailability().
      *
@@ -168,8 +167,8 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
      * rate) as well as age (avail. relative to an adult). It does not divide
      * by the average availability of the population, which was incorrectly done
      * in the past. */
-    inline double entoAvailabilityFull (size_t species, double ageYears) const {
-        return entoAvailabilityHetVecItv (species) * relativeAvailabilityAge (ageYears);
+    inline double entoAvailabilityFull(size_t species, double ageYears) const {
+        return entoAvailabilityHetVecItv(species) * relativeAvailabilityAge(ageYears);
     }
     //@}
 
@@ -179,44 +178,44 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
      * rate factors.)
      * 
      * Assume mean is human-to-vector availability rate factor. */
-    double entoAvailabilityHetVecItv (size_t species) const;
-    
+    double entoAvailabilityHetVecItv(size_t species) const;
+
     ///@brief Get effects of interventions pre/post biting
     //@{
     /** Probability of a mosquito succesfully biting a host (P_B_i). */
-    double probMosqBiting (size_t species) const;
+    double probMosqBiting(size_t species) const;
     /** Probability of a mosquito succesfully finding a resting
      * place after biting and then resting (P_C_i * P_D_i). */
-    double probMosqResting (size_t species) const;
+    double probMosqResting(size_t species) const;
     /** Multiplicative factor for the number of fertile eggs laid by mosquitoes
      * after feeding on this host. Should be 1 normally, less than 1 to reduce
      * fertility, greater than 1 to increase. */
-    double relMosqFecundity (size_t species) const;
+    double relMosqFecundity(size_t species) const;
     //@}
-    
+
     ///@brief Convenience wrappers around several functions
     //@{
     /// entoAvailabilityHetVecItv * probMosqBiting
-    inline double availBite (size_t species) const{
+    inline double availBite(size_t species) const {
         return entoAvailabilityHetVecItv(species) * probMosqBiting(species);
     }
     //@}
-    
+
     ///@brief Miscellaneous
     //@{
     /** Get the age at which individuals are considered adults (i.e. where
      * availability to mosquitoes reaches its maximum). */
-    static inline SimTime adultAge( const SimClock& clock ) {
-        return clock.from_years_d( relAvailAge.firstGlobalMaximum() );
+    static inline SimTime adultAge(const SimClock& clock) {
+        return clock.from_years_d(relAvailAge.firstGlobalMaximum());
     }
-    
+
     /** Get whether the user has any active deployments of interventions of
      * the given type, where type is one of ITN/IRS/GVI (in other cases this
      * will always return false). */
-    bool hasActiveInterv( interventions::Component::Type type ) const;
-    
+    bool hasActiveInterv(interventions::Component::Type type) const;
+
     //@}
-    
+
     /** Species availability rate of human to mosquitoes: per-species
      * vector at this row (old anoph* members; refs keep the old syntax). */
     std::vector<double>& anoph_ento_raw() const { return cols->anoph_ento_raw[row]; }
@@ -232,13 +231,16 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
 
     /** Bind the host human's column row (Human ctor before initialise;
      * Human::set_row rebinds — stale mirror = wrong host after renumber). */
-    void bind_columns( HumanColumns& c, size_t r ) { cols = &c; row = r; }
+    void bind_columns(HumanColumns& c, size_t r) {
+        cols = &c;
+        row = r;
+    }
 
     /// The host human's SoA columns/row (see bind_columns).
     HumanColumns* cols = nullptr;
     size_t row = 0;
 
-private:
+  private:
     static AgeGroupInterpolator relAvailAge;
 };
 

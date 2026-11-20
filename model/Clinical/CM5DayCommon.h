@@ -35,7 +35,10 @@
 #include "Host/WithinHost/WHInterface.h"
 #include "mon/Monitoring.h"
 
-namespace scnXml { class HSDT5Day; class HSImmediateOutcomes; }
+namespace scnXml {
+class HSDT5Day;
+class HSImmediateOutcomes;
+}
 namespace OM {
 namespace Clinical {
 using Host::Human;
@@ -46,9 +49,8 @@ using Host::Human;
  * config only; per-human state lives on ClinicalModel, behaviour is the
  * clinicalUpdate5Day free function below.
  */
-class CM5DayCommon
-{
-public:
+class CM5DayCommon {
+  public:
     static void init();
 
     enum CaseType { FirstLine, SecondLine, NumCaseTypes };
@@ -63,15 +65,14 @@ public:
 /** Common 5-day clinical update (old CM5DayCommon::doClinicalUpdate; the
  * kind of cm selects the uncomplicatedEvent implementation, parity: the old
  * virtual call). */
-void clinicalUpdate5Day (ClinicalModel& cm, RunContext& ctx, Human& human,
-                         double ageYears, WithinHost::Pathogenesis::StatePair &pg);
+void clinicalUpdate5Day(ClinicalModel& cm, RunContext& ctx, Human& human, double ageYears,
+                        WithinHost::Pathogenesis::StatePair& pg);
 
 /** Called when a severe/complicated (with co-infection) malaria sickness occurs.
  *
  * Note: sets doomed = 4 if patient dies. */
-void severeMalaria (ClinicalModel& cm, RunContext& ctx, Human& human,
-                 Episode::State pgState, double ageYears, int& doomed);
-
+void severeMalaria(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState, double ageYears,
+                   int& doomed);
 
 /**
  * This models case management with 5-day time steps, optionally including
@@ -87,18 +88,16 @@ void severeMalaria (ClinicalModel& cm, RunContext& ctx, Human& human,
  * probability tree, using the same logic for handling severe cases as has long
  * been used.
  */
-class DecisionTree5Day
-{
-public:
+class DecisionTree5Day {
+  public:
     /** Load health system data from initial data or an intervention's data (both from XML).
      * (Re)loads all data affected by this healthSystem element. */
-    static void setHealthSystem (RunContext& ctx, const scnXml::HSDT5Day& hsDescription);
+    static void setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& hsDescription);
 };
 
 /// Uncomplicated-case handling for the DecisionTree5Day kind (old
 /// DecisionTree5Day::uncomplicatedEvent).
-void treeUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx, Human& human,
-                             Episode::State pgState);
+void treeUncomplicatedEvent(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState);
 
 /**
  * This models case management at a 5-day time step with all-or-nothing
@@ -115,13 +114,12 @@ void treeUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx, Human& human,
  * 
  * NOTE: this provides a strict subset of the functionality of DecisionTree5Day.
  */
-class ImmediateOutcomes
-{
-public:
+class ImmediateOutcomes {
+  public:
     /** Load health system data from initial data or an intervention's data (both from XML).
      * (Re)loads all data affected by this healthSystem element. */
-    static void setHealthSystem (RunContext& ctx, const scnXml::HSImmediateOutcomes& hsioData);
-    
+    static void setHealthSystem(RunContext& ctx, const scnXml::HSImmediateOutcomes& hsioData);
+
     static double cureRateUCOfficial[CM5DayCommon::NumCaseTypes];
     static double cureRateUCSelfTreat[CM5DayCommon::NumCaseTypes];
     static WithinHost::TreatmentId treatmentUC[CM5DayCommon::NumCaseTypes];
@@ -130,8 +128,7 @@ public:
 
 /// Uncomplicated-case handling for the ImmediateOutcomes kind (old
 /// ImmediateOutcomes::uncomplicatedEvent).
-void immOutUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx, Human& human,
-                               Episode::State pgState);
+void immOutUncomplicatedEvent(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState);
 
 }
 }

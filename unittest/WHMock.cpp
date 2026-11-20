@@ -33,41 +33,37 @@ using util::LocalRng;
 namespace {
 WHMockState* state = nullptr;
 
-void treatment(void*){
-    state->nTreatments += 1;
-}
+void treatment(void*) { state->nTreatments += 1; }
 
-bool treatSimple(void*, SimTime timeLiver, SimTime timeBlood){
+bool treatSimple(void*, SimTime timeLiver, SimTime timeBlood) {
     state->nTreatments += 1;
     state->lastTimeLiver = timeLiver;
     state->lastTimeBlood = timeBlood;
     return timeBlood != sim::zero();
 }
 
-void treatPkPd(void*, RunContext& ctx, size_t schedule, size_t dosages, double age, double delay_d){
+void treatPkPd(void*, RunContext& ctx, size_t schedule, size_t dosages, double age, double delay_d) {
     state->nTreatments += 1;
-    state->pkpd.prescribe( ctx, schedule, dosages, age, numeric_limits<double>::quiet_NaN(), delay_d );
+    state->pkpd.prescribe(ctx, schedule, dosages, age, numeric_limits<double>::quiet_NaN(), delay_d);
 }
 
-double getTotalDensity(const void*){
-    return state->totalDensity;
+double getTotalDensity(const void*) { return state->totalDensity; }
+
+bool diagnosticResult(const void*, LocalRng& rng, const WithinHost::Diagnostic& diagnostic) {
+    return diagnostic.isPositive(rng, state->totalDensity, numeric_limits<double>::quiet_NaN());
 }
 
-bool diagnosticResult(const void*, LocalRng& rng, const WithinHost::Diagnostic& diagnostic){
-    return diagnostic.isPositive( rng, state->totalDensity, numeric_limits<double>::quiet_NaN() );
+RunContext::WHMockHooks hooks = {nullptr, &treatment, &treatSimple, &treatPkPd, &getTotalDensity, &diagnosticResult};
 }
 
-RunContext::WHMockHooks hooks = { nullptr, &treatment, &treatSimple, &treatPkPd, &getTotalDensity, &diagnosticResult };
-}
-
-unique_ptr<WithinHost::WHInterface> makeWHMock(RunContext& ctx){
+unique_ptr<WithinHost::WHInterface> makeWHMock(RunContext& ctx) {
     delete state;
     state = new WHMockState();
     hooks.state = state;
     ctx.whMock = &hooks;
-    LocalRng rng(0, 0);   // unused: the Mock kind's constructor draws nothing
+    LocalRng rng(0, 0); // unused: the Mock kind's constructor draws nothing
     return unique_ptr<WithinHost::WHInterface>(
-        new WithinHost::WHInterface( ctx, rng, 1.0, WithinHost::WHInterface::Kind::Mock ));
+        new WithinHost::WHInterface(ctx, rng, 1.0, WithinHost::WHInterface::Kind::Mock));
 }
 
 }

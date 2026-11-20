@@ -38,47 +38,46 @@ class SimClock;
  * use this without breaking backwards compatibility (by allowing the unit to
  * be omitted), and (b) by requiring new values be specified with unit. */
 namespace UnitParse {
-    enum DefaultUnit {
-        NONE,   // error if not specified
-        DAYS,   // assume days
-        YEARS,  // assume years
-        STEPS,  // assume steps
-    };
-    
-    static const int monthLen[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-    
-    static const int monthStart[] = { // offsets of start of month from start of year
-        0 /*Jan*/, 31, 59, 90,
-        120 /*May*/, 151, 181, 212,
-        243 /*Sept*/, 273, 304, 334,
-        365 /*next year: stop condition in formatDate*/
-    };
+enum DefaultUnit {
+    NONE,  // error if not specified
+    DAYS,  // assume days
+    YEARS, // assume years
+    STEPS, // assume steps
+};
 
-    /** Parse a short duration from a string found in the input document.
+static const int monthLen[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+static const int monthStart[] = {
+    // offsets of start of month from start of year
+    0 /*Jan*/, 31,           59,  90,  120 /*May*/, 151, 181,
+    212,       243 /*Sept*/, 273, 304, 334,         365 /*next year: stop condition in formatDate*/
+};
+
+/** Parse a short duration from a string found in the input document.
      * 
      * Supports units of days (5d), and steps (2t) with integer values,
      * rounding inputs to the nearest time step.
      * 
      * Call ctx.clock.init() first. */
-    SimTime readShortDuration( const SimClock& clock, const std::string& str, DefaultUnit defUnit );
-    
-    /** Like readShortDuration(), but also allow inputs to be in fractional
+SimTime readShortDuration(const SimClock& clock, const std::string& str, DefaultUnit defUnit);
+
+/** Like readShortDuration(), but also allow inputs to be in fractional
      * years.
      * 
      * Call ctx.clock.init() first. */
-    SimTime readDuration( const SimClock& clock, const std::string& str, DefaultUnit defUnit );
-    
-    /** Like readDuration(), but without rounding. Output is in days and may
+SimTime readDuration(const SimClock& clock, const std::string& str, DefaultUnit defUnit);
+
+/** Like readDuration(), but without rounding. Output is in days and may
      * not be an integer.
      * 
      * Call ctx.clock.init() first. */
-    double durationToDays( const SimClock& clock, const std::string& str, DefaultUnit defUnit );
-    
-    /** Returns sim::never() when it doesn't recognise a date. Throws when it does
-     * but encounters definite format errors. */
-    SimTime parseDate( const SimClock& clock, const std::string& str );
+double durationToDays(const SimClock& clock, const std::string& str, DefaultUnit defUnit);
 
-    /** Read a date or relative time specifier found in the XML; dates are
+/** Returns sim::never() when it doesn't recognise a date. Throws when it does
+     * but encounters definite format errors. */
+SimTime parseDate(const SimClock& clock, const std::string& str);
+
+/** Read a date or relative time specifier found in the XML; dates are
      * rebased relative to a starting date so that they work the same as other
      * ways of specifying intervention-period time from the point of view of
      * code using this function.
@@ -87,8 +86,7 @@ namespace UnitParse {
      * of the intervention period (as readDuration will parse). Returns a time
      * to be compared against ctx.clock.interv_date(). Again, the result is rounded to
      * the nearest time step. */
-    SimTime readDate( const SimClock& clock, const std::string& str, DefaultUnit defUnit );
+SimTime readDate(const SimClock& clock, const std::string& str, DefaultUnit defUnit);
 }
 
 }
-

@@ -38,7 +38,8 @@ class Scenario;
 class Monitoring;
 }
 
-namespace OM { class RunContext;
+namespace OM {
+class RunContext;
 namespace Host {
 class Human;
 }
@@ -109,7 +110,8 @@ size_t eventSurveyNumber(RunContext& ctx);
 size_t statSurveyNumber(RunContext& ctx);
 bool isReported(RunContext& ctx);
 SimTime nextSurveyDate(RunContext& ctx);
-size_t setupCondition(RunContext& ctx, const std::string& measureName, double minValue, double maxValue, bool initialState);
+size_t setupCondition(RunContext& ctx, const std::string& measureName, double minValue, double maxValue,
+                      bool initialState);
 bool checkCondition(RunContext& ctx, size_t conditionKey);
 uint32_t updateCohortSet(RunContext& ctx, uint32_t old, interventions::ComponentId subPop, bool isMember);
 
@@ -124,12 +126,13 @@ void writeSurveyData(RunContext& ctx);
 
 void recordStat(RunContext& ctx, Measure measure, double val, size_t species = 0, size_t genotype = 0);
 /// The human overloads find the run through human.ctx.
-void recordStat(Measure measure, const Host::Human& human, double val = 1.0, size_t species = 0, size_t genotype = 0, size_t drug = 0);
+void recordStat(Measure measure, const Host::Human& human, double val = 1.0, size_t species = 0, size_t genotype = 0,
+                size_t drug = 0);
 void recordEvent(RunContext& ctx, Measure measure, size_t survey, size_t age, uint32_t cohort);
 void recordEvent(Measure measure, const Host::Human& human, double val = 1.0, int outId = 0);
-void recordDeploy(Measure timedMeasure, Measure ctsMeasure, const Host::Human& human, Deploy::Method method, double val = 1.0);
+void recordDeploy(Measure timedMeasure, Measure ctsMeasure, const Host::Human& human, Deploy::Method method,
+                  double val = 1.0);
 bool isUsed(RunContext& ctx, Measure measure);
 
 } // namespace mon
 } // namespace OM
-

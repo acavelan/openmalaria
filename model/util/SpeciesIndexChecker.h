@@ -31,57 +31,58 @@
 #include <sstream>
 #include <string>
 
-namespace OM { namespace util {
-using std::map; using std::set; using std::string;
+namespace OM {
+namespace util {
+using std::map;
+using std::set;
+using std::string;
 
 /** Checks keys exist and that all are used. Fails with an xml_scenario_error
  * and a suitable error message. */
-class SpeciesIndexChecker{
-public:
-    SpeciesIndexChecker( const string& intervName, const map<string,size_t>& indices ) :
-        _intervName( intervName ), _indices( indices ){}
-    
+class SpeciesIndexChecker {
+  public:
+    SpeciesIndexChecker(const string& intervName, const map<string, size_t>& indices)
+        : _intervName(intervName), _indices(indices) {}
+
     /** Return the index in speciesIndex of mosquito, throwing if not found. */
-    size_t getIndex( string species );
-    
+    size_t getIndex(string species);
+
     /** Throw if some species was missed. */
     void checkNoneMissed() const;
-    
-private:
+
+  private:
     const string& _intervName;
-    const map<string,size_t>& _indices;
+    const map<string, size_t>& _indices;
     set<string> found;
 };
 
-inline size_t SpeciesIndexChecker::getIndex( string species ){
-    if( !found.insert( species ).second ){
+inline size_t SpeciesIndexChecker::getIndex(string species) {
+    if (!found.insert(species).second) {
         std::ostringstream msg;
-        msg << "Intervention \"" << _intervName
-            << "\" has multiple descriptions for vector species \""
-            << species << "\"";
-        throw util::xml_scenario_error( msg.str() );
+        msg << "Intervention \"" << _intervName << "\" has multiple descriptions for vector species \"" << species
+            << "\"";
+        throw util::xml_scenario_error(msg.str());
     }
-    auto sIndex = _indices.find( species );
-    if( sIndex == _indices.end() ){
+    auto sIndex = _indices.find(species);
+    if (sIndex == _indices.end()) {
         std::ostringstream msg;
-        msg << "Intervention \"" << _intervName
-            << "\" has a description for vector species \"" << species
+        msg << "Intervention \"" << _intervName << "\" has a description for vector species \"" << species
             << "\", but this species is not mentioned in the entomology section";
-        throw util::xml_scenario_error( msg.str() );
+        throw util::xml_scenario_error(msg.str());
     }
     return sIndex->second;
 }
 
-inline void SpeciesIndexChecker::checkNoneMissed() const{
-    for( auto it = _indices.begin(); it != _indices.end(); ++it ){
-        if( found.count( it->first ) == 0 ){
+inline void SpeciesIndexChecker::checkNoneMissed() const {
+    for (auto it = _indices.begin(); it != _indices.end(); ++it) {
+        if (found.count(it->first) == 0) {
             std::ostringstream msg;
-            msg << "Intervention \"" << _intervName
-                << "\" has a no description for vector species \""
-                << it->first << "\"";
-            throw util::xml_scenario_error( msg.str() );
+            msg << "Intervention \"" << _intervName << "\" has a no description for vector species \"" << it->first
+                << "\"";
+            throw util::xml_scenario_error(msg.str());
         }
     }
 }
 
-} }
+}
+}

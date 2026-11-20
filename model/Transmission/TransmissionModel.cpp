@@ -35,74 +35,73 @@
 #include <cmath>
 #include <set>
 
-namespace OM
-{
-namespace Transmission
-{
+namespace OM {
+namespace Transmission {
 using namespace OM::util;
 using Anopheles::AnophelesModel;
 
-void TransmissionModel::ctsCbN_v0(ostream &stream)
-{
-    for (auto &s : species) stream << '\t' << s->getLastN_v0();
+void TransmissionModel::ctsCbN_v0(ostream& stream) {
+    for (auto& s : species)
+        stream << '\t' << s->getLastN_v0();
 }
-void TransmissionModel::ctsCbVecStat(Anopheles::VecStat vs, ostream &stream)
-{
-    for (auto &s : species) stream << '\t' << s->getLastVecStat(vs);
+void TransmissionModel::ctsCbVecStat(Anopheles::VecStat vs, ostream& stream) {
+    for (auto& s : species)
+        stream << '\t' << s->getLastVecStat(vs);
 }
 namespace {
 /// Mean over the population of a per-host term: left fold in host order, the
 /// same FP sequence the three separate callbacks accumulated (cts bytes).
-template <typename Term>
-double meanOver(const vector<Host::Human> &population, Term term)
-{
+template <typename Term> double meanOver(const vector<Host::Human>& population, Term term) {
     double total = 0.0;
-    for (const Host::Human &human : population) total += term(human);
+    for (const Host::Human& human : population)
+        total += term(human);
     return total / population.size();
 }
 }
 
-void TransmissionModel::ctsCbAlpha(const vector<Host::Human> &population, ostream &stream)
-{
+void TransmissionModel::ctsCbAlpha(const vector<Host::Human>& population, ostream& stream) {
     for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << meanOver(population, [&](const Host::Human &human)
-            { return human.perHostTransmission.entoAvailabilityFull(i, sim::inYears(human.age(ctx.clock.now()))); });
+        stream << '\t' << meanOver(population, [&](const Host::Human& human) {
+            return human.perHostTransmission.entoAvailabilityFull(i, sim::inYears(human.age(ctx.clock.now())));
+        });
 }
-void TransmissionModel::ctsCbP_B(const vector<Host::Human> &population, ostream &stream)
-{
+void TransmissionModel::ctsCbP_B(const vector<Host::Human>& population, ostream& stream) {
     for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << meanOver(population, [&](const Host::Human &human)
-            { return human.perHostTransmission.probMosqBiting(i); });
+        stream << '\t' << meanOver(population, [&](const Host::Human& human) {
+            return human.perHostTransmission.probMosqBiting(i);
+        });
 }
-void TransmissionModel::ctsCbP_CD(const vector<Host::Human> &population, ostream &stream)
-{
+void TransmissionModel::ctsCbP_CD(const vector<Host::Human>& population, ostream& stream) {
     for (size_t i = 0; i < speciesIndex.size(); ++i)
-        stream << '\t' << meanOver(population, [&](const Host::Human &human)
-            { return human.perHostTransmission.probMosqResting(i); });
+        stream << '\t' << meanOver(population, [&](const Host::Human& human) {
+            return human.perHostTransmission.probMosqResting(i);
+        });
 }
-void TransmissionModel::ctsCbResAvailability(ostream &stream)
-{
-    for (auto &s : species) stream << '\t' << s->getResAvailability();
+void TransmissionModel::ctsCbResAvailability(ostream& stream) {
+    for (auto& s : species)
+        stream << '\t' << s->getResAvailability();
 }
-void TransmissionModel::ctsCbResRequirements(ostream &stream)
-{
-    for (auto &s : species) stream << '\t' << s->getResRequirements();
+void TransmissionModel::ctsCbResRequirements(ostream& stream) {
+    for (auto& s : species)
+        stream << '\t' << s->getResRequirements();
 }
 
-const string &reverseLookup(const map<string, size_t> &m, size_t i)
-{
-    auto it = std::find_if(m.begin(), m.end(), [i](const auto &p) { return p.second == i; });
-    if (it == m.end()) throw TRACED_EXCEPTION_DEFAULT("reverseLookup: key not found"); // shouldn't ever happen
+const string& reverseLookup(const map<string, size_t>& m, size_t i) {
+    auto it = std::find_if(m.begin(), m.end(), [i](const auto& p) { return p.second == i; });
+    if (it == m.end())
+        throw TRACED_EXCEPTION_DEFAULT("reverseLookup: key not found"); // shouldn't ever happen
     return it->first;
 }
 
-TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode, vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
-                         vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList, map<string, size_t> speciesIndexList)
-    : TransmissionModel(ctx, std::move(initEIR), interventionMode, Kind::Vector,
-        std::move(speciesList), std::move(emergenceRateEstimatorsList), std::move(speciesIndexList))
-{
+TransmissionModel::TransmissionModel(
+    RunContext& ctx, vector<double> initEIR, int interventionMode,
+    vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
+    vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
+    map<string, size_t> speciesIndexList)
+    : TransmissionModel(ctx, std::move(initEIR), interventionMode, Kind::Vector, std::move(speciesList),
+                        std::move(emergenceRateEstimatorsList), std::move(speciesIndexList)) {
     // set VACCINE_GENOTYPE option
-    opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
+    opt_vaccine_genotype = util::ModelOptions::option(util::VACCINE_GENOTYPE);
 
     // Calculate total annual EIR
     annualEIR = vectors::sum(initialisationEIR);
@@ -110,56 +109,68 @@ TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, in
     // -----  Continuous reporting  -----
     // One column per species, in the order specified in XML, so outputting is
     // just iterating the list. Unfortunately, we need to reverse-lookup the name.
-    auto ctsHeads = [this](const char *prefix) {
+    auto ctsHeads = [this](const char* prefix) {
         ostringstream s;
-        for (size_t i = 0; i < species.size(); ++i) s << prefix << reverseLookup(speciesIndex, i) << ")";
+        for (size_t i = 0; i < species.size(); ++i)
+            s << prefix << reverseLookup(speciesIndex, i) << ")";
         return s.str();
     };
 
-    mon::Continuous::registerCallback(ctx, "N_v0", ctsHeads("\tN_v0("), std::bind( &TransmissionModel::ctsCbN_v0, this, _1));
-    mon::Continuous::registerCallback(ctx, "P_A", ctsHeads("\tP_A("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PA, _1));
-    mon::Continuous::registerCallback(ctx, "P_Amu", ctsHeads("\tP_Amu("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PAmu, _1));
-    mon::Continuous::registerCallback(ctx, "P_A1", ctsHeads("\tP_A1("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PA1, _1));
-    mon::Continuous::registerCallback(ctx, "P_Ah", ctsHeads("\tP_Ah("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PAh, _1));
-    mon::Continuous::registerCallback(ctx, "P_df", ctsHeads("\tP_df("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PDF, _1));
-    mon::Continuous::registerCallback(ctx, "P_dif", ctsHeads("\tP_dif("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PDIF, _1));
-    mon::Continuous::registerCallback(ctx, "N_v", ctsHeads("\tN_v("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::NV, _1));
-    mon::Continuous::registerCallback(ctx, "O_v", ctsHeads("\tO_v("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::OV, _1));
-    mon::Continuous::registerCallback(ctx, "S_v", ctsHeads("\tS_v("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::SV, _1));
+    mon::Continuous::registerCallback(ctx, "N_v0", ctsHeads("\tN_v0("),
+                                      std::bind(&TransmissionModel::ctsCbN_v0, this, _1));
+    mon::Continuous::registerCallback(ctx, "P_A", ctsHeads("\tP_A("),
+                                      std::bind(&TransmissionModel::ctsCbVecStat, this, Anopheles::PA, _1));
+    mon::Continuous::registerCallback(ctx, "P_Amu", ctsHeads("\tP_Amu("),
+                                      std::bind(&TransmissionModel::ctsCbVecStat, this, Anopheles::PAmu, _1));
+    mon::Continuous::registerCallback(ctx, "P_A1", ctsHeads("\tP_A1("),
+                                      std::bind(&TransmissionModel::ctsCbVecStat, this, Anopheles::PA1, _1));
+    mon::Continuous::registerCallback(ctx, "P_Ah", ctsHeads("\tP_Ah("),
+                                      std::bind(&TransmissionModel::ctsCbVecStat, this, Anopheles::PAh, _1));
+    mon::Continuous::registerCallback(ctx, "P_df", ctsHeads("\tP_df("),
+                                      std::bind(&TransmissionModel::ctsCbVecStat, this, Anopheles::PDF, _1));
+    mon::Continuous::registerCallback(ctx, "P_dif", ctsHeads("\tP_dif("),
+                                      std::bind(&TransmissionModel::ctsCbVecStat, this, Anopheles::PDIF, _1));
+    mon::Continuous::registerCallback(ctx, "N_v", ctsHeads("\tN_v("),
+                                      std::bind(&TransmissionModel::ctsCbVecStat, this, Anopheles::NV, _1));
+    mon::Continuous::registerCallback(ctx, "O_v", ctsHeads("\tO_v("),
+                                      std::bind(&TransmissionModel::ctsCbVecStat, this, Anopheles::OV, _1));
+    mon::Continuous::registerCallback(ctx, "S_v", ctsHeads("\tS_v("),
+                                      std::bind(&TransmissionModel::ctsCbVecStat, this, Anopheles::SV, _1));
 
     // availability to mosquitoes relative to other humans, excluding age factor
-    mon::Continuous::registerCallback(ctx, "alpha", ctsHeads("\talpha_i("), std::bind( &TransmissionModel::ctsCbAlpha, this, _1, _2));
-    mon::Continuous::registerCallback(ctx, "P_B", ctsHeads("\tP_B("), std::bind( &TransmissionModel::ctsCbP_B, this, _1, _2));
-    mon::Continuous::registerCallback(ctx, "P_C*P_D", ctsHeads("\tP_C*P_D("), std::bind( &TransmissionModel::ctsCbP_CD, this, _1, _2));
+    mon::Continuous::registerCallback(ctx, "alpha", ctsHeads("\talpha_i("),
+                                      std::bind(&TransmissionModel::ctsCbAlpha, this, _1, _2));
+    mon::Continuous::registerCallback(ctx, "P_B", ctsHeads("\tP_B("),
+                                      std::bind(&TransmissionModel::ctsCbP_B, this, _1, _2));
+    mon::Continuous::registerCallback(ctx, "P_C*P_D", ctsHeads("\tP_C*P_D("),
+                                      std::bind(&TransmissionModel::ctsCbP_CD, this, _1, _2));
 
-    mon::Continuous::registerCallback(ctx, "resource availability", ctsHeads("\tres avail("), std::bind( &TransmissionModel::ctsCbResAvailability, this, _1));
-    mon::Continuous::registerCallback(ctx, "resource requirements", ctsHeads("\tres req("), std::bind( &TransmissionModel::ctsCbResRequirements, this, _1));
+    mon::Continuous::registerCallback(ctx, "resource availability", ctsHeads("\tres avail("),
+                                      std::bind(&TransmissionModel::ctsCbResAvailability, this, _1));
+    mon::Continuous::registerCallback(ctx, "resource requirements", ctsHeads("\tres req("),
+                                      std::bind(&TransmissionModel::ctsCbResRequirements, this, _1));
 }
 
-void TransmissionModel::init2_vector(const vector<Host::Human> &population)
-{
+void TransmissionModel::init2_vector(const vector<Host::Human>& population) {
     double sumRelativeAvailability = 0.0;
-    for (const Host::Human &human : population)
-    {
-        sumRelativeAvailability += human.perHostTransmission.relativeAvailabilityAge(sim::inYears(human.age(ctx.clock.now())));
+    for (const Host::Human& human : population) {
+        sumRelativeAvailability +=
+            human.perHostTransmission.relativeAvailabilityAge(sim::inYears(human.age(ctx.clock.now())));
     }
     int popSize = population.size();
     // value should be unimportant when no humans are available, though inf/nan is not acceptable
-    if (popSize > 0)
-    {
+    if (popSize > 0) {
         meanAvail = sumRelativeAvailability / popSize; // mean-rel-avail
     }
 
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-    {
+    for (size_t i = 0; i < speciesIndex.size(); ++i) {
         double sum_avail = 0.0;
         double sigma_f = 0.0;
         double sigma_df = 0.0;
         double sigma_dff = 0.0;
 
-        for (const Host::Human &human : population)
-        {
-            const OM::Transmission::PerHost &host = human.perHostTransmission;
+        for (const Host::Human& human : population) {
+            const OM::Transmission::PerHost& host = human.perHostTransmission;
             double prod = host.entoAvailabilityFull(i, sim::inYears(human.age(ctx.clock.now())));
             sum_avail += prod;
             prod *= host.probMosqBiting(i);
@@ -173,76 +184,69 @@ void TransmissionModel::init2_vector(const vector<Host::Human> &population)
     simulationMode = forcedEIR; // now we should be ready to start
 }
 
-void TransmissionModel::scaleEIR_vector(double factor)
-{
-    for (auto &s : species) s->scaleEIR(factor);
+void TransmissionModel::scaleEIR_vector(double factor) {
+    for (auto& s : species)
+        s->scaleEIR(factor);
     vectors::scale(initialisationEIR, factor);
     annualEIR = vectors::sum(initialisationEIR);
 }
 
-SimTime TransmissionModel::initIterate_vector()
-{
-    if (interventionMode != dynamicEIR)
-    {
+SimTime TransmissionModel::initIterate_vector() {
+    if (interventionMode != dynamicEIR) {
         // allow forcing equilibrium mode like with non-vector model
         return sim::zero(); // no initialization to do
     }
 
     // Fitting is done
-    if (initIterations < 0)
-    {
+    if (initIterations < 0) {
         simulationMode = dynamicEIR;
         return sim::zero();
     }
 
-    if (++initIterations > 30) { throw TRACED_EXCEPTION("Transmission warmup exceeded 30 iterations!", util::Error::VectorWarmup); }
+    if (++initIterations > 30) {
+        throw TRACED_EXCEPTION("Transmission warmup exceeded 30 iterations!", util::Error::VectorWarmup);
+    }
 
     bool needIterate = false;
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-    {
+    for (size_t i = 0; i < speciesIndex.size(); ++i) {
         needIterate = emergenceRateEstimators[i]->estimate(*species[i], laggedKappa, meanAvail);
         species[i]->initIterate();
-        if (needIterate) break;
+        if (needIterate)
+            break;
     }
 
-    if (needIterate)
-    {
+    if (needIterate) {
         // stabilization + 5 years data-collection time:
         return sim::oneYear() + sim::fromYearsI(5);
-    }
-    else
-    {
+    } else {
         // One year stabilisation, then we're finished:
         initIterations = -1;
         return sim::oneYear();
     }
 }
 
-void TransmissionModel::calculateEIR_vector(Host::Human &human, double ageYears, vector<double> &EIR_i, vector<double> &EIR_l) const
-{
+void TransmissionModel::calculateEIR_vector(Host::Human& human, double ageYears, vector<double>& EIR_i,
+                                            vector<double>& EIR_l) const {
 
-    PerHost &host = human.perHostTransmission;
+    PerHost& host = human.perHostTransmission;
     host.update(human);
-    if(simulationMode == transientEIRknown)
-    {
+    if (simulationMode == transientEIRknown) {
         EIR_i.assign(1, 0.0);
         EIR_l.assign(1, 0.0);
 
-        for (size_t i = 0; i < speciesIndex.size(); ++i)
-        {
+        for (size_t i = 0; i < speciesIndex.size(); ++i) {
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
-            double eir = species[i]->getInterventionEIR() * host.relativeAvailabilityAge(ageYears) * host.entoAvailabilityHetVecItv(i);
+            double eir = species[i]->getInterventionEIR() * host.relativeAvailabilityAge(ageYears) *
+                         host.entoAvailabilityHetVecItv(i);
             mon::recordStat(mon::measure("innoculationsPerAgeGroup"), human, eir);
             mon::recordStat(mon::measure("innoculationsPerVector"), human, eir, i);
             // cout << host.availBite(i) << endl;
             // cout << "species: " << eir << " " << host.entoAvailabilityHetVecItv(i) << " " << host.entoAvailabilityHetVecItv(i) * (1000*0.00112608) << endl;
             EIR_l[0] += eir;
         }
-    }
-    else if (simulationMode == forcedEIR)
-    {
+    } else if (simulationMode == forcedEIR) {
         // double eir = initialisationEIR[ctx.clock.moduloYearSteps(ctx.clock.ts0())] * host.relativeAvailabilityHetAge(ageYears);
 
         // cout << "global: " << eir << " " <<  endl;
@@ -252,40 +256,36 @@ void TransmissionModel::calculateEIR_vector(Host::Human &human, double ageYears,
         EIR_i.assign(1, 0.0);
         EIR_l.assign(1, 0.0);
 
-        for (size_t i = 0; i < speciesIndex.size(); ++i)
-        {
+        for (size_t i = 0; i < speciesIndex.size(); ++i) {
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
-            double eir = species[i]->getInitPartialEIR() * host.relativeAvailabilityAge(ageYears) * host.entoAvailabilityHetVecItv(i);
+            double eir = species[i]->getInitPartialEIR() * host.relativeAvailabilityAge(ageYears) *
+                         host.entoAvailabilityHetVecItv(i);
             mon::recordStat(mon::measure("innoculationsPerAgeGroup"), human, eir);
             mon::recordStat(mon::measure("innoculationsPerVector"), human, eir, i);
             // cout << host.availBite(i) << endl;
             // cout << "species: " << eir << " " << host.entoAvailabilityHetVecItv(i) << " " << host.entoAvailabilityHetVecItv(i) * (1000*0.00112608) << endl;
             EIR_l[0] += eir;
         }
-    }
-    else
-    {
+    } else {
         EIR_i.assign(ctx.genotypes.N(), 0.0);
         EIR_l.assign(ctx.genotypes.N(), 0.0);
         const double ageFactor = host.relativeAvailabilityAge(ageYears);
-        for (size_t i = 0; i < speciesIndex.size(); ++i)
-        {
-            const vector<double> &partialEIR_i = species[i]->partialEIR_i;
-            const vector<double> &partialEIR_l = species[i]->partialEIR_l;
+        for (size_t i = 0; i < speciesIndex.size(); ++i) {
+            const vector<double>& partialEIR_i = species[i]->partialEIR_i;
+            const vector<double>& partialEIR_l = species[i]->partialEIR_l;
 
             assert(EIR_i.size() == partialEIR_i.size());
             assert(EIR_l.size() == partialEIR_l.size());
-            
+
             // if ((std::isnan)(vectors::sum(partialEIR_i))) { cerr << "partialEIR is not a number; " << i << endl; }
 
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
             double entoFactor = ageFactor * host.availBite(i);
-            for (size_t g = 0; g < EIR_i.size(); ++g)
-            {
+            for (size_t g = 0; g < EIR_i.size(); ++g) {
                 double eir_i = partialEIR_i[g] * entoFactor;
                 double eir_l = partialEIR_l[g] * entoFactor;
                 mon::recordStat(mon::measure("innoculationsPerAgeGroup"), human, eir_i + eir_l, 0, g);
@@ -305,8 +305,7 @@ void TransmissionModel::calculateEIR_vector(Host::Human &human, double ageYears,
 // (operand order = old host-major accumulation ⇒ bit-exact; SIMD reductions are
 // phase 8). Slabs are function-local statics, capacity reused never shrunk
 // (precedent: B1a m_y_lag).
-void TransmissionModel::vectorUpdate_vector(const vector<Host::Human> &population)
-{
+void TransmissionModel::vectorUpdate_vector(const vector<Host::Human>& population) {
     const size_t nGenotypes = ctx.genotypes.N();
     const size_t nSpec = speciesIndex.size();
     const size_t nHost = population.size();
@@ -321,13 +320,13 @@ void TransmissionModel::vectorUpdate_vector(const vector<Host::Human> &populatio
     std::vector<double> sum_avail(nSpec);
     std::vector<double> sigma_df(nSpec);
     std::vector<double> sigma_dff(nSpec);
-    std::vector<std::vector<double>> sigma_dif_i(nSpec, std::vector<double>(nGenotypes)), sigma_dif_l(nSpec, std::vector<double>(nGenotypes));
+    std::vector<std::vector<double>> sigma_dif_i(nSpec, std::vector<double>(nGenotypes)),
+        sigma_dif_l(nSpec, std::vector<double>(nGenotypes));
 
     size_t h = 0;
-    for (const Host::Human &human : population)
-    {
-        const OM::Transmission::PerHost &host = human.perHostTransmission;
-        WithinHost::WHInterface &whm = *human.withinHostModel;
+    for (const Host::Human& human : population) {
+        const OM::Transmission::PerHost& host = human.perHostTransmission;
+        WithinHost::WHInterface& whm = *human.withinHostModel;
 
         // p7b B4 hoist: vaccine_factor is pure over the host's vac column (frozen
         // while the population is scanned) and returns 1.0 when it is empty — the
@@ -339,10 +338,10 @@ void TransmissionModel::vectorUpdate_vector(const vector<Host::Human> &populatio
         std::copy(probTransmission_i.begin(), probTransmission_i.end(), &s_pti[h * nGenotypes]);
         std::copy(probTransmission_l.begin(), probTransmission_l.end(), &s_ptl[h * nGenotypes]);
         for (size_t g = 0; g < nGenotypes; ++g)
-            s_tbv[h * nGenotypes + g] = anyVac ? human.vaccine_factor(interventions::Vaccine::TBV, opt_vaccine_genotype? g : 0) : 1.0;
+            s_tbv[h * nGenotypes + g] =
+                anyVac ? human.vaccine_factor(interventions::Vaccine::TBV, opt_vaccine_genotype ? g : 0) : 1.0;
 
-        for (size_t s = 0; s < nSpec; ++s)
-        {
+        for (size_t s = 0; s < nSpec; ++s) {
             // NOTE: calculate availability relative to age at end of time step;
             // not my preference but consistent with TransmissionModel::getEIR().
             // TODO: even stranger since probTransmission comes from the previous time step
@@ -356,18 +355,14 @@ void TransmissionModel::vectorUpdate_vector(const vector<Host::Human> &populatio
     }
 
     // pass 2: ordered reductions (same addend sequence as the old host-major loop)
-    for (size_t s = 0; s < nSpec; ++s)
-    {
-        for (h = 0; h < nHost; ++h)
-        {
+    for (size_t s = 0; s < nSpec; ++s) {
+        for (h = 0; h < nHost; ++h) {
             sum_avail[s] += s_avail[h * nSpec + s];
             sigma_df[s] += s_df[h * nSpec + s];
             sigma_dff[s] += s_fec[h * nSpec + s];
         }
-        for (size_t g = 0; g < nGenotypes; ++g)
-        {
-            for (h = 0; h < nHost; ++h)
-            {
+        for (size_t g = 0; g < nGenotypes; ++g) {
+            for (h = 0; h < nHost; ++h) {
                 const double tbv = s_tbv[h * nGenotypes + g];
                 sigma_dif_i[s][g] += s_df[h * nSpec + s] * s_pti[h * nGenotypes + g] * tbv;
                 sigma_dif_l[s][g] += s_df[h * nSpec + s] * s_ptl[h * nGenotypes + g] * tbv;
@@ -375,40 +370,39 @@ void TransmissionModel::vectorUpdate_vector(const vector<Host::Human> &populatio
         }
     }
 
-    for (size_t s = 0; s < nSpec; ++s)
-    {
-        species[s]->advancePeriod(sum_avail[s], sigma_df[s], sigma_dif_i[s], sigma_dif_l[s], sigma_dff[s], simulationMode == dynamicEIR);
+    for (size_t s = 0; s < nSpec; ++s) {
+        species[s]->advancePeriod(sum_avail[s], sigma_df[s], sigma_dif_i[s], sigma_dif_l[s], sigma_dff[s],
+                                  simulationMode == dynamicEIR);
     }
 }
 
 extern const string vec_mode_err = "vector interventions can only be used in "
-                            "dynamic transmission mode (mode=\"dynamic\")";
+                                   "dynamic transmission mode (mode=\"dynamic\")";
 
-void TransmissionModel::deployVectorPopInterv(size_t instance)
-{
-    if (interventionMode != dynamicEIR) { throw xml_scenario_error(vec_mode_err); }
-    for (auto &s : species) s->deployVectorPopInterv(m_rng, instance);
+void TransmissionModel::deployVectorPopInterv(size_t instance) {
+    if (interventionMode != dynamicEIR) {
+        throw xml_scenario_error(vec_mode_err);
+    }
+    for (auto& s : species)
+        s->deployVectorPopInterv(m_rng, instance);
 }
-void TransmissionModel::deployVectorTrap(size_t instance, double number, SimTime lifespan)
-{
-    if (interventionMode != dynamicEIR) { throw xml_scenario_error(vec_mode_err); }
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-    {
+void TransmissionModel::deployVectorTrap(size_t instance, double number, SimTime lifespan) {
+    if (interventionMode != dynamicEIR) {
+        throw xml_scenario_error(vec_mode_err);
+    }
+    for (size_t i = 0; i < speciesIndex.size(); ++i) {
         species[i]->deployVectorTrap(m_rng, i, instance, number, lifespan);
     }
 }
 
-
-void TransmissionModel::uninfectVectors_vector()
-{
-    for (auto &s : species) s->uninfectVectors();
+void TransmissionModel::uninfectVectors_vector() {
+    for (auto& s : species)
+        s->uninfectVectors();
 }
 
-void TransmissionModel::summarize_vector(RunContext& ctx)
-{
+void TransmissionModel::summarize_vector(RunContext& ctx) {
 
-    for (size_t i = 0; i < speciesIndex.size(); ++i)
-    {
+    for (size_t i = 0; i < speciesIndex.size(); ++i) {
         species[i]->summarize(ctx, i);
     }
 }

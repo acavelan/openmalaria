@@ -42,7 +42,7 @@
 // Old sim.h included its header chain before SimTime was needed;
 // keep the whole-tree forward declarations the old sim.h provided:
 namespace scnXml {
-    class Scenario;
+class Scenario;
 }
 
 /// SimTime is a number of days (integer).
@@ -50,57 +50,52 @@ typedef int SimTime;
 
 namespace OM {
 
-class RunContext;  // SimClock::init takes a reference (defined in RunContext.h)
+class RunContext; // SimClock::init takes a reference (defined in RunContext.h)
 
 namespace util {
-    class ModelNameProvider;
+class ModelNameProvider;
 }
 
-inline int floorToInt( double x ){
-	return static_cast<int>(std::floor(x));
-}
+inline int floorToInt(double x) { return static_cast<int>(std::floor(x)); }
 
 /** Stateless simulation-time constants and conversions. */
 namespace sim {
-    /// Number of days in a year; defined as 365 (leap years are not simulated).
-    constexpr int DAYS_IN_YEAR = 365;
+/// Number of days in a year; defined as 365 (leap years are not simulated).
+constexpr int DAYS_IN_YEAR = 365;
 
-    /// Convert to years
-    inline double inYears(SimTime d) { return d * (1.0 / DAYS_IN_YEAR); }
+/// Convert to years
+inline double inYears(SimTime d) { return d * (1.0 / DAYS_IN_YEAR); }
 
-    /// Duration zero and the time at the start of the simulation.
-    inline SimTime zero(){ return SimTime(0); }
+/// Duration zero and the time at the start of the simulation.
+inline SimTime zero() { return SimTime(0); }
 
-    inline SimTime origin(){ return SimTime(0); }
+inline SimTime origin() { return SimTime(0); }
 
-    /** Special value representing a time point always in the past, such that
+/** Special value representing a time point always in the past, such that
      * never() + x < zero() and x - never() will not to overflow for all valid
      * simulation times x (including any value now() may take as well as
      * never() and future()). */
-    inline SimTime never(){ return SimTime(-0x3FFFFFFF); }
+inline SimTime never() { return SimTime(-0x3FFFFFFF); }
 
-    /** Special value representing a time point always in the future, such that
+/** Special value representing a time point always in the future, such that
      * now() < future() and now() + future() does not overflow. */
-    inline SimTime future(){ return SimTime(0x3FFFFFFF); }
+inline SimTime future() { return SimTime(0x3FFFFFFF); }
 
-    /// One day.
-    inline SimTime oneDay(){ return SimTime(1); }
+/// One day.
+inline SimTime oneDay() { return SimTime(1); }
 
-    /// One year. See DAYS_IN_YEAR.
-    inline SimTime oneYear(){ return SimTime(DAYS_IN_YEAR); }
+/// One year. See DAYS_IN_YEAR.
+inline SimTime oneYear() { return SimTime(DAYS_IN_YEAR); }
 
-    /// Duration in days. Should be fast (currently no conversion required).
-    inline SimTime fromDays(int days){ return SimTime(days); }
+/// Duration in days. Should be fast (currently no conversion required).
+inline SimTime fromDays(int days) { return SimTime(days); }
 
-    /// Convert from a whole number of years.
-    inline SimTime fromYearsI(int years){
-        return SimTime(DAYS_IN_YEAR * years);
-    }
+/// Convert from a whole number of years.
+inline SimTime fromYearsI(int years) { return SimTime(DAYS_IN_YEAR * years); }
 }
 
-
 class SimClock {
-public:
+  public:
     /// Days per time step (1 or 5; set by initInterval).
     int interval = 0;
     /// Number of time steps in one year.
@@ -121,7 +116,7 @@ public:
     SimTime interv = sim::never();
 
 #ifndef NDEBUG
-    bool in_update = false;     // only true during human/population/transmission update
+    bool in_update = false; // only true during human/population/transmission update
 #endif
 
     ///@brief Conversions to other types/units
@@ -130,14 +125,10 @@ public:
     int inSteps(SimTime d) const { return d / interval; }
 
     /// Return this time in time steps modulo some positive integer.
-    int moduloSteps(SimTime d, int denominator) const {
-        return util::mod_nn(d / interval, denominator);
-    }
+    int moduloSteps(SimTime d, int denominator) const { return util::mod_nn(d / interval, denominator); }
 
     /// Return this time in time steps modulo some positive integer.
-    int moduloYearSteps(SimTime d) const {
-        return util::mod_nn(d / interval, steps_per_year);
-    }
+    int moduloYearSteps(SimTime d) const { return util::mod_nn(d / interval, steps_per_year); }
 
     /// One time step (currently either one or five days).
     SimTime one_TS() const { return SimTime(interval); }
@@ -146,19 +137,13 @@ public:
     SimTime fromTS(int ts) const { return SimTime(int(one_TS()) * ts); }
 
     /** Convert from years to nearest time step. */
-    SimTime from_years_n(double years) const {
-        return roundToTSFromDays(sim::DAYS_IN_YEAR * years);
-    }
+    SimTime from_years_n(double years) const { return roundToTSFromDays(sim::DAYS_IN_YEAR * years); }
 
     /** Convert from years, rounding down to the next time step. */
-    SimTime from_years_d(double years) const {
-        return fromTS( floorToInt(steps_per_year * years) );
-    }
+    SimTime from_years_d(double years) const { return fromTS(floorToInt(steps_per_year * years)); }
 
     /** Round to the nearest time-step, where input is in days. */
-    SimTime roundToTSFromDays(double days) const {
-        return fromTS( floorToInt( days / interval + 0.5 ));
-    }
+    SimTime roundToTSFromDays(double days) const { return fromTS(floorToInt(days / interval + 0.5)); }
     //@}
 
     ///@brief Access simulation time variables
@@ -168,7 +153,7 @@ public:
      * This is what is mostly used during an update. It is never negative and
      * increases throughout the simulation. */
     SimTime ts0() const {
-        assert(in_update);      // should only be used during updates
+        assert(in_update); // should only be used during updates
         return t0;
     }
     /** Time at the end of a time step update.
@@ -176,7 +161,7 @@ public:
      * During an update, ts0() + one_TS() = ts1(). Neither this nor ts0 should
      * be used outside of updates. */
     SimTime ts1() const {
-        assert(in_update);      // should only be used during updates
+        assert(in_update); // should only be used during updates
         return t1;
     }
     /**
@@ -187,8 +172,8 @@ public:
      * updates. Cannot be used during human or vector update.
      */
     SimTime now() const {
-        assert(!in_update);     // only for use outside of step updates
-        return t0;   // which is equal to t1 outside of updates, but that's a detail
+        assert(!in_update); // only for use outside of step updates
+        return t0;          // which is equal to t1 outside of updates, but that's a detail
     }
     /** During updates, this is ts0; between, this is now. */
     SimTime nowOrTs0() const { return t0; }
@@ -207,12 +192,12 @@ public:
     //@}
 
     /// Initial set-up: called by run_simulation via Scenario::load.
-    void init( RunContext& ctx, const scnXml::Scenario& scenario, util::ModelNameProvider mnp );
+    void init(RunContext& ctx, const scnXml::Scenario& scenario, util::ModelNameProvider mnp);
 
     /** Sets up time step duration: either a named model's interval or the
      * scenario's explicit interval. Must be 1 or 5 days (checked by
      * XMLChecker::PerformPostValidationChecks before seeding). */
-    void initInterval( const scnXml::Scenario& scenario, util::ModelNameProvider mnp );
+    void initInterval(const scnXml::Scenario& scenario, util::ModelNameProvider mnp);
 
     /// Start of update: called by the update loop.
     void start_update() {

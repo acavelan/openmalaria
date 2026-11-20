@@ -43,22 +43,22 @@
 
 using namespace std;
 
-namespace scnXml{
-    class Scenario;
-    class Model;
-    class TreatmentOption;
-    class LiverStageDrug;
+namespace scnXml {
+class Scenario;
+class Model;
+class TreatmentOption;
+class LiverStageDrug;
 }
 class UnittestUtil;
 class InfectionImmunitySuite;
 
 namespace OM {
 namespace Host {
-    class Human;
+class Human;
 }
 namespace WithinHost {
 namespace Pathogenesis {
-    class PathogenesisModel;
+class PathogenesisModel;
 }
 
 /** Sole owner of the per-host infection-slot cap (plan §5: "MAX_INFECTIONS=21
@@ -93,9 +93,7 @@ struct SlotAllocator {
 
     /// Clamp a stand-alone drawn count (post-draw; no rng effect).
     /// parity: InfectionIncidenceModel.cpp:257-258
-    static constexpr int clamp_count(int want) {
-        return want > MAX_INFECTIONS ? MAX_INFECTIONS : want;
-    }
+    static constexpr int clamp_count(int want) { return want > MAX_INFECTIONS ? MAX_INFECTIONS : want; }
 };
 
 class WHInterface;
@@ -109,35 +107,33 @@ struct HypnozoiteReleaseDistribution {
     /// The run this sampler serves (clock accessed as ctx.clock).
     RunContext& ctx;
 
-    HypnozoiteReleaseDistribution(RunContext& ctx, std::unique_ptr<util::Sampler> sampler, double latentRelapse) :
-        ctx(ctx),
-        sampler(std::move(sampler)),
-        latentRelapse(latentRelapse)
-        {}
-    
+    HypnozoiteReleaseDistribution(RunContext& ctx, std::unique_ptr<util::Sampler> sampler, double latentRelapse)
+        : ctx(ctx), sampler(std::move(sampler)), latentRelapse(latentRelapse) {}
+
     /// Sample the time until next release
     SimTime sampleReleaseDelay(LocalRng& rng) const {
-        double liverStageMaximumDays = 16.0*30.0; // maximum of about 16 months in liver stage 
-        double delay = numeric_limits<double>::quiet_NaN();       // in days
+        double liverStageMaximumDays = 16.0 * 30.0;         // maximum of about 16 months in liver stage
+        double delay = numeric_limits<double>::quiet_NaN(); // in days
         int count = 0;
         int maxcount = 1e3;
-        
-        do{
+
+        do {
             delay = sampler->sample(rng);
             count += 1;
-            
-            if( count >= maxcount ){
-                throw util::xml_scenario_error( "<vivax><hypnozoiteRelease>  [random delay calculation causes probably an indefinite loop]:\n The hypnozoite release distribution seems off, sigma of secondRelease could be too high. We except the hypnozoite to reside a maximum of 16 months in the liver stage. Sigma choose well, dear padawan." );
+
+            if (count >= maxcount) {
+                throw util::xml_scenario_error(
+                    "<vivax><hypnozoiteRelease>  [random delay calculation causes probably an indefinite loop]:\n The hypnozoite release distribution seems off, sigma of secondRelease could be too high. We except the hypnozoite to reside a maximum of 16 months in the liver stage. Sigma choose well, dear padawan.");
             }
-        } while( delay > liverStageMaximumDays || delay < 0.0  );
-        
-        assert( delay >= 0 && delay < liverStageMaximumDays );
-        return ctx.clock.roundToTSFromDays( delay + latentRelapse );
+        } while (delay > liverStageMaximumDays || delay < 0.0);
+
+        assert(delay >= 0 && delay < liverStageMaximumDays);
+        return ctx.clock.roundToTSFromDays(delay + latentRelapse);
     }
-    
-private:
+
+  private:
     std::unique_ptr<util::Sampler> sampler;
-    double latentRelapse;   // days
+    double latentRelapse; // days
 };
 
 /**
@@ -149,8 +145,8 @@ private:
  * released hypnozoite does nothing, however, blood stage infections from other
  * broods have no effect.
  */
-class VivaxBrood{
-public:
+class VivaxBrood {
+  public:
     /** Create.
      * 
      * @param host      The host creating this. Not really needed, except to
@@ -159,9 +155,9 @@ public:
     /// The run this brood belongs to (clock accessed as ctx.clock).
     RunContext& ctx;
 
-    VivaxBrood( RunContext& ctx, LocalRng& rng, int origin, WHInterface *host );
+    VivaxBrood(RunContext& ctx, LocalRng& rng, int origin, WHInterface* host);
     ~VivaxBrood();
-    struct UpdResult{
+    struct UpdResult {
         UpdResult() : newPrimaryBS(false), newRelapseBS(false), newRelapsebBS(false), newBS(false) {}
         bool newPrimaryBS, newRelapseBS, newRelapsebBS, newBS, isFinished;
     };
@@ -179,42 +175,38 @@ public:
     // Written by update_vivax; no in-model reader — kept for the checkpoint wire.
     bool hadEvent;
     bool hadRelapse;
-    
+
     /** Equivalent to a blood stage existing. We do not model incidence of
      * gametocytes independently, thus this also tests existance of
      * gametocytes. */
-    inline bool isPatent() const{
-        return bloodStageClearDate > ctx.clock.latestTs0();
-    }
-    
+    inline bool isPatent() const { return bloodStageClearDate > ctx.clock.latestTs0(); }
+
     /** Fully clear blood stage parasites. */
     void treatmentBS();
-    
+
     /** Fully clear liver stage parasites. */
     void treatmentLS();
 
-public:  // run state; wire in checkpoint/humans.cpp
-    
+  public: // run state; wire in checkpoint/humans.cpp
     // list of times at which the merozoite and hypnozoites release, ordered by
     // time of release, soonest last (i.e. last element is next one to release)
     vector<SimTime> releaseDates;
-    
+
     // Either sim::never() (no blood stage) or the start of the time step on
     // which the blood stage will clear.
     SimTime bloodStageClearDate = sim::never();
-    
+
     // Whether the primary blood stage infection has started
     bool primaryHasStarted;
 
     // Whether the relapse blood stage infection has started
     bool relapseHasStarted;
-	
-	//Whether the later category of relapses has started
-	bool relapsebHasStarted;
 
-	
-	// Infection origin
-	int origin;
+    //Whether the later category of relapses has started
+    bool relapsebHasStarted;
+
+    // Infection origin
+    int origin;
 };
 
 /**
@@ -235,13 +227,16 @@ public:  // run state; wire in checkpoint/humans.cpp
  * and WHVivax.cpp.
  */
 class WHInterface final {
-public:
+  public:
     /// The within-host model variant implemented by this instance.
     enum class Kind { Vivax, Common, Descriptive, Mock };
 
     /** Bind the host human's column row (Human ctor immediately after
      * creation; unit tests bind a mini-column themselves). */
-    void bind_columns( HumanColumns& c, size_t r ) { cols = &c; row = r; }
+    void bind_columns(HumanColumns& c, size_t r) {
+        cols = &c;
+        row = r;
+    }
 
     /// The run this model belongs to (clock accessed as ctx.clock).
     RunContext& ctx;
@@ -251,36 +246,36 @@ public:
     /// Initialise static parameters (all model variants)
     static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario);
     /// Initialise P. falciparum immunity statics (Common/Descriptive kinds).
-    static void initFalciparum( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model );
+    static void initFalciparum(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model);
     /// Initialise vivax statics (Vivax kind).
-    static void initVivax( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model );
+    static void initVivax(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model);
     /// Initialise Common-kind statics.
     static void initCommon(RunContext& ctx, const scnXml::Scenario& scenario);
     /// Initialise Descriptive-kind statics. Must run after monitoring is set up.
     static void initDescriptive(RunContext& ctx);
-    
+
     /** Called when health system parameters are loaded (Vivax kind).
      * 
      * If no "LiverStageDrug" parameters are present, this is still called but with null pointer.
      */
-    static void setHSParametersVivax( const scnXml::LiverStageDrug* );
-    
+    static void setHSParametersVivax(const scnXml::LiverStageDrug*);
+
     /** Configure a new treatment option, and return the code used to select
      * that option later. */
-    static TreatmentId addTreatment( RunContext& ctx, const scnXml::TreatmentOption& desc );
+    static TreatmentId addTreatment(RunContext& ctx, const scnXml::TreatmentOption& desc);
 
     /// Create an instance using the appropriate model
-    static unique_ptr<WHInterface> createWithinHostModel( RunContext& ctx, LocalRng& rng, double comorbidityFactor );
+    static unique_ptr<WHInterface> createWithinHostModel(RunContext& ctx, LocalRng& rng, double comorbidityFactor);
     //@}
 
     /// @brief Constructors, destructors and checkpointing functions
     //@{
-    WHInterface( RunContext& ctx, LocalRng& rng, double comorbidityFactor, Kind kind );
+    WHInterface(RunContext& ctx, LocalRng& rng, double comorbidityFactor, Kind kind);
     ~WHInterface();
-    
+
     WHInterface(const WHInterface&) = delete;
-    WHInterface& operator= (const WHInterface&) = delete;
-    WHInterface& operator=(WHInterface&&) = delete;    // ctx reference member
+    WHInterface& operator=(const WHInterface&) = delete;
+    WHInterface& operator=(WHInterface&&) = delete; // ctx reference member
 
     //@}
 
@@ -295,7 +290,7 @@ public:
      * 
      * Calulates the probability for imported infections _i and
      * for local infections _l */
-    double probTransmissionToMosquito(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l)const;
+    double probTransmissionToMosquito(vector<double>& probTransGenotype_i, vector<double>& probTransGenotype_l) const;
 
     /// @returns true if host has patent parasites
     bool summarize(Host::Human& human) const;
@@ -309,15 +304,15 @@ public:
      * 
      * This may be used by intervention deployment, thus should use time 
      * ctx.clock.nowOrTs1(). */
-    void treatment( Host::Human& human, TreatmentId treatId );
-    
+    void treatment(Host::Human& human, TreatmentId treatId);
+
     /// Conditionally gives Primaquine as a treatment. Reports as appropriate.
-    void optionalPqTreatment( Host::Human& human );
-    
+    void optionalPqTreatment(Host::Human& human);
+
     /** Treat a patient via the simple treatment model. Return true if any
      * blood-stage treatment is administered. Report any liver-stage treatments. */
-    bool treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlood );
-    
+    bool treatSimple(Host::Human& human, SimTime timeLiver, SimTime timeBlood);
+
     /** Give a patient a course of drugs, via the Pk/Pd model
      * 
      * Note: doses sizes are modified according to age via the dosage
@@ -338,14 +333,14 @@ public:
      * @param ageInYears Age of human
      * @param bsvFactor Parasite survival factor for blood-stage vaccines
      */
-    void update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
-        vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears);
+    void update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l, vector<double>& genotype_weights_i,
+                vector<double>& genotype_weights_l, double ageInYears);
 
     /** TODO: this should not need to be exposed. It is currently used by a
      * severe outcome (pDeath) model inside the EventScheduler "case
      * management" model, and case management diagnostics. */
     double getTotalDensity() const;
-    
+
     /** Simulate use of a diagnostic test.
      *
      * Does not report for costing purposes.
@@ -354,8 +349,8 @@ public:
      * 
      * @returns true when the diagnostic is positive
      */
-    bool diagnosticResult( LocalRng& rng, const Diagnostic& diagnostic ) const;
-    
+    bool diagnosticResult(LocalRng& rng, const Diagnostic& diagnostic) const;
+
     /** Use the pathogenesis model to determine, based on infection status
      * and random draw, this person't morbidity.
      * 
@@ -365,11 +360,11 @@ public:
      * @param ageYears Age of human host in years
      * @param isDoomed True if the human is already doomed to die, used for reporting
      */
-    Pathogenesis::StatePair determineMorbidity( Host::Human& human, double ageYears, bool isDoomed );
+    Pathogenesis::StatePair determineMorbidity(Host::Human& human, double ageYears, bool isDoomed);
 
     /// Special intervention: clears all immunity
     void clearImmunity();
-    
+
     // TODO(monitoring): these shouldn't have to be exposed (perhaps use summarize to report the data):
     double getCumulative_h() const;
     double getCumulative_Y() const;
@@ -380,14 +375,14 @@ public:
      * SlotAllocator (above), the single clamp
      * owner; see its comment for the two RNG-visible modes. */
 
-public:	// simple data + per-kind fragments (test suites and WH models touch these directly)
+  public: // simple data + per-kind fragments (test suites and WH models touch these directly)
     /// @brief Per-kind constructor/destructor fragments
     //@{
     /// Shared P. falciparum immunity state; draws from rng (stream order fixed).
-    void ctorFalciparum( LocalRng& rng, double comorbidityFactor );
-    void ctorVivax( LocalRng& rng, double comorbidityFactor );
-    void ctorCommon( LocalRng& rng, double comorbidityFactor );
-    void ctorDescriptive( LocalRng& rng, double comorbidityFactor );
+    void ctorFalciparum(LocalRng& rng, double comorbidityFactor);
+    void ctorVivax(LocalRng& rng, double comorbidityFactor);
+    void ctorCommon(LocalRng& rng, double comorbidityFactor);
+    void ctorDescriptive(LocalRng& rng, double comorbidityFactor);
     void dtorVivax();
     void dtorCommon();
     void dtorDescriptive();
@@ -395,47 +390,49 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
 
     /// @brief Per-kind implementations behind the public (dispatching) methods
     //@{
-    double probTransmissionToMosquito_falciparum(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l)const;
-    double probTransmissionToMosquito_vivax(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l)const;
-    
-    bool summarize_common( Host::Human& human )const;
-    bool summarize_descriptive( Host::Human& human ) const;
+    double probTransmissionToMosquito_falciparum(vector<double>& probTransGenotype_i,
+                                                 vector<double>& probTransGenotype_l) const;
+    double probTransmissionToMosquito_vivax(vector<double>& probTransGenotype_i,
+                                            vector<double>& probTransGenotype_l) const;
+
+    bool summarize_common(Host::Human& human) const;
+    bool summarize_descriptive(Host::Human& human) const;
     bool summarize_vivax(Host::Human& human) const;
-    
+
     void importInfection_vivax(LocalRng& rng);
     void importInfection_common(LocalRng& rng);
     void importInfection_descriptive(LocalRng& rng);
-    
-    void treatment_falciparum( Host::Human& human, TreatmentId treatId );
-    void optionalPqTreatment_vivax( Host::Human& human );
-    
-    bool treatSimple_falciparum( Host::Human& human, SimTime timeLiver, SimTime timeBlood );
-    bool treatSimple_vivax( Host::Human& human, SimTime timeLiver, SimTime timeBlood );
-    
+
+    void treatment_falciparum(Host::Human& human, TreatmentId treatId);
+    void optionalPqTreatment_vivax(Host::Human& human);
+
+    bool treatSimple_falciparum(Host::Human& human, SimTime timeLiver, SimTime timeBlood);
+    bool treatSimple_vivax(Host::Human& human, SimTime timeLiver, SimTime timeBlood);
+
     void treatPkPd_common(size_t schedule, size_t dosage, double age, double delay_d);
     void treatPkPd_descriptive(size_t schedule, size_t dosages, double age, double delay_d);
     void treatPkPd_vivax(size_t schedule, size_t dosages, double age, double delay_d);
-    
-    void update_vivax(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
-        vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears);
-    void update_common(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
-        vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears);
-    void update_descriptive(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
-        vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears);
+
+    void update_vivax(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l,
+                      vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears);
+    void update_common(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l,
+                       vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears);
+    void update_descriptive(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l,
+                            vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears);
     /// Reset and refill the m_y_lag_{i,l} infectiousness cache for the current
     /// tick (shared tail of update_common and update_descriptive).
     void cache_y_lag();
-    
+
     double getTotalDensity_vivax() const;
     double getCumulative_h_vivax() const;
     double getCumulative_Y_vivax() const;
-    
-    bool diagnosticResult_falciparum( LocalRng& rng, const Diagnostic& diagnostic ) const;
-    bool diagnosticResult_vivax( LocalRng& rng, const Diagnostic& diagnostic ) const;
-    
-    Pathogenesis::StatePair determineMorbidity_falciparum( Host::Human& human, double ageYears, bool isDoomed );
-    Pathogenesis::StatePair determineMorbidity_vivax( Host::Human& human, double ageYears, bool );
-    
+
+    bool diagnosticResult_falciparum(LocalRng& rng, const Diagnostic& diagnostic) const;
+    bool diagnosticResult_vivax(LocalRng& rng, const Diagnostic& diagnostic) const;
+
+    Pathogenesis::StatePair determineMorbidity_falciparum(Host::Human& human, double ageYears, bool isDoomed);
+    Pathogenesis::StatePair determineMorbidity_vivax(Host::Human& human, double ageYears, bool);
+
     void clearImmunity_vivax();
     void clearImmunity_falciparum();
     //@}
@@ -448,8 +445,8 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
      * 
      * @param stage Which stages of the infection are affected
      */
-    void clearInfections( Treatments::Stages stage );
-    
+    void clearInfections(Treatments::Stages stage);
+
     /** Updates for the immunity model − assumes imm_h_ref() and imm_Y_ref()
      * have already been incremented.
      *
@@ -463,7 +460,7 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
      * new density has no effect on future densities, wheras the Empirical model
      * multiplies the actual density (which then affects density on the following
      * time step). */
-    double immunitySurvivalFactor (double ageInYears, double cumulativeExposureJ);
+    double immunitySurvivalFactor(double ageInYears, double cumulativeExposureJ);
 
     /** Host-tick-constant part of immunitySurvivalFactor: dH and dA depend on
      * host immunity accumulators and age only, both frozen during an infection
@@ -471,20 +468,20 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
      * per host tick saves one exp+div per infection; the per-infection remainder
      * below reproduces the identical IEEE operand sequence ((dY*dH)*dA). */
     struct ImmSurvTick {
-        bool active;        ///< imm_h > 1.0 (else dH = dY = 1.0)
-        double immY, invY;  ///< dY inputs, per infection
-        double dH, dA;      ///< hoisted host constants
+        bool active;       ///< imm_h > 1.0 (else dH = dY = 1.0)
+        double immY, invY; ///< dY inputs, per infection
+        double dH, dA;     ///< hoisted host constants
     };
     /** Host-side guard (ageInYears/imm_h/imm_Y NaN) throws here — same message;
      * a NaN abort ends the run either way. */
-    ImmSurvTick immSurvivalTick (double ageInYears);
+    ImmSurvTick immSurvivalTick(double ageInYears);
     /** Per-infection remainder; guards cumulativeExposureJ like the two-double
      * overload above. */
-    double immunitySurvivalFactor (const ImmSurvTick& tick, double cumulativeExposureJ);
-    
-    static void setParams(double cumYStar, double cumHStar, double aM, double dM);   // for unit test only
+    double immunitySurvivalFactor(const ImmSurvTick& tick, double cumulativeExposureJ);
+
+    static void setParams(double cumYStar, double cumHStar, double aM, double dM); // for unit test only
     //@}
-    
+
     /// Which model this instance is (never serialised).
     Kind m_kind;
 
@@ -492,7 +489,7 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
     /// in the imm_* / cum_prim_inf columns).
     HumanColumns* cols = nullptr;
     size_t row = 0;
-    
+
     /// Multiplicity of infection
     int numInfs = 0;
 
@@ -510,29 +507,29 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
     double& imm_Y_lag_ref() const { return cols->imm_Y_lag[row]; }
     /// Primary blood-stage infections since birth (old cumPrimInf; column).
     uint32_t& cum_prim_inf_ref() const { return cols->cum_prim_inf[row]; }
-    
+
     /// Total asexual blood stage density (sum of density of infections).
     double totalDensity = 0.0;
     /// Density from the point of view of diagnostics dependent on HRP2
     double hrp2Density = 0.0;
-    
+
     /** Maximum parasite density of any infection during the previous interval.
      *
      * With 5-day time steps, this is not just the maximum density of any infection
      * at the end of the time step, but something designed to emulate the maximum
      * of 5 daily samples. */
     double timeStepMaxDensity = 0.0;
-    
+
     /** Total asexual blood stage density over last 20 days (uses samples from
     * 10, 15 and 20 days ago).
     *
     * m_y_lag[ctx.clock.ts0().moduloSteps(y_lag_len)] corresponds to the density
     * from the previous time step (once updateInfection has been called). */
     std::vector<double> m_y_lag_i, m_y_lag_l;
-    
+
     /// The PathogenesisModel introduces illness dependant on parasite density
     unique_ptr<Pathogenesis::PathogenesisModel> pathogenesisModel;
-    
+
     /// End of step on which treatment expires = start of first step after expiry
     SimTime treatExpiryLiver = sim::zero(), treatExpiryBlood = sim::zero();
 
@@ -540,15 +537,15 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
     /// set by initHumanParameters
     static int y_lag_len;
     //@}
-    
+
     /// @brief Common-kind state (infections/opt_vaccine_genotype shared with Descriptive)
     //@{
     /// Multiplies the mean mass (for this age) as a heterogeneity factor.
     double hetMassMultiplier = 1.0;
-    
+
     /// Encapsulates drug code for each human
     PkPd::LSTMModel pkpdModel;
-    
+
     /** The list of all infections this human has (Common/Descriptive kinds).
      *
      * Since infection models and within host models are very much intertwined,
@@ -557,22 +554,22 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
 
     bool opt_vaccine_genotype = false;
     //@}
-    
+
     /// @brief Vivax-kind state
     //@{
     list<VivaxBrood> vivaxInfections;
-    
+
     /* Is flagged as never getting PQ: this is a heterogeneity factor. Example:
      * Set to zero if everyone can get PQ, 0.5 if females can't get PQ and
      * males aren't tested (i.e. all can get it) or (1+p)/2 where p is the
      * chance a male being tested and found to be G6PD deficient. */
     bool noPQ = false;
-    
+
     Pathogenesis::State morbidity = Pathogenesis::NONE;
-    
+
     // The number of primary blood stage infections to have started since this
     // human was born: SoA column, see cum_prim_inf_ref().
-    
+
     // Either never or expiry time of treatment (Vivax kind)
     SimTime treatExpiryLiverVivax = sim::zero(), treatExpiryBloodVivax = sim::zero();
 
@@ -580,9 +577,9 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
     double pEvent = numeric_limits<double>::quiet_NaN();
     // The probability of a clinical event from an early relapse
     double pFirstRelapseEvent = numeric_limits<double>::quiet_NaN();
-	// The probability of a clinical event from a later relapse
-	double pSecondRelapseEvent = numeric_limits<double>::quiet_NaN();
-    
+    // The probability of a clinical event from a later relapse
+    double pSecondRelapseEvent = numeric_limits<double>::quiet_NaN();
+
     // Used for reporting; updated by update()
     double pSevere = 0.0;
     //@}

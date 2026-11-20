@@ -30,62 +30,64 @@
 
 // Compile-time optional
 #ifdef OM_STREAM_VALIDATOR
-namespace OM { namespace util {
+namespace OM {
+namespace util {
 
 #define OM_SV_FILE "StreamValidator"
 const char OM_SV_HEAD[5] = "OMSV";
 
 void StreamValidatorType::saveStream() {
-    if( storeMode ){
-	ofstream f_str( OM_SV_FILE, ios::out | ios::binary );
-	if( !f_str.is_open() )
-	    throw util::base_exception( "unable to write " OM_SV_FILE, Error::FileIO );
-	f_str.write( reinterpret_cast<const char*>(&OM_SV_HEAD), sizeof(char)*4 );
-        
+    if (storeMode) {
+        ofstream f_str(OM_SV_FILE, ios::out | ios::binary);
+        if (!f_str.is_open())
+            throw util::base_exception("unable to write " OM_SV_FILE, Error::FileIO);
+        f_str.write(reinterpret_cast<const char*>(&OM_SV_HEAD), sizeof(char) * 4);
+
         stream & f_str;
-        
-	f_str.close();
-    }else{
-	if( readIt != stream.end() )
-	    cerr << "StreamValidator: not at end!" << endl;
+
+        f_str.close();
+    } else {
+        if (readIt != stream.end())
+            cerr << "StreamValidator: not at end!" << endl;
     }
 }
 
-void StreamValidatorType::loadStream( const string& path ){
-    string file = CommandLine::lookupResource( path );
+void StreamValidatorType::loadStream(const string& path) {
+    string file = CommandLine::lookupResource(path);
     storeMode = false;
-    ifstream f_str( file.c_str(), ios::in | ios::binary );
-    if( !f_str.is_open() )
-	throw util::base_exception("unable to read " + string(file), Error::FileIO);
+    ifstream f_str(file.c_str(), ios::in | ios::binary);
+    if (!f_str.is_open())
+        throw util::base_exception("unable to read " + string(file), Error::FileIO);
     char head[4];
-    f_str.read( reinterpret_cast<char*>(&head), sizeof(char)*4 );
-    if( memcmp( &OM_SV_HEAD, &head, sizeof(char)*4 ) != 0 )
-	throw util::base_exception(string(file) + " is not a valid StreamValidator file", Error::FileIO);
-    
+    f_str.read(reinterpret_cast<char*>(&head), sizeof(char) * 4);
+    if (memcmp(&OM_SV_HEAD, &head, sizeof(char) * 4) != 0)
+        throw util::base_exception(string(file) + " is not a valid StreamValidator file", Error::FileIO);
+
     stream & f_str;
-    
-    f_str.ignore (numeric_limits<streamsize>::max()-1);	// skip to end of file
-    if (f_str.gcount () != 0) {
-	ostringstream msg;
-	msg << file<<" has " << f_str.gcount() << " bytes remaining." << endl;
-	throw util::base_exception (msg.str(), Error::FileIO);
+
+    f_str.ignore(numeric_limits<streamsize>::max() - 1); // skip to end of file
+    if (f_str.gcount() != 0) {
+        ostringstream msg;
+        msg << file << " has " << f_str.gcount() << " bytes remaining." << endl;
+        throw util::base_exception(msg.str(), Error::FileIO);
     } else if (f_str.fail())
-	throw util::base_exception ("StreamValidator load error", Error::FileIO);
-    
+        throw util::base_exception("StreamValidator load error", Error::FileIO);
+
     f_str.close();
     readIt = stream.begin();
 }
 
-void StreamValidatorType::handle( SVType value ){
-    if( storeMode ){
-	stream.push_back( value );
-    }else{
-	if( value != *readIt ){
-	    // Attach a debugger with a breakpoint here to get the backtrace,
-	    // if the one caught by traced_exception isn't enough.
-	    throw TRACED_EXCEPTION_DEFAULT ("StreamValidator: out of sync! Examine the stack trace to work out why (you may want to re-run this in a debugger with a break point on this line to get a better trace).");
-	}
-	++readIt;
+void StreamValidatorType::handle(SVType value) {
+    if (storeMode) {
+        stream.push_back(value);
+    } else {
+        if (value != *readIt) {
+            // Attach a debugger with a breakpoint here to get the backtrace,
+            // if the one caught by traced_exception isn't enough.
+            throw TRACED_EXCEPTION_DEFAULT(
+                "StreamValidator: out of sync! Examine the stack trace to work out why (you may want to re-run this in a debugger with a break point on this line to get a better trace).");
+        }
+        ++readIt;
     }
 }
 
@@ -93,60 +95,60 @@ StreamValidatorType StreamValidator;
 
 // ———  Our cross-platform consistent-result hasing functions  ——
 namespace CPCH {
-    SVType toSVType(uint32_t x){
-        static_assert( sizeof(x) == sizeof(SVType), "sizeof(x) == sizeof(SVType)" );
-        return x;
-    }
-    SVType toSVType(int32_t x){
-        static_assert( sizeof(x) == sizeof(SVType), "sizeof(x) == sizeof(SVType)" );
-        union {
-            int32_t asS32;
-            uint32_t asU32;
-        };
-        asS32 = x;
-        return asU32;
-    }
-    SVType toSVType(uint64_t x){
-        static_assert( sizeof(x) == 2*sizeof(SVType), "sizeof(x) == 2*sizeof(SVType)" );
-        union {
-            uint64_t asU64;
-            uint32_t asU32[2];
-        };
-        asU64 = x;
-        return asU32[0] ^ asU32[1];     // XOR two parts together
-    }
-    SVType toSVType(int64_t x){
-        static_assert( sizeof(x) == 2*sizeof(SVType), "sizeof(x) == 2*sizeof(SVType)" );
-        union {
-            int64_t asS64;
-            uint32_t asU32[2];
-        };
-        asS64 = x;
-        return asU32[0] ^ asU32[1];     // XOR two parts together
-    }
-    //NOTE: not correct code in general, but probably OK on current platforms.
-    //Also not guaranteed to produce the same result on all platforms (but will
-    //it?).
-    SVType toSVType(float x){
-        static_assert( sizeof(x) == sizeof(SVType), "sizeof(x) == sizeof(SVType)" );
-        union {
-            float asFloat;
-            uint32_t asU32;
-        };
-        asFloat = x;
-        return asU32;
-    }
-    SVType toSVType(double x){
-        static_assert( sizeof(x) == 2*sizeof(SVType), "sizeof(x) == 2*sizeof(SVType)" );
-        union {
-            double asDouble;
-            uint32_t asU32[2];
-        };
-        asDouble = x;
-        return asU32[0] ^ asU32[1];     // XOR two parts together
-    }
+SVType toSVType(uint32_t x) {
+    static_assert(sizeof(x) == sizeof(SVType), "sizeof(x) == sizeof(SVType)");
+    return x;
+}
+SVType toSVType(int32_t x) {
+    static_assert(sizeof(x) == sizeof(SVType), "sizeof(x) == sizeof(SVType)");
+    union {
+        int32_t asS32;
+        uint32_t asU32;
+    };
+    asS32 = x;
+    return asU32;
+}
+SVType toSVType(uint64_t x) {
+    static_assert(sizeof(x) == 2 * sizeof(SVType), "sizeof(x) == 2*sizeof(SVType)");
+    union {
+        uint64_t asU64;
+        uint32_t asU32[2];
+    };
+    asU64 = x;
+    return asU32[0] ^ asU32[1]; // XOR two parts together
+}
+SVType toSVType(int64_t x) {
+    static_assert(sizeof(x) == 2 * sizeof(SVType), "sizeof(x) == 2*sizeof(SVType)");
+    union {
+        int64_t asS64;
+        uint32_t asU32[2];
+    };
+    asS64 = x;
+    return asU32[0] ^ asU32[1]; // XOR two parts together
+}
+//NOTE: not correct code in general, but probably OK on current platforms.
+//Also not guaranteed to produce the same result on all platforms (but will
+//it?).
+SVType toSVType(float x) {
+    static_assert(sizeof(x) == sizeof(SVType), "sizeof(x) == sizeof(SVType)");
+    union {
+        float asFloat;
+        uint32_t asU32;
+    };
+    asFloat = x;
+    return asU32;
+}
+SVType toSVType(double x) {
+    static_assert(sizeof(x) == 2 * sizeof(SVType), "sizeof(x) == 2*sizeof(SVType)");
+    union {
+        double asDouble;
+        uint32_t asU32[2];
+    };
+    asDouble = x;
+    return asU32[0] ^ asU32[1]; // XOR two parts together
+}
 }
 
-
-} }
+}
+}
 #endif

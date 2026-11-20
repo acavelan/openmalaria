@@ -46,77 +46,73 @@ namespace OM {
 namespace checkpoint {
 
 namespace {
-constexpr uint32_t MAGIC = 0x4B634D4F;   // "OMCk" little-endian bytes
-constexpr uint32_t FORMAT_VERSION = 1;   // bump on any incompatible change
+constexpr uint32_t MAGIC = 0x4B634D4F; // "OMCk" little-endian bytes
+constexpr uint32_t FORMAT_VERSION = 1; // bump on any incompatible change
 
-void ckHeader (Archive& a) {
+void ckHeader(Archive& a) {
     uint32_t magic = MAGIC, version = FORMAT_VERSION;
-    a.value (magic);
-    a.value (version);
+    a.value(magic);
+    a.value(version);
     if (a.reading()) {
         if (magic != MAGIC)
-            throw checkpoint_error ("not an OpenMalaria checkpoint file");
+            throw checkpoint_error("not an OpenMalaria checkpoint file");
         if (version != FORMAT_VERSION)
-            throw checkpoint_error ("checkpoint format version " +
-                std::to_string (version) + ", this build reads " +
-                std::to_string (FORMAT_VERSION));
+            throw checkpoint_error("checkpoint format version " + std::to_string(version) + ", this build reads " +
+                                   std::to_string(FORMAT_VERSION));
     }
 }
 
-void ckClock (Archive& a, RunContext& ctx, Phase& phase,
-        SimTime& endTime, SimTime& estEndTime) {
-    uint8_t p = uint8_t (phase);
-    a.value (p);
+void ckClock(Archive& a, RunContext& ctx, Phase& phase, SimTime& endTime, SimTime& estEndTime) {
+    uint8_t p = uint8_t(phase);
+    a.value(p);
     if (a.reading()) {
-        if (p != uint8_t (Phase::Warmup) && p != uint8_t (Phase::Main))
-            throw checkpoint_error ("bad checkpoint phase");
-        phase = Phase (p);
+        if (p != uint8_t(Phase::Warmup) && p != uint8_t(Phase::Main))
+            throw checkpoint_error("bad checkpoint phase");
+        phase = Phase(p);
     }
-    a.value (ctx.clock.t0);
-    a.value (ctx.clock.t1);
-    a.value (ctx.clock.interv);
-    a.value (endTime);
-    a.value (estEndTime);
+    a.value(ctx.clock.t0);
+    a.value(ctx.clock.t1);
+    a.value(ctx.clock.interv);
+    a.value(endTime);
+    a.value(estEndTime);
 }
 } // namespace
 
-void writeCheckpoint (RunContext& ctx, Population& population,
-        Transmission::TransmissionModel& transmission, Phase phase,
-        SimTime endTime, SimTime estEndTime, const std::string& path) {
-    std::ofstream out (path, std::ios::binary | std::ios::trunc);
+void writeCheckpoint(RunContext& ctx, Population& population, Transmission::TransmissionModel& transmission,
+                     Phase phase, SimTime endTime, SimTime estEndTime, const std::string& path) {
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
     if (!out.is_open())
-        throw checkpoint_error ("cannot open \"" + path + "\" for writing");
-    Archive a (out);
+        throw checkpoint_error("cannot open \"" + path + "\" for writing");
+    Archive a(out);
     Phase p = phase;
-    ckHeader (a);
-    ckClock (a, ctx, p, endTime, estEndTime);
-    ckStatics (a, ctx);
-    ckMonitoring (a, ctx);
-    ckTransmission (a, ctx, transmission);
-    ckHumans (a, ctx, population);
+    ckHeader(a);
+    ckClock(a, ctx, p, endTime, estEndTime);
+    ckStatics(a, ctx);
+    ckMonitoring(a, ctx);
+    ckTransmission(a, ctx, transmission);
+    ckHumans(a, ctx, population);
     // parity: order — master RNG last (restore above may draw from it; the
     // wire restores the saved state after those draws).
-    a.rng (ctx.master_RNG);
-    a.checkExhausted();   // no-op on write; keeps sections symmetric
+    a.rng(ctx.master_RNG);
+    a.checkExhausted(); // no-op on write; keeps sections symmetric
     out.flush();
     if (out.fail())
-        throw checkpoint_error ("error writing \"" + path + "\"");
+        throw checkpoint_error("error writing \"" + path + "\"");
 }
 
-void readCheckpoint (RunContext& ctx, Population& population,
-        Transmission::TransmissionModel& transmission, Phase& phase,
-        SimTime& endTime, SimTime& estEndTime, const std::string& path) {
-    std::ifstream in (path, std::ios::binary);
+void readCheckpoint(RunContext& ctx, Population& population, Transmission::TransmissionModel& transmission,
+                    Phase& phase, SimTime& endTime, SimTime& estEndTime, const std::string& path) {
+    std::ifstream in(path, std::ios::binary);
     if (!in.is_open())
-        throw checkpoint_error ("cannot open checkpoint \"" + path + "\"");
-    Archive a (in);
-    ckHeader (a);
-    ckClock (a, ctx, phase, endTime, estEndTime);
-    ckStatics (a, ctx);
-    ckMonitoring (a, ctx);
-    ckTransmission (a, ctx, transmission);
-    ckHumans (a, ctx, population);
-    a.rng (ctx.master_RNG);
+        throw checkpoint_error("cannot open checkpoint \"" + path + "\"");
+    Archive a(in);
+    ckHeader(a);
+    ckClock(a, ctx, phase, endTime, estEndTime);
+    ckStatics(a, ctx);
+    ckMonitoring(a, ctx);
+    ckTransmission(a, ctx, transmission);
+    ckHumans(a, ctx, population);
+    a.rng(ctx.master_RNG);
     a.checkExhausted();
 }
 

@@ -37,7 +37,7 @@
  */
 
 #include <cxxtest/TestSuite.h>
-#include "Host/WithinHost/WHInterface.h"  // SlotAllocator (merged)
+#include "Host/WithinHost/WHInterface.h" // SlotAllocator (merged)
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "util/ModelOptions.h"
@@ -50,98 +50,96 @@ using namespace OM;
 using namespace OM::WithinHost;
 using util::LocalRng;
 
-class SlotAllocatorSuite : public CxxTest::TestSuite
-{
-public:
-    void setUp () {
-        UnittestUtil::initTime( 5 );
+class SlotAllocatorSuite : public CxxTest::TestSuite {
+  public:
+    void setUp() {
+        UnittestUtil::initTime(5);
         UnittestUtil::resetModelOptions();
     }
-    
+
     /// Mode A: importInfection returns true iff a genotype draw may follow.
-    void testImportModeTable () {
-        TS_ASSERT( SlotAllocator::try_import(0) );
-        TS_ASSERT( SlotAllocator::try_import(20) );
-        TS_ASSERT_EQUALS( SlotAllocator::try_import(21), false );
-        TS_ASSERT_EQUALS( SlotAllocator::try_import(22), false );
-        TS_ASSERT_EQUALS( SlotAllocator::MAX_INFECTIONS, 21 );
+    void testImportModeTable() {
+        TS_ASSERT(SlotAllocator::try_import(0));
+        TS_ASSERT(SlotAllocator::try_import(20));
+        TS_ASSERT_EQUALS(SlotAllocator::try_import(21), false);
+        TS_ASSERT_EQUALS(SlotAllocator::try_import(22), false);
+        TS_ASSERT_EQUALS(SlotAllocator::MAX_INFECTIONS, 21);
     }
-    
+
     /// Mode B: clamp of to-create counts, _l before _i (original line order:
     /// CommonWithinHost.cpp:131-132, DescriptiveWithinHost.cpp:104-105).
-    void testUpdateClampTable () {
-        struct { int n_i, n_l, have, e_i, e_l, e_free; } T[] = {
-            { 5,  5,  0,  5,  5, 21 },
-            { 5,  5, 19,  0,  2,  2 },
-            { 5,  5, 20,  0,  1,  1 },
-            { 5,  5, 21,  0,  0,  0 },
-            { 4,  1, 18,  2,  1,  3 },   // ignored = 2+1-3 = 0
-            { 3,  0, 20,  1,  0,  1 },
-            { 0,  0, 10,  0,  0, 11 },
-            { 30, 30, 0,  0, 21, 21 },   // _l fills all 21, _i gets none
+    void testUpdateClampTable() {
+        struct {
+            int n_i, n_l, have, e_i, e_l, e_free;
+        } T[] = {
+            {5, 5, 0, 5, 5, 21}, {5, 5, 19, 0, 2, 2},  {5, 5, 20, 0, 1, 1},
+            {5, 5, 21, 0, 0, 0}, {4, 1, 18, 2, 1, 3},                          // ignored = 2+1-3 = 0
+            {3, 0, 20, 1, 0, 1}, {0, 0, 10, 0, 0, 11}, {30, 30, 0, 0, 21, 21}, // _l fills all 21, _i gets none
         };
-        for (size_t i = 0; i < sizeof(T)/sizeof(T[0]); ++i) {
+        for (size_t i = 0; i < sizeof(T) / sizeof(T[0]); ++i) {
             int n_i = T[i].n_i, n_l = T[i].n_l;
-            SlotAllocator::clamp_new( n_i, n_l, T[i].have );
-            TS_ASSERT_EQUALS( n_i, T[i].e_i );
-            TS_ASSERT_EQUALS( n_l, T[i].e_l );
-            TS_ASSERT_EQUALS( SlotAllocator::free_slots( T[i].have ), T[i].e_free );
+            SlotAllocator::clamp_new(n_i, n_l, T[i].have);
+            TS_ASSERT_EQUALS(n_i, T[i].e_i);
+            TS_ASSERT_EQUALS(n_l, T[i].e_l);
+            TS_ASSERT_EQUALS(SlotAllocator::free_slots(T[i].have), T[i].e_free);
         }
         // stand-alone count clamp (InfectionIncidenceModel::numNewInfections):
-        TS_ASSERT_EQUALS( SlotAllocator::clamp_count(25), 21 );
-        TS_ASSERT_EQUALS( SlotAllocator::clamp_count(21), 21 );
-        TS_ASSERT_EQUALS( SlotAllocator::clamp_count(0), 0 );
+        TS_ASSERT_EQUALS(SlotAllocator::clamp_count(25), 21);
+        TS_ASSERT_EQUALS(SlotAllocator::clamp_count(21), 21);
+        TS_ASSERT_EQUALS(SlotAllocator::clamp_count(0), 0);
     }
-    
-    static void stateWords (const LocalRng& rng, uint64_t st[4]) {
+
+    static void stateWords(const LocalRng& rng, uint64_t st[4]) {
         std::ostringstream os;
-        const_cast<LocalRng&>(rng).checkpoint( os );
+        const_cast<LocalRng&>(rng).checkpoint(os);
         std::string bytes = os.str();
-        TS_ASSERT_EQUALS( bytes.size(), 4 * sizeof(uint64_t) );
-        if (bytes.size() == 4 * sizeof(uint64_t)) memcpy( st, bytes.data(), sizeof(uint64_t)*4 );
+        TS_ASSERT_EQUALS(bytes.size(), 4 * sizeof(uint64_t));
+        if (bytes.size() == 4 * sizeof(uint64_t))
+            memcpy(st, bytes.data(), sizeof(uint64_t) * 4);
     }
-    
+
     /// Mode A bit-exact: Descriptive-kind importInfection consumes exactly
     /// zero draws at the cap, and exactly the reference draw sequence below
     /// it (genotype draw + infection duration draw). State-word goldens
     /// captured 2026-11-19 from p5-green code in the FULL-suite run context
     /// (registration order is frozen by unittest/CMakeLists.txt), Xoshiro(3, 4).
-    void testImportDrawContract () {
+    void testImportDrawContract() {
         UnittestUtil::ctx().genotypes.initSingle();
         UnittestUtil::Infection_init_latentP_and_NaN();
-        
+
         LocalRng rng(3, 4);
-        WHInterface wh( UnittestUtil::ctx(), rng, 1.0, WHInterface::Kind::Descriptive );
-        HumanColumns cols; util::MasterRng master(0, 1);
-        wh.bind_columns( cols, cols.append_row( sim::zero(), master ) );
-        
+        WHInterface wh(UnittestUtil::ctx(), rng, 1.0, WHInterface::Kind::Descriptive);
+        HumanColumns cols;
+        util::MasterRng master(0, 1);
+        wh.bind_columns(cols, cols.append_row(sim::zero(), master));
+
         // ctor consumption pinned too (any change here shifts every word below)
-        static const uint64_t GOLD_CTOR[4] = {
-            0x0000626c286e5305ULL, 0x01c42b2629420000ULL,
-            0x0e7989b244225680ULL, 0x817480389561d829ULL };
+        static const uint64_t GOLD_CTOR[4] = {0x0000626c286e5305ULL, 0x01c42b2629420000ULL, 0x0e7989b244225680ULL,
+                                              0x817480389561d829ULL};
         uint64_t st[4];
-        stateWords( rng, st );
-        for (int i = 0; i < 4; ++i) TS_ASSERT_EQUALS( st[i], GOLD_CTOR[i] );
-        
+        stateWords(rng, st);
+        for (int i = 0; i < 4; ++i)
+            TS_ASSERT_EQUALS(st[i], GOLD_CTOR[i]);
+
         // below the cap: one import consumes the pinned draw sequence
         wh.numInfs = 20;
-        wh.importInfection( rng );
-        stateWords( rng, st );
-        static const uint64_t GOLD_IMPORT[4] = {
-            0xf408399cc420592dULL, 0xd738b0d0bd0f8b2cULL,
-            0x5975fa34f30b8ea9ULL, 0xba402e971e1dca0dULL };
-        for (int i = 0; i < 4; ++i) TS_ASSERT_EQUALS( st[i], GOLD_IMPORT[i] );
-        TS_ASSERT_EQUALS( wh.numInfs, 21 );
-        
+        wh.importInfection(rng);
+        stateWords(rng, st);
+        static const uint64_t GOLD_IMPORT[4] = {0xf408399cc420592dULL, 0xd738b0d0bd0f8b2cULL, 0x5975fa34f30b8ea9ULL,
+                                                0xba402e971e1dca0dULL};
+        for (int i = 0; i < 4; ++i)
+            TS_ASSERT_EQUALS(st[i], GOLD_IMPORT[i]);
+        TS_ASSERT_EQUALS(wh.numInfs, 21);
+
         // at the cap: nothing at all — state words identical, no increment
         // (order-independent: relative to the state we just measured)
         wh.numInfs = 21;
         uint64_t before[4];
-        stateWords( rng, before );
-        wh.importInfection( rng );
-        stateWords( rng, st );
-        for (int i = 0; i < 4; ++i) TS_ASSERT_EQUALS( st[i], before[i] );
-        TS_ASSERT_EQUALS( wh.numInfs, 21 );
+        stateWords(rng, before);
+        wh.importInfection(rng);
+        stateWords(rng, st);
+        for (int i = 0; i < 4; ++i)
+            TS_ASSERT_EQUALS(st[i], before[i]);
+        TS_ASSERT_EQUALS(wh.numInfs, 21);
     }
 };
-

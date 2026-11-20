@@ -13,50 +13,58 @@ using namespace OM::util;
 
 bool reportInfectionsByGenotype = false;
 
-bool opt_vivax_simple = false,
-        opt_dummy_whm = false, opt_empirical_whm = false,
-        opt_molineaux_whm = false, opt_penny_whm = false,
-        opt_common_whm = false;
+bool opt_vivax_simple = false, opt_dummy_whm = false, opt_empirical_whm = false, opt_molineaux_whm = false,
+     opt_penny_whm = false, opt_common_whm = false;
 
 // -----  static functions  -----
 
-
-TreatmentId WHInterface::addTreatment(RunContext& ctx, const scnXml::TreatmentOption& desc){
-    return Treatments::addTreatment( ctx, desc );
+TreatmentId WHInterface::addTreatment(RunContext& ctx, const scnXml::TreatmentOption& desc) {
+    return Treatments::addTreatment(ctx, desc);
 }
 
 unique_ptr<WHInterface> WHInterface::createWithinHostModel(RunContext& ctx, LocalRng& rng, double comorbidityFactor) {
-    if( opt_vivax_simple ) {
-        return unique_ptr<WHInterface>(new WHInterface( ctx, rng, comorbidityFactor, Kind::Vivax ));
-    } else if( opt_common_whm ) {
-        return unique_ptr<WHInterface>(new WHInterface( ctx, rng, comorbidityFactor, Kind::Common ));
+    if (opt_vivax_simple) {
+        return unique_ptr<WHInterface>(new WHInterface(ctx, rng, comorbidityFactor, Kind::Vivax));
+    } else if (opt_common_whm) {
+        return unique_ptr<WHInterface>(new WHInterface(ctx, rng, comorbidityFactor, Kind::Common));
     } else {
-        return unique_ptr<WHInterface>(new WHInterface( ctx, rng, comorbidityFactor, Kind::Descriptive ));
+        return unique_ptr<WHInterface>(new WHInterface(ctx, rng, comorbidityFactor, Kind::Descriptive));
     }
 }
-
 
 // -----  Constructors  -----
 
 // parity: order — each ctor* fragment draws exactly where the matching old
 // class constructor did (falciparum immunity block before the per-kind body).
-WHInterface::WHInterface(RunContext& ctx, LocalRng& rng, double comorbidityFactor, Kind kind) :
-    ctx(ctx), m_kind(kind)
-{
-    switch( m_kind ){
-    case Kind::Vivax: ctorVivax( rng, comorbidityFactor ); break;
-    case Kind::Common: ctorCommon( rng, comorbidityFactor ); break;
-    case Kind::Descriptive: ctorDescriptive( rng, comorbidityFactor ); break;
-    case Kind::Mock: break;    // unittest backend: no state, no draws
+WHInterface::WHInterface(RunContext& ctx, LocalRng& rng, double comorbidityFactor, Kind kind) : ctx(ctx), m_kind(kind) {
+    switch (m_kind) {
+    case Kind::Vivax:
+        ctorVivax(rng, comorbidityFactor);
+        break;
+    case Kind::Common:
+        ctorCommon(rng, comorbidityFactor);
+        break;
+    case Kind::Descriptive:
+        ctorDescriptive(rng, comorbidityFactor);
+        break;
+    case Kind::Mock:
+        break; // unittest backend: no state, no draws
     }
 }
 
-WHInterface::~WHInterface(){
-    switch( m_kind ){
-    case Kind::Vivax: dtorVivax(); break;
-    case Kind::Common: dtorCommon(); break;
-    case Kind::Descriptive: dtorDescriptive(); break;
-    case Kind::Mock: break;
+WHInterface::~WHInterface() {
+    switch (m_kind) {
+    case Kind::Vivax:
+        dtorVivax();
+        break;
+    case Kind::Common:
+        dtorCommon();
+        break;
+    case Kind::Descriptive:
+        dtorDescriptive();
+        break;
+    case Kind::Mock:
+        break;
     }
 }
 
@@ -67,127 +75,168 @@ WHInterface::~WHInterface(){
 // unimplemented_exception() behaviour directly. Production never constructs
 // the Mock kind.
 
-
-double WHInterface::probTransmissionToMosquito(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l) const{
-    switch( m_kind ){
-    case Kind::Vivax: return probTransmissionToMosquito_vivax( probTransGenotype_i, probTransGenotype_l );
-    case Kind::Mock: throw util::unimplemented_exception( "not needed in unit test" );
-    default: return probTransmissionToMosquito_falciparum( probTransGenotype_i, probTransGenotype_l );
+double WHInterface::probTransmissionToMosquito(vector<double>& probTransGenotype_i,
+                                               vector<double>& probTransGenotype_l) const {
+    switch (m_kind) {
+    case Kind::Vivax:
+        return probTransmissionToMosquito_vivax(probTransGenotype_i, probTransGenotype_l);
+    case Kind::Mock:
+        throw util::unimplemented_exception("not needed in unit test");
+    default:
+        return probTransmissionToMosquito_falciparum(probTransGenotype_i, probTransGenotype_l);
     }
 }
 
-bool WHInterface::summarize(Host::Human& human) const{
-    switch( m_kind ){
-    case Kind::Vivax: return summarize_vivax( human );
-    case Kind::Common: return summarize_common( human );
-    case Kind::Descriptive: return summarize_descriptive( human );
-    case Kind::Mock: throw util::unimplemented_exception( "not needed in unit test" );
+bool WHInterface::summarize(Host::Human& human) const {
+    switch (m_kind) {
+    case Kind::Vivax:
+        return summarize_vivax(human);
+    case Kind::Common:
+        return summarize_common(human);
+    case Kind::Descriptive:
+        return summarize_descriptive(human);
+    case Kind::Mock:
+        throw util::unimplemented_exception("not needed in unit test");
     }
-    return false;   // unreachable
+    return false; // unreachable
 }
 
-void WHInterface::importInfection(LocalRng& rng){
-    switch( m_kind ){
-    case Kind::Vivax: importInfection_vivax( rng ); break;
-    case Kind::Common: importInfection_common( rng ); break;
-    case Kind::Descriptive: importInfection_descriptive( rng ); break;
-    case Kind::Mock: throw util::unimplemented_exception( "not needed in unit test" );
+void WHInterface::importInfection(LocalRng& rng) {
+    switch (m_kind) {
+    case Kind::Vivax:
+        importInfection_vivax(rng);
+        break;
+    case Kind::Common:
+        importInfection_common(rng);
+        break;
+    case Kind::Descriptive:
+        importInfection_descriptive(rng);
+        break;
+    case Kind::Mock:
+        throw util::unimplemented_exception("not needed in unit test");
     }
 }
 
-void WHInterface::treatment( Host::Human& human, TreatmentId treatId ){
-    if( m_kind == Kind::Mock ){
+void WHInterface::treatment(Host::Human& human, TreatmentId treatId) {
+    if (m_kind == Kind::Mock) {
         const RunContext::WHMockHooks* hooks = ctx.whMock;
-        hooks->treatment( hooks->state );
+        hooks->treatment(hooks->state);
         return;
     }
-    treatment_falciparum( human, treatId );    // Vivax kind uses the same code
+    treatment_falciparum(human, treatId); // Vivax kind uses the same code
 }
 
-void WHInterface::optionalPqTreatment( Host::Human& human ){
-    if( m_kind == Kind::Vivax ) return optionalPqTreatment_vivax( human );
-    if( m_kind == Kind::Mock ) throw util::unimplemented_exception( "not needed in unit test" );
+void WHInterface::optionalPqTreatment(Host::Human& human) {
+    if (m_kind == Kind::Vivax)
+        return optionalPqTreatment_vivax(human);
+    if (m_kind == Kind::Mock)
+        throw util::unimplemented_exception("not needed in unit test");
     // No PQ treatment for falciparum in current models.
 }
 
-bool WHInterface::treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlood ){
-    switch( m_kind ){
-    case Kind::Vivax: return treatSimple_vivax( human, timeLiver, timeBlood );
+bool WHInterface::treatSimple(Host::Human& human, SimTime timeLiver, SimTime timeBlood) {
+    switch (m_kind) {
+    case Kind::Vivax:
+        return treatSimple_vivax(human, timeLiver, timeBlood);
     case Kind::Mock: {
         const RunContext::WHMockHooks* hooks = ctx.whMock;
-        return hooks->treatSimple( hooks->state, timeLiver, timeBlood );
+        return hooks->treatSimple(hooks->state, timeLiver, timeBlood);
     }
-    default: return treatSimple_falciparum( human, timeLiver, timeBlood );
+    default:
+        return treatSimple_falciparum(human, timeLiver, timeBlood);
     }
 }
 
-void WHInterface::treatPkPd(size_t schedule, size_t dosages, double age, double delay_d){
-    switch( m_kind ){
-    case Kind::Vivax: treatPkPd_vivax( schedule, dosages, age, delay_d ); break;
-    case Kind::Common: treatPkPd_common( schedule, dosages, age, delay_d ); break;
-    case Kind::Descriptive: treatPkPd_descriptive( schedule, dosages, age, delay_d ); break;
+void WHInterface::treatPkPd(size_t schedule, size_t dosages, double age, double delay_d) {
+    switch (m_kind) {
+    case Kind::Vivax:
+        treatPkPd_vivax(schedule, dosages, age, delay_d);
+        break;
+    case Kind::Common:
+        treatPkPd_common(schedule, dosages, age, delay_d);
+        break;
+    case Kind::Descriptive:
+        treatPkPd_descriptive(schedule, dosages, age, delay_d);
+        break;
     case Kind::Mock: {
         const RunContext::WHMockHooks* hooks = ctx.whMock;
-        hooks->treatPkPd( hooks->state, ctx, schedule, dosages, age, delay_d );
+        hooks->treatPkPd(hooks->state, ctx, schedule, dosages, age, delay_d);
     }
     }
 }
 
-void WHInterface::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
-        vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears)
-{
-    switch( m_kind ){
-    case Kind::Vivax: update_vivax( human, rng, nNewInfs_i, nNewInfs_l, genotype_weights_i, genotype_weights_l, ageInYears ); break;
-    case Kind::Common: update_common( human, rng, nNewInfs_i, nNewInfs_l, genotype_weights_i, genotype_weights_l, ageInYears ); break;
-    case Kind::Descriptive: update_descriptive( human, rng, nNewInfs_i, nNewInfs_l, genotype_weights_i, genotype_weights_l, ageInYears ); break;
-    case Kind::Mock: throw util::unimplemented_exception( "not needed in unit test" );
+void WHInterface::update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l,
+                         vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears) {
+    switch (m_kind) {
+    case Kind::Vivax:
+        update_vivax(human, rng, nNewInfs_i, nNewInfs_l, genotype_weights_i, genotype_weights_l, ageInYears);
+        break;
+    case Kind::Common:
+        update_common(human, rng, nNewInfs_i, nNewInfs_l, genotype_weights_i, genotype_weights_l, ageInYears);
+        break;
+    case Kind::Descriptive:
+        update_descriptive(human, rng, nNewInfs_i, nNewInfs_l, genotype_weights_i, genotype_weights_l, ageInYears);
+        break;
+    case Kind::Mock:
+        throw util::unimplemented_exception("not needed in unit test");
     }
 }
 
-double WHInterface::getTotalDensity() const{
-    if( m_kind == Kind::Vivax ) return getTotalDensity_vivax();
-    if( m_kind == Kind::Mock ){
+double WHInterface::getTotalDensity() const {
+    if (m_kind == Kind::Vivax)
+        return getTotalDensity_vivax();
+    if (m_kind == Kind::Mock) {
         const RunContext::WHMockHooks* hooks = ctx.whMock;
-        return hooks->getTotalDensity( hooks->state );
+        return hooks->getTotalDensity(hooks->state);
     }
     return totalDensity;
 }
 
-bool WHInterface::diagnosticResult( LocalRng& rng, const Diagnostic& diagnostic ) const{
-    if( m_kind == Kind::Vivax ) return diagnosticResult_vivax( rng, diagnostic );
-    if( m_kind == Kind::Mock ){
+bool WHInterface::diagnosticResult(LocalRng& rng, const Diagnostic& diagnostic) const {
+    if (m_kind == Kind::Vivax)
+        return diagnosticResult_vivax(rng, diagnostic);
+    if (m_kind == Kind::Mock) {
         const RunContext::WHMockHooks* hooks = ctx.whMock;
-        return hooks->diagnosticResult( hooks->state, rng, diagnostic );
+        return hooks->diagnosticResult(hooks->state, rng, diagnostic);
     }
-    return diagnosticResult_falciparum( rng, diagnostic );
+    return diagnosticResult_falciparum(rng, diagnostic);
 }
 
-Pathogenesis::StatePair WHInterface::determineMorbidity( Host::Human& human, double ageYears, bool isDoomed ){
-    if( m_kind == Kind::Vivax ) return determineMorbidity_vivax( human, ageYears, isDoomed );
-    if( m_kind == Kind::Mock ) throw util::unimplemented_exception( "not needed in unit test" );
-    return determineMorbidity_falciparum( human, ageYears, isDoomed );
+Pathogenesis::StatePair WHInterface::determineMorbidity(Host::Human& human, double ageYears, bool isDoomed) {
+    if (m_kind == Kind::Vivax)
+        return determineMorbidity_vivax(human, ageYears, isDoomed);
+    if (m_kind == Kind::Mock)
+        throw util::unimplemented_exception("not needed in unit test");
+    return determineMorbidity_falciparum(human, ageYears, isDoomed);
 }
 
-void WHInterface::clearImmunity(){
-    if( m_kind == Kind::Vivax ) return clearImmunity_vivax();
-    if( m_kind == Kind::Mock ) throw util::unimplemented_exception( "not needed in unit test" );
+void WHInterface::clearImmunity() {
+    if (m_kind == Kind::Vivax)
+        return clearImmunity_vivax();
+    if (m_kind == Kind::Mock)
+        throw util::unimplemented_exception("not needed in unit test");
     clearImmunity_falciparum();
 }
 
-double WHInterface::getCumulative_h() const{
-    if( m_kind == Kind::Vivax ) return getCumulative_h_vivax();
-    if( m_kind == Kind::Mock ) throw util::unimplemented_exception( "not needed in unit test" );
+double WHInterface::getCumulative_h() const {
+    if (m_kind == Kind::Vivax)
+        return getCumulative_h_vivax();
+    if (m_kind == Kind::Mock)
+        throw util::unimplemented_exception("not needed in unit test");
     return imm_h_ref();
 }
 
-double WHInterface::getCumulative_Y() const{
-    if( m_kind == Kind::Vivax ) return getCumulative_Y_vivax();
-    if( m_kind == Kind::Mock ) throw util::unimplemented_exception( "not needed in unit test" );
+double WHInterface::getCumulative_Y() const {
+    if (m_kind == Kind::Vivax)
+        return getCumulative_Y_vivax();
+    if (m_kind == Kind::Mock)
+        throw util::unimplemented_exception("not needed in unit test");
     return imm_Y_ref();
 }
 
-InfectionOrigin WHInterface::getInfectionOrigin() const{
-    if( m_kind == Kind::Vivax || m_kind == Kind::Mock ) return InfectionOrigin::Indigenous;
+InfectionOrigin WHInterface::getInfectionOrigin() const {
+    if (m_kind == Kind::Vivax || m_kind == Kind::Mock)
+        return InfectionOrigin::Indigenous;
     return get_infection_origin(infections);
 }
 

@@ -34,8 +34,7 @@ namespace WithinHost {
 
 using util::LocalRng;
 
-enum InfectionOrigin
-{
+enum InfectionOrigin {
     /** Imported infections are directly added to the human population dependent on the importation rate. **/
     Imported,
 
@@ -50,7 +49,7 @@ enum InfectionOrigin
 // infections may last longer; in this case the last sample data is repeated
 // until the infection terminates. (Descriptive)
 const int32_t maxDurationTS = 83;
-const int32_t numDurations = 84;    // Above plus one (include a category for 0)
+const int32_t numDurations = 84; // Above plus one (include a category for 0)
 
 // The maximum parasite density we allow per DescriptiveInfection. Higher values are set to maxDens.
 // NOTE: should this be enforced before or after attenuation (BSV, immunity, IPT)? Was enforced in both places.
@@ -90,34 +89,24 @@ struct Infection final {
     Kind kind;
 
     /// Pre-erythrocytic latent period (instantiated in WHFalciparum.cpp)
-    inline static void init( SimTime latentP ){
-        s_latentP = latentP;
-    }
+    inline static void init(SimTime latentP) { s_latentP = latentP; }
 
     /// Shared-field init only: kind-specific construction (which may draw from
     /// rng) is infection_new's / infection_new_checkpointed's job
     /// (Infection.cpp). Pass placeholder genotype/origin when reading a
     /// checkpoint: date/densities/genotype/origin are overwritten from the
     /// stream immediately after.
-    Infection(RunContext& ctx, uint32_t genotype, int origin, Kind kind) :
-        ctx(ctx),
-        kind(kind),
-        m_startDate(this->ctx.clock.nowOrTs0()),
-        m_density(0.0),
-        m_cumulativeExposureJ(0.0),
-        m_genotype(genotype),
-        m_origin(origin)
-    {}
+    Infection(RunContext& ctx, uint32_t genotype, int origin, Kind kind)
+        : ctx(ctx), kind(kind), m_startDate(this->ctx.clock.nowOrTs0()), m_density(0.0), m_cumulativeExposureJ(0.0),
+          m_genotype(genotype), m_origin(origin) {}
 
     /** Returns true when age reaches the pre-determined duration (i.e. when
      * this infection terminates). Descriptive only; the other kinds have no
      * Descriptive payload and self-terminate in infection_update() instead. */
-    bool expired () {
-        return ctx.clock.ts0() > m_startDate + descriptive.duration;
-    }
+    bool expired() { return ctx.clock.ts0() > m_startDate + descriptive.duration; }
 
     /** Get the density of sequestered parasites (Penny). */
-    inline double seqDensity(int ageDays){
+    inline double seqDensity(int ageDays) {
         size_t todayV = mod_nn(ageDays, delta_V);
         return penny->seqDensities[todayV];
     }
@@ -139,41 +128,32 @@ struct Infection final {
      * effect), clearance of blood stage infections can only happen after their
      * first update (though due to the latent period densities will still be
      * low). */
-    inline bool bloodStage() const{
-        return ctx.clock.latestTs0() - m_startDate > sim::fromDays(5);
-    }
-    
+    inline bool bloodStage() const { return ctx.clock.latestTs0() - m_startDate > sim::fromDays(5); }
+
     /// Get the density of the infection as of the last update
-    inline double getDensity()const{
-        return m_density;
-    }
-    
+    inline double getDensity() const { return m_density; }
+
     /// Get the cumulative parasite density
-    inline double cumulativeExposureJ() {
-        return m_cumulativeExposureJ;
-    }
-    
+    inline double cumulativeExposureJ() { return m_cumulativeExposureJ; }
+
     /// Get whether the infection is HRP2-deficient
-    bool isHrp2Deficient() const {
-        return ctx.genotypes.genotypes[m_genotype].hrp2_deficient;
-    }
-    
-    /** Get the infection's genotype. */
-    uint32_t genotype()const{ return m_genotype; }
+    bool isHrp2Deficient() const { return ctx.genotypes.genotypes[m_genotype].hrp2_deficient; }
 
     /** Get the infection's genotype. */
-    int origin() const{ return m_origin; }
+    uint32_t genotype() const { return m_genotype; }
+
+    /** Get the infection's genotype. */
+    int origin() const { return m_origin; }
 
     /// Resets immunity properties specific to the infection (should only be
     /// called along with clearImmunity() on within-host model).
-    inline void clearImmunity(){
-        m_cumulativeExposureJ = 0.0;
-    }
+    inline void clearImmunity() { m_cumulativeExposureJ = 0.0; }
 
     /// IC50^slope per drug type, if sampled (PkPd cache). Never serialised;
     /// lazily allocated (phase-5 perf fix — only the PkPd path touches it).
     std::map<size_t, double>& Kn() {
-        if (!kn) kn = std::make_unique<std::map<size_t, double>>();
+        if (!kn)
+            kn = std::make_unique<std::map<size_t, double>>();
         return *kn;
     }
 
@@ -188,10 +168,10 @@ struct Infection final {
     /// Date of inoculation of infection (start of liver stage)
     /// This is the step of inoculation (ts0()).
     SimTime m_startDate = sim::never();
-    
+
     /// Current density of the infection (Pc in the Molineaux/Penny papers)
     double m_density;
-    
+
     /// Cumulative parasite density, since start of this infection
     double m_cumulativeExposureJ;
 
@@ -206,19 +186,19 @@ struct Infection final {
     // ——— Molineaux: variant row type (payload below) ———
     struct Variant {
         // Initialise all variables to 0
-        Variant ();
+        Variant();
 
-        float Pi1, Pi2;   // Pi(t+1), Pi(t+2): variant's i density (PRBC/μl blood)
-        float Si_summation;     // sum in eqn 6
+        float Pi1, Pi2;     // Pi(t+1), Pi(t+2): variant's i density (PRBC/μl blood)
+        float Si_summation; // sum in eqn 6
         // index: we use ((bsAge/2) mod 4) for τ = t - δ_v respectively τ = t
-        float lagged_Pi[taus];   // Pi(τ) for τ ∈ {t - δ_v, ..., t - 2}
+        float lagged_Pi[taus]; // Pi(τ) for τ ∈ {t - δ_v, ..., t - 2}
     };
 
     // ——— Penny statics ———
     // delta_C := delay to clonal antibody response (days) (value 7.2038 round to 7)
-    static const int delta_C=7;
+    static const int delta_C = 7;
     // delta_V := delay to variant specific antibody response in R_V^x (days) (value 6.3572 round to 6)
-    static const int delta_V=6;
+    static const int delta_V = 6;
 
     // ——— Per-kind cold state, one heap payload per kind (phase-5 perf fix) ———
     // The profiled hot loop (determine_densities_descriptive,
@@ -242,7 +222,7 @@ struct Infection final {
         float mi[v];        // base multiplication factor per two-day cycle of variant i
         float Sm_summation; // sum in eqn 7
         // index: we use ((bsAge/2) mod 4) for τ = t - δ_v respectively τ = t
-        float lagged_Pc[taus];       // Pc(τ) for τ ∈ {t - δ_v, ..., t - 2}
+        float lagged_Pc[taus]; // Pc(τ) for τ ∈ {t - δ_v, ..., t - 2}
         /* Pc_star, Pm_star: two host-specific critical densities.
          * These two values depend on the first local maximum or the difference
          * between the last positive day and the first positive day. */
@@ -267,17 +247,17 @@ struct Infection final {
     };
     // Embedded by value (small, hot): the pointer payload cost a malloc per
     // infection plus a dependent load in every tick — bench +2.3%.
-    DescriptiveData descriptive;  // set by Kind::Descriptive
-    std::unique_ptr<EmpiricalData> empirical;      // set by Kind::Empirical
-    std::unique_ptr<MolineauxData> molineaux;      // set by Kind::Molineaux
-    std::unique_ptr<PennyData> penny;              // set by Kind::Penny
-    std::unique_ptr<std::map<size_t, double>> kn;  // PkPd cache, see Kn()
+    DescriptiveData descriptive;                  // set by Kind::Descriptive
+    std::unique_ptr<EmpiricalData> empirical;     // set by Kind::Empirical
+    std::unique_ptr<MolineauxData> molineaux;     // set by Kind::Molineaux
+    std::unique_ptr<PennyData> penny;             // set by Kind::Penny
+    std::unique_ptr<std::map<size_t, double>> kn; // PkPd cache, see Kn()
 };
 
 // ——— Shared dispatch (Infection.cpp) ———
 /// Create a new infection. growthRateMultiplier is only used by Empirical.
-Infection* infection_new(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin,
-                         Infection::Kind kind, double growthRateMultiplier = 1.0);
+Infection* infection_new(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin, Infection::Kind kind,
+                         double growthRateMultiplier = 1.0);
 
 /** Update: calculate new density. Call this once per day (Dummy/Empirical/
  * Molineaux/Penny; never for Descriptive).
@@ -313,14 +293,8 @@ void infection_ctor_descriptive(Infection& inf, LocalRng& rng);
  * @param innateImmSurvFact Density multiplier for innate immunity.
  * @param bsvFactor Density multiplier for Blood-Stage Vaccine effect.
  */
-void determine_densities_descriptive(
-        Infection& inf,
-        LocalRng& rng,
-        double cumulativeh,
-        double &timeStepMaxDensity,
-        double immSurvFact,
-        double innateImmSurvFact,
-        double bsvFactor);
+void determine_densities_descriptive(Infection& inf, LocalRng& rng, double cumulativeh, double& timeStepMaxDensity,
+                                     double immSurvFact, double innateImmSurvFact, double bsvFactor);
 
 // ——— Dummy free functions (DummyInfection.cpp) ———
 void infection_init_dummy(RunContext& ctx);
@@ -347,32 +321,32 @@ void infection_ctor_penny(Infection& inf, LocalRng& rng);
 bool update_density_penny(Infection& inf, LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
 
 /// Create a dummy infection (used directly by unit test).
-Infection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin);
+Infection* createDummyInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin);
 
-template <typename T>
-InfectionOrigin get_infection_origin(const std::list<T*> &infections)
-{
-    if(infections.empty())
+template <typename T> InfectionOrigin get_infection_origin(const std::list<T*>& infections) {
+    if (infections.empty())
         return InfectionOrigin::Indigenous;
 
     // only >0 tests below matter (all-Imported = neither counter set)
     int nIntroduced = 0, nIndigenous = 0;
-    for( auto inf = infections.begin(); inf != infections.end(); ++inf )
-    {
-        if((*inf)->origin() == InfectionOrigin::Indigenous) nIndigenous++;
-        else if((*inf)->origin() == InfectionOrigin::Introduced) nIntroduced++;
+    for (auto inf = infections.begin(); inf != infections.end(); ++inf) {
+        if ((*inf)->origin() == InfectionOrigin::Indigenous)
+            nIndigenous++;
+        else if ((*inf)->origin() == InfectionOrigin::Introduced)
+            nIntroduced++;
     }
 
     /* The rules are:
     - Imported only if all infections are imported
     - Introduced if at least one Introduced
     - Indigenous otherwise (Imported + Indigenous or just Indigenous infections) */
-    if(nIntroduced > 0)
+    if (nIntroduced > 0)
         return InfectionOrigin::Introduced;
-    else if(nIndigenous > 0)
+    else if (nIndigenous > 0)
         return InfectionOrigin::Indigenous;
     else
         return InfectionOrigin::Imported;
 }
 
-} }
+}
+}
