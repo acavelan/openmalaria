@@ -138,11 +138,11 @@ TriggeredDeployments::SubList::SubList(Context& ctx, const scnXml::Deploy& elt)
         maxAge = ctx.clock.from_years_n(elt.getMaxAge().get());
 
     if (minAge < sim::zero() || maxAge < minAge) {
-        throw util::xml_scenario_error("triggered intervention must have 0 <= minAge <= maxAge");
+        throw util::xml_error("triggered intervention must have 0 <= minAge <= maxAge");
     }
 
     if (coverage < 0.0 || coverage > 1.0) {
-        throw util::xml_scenario_error("triggered intervention must have 0 <= coverage <= 1");
+        throw util::xml_error("triggered intervention must have 0 <= coverage <= 1");
     }
 
     // Zero coverage: optimise
@@ -178,7 +178,7 @@ TreatSimpleParams::TreatSimpleParams(Context& ctx, const scnXml::DTTreatSimple& 
                 durB = UnitParse::readShortDuration(ctx.clock, elt.getDurationBlood(), UnitParse::NONE);
         SimTime neg1 = -ctx.clock.one_TS();
         if (durL < neg1 || durB < neg1) {
-            throw util::xml_scenario_error("treatSimple: cannot have durationBlood or durationLiver less than -1");
+            throw util::xml_error("treatSimple: cannot have durationBlood or durationLiver less than -1");
         }
         if (util::ModelOptions::option(util::VIVAX_SIMPLE_MODEL)) {
             if (durL != sim::zero() || durB != neg1)
@@ -188,7 +188,7 @@ TreatSimpleParams::TreatSimpleParams(Context& ctx, const scnXml::DTTreatSimple& 
         timeLiver = durL;
         timeBlood = durB;
     } catch (const util::format_error& e) {
-        throw util::xml_scenario_error(string("treatSimple: ").append(e.message()));
+        throw util::xml_error(string("treatSimple: ").append(e.message()));
     }
 }
 

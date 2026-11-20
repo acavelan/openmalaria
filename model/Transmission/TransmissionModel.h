@@ -442,7 +442,7 @@ class TransmissionModel {
                     laggedKappa[mod_nn(t, laggedKappa.size())] / initialKappa[mod_nn(t, ctx.clock.steps_per_year)];
             }
         } else {
-            throw util::xml_scenario_error("Invalid simulation mode");
+            throw util::xml_error("Invalid simulation mode");
         }
 #ifndef NDEBUG
         if (!(std::isfinite)(EIR_l[0])) {

@@ -291,11 +291,11 @@ size_t setupCondition(Context& ctx, const string& measureName, double minValue, 
     auto& runtime = (*ctx.monitoring);
     const OutMeasure om = findOutMeasure(measureName);
     if (om.measure == invalidMeasure) {
-        throw util::xml_scenario_error("unrecognised measure: " + measureName);
+        throw util::xml_error("unrecognised measure: " + measureName);
     }
 
     if (!isValidCondition(om.measure)) {
-        throw util::xml_scenario_error("cannot use measure " + measureName + " as condition of deployment");
+        throw util::xml_error("cannot use measure " + measureName + " as condition of deployment");
     }
     internal::ensureConditionStore(ctx, om);
 

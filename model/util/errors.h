@@ -174,13 +174,13 @@ namespace OM { namespace util {
      * 
      * Since such errors are always user-input errors, collecting a stack
      * trace doesn't help. Just provide a useful message! */
-    class xml_scenario_error : public base_exception {
+    class xml_error : public base_exception {
     public:
-        explicit xml_scenario_error(const string& msg);
+        explicit xml_error(const string& msg);
     };
     
     /** Thrown to indicate a badly formatted parameter. */
-    class format_error : public xml_scenario_error {
+    class format_error : public xml_error {
     public:
         explicit format_error (const string& what_arg);
     };

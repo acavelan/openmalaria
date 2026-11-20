@@ -67,7 +67,7 @@ struct DosageTable {
 
 /** Treatment courses of the current run (was: LSTMTreatments statics). */
 inline void invalidModel(){
-    throw util::xml_scenario_error( "use of PK/PD treatment requires use of a compatible infection model and specification of pharmacology/treatments" );
+    throw util::xml_error( "use of PK/PD treatment requires use of a compatible infection model and specification of pharmacology/treatments" );
 }
 
 struct TreatmentRegistry {
@@ -83,7 +83,7 @@ struct TreatmentRegistry {
         if( scheduleNames.size() == 0 ) invalidModel();
         auto iter = scheduleNames.find( name );
         if( iter == scheduleNames.end() ){
-            throw util::xml_scenario_error(string("no treatment schedule with this name: ")
+            throw util::xml_error(string("no treatment schedule with this name: ")
                 .append(name));
         }
         return iter->second;
@@ -93,7 +93,7 @@ struct TreatmentRegistry {
         if( dosagesNames.size() == 0 ) invalidModel();
         auto iter = dosagesNames.find( name );
         if( iter == dosagesNames.end() ){
-            throw util::xml_scenario_error(string("no dosage table with this name: ")
+            throw util::xml_error(string("no dosage table with this name: ")
                 .append(name));
         }
         return iter->second;

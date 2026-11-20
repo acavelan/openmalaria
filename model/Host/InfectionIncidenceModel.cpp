@@ -114,7 +114,7 @@ void InfectionIncidenceModel::init(Context& ctx, const Parameters& parameters) {
         inf_rate_shape_param = std::max(inf_rate_shape_param, 0.0);
         inf_rate_offset = 0.5 * pow(inf_rate_shape_param, 2);
         if ((std::isnan)(inf_rate_shape_param)) {
-            throw util::xml_scenario_error("bad parameter 16 (BASELINE_AVAILABILITY_SHAPE)");
+            throw util::xml_error("bad parameter 16 (BASELINE_AVAILABILITY_SHAPE)");
         }
     } else {
         if (util::ModelOptions::option(util::TRANS_HET) || util::ModelOptions::option(util::COMORB_TRANS_HET) ||

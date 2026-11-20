@@ -122,7 +122,7 @@ struct HypnozoiteReleaseDistribution {
             count += 1;
 
             if (count >= maxcount) {
-                throw util::xml_scenario_error(
+                throw util::xml_error(
                     "<vivax><hypnozoiteRelease>  [random delay calculation causes probably an indefinite loop]:\n The hypnozoite release distribution seems off, sigma of secondRelease could be too high. We except the hypnozoite to reside a maximum of 16 months in the liver stage. Sigma choose well, dear padawan.");
             }
         } while (delay > liverStageMaximumDays || delay < 0.0);

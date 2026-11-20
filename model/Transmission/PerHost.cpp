@@ -166,7 +166,7 @@ double PerHostAnophParams::getEntoAvailabilityPercentile(Context& ctx, int p) {
     else if (p == 100)
         return std::numeric_limits<double>::max();
     else
-        throw util::xml_scenario_error(
+        throw util::xml_error(
             "Availability percentiles in intervention specifications can only be in [0 and 100]");
 }
 

@@ -215,7 +215,7 @@ void AnophelesModel::initAvailability(size_t species, const vector<NhhParams>& n
         }
 
         if (!(sum_xi > 0.9999 && sum_xi < 1.0001)) {
-            throw xml_scenario_error("The sum of the relative entomological availability (ξ_i) "
+            throw xml_error("The sum of the relative entomological availability (ξ_i) "
                                      "across non-human hosts must be 1!");
         }
 
@@ -270,7 +270,7 @@ void AnophelesModel::initAvailability(size_t species, const vector<NhhParams>& n
     mosq.seekingDeathRate = mu1 * mu2;
 
     if (mosq.seekingDeathRate <= 0)
-        throw xml_scenario_error("Anopheles::init mosq.seekingDeathRate is <= 0. \
+        throw xml_error("Anopheles::init mosq.seekingDeathRate is <= 0. \
 The probability of a mosquito surviving the entire feeding cycle \
 should be less than the product of the probabilities of a \
 mosquito surviving biting, finding a resting site, resting and ovipositing.");
@@ -580,7 +580,7 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
         pDeathSeeking += pDeath.current_value(ctx.clock.ts0());
 
     if (pDeathSeeking > 1.0)
-        throw xml_scenario_error(
+        throw xml_error(
             "VectorPop: the cumulative probability of death wile seeking is greater than 1 during the simulation");
 
     if (pDeathSeeking > 0.0) {

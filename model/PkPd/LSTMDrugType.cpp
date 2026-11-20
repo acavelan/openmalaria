@@ -83,7 +83,7 @@ static void drugIsUsed(vector<size_t>& drugsInUse, size_t index) {
 size_t DrugRegistry::findDrug(string _abbreviation) {
     auto iter = drugTypeNames.find(_abbreviation);
     if (iter == drugTypeNames.end())
-        throw util::xml_scenario_error(string("attempt to use drug without description: ").append(_abbreviation));
+        throw util::xml_error(string("attempt to use drug without description: ").append(_abbreviation));
     size_t index = iter->second;
 
     // We assume that drugs are used when and only when findDrug returns their

@@ -78,7 +78,7 @@ class diagnostics {
 
     /** Look up a diagnostic by name and get a reference to it.
      * 
-     * @throws util::xml_scenario_error on failure
+     * @throws util::xml_error on failure
      */
     static const Diagnostic& get(Context& ctx, const std::string& name);
 

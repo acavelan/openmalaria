@@ -84,7 +84,7 @@ inline bool replayed_on_restore(TimedDeploymentKind kind) {
  * (same throw/warn order as the old base ctor). */
 inline void check_timed_date(Context& ctx, SimTime deployDate) {
     if (deployDate < ctx.clock.start_date) {
-        throw util::xml_scenario_error("timed intervention deployment: may not be negative");
+        throw util::xml_error("timed intervention deployment: may not be negative");
     } else if (deployDate >= ctx.clock.end_date) {
         cerr << "Warning: timed intervention deployment at date " << deployDate;
         cerr << " happens after last survey" << endl;

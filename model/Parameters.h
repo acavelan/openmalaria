@@ -164,7 +164,7 @@ class Parameters {
             for (const std::pair<int, Parameter> pair : idCodeToNameMap) {
                 if (pair.second == name) {
                     const int paramCode = pair.first;
-                    throw util::xml_scenario_error("Parameter with index " + to_string(paramCode) +
+                    throw util::xml_error("Parameter with index " + to_string(paramCode) +
                                                    " required but not described.");
                 }
             }

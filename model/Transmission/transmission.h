@@ -47,7 +47,7 @@ inline SimulationMode readMode(const string& str) {
     else
         // Note: originally 3 (transientEIRknown) could be specified; now it's
         // set automatically.
-        throw util::xml_scenario_error(string("mode attribute invalid: ").append(str));
+        throw util::xml_error(string("mode attribute invalid: ").append(str));
 }
 
 // Factory functions are defined in model/xml/entomology.cpp.

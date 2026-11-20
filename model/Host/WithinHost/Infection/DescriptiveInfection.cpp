@@ -56,7 +56,7 @@ void DescriptiveInfection::init(Context& ctx, const Parameters& parameters) {
         // To support non-5-day time-step models, either different data would
         // be needed or times need to be adjusted when accessing
         // meanLogParasiteCount. Probably the rest would be fine.
-        throw util::xml_scenario_error("DescriptiveInfection only supports using an interval of 5");
+        throw util::xml_error("DescriptiveInfection only supports using an interval of 5");
     }
     // Bug fixes: these are enabled by default but may be off in old parameterisations
     bugfix_innate_max_dens = util::ModelOptions::option(util::INNATE_MAX_DENS);

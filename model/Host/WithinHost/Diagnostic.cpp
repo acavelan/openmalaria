@@ -73,7 +73,7 @@ const Diagnostic& diagnostics::get(Context& ctx, const string& name) {
     auto& diagnostic_set = ctx.diagnostic_set;
     auto it = diagnostic_set.find(name);
     if (it == diagnostic_set.end()) {
-        throw util::xml_scenario_error(string("diagnostic not found: ").append(name));
+        throw util::xml_error(string("diagnostic not found: ").append(name));
     }
     return it->second;
 }

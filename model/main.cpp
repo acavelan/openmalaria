@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
         std::cerr << e << flush;
         std::cerr << "This is likely an error in the C++ code. Please report!" << endl;
         exitStatus = e.getCode();
-    } catch (const OM::util::xml_scenario_error& e) {
+    } catch (const OM::util::xml_error& e) {
         std::cerr << "Error: " << e.what() << endl;
         std::cerr << "In: " << scenarioFile << endl;
         exitStatus = e.getCode();

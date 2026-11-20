@@ -142,9 +142,9 @@ const char* unimplemented_exception::message() const {
     return &msg_buf[0];
 }
 
-xml_scenario_error::xml_scenario_error(const string& msg) : base_exception(msg, Error::XmlScenario) {}
+xml_error::xml_error(const string& msg) : base_exception(msg, Error::XmlScenario) {}
 
-format_error::format_error(const string& msg) : xml_scenario_error(msg) {}
+format_error::format_error(const string& msg) : xml_error(msg) {}
 
 cmd_exception::cmd_exception(const string& msg, int code) : base_exception(msg, code) {}
 

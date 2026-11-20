@@ -414,7 +414,7 @@ bool WHVivax::treatSimple(Host::Human& human, SimTime timeLiver, SimTime timeBlo
     if (timeLiver != sim::zero()) {
         if (pReceivePQ > 0.0) {
             // This is only really disallowed to prevent simultaneous treatment through both methods
-            throw util::xml_scenario_error(
+            throw util::xml_error(
                 "simple treatment for vivax liver "
                 "stages is incompatible with case-management pUseUncomplicated "
                 "(liverStageDrug) option; it is suggested to use the former over the latter");

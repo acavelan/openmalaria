@@ -64,7 +64,7 @@ class InterventionManager {
 
     /** Get a numeric ComponentId from the textual identifier used in the XML.
      * 
-     * If textId is unknown, an xml_scenario_error is thrown. */
+     * If textId is unknown, an xml_error is thrown. */
     static ComponentId getComponentId(Context& ctx, const std::string textId);
 };
 
@@ -80,7 +80,7 @@ inline ComponentId InterventionManager::getComponentId(Context& ctx, const strin
         ostringstream msg;
         msg << "unable to find an intervention component with id \"" << textId
             << "\" (wrong name, no definition or used before definition?)";
-        throw util::xml_scenario_error(msg.str());
+        throw util::xml_error(msg.str());
     }
     return it->second;
 }

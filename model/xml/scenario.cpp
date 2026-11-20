@@ -140,7 +140,7 @@ void WHCommon::init(Context& ctx, const scnXml::Scenario& scenario) {
     const scnXml::Human human = scenario.getModel().getHuman();
     if (!human.getWeight().present()) {
         // Technically this is needed by the PK/PD and Molineaux models
-        throw util::xml_scenario_error("model->human->weight element required by certain models");
+        throw util::xml_error("model->human->weight element required by certain models");
     }
     massByAge.set(ctx.clock, human.getWeight().get(), "weight");
     hetMassMultStdDev = human.getWeight().get().getMultStdDev();
@@ -170,7 +170,7 @@ struct LocusSet {
                                                   elt_a.getHrp2_deletion()));
         }
         if (cum_p < 0.999 || cum_p > 1.001)
-            throw util::xml_scenario_error("expected sum of initial probabilities of alleles to be 1, but for the " +
+            throw util::xml_error("expected sum of initial probabilities of alleles to be 1, but for the " +
                                            to_string(alleles.size()) + " alleles under locus " +
                                            string(elt_l.getName()) + " this is " + to_string(cum_p));
 
@@ -204,17 +204,17 @@ void Genotypes::init(Genotypes& state, const scnXml::Scenario& scenario) {
         } else if (genetics.getSamplingMode() == "tracking") {
             state.interv_mode = Genotypes::SAMPLE_TRACKING;
             if (!scenario.getEntomology().getVector().present()) {
-                throw util::xml_scenario_error("incompatibility; either use "
+                throw util::xml_error("incompatibility; either use "
                                                "entomology/vector (not nonVector) or set "
                                                "parasiteGenetics/samplingMode to \"initial\" (not \"tracking\")");
             }
             if (scenario.getEntomology().getMode() != "dynamic") {
-                throw util::xml_scenario_error("incompatibility; either set "
+                throw util::xml_error("incompatibility; either set "
                                                "entomology/mode to \"dynamic\" (not \"forced\") or set "
                                                "parasiteGenetics/samplingMode to \"initial\" (not \"tracking\")");
             }
         } else {
-            throw util::xml_scenario_error("parasiteGenetics/samplingMode: expected \"initial\" or \"tracking\"");
+            throw util::xml_error("parasiteGenetics/samplingMode: expected \"initial\" or \"tracking\"");
         }
 
         // Build the list of all allele combinations by iterating over loci (plural of locus):
@@ -236,7 +236,7 @@ void Genotypes::init(Genotypes& state, const scnXml::Scenario& scenario) {
 
         // Test cum_p is approx. 1.0 in case the input tree is wrong.
         if (cum_p < 0.999 || cum_p > 1.001)
-            throw util::xml_scenario_error(
+            throw util::xml_error(
                 "decision tree (random node): expected probability sum to be 1.0 but found " + to_string(cum_p));
 
         // last cum_p might be slightless less than 1 due to arithmetic errors; add a failsafe:
@@ -356,7 +356,7 @@ Diagnostic::Diagnostic(const Parameters& parameters, const scnXml::Diagnostic& e
         } else {
             specificity = elt.getStochastic().get().getSpecificity();
             if (specificity < 0.0 || specificity > 1.0) {
-                throw util::xml_scenario_error(string("diagnostics/diagnostic(")
+                throw util::xml_error(string("diagnostics/diagnostic(")
                                                    .append(elt.getName())
                                                    .append("): specificity must be in range [0,1]"));
             }
@@ -367,7 +367,7 @@ Diagnostic::Diagnostic(const Parameters& parameters, const scnXml::Diagnostic& e
         throw SWITCH_DEFAULT_EXCEPTION;
     }
     if (dens_lim < 0.0) {
-        throw util::xml_scenario_error(
+        throw util::xml_error(
             string("diagnostics/diagnostic(").append(elt.getName()).append("): must have density ≥ 0"));
     }
 
@@ -380,7 +380,7 @@ Diagnostic::Diagnostic(const Parameters& parameters, const scnXml::Diagnostic& e
             // User must be explicit in this case, because presumably the Garki
             // bias is to be used for some diagnostics but likely not all
             // (e.g. neonatal mortality).
-            throw util::xml_scenario_error(
+            throw util::xml_error(
                 "diagnostics/diagnostic(*)/units: must specify this attribute when GARKI_DENSITY_BIAS is set");
         }
         // otherwise we assume "Other"
@@ -407,7 +407,7 @@ void diagnostics::init(Context& ctx, const Parameters& parameters, const scnXml:
             bool inserted =
                 diagnostic_set.insert(make_pair(std::move(name), Diagnostic(parameters, diagnostic))).second;
             if (!inserted) {
-                throw util::xml_scenario_error(
+                throw util::xml_error(
                     string("diagnostic with this name already set: ").append(diagnostic.getName()));
             }
         }
@@ -420,7 +420,7 @@ void diagnostics::init(Context& ctx, const Parameters& parameters, const scnXml:
         ctx.monitoring_diagnostic = &make_deterministic(ctx, numeric_limits<double>::quiet_NaN());
     } else if (surveys.getDetectionLimit().present()) {
         if (surveys.getDiagnostic().present()) {
-            throw util::xml_scenario_error("monitoring/surveys: do not "
+            throw util::xml_error("monitoring/surveys: do not "
                                            "specify both detectionLimit and diagnostic");
         }
         if (util::CommandLine::option(util::CommandLine::DEPRECATION_WARNINGS)) {
@@ -450,18 +450,18 @@ void diagnostics::init(Context& ctx, const Parameters& parameters, const scnXml:
         ctx.monitoring_diagnostic = &make_deterministic(ctx, detectionLimit);
     } else {
         if (!surveys.getDiagnostic().present()) {
-            throw util::xml_scenario_error("monitoring/surveys: require "
+            throw util::xml_error("monitoring/surveys: require "
                                            "either detectionLimit or diagnostic");
         }
         if (util::ModelOptions::option(util::GARKI_DENSITY_BIAS)) {
-            throw util::xml_scenario_error("Use of GARKI_DENSITY_BIAS is not "
+            throw util::xml_error("Use of GARKI_DENSITY_BIAS is not "
                                            "appropriate when monitoring/surveys/diagnostic is used.");
         }
         ctx.monitoring_diagnostic = &get(ctx, surveys.getDiagnostic().get());
     }
 
     if (ctx.monitoring_diagnostic->uses_hrp2) {
-        throw util::xml_scenario_error("the diagnostic used for "
+        throw util::xml_error("the diagnostic used for "
                                        "monitoring may not use HRP2 as its mechanism");
     }
 }
@@ -476,7 +476,7 @@ SimTime read_latentP(const SimClock& clock, const scnXml::Model& model) {
         if (model.getParameters().present())
             latentP = UnitParse::readShortDuration(clock, model.getParameters().get().getLatentp(), UnitParse::NONE);
     } catch (const util::format_error& e) {
-        throw util::xml_scenario_error(string("model/parameters/latentP: ").append(e.message()));
+        throw util::xml_error(string("model/parameters/latentP: ").append(e.message()));
     }
     return latentP;
 }
@@ -503,7 +503,7 @@ void SimClock::init(Context& ctx, const scnXml::Scenario& scenario, util::ModelN
                 throw util::format_error("invalid format (expected YYYY-MM-DD)");
             }
         } catch (const util::format_error& e) {
-            throw util::xml_scenario_error(string("monitoring/startDate: ").append(e.message()));
+            throw util::xml_error(string("monitoring/startDate: ").append(e.message()));
         }
     }
 
@@ -524,7 +524,7 @@ void SimClock::initInterval(const scnXml::Scenario& scenario, util::ModelNamePro
             // for the base model.
             interval = 5;
         } else {
-            throw util::xml_scenario_error("No pre-set interval value is available for the specified model name.");
+            throw util::xml_error("No pre-set interval value is available for the specified model name.");
         }
     }
 
@@ -546,7 +546,7 @@ ModelNameProvider::ModelNameProvider(const scnXml::Model& model) {
         if (nameFromXML == "base") {
             modelInUse = ModelNames::base;
         } else {
-            throw util::xml_scenario_error("Unrecognized model name: " + nameFromXML);
+            throw util::xml_error("Unrecognized model name: " + nameFromXML);
         }
     }
 }
@@ -571,7 +571,7 @@ Parameters::Parameters(const scnXml::Model::ParametersOptional& xmlParameterValu
         if (namedModelToUse == util::ModelNames::base) {
             initializeParamsBaseModel();
         } else {
-            throw util::xml_scenario_error("No pre-set parameter values are available for the specified model name.");
+            throw util::xml_error("No pre-set parameter values are available for the specified model name.");
         }
     }
 
@@ -617,7 +617,7 @@ void Parameters::initializeParamsFromXML(const scnXml::Parameters& parameters) {
 
         const bool paramValueAlreadySet = !paramIdsSetByUser.insert(paramId).second;
         if (paramValueAlreadySet) {
-            throw util::xml_scenario_error("Parameter with index " + to_string(paramId) + " described twice in XML.");
+            throw util::xml_error("Parameter with index " + to_string(paramId) + " described twice in XML.");
         }
 
         nameToValueMap[nameOfParamToSet] = paramValueFromXML;

@@ -88,7 +88,7 @@ void WHVivax::init(Context& ctx, const OM::Parameters& parameters, const scnXml:
     latentP = read_latentP(ctx.clock, model);
 
     if (!model.getVivax().present())
-        throw util::xml_scenario_error("no vivax model description in scenario XML");
+        throw util::xml_error("no vivax model description in scenario XML");
     const scnXml::Vivax& elt = model.getVivax().get();
     probBloodStageInfectiousToMosq = elt.getProbBloodStageInfectiousToMosq().getValue();
     maxNumberHypnozoites = elt.getHypnozoiteRelease().getNumberHypnozoites().getMax();
@@ -118,7 +118,7 @@ void WHVivax::init(Context& ctx, const OM::Parameters& parameters, const scnXml:
 
     // Check if vivaxClinOption is valid
     if (acceptedOptions.find(vivaxClinOption) == acceptedOptions.end()) {
-        throw util::xml_scenario_error("Invalid vivaxClinOption: " + vivaxClinOption +
+        throw util::xml_error("Invalid vivaxClinOption: " + vivaxClinOption +
                                        ". Accepted values are: A1j, A2j, B1j, B2j.");
     }
 
@@ -148,7 +148,7 @@ void WHVivax::setHSParameters(const scnXml::LiverStageDrug* elt) {
     }
 
     if (!std::isnan(oldPHetNoPQ) && oldPHetNoPQ != pHetNoPQ) {
-        throw util::xml_scenario_error("changeHS cannot change pHumanCannotReceive value");
+        throw util::xml_error("changeHS cannot change pHumanCannotReceive value");
     }
 }
 }
