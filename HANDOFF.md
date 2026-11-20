@@ -375,3 +375,5 @@ p8-structure deletes files p8ckpt edits → delete/modify + contextual conflicts
 - `.opencode/skills/openmalaria-rewrite/SKILL.md` target-layout still lists
   `model/core/` — contract-doc update is the main session's call.
 - PERF.md untouched (main-session ledger). Report the +9 here.
+
+**8-Q1 dead-weight note (from G16, NOT touched here):** in the engine block now in util/random.h — commented-out `Sseq` ctor/seed + `operator<<`/`>>` blocks, `generate_block()`/`chacha_core()` declarations with no definitions anywhere, and `rotl`'s file-static placement; plus random.h's `<chacha.h>` include + `MasterRng` typedef are only referenced by checkpoint RNG export — prune candidates with proof there.

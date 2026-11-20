@@ -24,7 +24,7 @@
 #define Hmod_XoshiroSuite
 
 #include <cxxtest/TestSuite.h>
-#include "util/xoshiro.h"
+#include "util/random.h"  // Xoshiro256P engine (was util/xoshiro.h)
 
 class XoshiroSuite : public CxxTest::TestSuite
 {
