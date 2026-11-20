@@ -114,55 +114,32 @@ TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, in
     annualEIR = vectors::sum(initialisationEIR);
 
     // -----  Continuous reporting  -----
-    ostringstream ctsNv0, ctsPA, ctsPAmu, ctsPA1, ctsPAh, ctsPdf, ctsPdif, ctsNv, ctsOv, ctsSv, ctsAlpha, ctsPB, ctsPCD, ctsIRSEffects,
-        ctsRA, ctsRR;
+    // One column per species, in the order specified in XML, so outputting is
+    // just iterating the list. Unfortunately, we need to reverse-lookup the name.
+    auto ctsHeads = [this](const char *prefix) {
+        ostringstream s;
+        for (size_t i = 0; i < species.size(); ++i) s << prefix << reverseLookup(speciesIndex, i) << ")";
+        return s.str();
+    };
 
-    size_t numSpecies = species.size();
-
-    // Output in order of species so that (1) we can just iterate through this
-    // list when outputting and (2) output is in order specified in XML.
-    for (size_t i = 0; i < numSpecies; ++i)
-    {
-        // Unfortunately, we need to reverse-lookup the name.
-        const string &name = reverseLookup(speciesIndex, i);
-        ctsNv0 << "\tN_v0(" << name << ")";
-        ctsPA << "\tP_A(" << name << ")";
-        ctsPAmu << "\tP_Amu(" << name << ")";
-        ctsPA1 << "\tP_A1(" << name << ")";
-        ctsPAh << "\tP_Ah(" << name << ")";
-        ctsPdf << "\tP_df(" << name << ")";
-        ctsPdif << "\tP_dif(" << name << ")";
-        ctsNv << "\tN_v(" << name << ")";
-        ctsOv << "\tO_v(" << name << ")";
-        ctsSv << "\tS_v(" << name << ")";
-        ctsAlpha << "\talpha_i(" << name << ")";
-        ctsPB << "\tP_B(" << name << ")";
-        ctsPCD << "\tP_C*P_D(" << name << ")";
-        ctsIRSEffects << "\tIRS rel attr (" << name << ")"
-                      << "\tIRS preprand surv factor (" << name << ")"
-                      << "\tIRS postprand surv factor (" << name << ")";
-        ctsRA << "\tres avail(" << name << ")";
-        ctsRR << "\tres req(" << name << ")";
-    }
-
-    mon::Continuous::registerCallback(ctx, "N_v0", ctsNv0.str(), std::bind( &TransmissionModel::ctsCbN_v0, this, _1));
-    mon::Continuous::registerCallback(ctx, "P_A", ctsPA.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PA, _1));
-    mon::Continuous::registerCallback(ctx, "P_Amu", ctsPAmu.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PAmu, _1));
-    mon::Continuous::registerCallback(ctx, "P_A1", ctsPA1.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PA1, _1));
-    mon::Continuous::registerCallback(ctx, "P_Ah", ctsPAh.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PAh, _1));
-    mon::Continuous::registerCallback(ctx, "P_df", ctsPdf.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PDF, _1));
-    mon::Continuous::registerCallback(ctx, "P_dif", ctsPdif.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PDIF, _1));
-    mon::Continuous::registerCallback(ctx, "N_v", ctsNv.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::NV, _1));
-    mon::Continuous::registerCallback(ctx, "O_v", ctsOv.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::OV, _1));
-    mon::Continuous::registerCallback(ctx, "S_v", ctsSv.str(), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::SV, _1));
+    mon::Continuous::registerCallback(ctx, "N_v0", ctsHeads("\tN_v0("), std::bind( &TransmissionModel::ctsCbN_v0, this, _1));
+    mon::Continuous::registerCallback(ctx, "P_A", ctsHeads("\tP_A("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PA, _1));
+    mon::Continuous::registerCallback(ctx, "P_Amu", ctsHeads("\tP_Amu("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PAmu, _1));
+    mon::Continuous::registerCallback(ctx, "P_A1", ctsHeads("\tP_A1("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PA1, _1));
+    mon::Continuous::registerCallback(ctx, "P_Ah", ctsHeads("\tP_Ah("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PAh, _1));
+    mon::Continuous::registerCallback(ctx, "P_df", ctsHeads("\tP_df("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PDF, _1));
+    mon::Continuous::registerCallback(ctx, "P_dif", ctsHeads("\tP_dif("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::PDIF, _1));
+    mon::Continuous::registerCallback(ctx, "N_v", ctsHeads("\tN_v("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::NV, _1));
+    mon::Continuous::registerCallback(ctx, "O_v", ctsHeads("\tO_v("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::OV, _1));
+    mon::Continuous::registerCallback(ctx, "S_v", ctsHeads("\tS_v("), std::bind( &TransmissionModel::ctsCbVecStat, this, Anopheles::SV, _1));
 
     // availability to mosquitoes relative to other humans, excluding age factor
-    mon::Continuous::registerCallback(ctx, "alpha", ctsAlpha.str(), std::bind( &TransmissionModel::ctsCbAlpha, this, _1, _2));
-    mon::Continuous::registerCallback(ctx, "P_B", ctsPB.str(), std::bind( &TransmissionModel::ctsCbP_B, this, _1, _2));
-    mon::Continuous::registerCallback(ctx, "P_C*P_D", ctsPCD.str(), std::bind( &TransmissionModel::ctsCbP_CD, this, _1, _2));
+    mon::Continuous::registerCallback(ctx, "alpha", ctsHeads("\talpha_i("), std::bind( &TransmissionModel::ctsCbAlpha, this, _1, _2));
+    mon::Continuous::registerCallback(ctx, "P_B", ctsHeads("\tP_B("), std::bind( &TransmissionModel::ctsCbP_B, this, _1, _2));
+    mon::Continuous::registerCallback(ctx, "P_C*P_D", ctsHeads("\tP_C*P_D("), std::bind( &TransmissionModel::ctsCbP_CD, this, _1, _2));
 
-    mon::Continuous::registerCallback(ctx, "resource availability", ctsRA.str(), std::bind( &TransmissionModel::ctsCbResAvailability, this, _1));
-    mon::Continuous::registerCallback(ctx, "resource requirements", ctsRR.str(), std::bind( &TransmissionModel::ctsCbResRequirements, this, _1));
+    mon::Continuous::registerCallback(ctx, "resource availability", ctsHeads("\tres avail("), std::bind( &TransmissionModel::ctsCbResAvailability, this, _1));
+    mon::Continuous::registerCallback(ctx, "resource requirements", ctsHeads("\tres req("), std::bind( &TransmissionModel::ctsCbResRequirements, this, _1));
 }
 
 void TransmissionModel::init2_vector(const vector<Host::Human> &population)
