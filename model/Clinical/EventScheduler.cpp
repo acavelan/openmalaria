@@ -60,7 +60,7 @@ AgeGroupInterpolator ClinicalEventScheduler::MF_need_antibiotic;
 
 // -----  construction, destruction and checkpointing  -----
 
-void esClinicalUpdate(ClinicalModel& cm, RunContext& ctx, Human& human, double ageYears,
+void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, double ageYears,
                       WithinHost::Pathogenesis::StatePair& pg) {
     WHInterface& withinHostModel = *human.withinHostModel;
     Episode::State newState = static_cast<Episode::State>(pg.state);

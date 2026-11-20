@@ -68,16 +68,10 @@ void clinicalUpdate5Day(ClinicalModel& cm, RunContext& ctx, Human& human, double
             // NOTE: the "not indirect mortality" bit is a historical accident.
             // Validity is debatable, but there's no point changing now.
             // (This does affect tests.)
-            if (cm.kind == ClinicalModel::Kind::ImmediateOutcomes)
-                immOutUncomplicatedEvent(cm, ctx, human, pgState);
-            else
-                treeUncomplicatedEvent(cm, ctx, human, pgState);
+            cm.uncomplicatedEvent(human, pgState); // virtual: tree vs immediate
         }
     } else if (pgState & Episode::SICK) { // sick but not from malaria
-        if (cm.kind == ClinicalModel::Kind::ImmediateOutcomes)
-            immOutUncomplicatedEvent(cm, ctx, human, pgState);
-        else
-            treeUncomplicatedEvent(cm, ctx, human, pgState);
+        cm.uncomplicatedEvent(human, pgState); // virtual: tree vs immediate
     }
 
     if (pg.indirectMortality && cm.doomed == NOT_DOOMED)

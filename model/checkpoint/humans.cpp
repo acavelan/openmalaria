@@ -289,9 +289,15 @@ void checkpoint(checkpoint::Archive& a, ClinicalModel& cm) {
         int32_t s = cm.latestState;
         a.value(s);
         cm.latestState = Episode::State(s);
-        s = cm.esPgState;
-        a.value(s);
-        cm.esPgState = Episode::State(s);
+        // esPgState is CMEventScheduler payload; the kind tag (built by
+        // createClinicalModel, same run config both ends of the wire) is the
+        // proof for the down-cast. Wire stays symmetric: the 5-day variants
+        // carry the old always-NONE bytes in a local.
+        auto* es = cm.kind == ClinicalModel::Kind::EventScheduler ? &static_cast<CMEventScheduler&>(cm) : nullptr;
+        int32_t e = es ? static_cast<int32_t>(es->esPgState) : Episode::NONE;
+        a.value(e);
+        if (es)
+            es->esPgState = Episode::State(e);
     }
 }
 

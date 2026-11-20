@@ -109,10 +109,10 @@ class ClinicalEventScheduler {
     static AgeGroupInterpolator MF_need_antibiotic;
 };
 
-/// Per-human update for the EventScheduler kind (old
-/// ClinicalEventScheduler::doClinicalUpdate); state lives on the ClinicalModel
-/// (es* fields).
-void esClinicalUpdate(ClinicalModel& cm, RunContext& ctx, Human& human, double ageYears,
+/// Per-human update for the EventScheduler variant (old
+/// ClinicalEventScheduler::doClinicalUpdate); state lives on the
+/// CMEventScheduler (es* fields).
+void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, double ageYears,
                       WithinHost::Pathogenesis::StatePair& pg);
 
 // ———  ESCaseManagement (was Clinical/ESCaseManagement.h; same ES chain)  ———
