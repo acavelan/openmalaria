@@ -28,7 +28,7 @@
 #include <map>
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "util/CommandLine.h"
 #include "util/errors.h"
 

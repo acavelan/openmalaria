@@ -24,7 +24,7 @@
 #define Hmod_OM_util_timeConversions
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 
 namespace OM {
 

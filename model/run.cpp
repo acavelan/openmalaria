@@ -25,7 +25,7 @@
 
 #include "Clock.h"
 
-#include "core/run.h"
+#include "run.h"
 
 #include "util/errors.h"
 #include "util/CommandLine.h"
@@ -43,7 +43,7 @@
 
 #include "Host/NeonatalMortality.h"
 #include "checkpoint.h"
-#include "core/RunExtensions.h"
+#include "RunExtensions.h"
 
 #include <cerrno>
 

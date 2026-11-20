@@ -26,7 +26,7 @@
 #include <gzstream/gzstream.h>
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "mon/Continuous.h"
 #include "mon/Monitoring.h"
 #include "interventions/InterventionManager.h"

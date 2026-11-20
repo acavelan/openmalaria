@@ -21,7 +21,7 @@
  */
 
 #include "Host/WithinHost/Infection/Infection.h"
-#include "core/RunExtensions.h"
+#include "RunExtensions.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/ModelOptions.h"
 

@@ -21,7 +21,7 @@
  */
 
 #include "WHMock.h"
-#include "core/RunExtensions.h"
+#include "RunExtensions.h"
 #include "Host/WithinHost/Diagnostic.h"
 
 using namespace std;

@@ -20,8 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_core_RunContext
-#define Hmod_core_RunContext
+#ifndef Hmod_RunContext
+#define Hmod_RunContext
 
 #include "Clock.h"
 #include "util/mod.h"
@@ -40,7 +40,7 @@ class Scenario;
 
 namespace OM {
 
-struct RunExtensions;   // core/RunExtensions.h: registries needing complete RunContext
+struct RunExtensions;   // RunExtensions.h: registries needing complete RunContext
 
 namespace util {
 class ModelNameProvider;
@@ -72,7 +72,7 @@ public:
     /// PK/PD treatment-course registry (LSTMTreatments::init).
     PkPd::TreatmentRegistry treatments;
     /// Registries whose types need a complete RunContext; created by
-    /// ensure_extensions() (model/core/RunExtensions.h) at run start,
+    /// ensure_extensions() (model/RunExtensions.h) at run start,
     /// owned and deleted by ~RunContext (raw pointer: gcc 16 instantiates
     /// unique_ptr's deleter on incomplete types at class scope).
     RunExtensions* ext = nullptr;

@@ -26,7 +26,7 @@
 // mon/Continuous.cpp (Continuous::init). Declarations stay in the mon headers.
 
 #include "Clock.h"
-#include "core/RunExtensions.h"
+#include "RunExtensions.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "interventions/InterventionManager.h"
 #include "mon/Continuous.h"

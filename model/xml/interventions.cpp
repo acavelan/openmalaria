@@ -25,8 +25,8 @@
 // inline ImportedInfections::init became an out-of-line definition).
 
 #include "Clock.h"
-#include "core/RunExtensions.h"
-#include "core/RunContext.h"
+#include "RunExtensions.h"
+#include "RunContext.h"
 #include "Host/ImportedInfections.h"
 #include "Population.h"
 #include "interventions/InterventionManager.h"

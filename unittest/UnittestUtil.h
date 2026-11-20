@@ -29,7 +29,7 @@
 #include "Clock.h"
 #include "util/ModelOptions.h"
 
-#include "core/RunExtensions.h"
+#include "RunExtensions.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
 #include "PkPd/LSTMModel.h"

@@ -37,7 +37,7 @@
 
 #include "configured/TestPaths.h"
 
-#include "core/run.h"
+#include "run.h"
 #include "util/CommandLine.h"
 #include "mon/Monitoring.h"
 

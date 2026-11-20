@@ -24,7 +24,7 @@
 // and contains definitions as well as declarations.
 
 // The includes here are more for documentation than required.
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "interventions/Components.h"
 #include "interventions/InterventionManager.h"
 #include "interventions/IvState.h"

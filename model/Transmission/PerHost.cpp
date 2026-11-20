@@ -21,7 +21,7 @@
  */
 
 #include "Transmission/PerHost.h"
-#include "core/RunExtensions.h"
+#include "RunExtensions.h"
 #include "Transmission/TransmissionModel.h"
 #include "Host/Human.h"
 #include "interventions/IvState.h"

@@ -28,9 +28,9 @@
 // below). Declarations for the moved entry points stay in the original
 // headers (scnXml forward-declared).
 
-#include "core/RunExtensions.h"
+#include "RunExtensions.h"
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Parameters.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Genotypes.h"

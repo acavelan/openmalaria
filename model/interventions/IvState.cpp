@@ -21,8 +21,8 @@
  */
 
 #include "Clock.h"
-#include "core/RunContext.h"
-#include "core/RunExtensions.h"
+#include "RunContext.h"
+#include "RunExtensions.h"
 #include "interventions/IvState.h"
 #include "interventions/ITN.h"
 #include "interventions/IRS.h"

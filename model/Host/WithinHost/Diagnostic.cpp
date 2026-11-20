@@ -21,7 +21,7 @@
  */
 
 #include "Host/WithinHost/Diagnostic.h"
-#include "core/RunExtensions.h"
+#include "RunExtensions.h"
 #include "Parameters.h"
 #include "util/random.h"
 #include "util/errors.h"

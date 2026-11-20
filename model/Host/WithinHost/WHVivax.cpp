@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "util/checkpoint.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/PathogenesisModel.h"

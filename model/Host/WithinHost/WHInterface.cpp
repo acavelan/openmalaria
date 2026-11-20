@@ -1,6 +1,6 @@
 #include "Host/WithinHost/WHInterface.h"
 #include "util/checkpoint.h"
-#include "core/RunExtensions.h"
+#include "RunExtensions.h"
 #include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
 #include "util/ModelOptions.h"

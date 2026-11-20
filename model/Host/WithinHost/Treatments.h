@@ -24,7 +24,7 @@
 #define Hmod_WithinHost_Treatments
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "interventions/Interfaces.h"
 
 using namespace std;

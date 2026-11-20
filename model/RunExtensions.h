@@ -20,8 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_core_RunExtensions
-#define Hmod_core_RunExtensions
+#ifndef Hmod_RunExtensions
+#define Hmod_RunExtensions
 
 // Per-run registries that cannot be value members of RunContext.h because
 // their headers need a complete RunContext (include cycle). Owned by

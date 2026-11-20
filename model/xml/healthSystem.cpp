@@ -28,9 +28,9 @@
 // Host/NeonatalMortality.cpp and Host/WithinHost/Treatments.cpp. State stays
 // defined in the original files (extern re-declared below).
 
-#include "core/RunExtensions.h"
+#include "RunExtensions.h"
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Parameters.h"
 #include "Host/NeonatalMortality.h"
 #include "Host/WithinHost/Diagnostic.h"

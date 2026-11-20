@@ -24,7 +24,7 @@
 #define Hmod_WithinHost_Interface
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Host/HostColumns.h"
 #include "Host/SlotAllocator.h"
 #include "util/random.h"

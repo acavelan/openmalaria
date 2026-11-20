@@ -27,7 +27,7 @@
 #define Hmod_xml_latentP
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "schema/scenario.h"
 
 namespace OM {

@@ -20,8 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_core_Run
-#define Hmod_core_Run
+#ifndef Hmod_Run
+#define Hmod_Run
 
 #include <string>
 

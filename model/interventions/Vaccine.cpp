@@ -20,8 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "core/RunContext.h"
-#include "core/RunExtensions.h"
+#include "RunContext.h"
+#include "RunExtensions.h"
 #include "interventions/Vaccine.h"
 #include "interventions/HumanComponents.h"
 #include "Host/Human.h"

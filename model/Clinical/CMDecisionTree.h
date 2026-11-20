@@ -23,7 +23,7 @@
 #ifndef Hmod_ESDecisionTree
 #define Hmod_ESDecisionTree
 
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/State.h"
 #include "Clinical/Episode.h"
