@@ -640,3 +640,73 @@ LSTMDrug per-drug virtuals replace switch jumps, same call count).
   ClinicalModel instances directly; only statics/factories, unchanged).
 - Parallel-agent landmine respected: random.h untouched; no RNG call site
   moved except the verbatim ctor-case relocation inside these two families.
+
+---
+
+# p8-xml: model/xml/ compaction wave (branch p8-xml, base f7385b04)
+
+Domain: model/xml/** only. Model LOC 16,799 → 16,764 (−35), 7 commits, all
+gates green per commit (build 0 err, ctest 64/64 incl Resume_*, unittest .OK!,
+T1 tier-a 53/53; commits touching interventions/pharmacology/healthSystem
+parse paths also tier-b seeds 1-4; FINAL tier-a + tier-b seeds 1-10 = 63/63).
+
+## Collapses (per commit)
+- pharmacology.cpp: mirror locus-restriction error throws → one `mismatch`
+  lambda; message composed from same fragments, name-pair swapped per site;
+  erase()-before-throw order and loop positions unchanged (−6).
+- interventions.cpp: two literal-only `ostringstream msg;` blocks → direct
+  throw with adjacent-literal split (bytes identical by concatenation
+  identity) (−2).
+- interventions.cpp: 9× `UnitParse::readDate(..., STEPS /*backwards compat*/)`
+  → `readDate_steps` wrapper; no error strings touched, args/order unchanged
+  (−6).
+- HumanInterventionComponents.h: print_component 12-deep ternary →
+  Component::Type-indexed 13-entry name table. Enum is dense (RECRUIT_ONLY…
+  CLEAR_IMMUNITY); IPT entry carries the former default fall-through bytes
+  "clear immunity"; kind is only ever assigned enum members (Components.h
+  set<T> + CLEAR_IMMUNITY site), so indexing is total (−10).
+- interventions.cpp nhh_mods_setup: 5× resize-if ladder → loop over the five
+  same-type effect maps; loop order == textual order, operator[] insertion
+  per map unchanged (−4).
+- healthSystem.cpp setHS: 3× presence-check+dispatch blocks → one
+  `need(optional, name)` lambda; message composed byte-identically
+  ("Expected " + name + " section in healthSystem data (…)"); branch order
+  and check positions unchanged (−7).
+
+## Rejected with reasons
+- entomology.cpp fourier/monthly expIDFT-rescale tail (2×3 stmts): measured —
+  helper costs +2 net LOC. Not done.
+- util.cpp OptionCodeMap 40 assignments → braced init: same line count, pure
+  cosmetics.
+- healthSystem getHealthSystemACRByName/getHealthSystemTreatmentOptional drug
+  ladders → member-fn-ptr table: table+lookup is as long as the ladder, and
+  `&Class::getX` is ambiguous (const/non-const overloads).
+- ITN/IRS initialInsecticide+qnorm3 3-statement dup → template helper: net
+  ≈0.
+- util.cpp DecayFunction kind ladder: if-chain is already minimal.
+- interventions.cpp VaccineParams phenotype block: messages all distinct,
+  loop already minimal.
+- decision-tree compile_* two-branch node funcs (diagnostic/uncomplicated/
+  severe/cohort): each has a distinct middle step; shared helper would be
+  longer and the zone is order-critical (gcc arg-eval parity comment).
+- scenario.cpp PRINT_GENOTYPES header loop (carried from recon): ~4 LOC,
+  output-shape risk.
+
+## Dead-code sweep
+grep-zero found none: averageEIR (4 users), BetaSampler/WeibullSampler
+setParams (entomology 500-502, vivax 104), all xml helpers referenced.
+DocumentLoader.h carries no stale diagnostics (XMLChecker+latentP only).
+
+## [string-audit] big-fish observations (NOT touched, main-session material)
+- interventions.cpp factors::SurvivalFactor::init: the isDeterrent vs else
+  arms hold ~15 near-identical comment lines each plus two bounds-appender
+  msg blocks (6 checks / 3 checks sharing literal fragments). A shared
+  table would re-derive message order → out of scope here.
+- healthSystem drug readers are a trio (ACR / TreatmentOptional /
+  TreatmentByName) over the same 6-drug name space; one registry would
+  replace all three but is the mini-parser-table class explicitly excluded.
+
+## Landmines respected
+random.h, model/Host/WithinHost, model/PkPd, model/Clinical, XSDs, generated
+scnXml untouched; build symlink uncommitted (gitignored); PERF.md/plan
+untouched; no RNG draw site moved (all folds are pure reads/message plumbing).

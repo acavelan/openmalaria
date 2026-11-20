@@ -850,25 +850,20 @@ void ClinicalModel::init(RunContext& ctx, const Parameters& parameters, const sc
 void ClinicalModel::setHS(RunContext& ctx, const scnXml::HealthSystem& healthSystem) {
     caseFatalityRate.set(ctx.clock, healthSystem.getCFR(), "CFR");
     pSequelaeInpatient.set(ctx.clock, healthSystem.getPSequelaeInpatient(), "pSequelaeInpatient");
-    if (opt_event_scheduler) {
-        if (!healthSystem.getEventScheduler().present()) {
-            throw util::xml_scenario_error("Expected EventScheduler "
-                                           "section in healthSystem data (initial or intervention)");
-        }
-        ESCaseManagement::setHealthSystem(ctx, healthSystem.getEventScheduler().get());
-    } else if (opt_imm_outcomes) {
-        if (!healthSystem.getImmediateOutcomes().present()) {
-            throw util::xml_scenario_error("Expected ImmediateOutcomes "
-                                           "section in healthSystem data (initial or intervention)");
-        }
-        ImmediateOutcomes::setHealthSystem(ctx, healthSystem.getImmediateOutcomes().get());
-    } else {
-        if (!healthSystem.getDecisionTree5Day().present()) {
-            throw util::xml_scenario_error("Expected DecisionTree5Day "
-                                           "section in healthSystem data (initial or intervention)");
-        }
-        DecisionTree5Day::setHealthSystem(ctx, healthSystem.getDecisionTree5Day().get());
-    }
+    // Presence check + message for the three sections; bytes composed from the
+    // section name exactly as the three former blocks spelled them out:
+    auto need = [](const auto& opt, const char* name) -> decltype(auto) {
+        if (!opt.present())
+            throw util::xml_scenario_error(string("Expected ") + name +
+                                           " section in healthSystem data (initial or intervention)");
+        return (opt.get()); // parenthesised: stay a reference
+    };
+    if (opt_event_scheduler)
+        ESCaseManagement::setHealthSystem(ctx, need(healthSystem.getEventScheduler(), "EventScheduler"));
+    else if (opt_imm_outcomes)
+        ImmediateOutcomes::setHealthSystem(ctx, need(healthSystem.getImmediateOutcomes(), "ImmediateOutcomes"));
+    else
+        DecisionTree5Day::setHealthSystem(ctx, need(healthSystem.getDecisionTree5Day(), "DecisionTree5Day"));
 }
 }
 }

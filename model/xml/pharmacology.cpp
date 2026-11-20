@@ -166,24 +166,20 @@ LSTMDrugType::LSTMDrugType(RunContext& ctx, size_t index, const scnXml::PKPDDrug
                 loci_per_phenotype.insert(restriction.getOnLocus());
             }
         } else {
+            // Both former throw sites emitted the same message with the
+            // phenotype-name pair swapped (bytes travel verbatim):
+            auto mismatch = [](const string& locus, const string& with, const string& without) {
+                return "pharmacology/drugs/drug/pd/phenotype/restriction/onLocus:locus " + locus +
+                       " included in restriction of phenotype " + with + " but not " + without;
+            };
             set<string> expected_loci = loci_per_phenotype;
             for (const scnXml::Restriction& restriction : phenotype.getRestriction()) {
                 size_t n = expected_loci.erase(restriction.getOnLocus());
-                if (n == 0) {
-                    throw util::xml_scenario_error("pharmacology/drugs/drug/pd/phenotype/restriction/onLocus:"
-                                                   "locus " +
-                                                   string(restriction.getOnLocus()) +
-                                                   " included in restriction of phenotype " + string(pheno_name()) +
-                                                   " but not " + string(first_phenotype_name));
-                }
+                if (n == 0)
+                    throw util::xml_scenario_error(mismatch(restriction.getOnLocus(), pheno_name(), first_phenotype_name));
             }
-            if (!expected_loci.empty()) {
-                throw util::xml_scenario_error("pharmacology/drugs/drug/pd/phenotype/restriction/onLocus:"
-                                               "locus " +
-                                               string(*expected_loci.begin()) +
-                                               " included in restriction of phenotype " + string(first_phenotype_name) +
-                                               " but not " + string(pheno_name()));
-            }
+            if (!expected_loci.empty())
+                throw util::xml_scenario_error(mismatch(*expected_loci.begin(), first_phenotype_name, pheno_name()));
         }
         map<string, size_t> loci;
         vector<vector<uint32_t>> loc_alleles;
