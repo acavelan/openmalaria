@@ -80,7 +80,7 @@ struct DecisionTreeParams {
 };
 
 /** One human intervention component (plan: dense, by type-rank).
- * Owned by RunExtensions::humanComponents, indexed by id.id; never removed,
+ * Owned by RunContext::humanComponents, indexed by id.id; never removed,
  * so payload pointers (the per-type registries) stay valid. */
 struct ComponentConfig {
     ComponentId id;

@@ -23,7 +23,7 @@
 #ifndef OM_INTERVENTIONS_ITN
 #define OM_INTERVENTIONS_ITN
 
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "interventions/ComponentId.h"
 #include "util/DecayFunction.h"
 #include "util/sampler.h"

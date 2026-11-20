@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "core/RunContext.h"
-#include "core/RunExtensions.h"
+#include "RunContext.h"
 #include "interventions/Vaccine.h"
 #include "interventions/HumanComponents.h"
 #include "Host/Human.h"
@@ -40,7 +39,7 @@ using namespace OM::util;
 
 
 const VaccineParams& VaccineParams::getParams( RunContext& ctx, ComponentId component ){
-    auto& params = ctx.ext->vaccineComponents;
+    auto& params = ctx.vaccineComponents;
     assert( component.id < params.size() && params[component.id] != 0 );
     return *params[component.id];
 }

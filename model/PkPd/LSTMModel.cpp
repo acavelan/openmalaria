@@ -25,7 +25,7 @@
 #include "PkPd/LSTMModel.h"
 #include "PkPd/LSTMMedicate.h"
 #include "PkPd/LSTMTreatments.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "mon/Monitoring.h"
 #include "util/errors.h"
 

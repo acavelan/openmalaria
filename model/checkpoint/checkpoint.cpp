@@ -38,8 +38,7 @@
 #include "checkpoint.h"
 #include "sections.h"
 
-#include "core/RunContext.h"
-#include "core/RunExtensions.h"
+#include "RunContext.h"
 
 #include <fstream>
 

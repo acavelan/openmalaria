@@ -21,7 +21,6 @@
  */
 
 #include "Transmission/PerHost.h"
-#include "core/RunExtensions.h"
 #include "Transmission/TransmissionModel.h"
 #include "Host/Human.h"
 #include "interventions/IvState.h"
@@ -114,29 +113,29 @@ bool PerHost::hasActiveInterv(interventions::Component::Type type) const{
 }
 }
 
-// ———  PerHostAnophParams registry (ctx.ext->anophParams)  ———
+// ———  PerHostAnophParams registry ((*ctx.anophParams))  ———
 
 namespace OM { namespace Transmission {
 
 void PerHostAnophParams::init (RunContext& ctx, const scnXml::Mosq& mosq) {
-    ctx.ext->anophParams.emplace_back(mosq);
+    ctx.anophParams->emplace_back(mosq);
 }
 
 size_t PerHostAnophParams::numSpecies (RunContext& ctx) {
-    return ctx.ext->anophParams.size();
+    return ctx.anophParams->size();
 }
 
 const PerHostAnophParams& PerHostAnophParams::get (RunContext& ctx, size_t species) {
-    return ctx.ext->anophParams[species];
+    return (*ctx.anophParams)[species];
 }
 
 void PerHostAnophParams::setEntoAvailabilityFactor(RunContext& ctx, size_t species, double entoAvailability){
-    ctx.ext->anophParams[species].entoAvailabilityFactor = entoAvailability;
+    (*ctx.anophParams)[species].entoAvailabilityFactor = entoAvailability;
 }
 
 void PerHostAnophParams::calcAvailabilityPercentiles(RunContext& ctx){
-    auto& params = ctx.ext->anophParams;
-    auto& entoAvailabilityPercentiles = ctx.ext->entoAvailabilityPercentiles;
+    auto& params = (*ctx.anophParams);
+    auto& entoAvailabilityPercentiles = ctx.entoAvailabilityPercentiles;
     int nSamples = 100000;
     vector<double> samples(nSamples, 0.0);
 
@@ -169,7 +168,7 @@ void PerHostAnophParams::calcAvailabilityPercentiles(RunContext& ctx){
 }
 
 double PerHostAnophParams::getEntoAvailabilityPercentile(RunContext& ctx, int p){
-    auto& entoAvailabilityPercentiles = ctx.ext->entoAvailabilityPercentiles;
+    auto& entoAvailabilityPercentiles = ctx.entoAvailabilityPercentiles;
     if(p >= 0 && p < 100)
         return entoAvailabilityPercentiles[p];
     else if(p == 100)

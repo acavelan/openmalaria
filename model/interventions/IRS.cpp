@@ -21,8 +21,7 @@
  */
 
 #include "Clock.h"
-#include "core/RunExtensions.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "interventions/IRS.h"
 #include "Host/Human.h"
 #include "util/errors.h"

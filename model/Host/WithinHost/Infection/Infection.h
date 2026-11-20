@@ -24,7 +24,7 @@
 #define Hmod_Infection
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Parameters.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "util/random.h"

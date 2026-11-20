@@ -21,7 +21,6 @@
  */
 
 #include "Host/WithinHost/Infection/Infection.h"
-#include "core/RunExtensions.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -156,7 +155,7 @@ Infection* createMolineauxInfection (RunContext& ctx, LocalRng& rng, uint32_t pr
 }
 
 void infection_init_molineaux( RunContext& ctx, const Parameters& parameters ){
-    ctx.ext->createInfection = &createMolineauxInfection;
+    ctx.createInfection = &createMolineauxInfection;
     
     multi_factor_gamma = util::ModelOptions::option( util::PARASITE_REPLICATION_GAMMA );
     

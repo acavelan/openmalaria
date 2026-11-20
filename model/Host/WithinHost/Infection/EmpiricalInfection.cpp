@@ -21,7 +21,6 @@
  */
 
 #include "Host/WithinHost/Infection/Infection.h"
-#include "core/RunExtensions.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -74,7 +73,7 @@ Infection* createEmpiricalInfection (RunContext& ctx, LocalRng& rng, uint32_t pr
 
 
 void infection_init_empirical(RunContext& ctx){
-    ctx.ext->createInfection = &createEmpiricalInfection;
+    ctx.createInfection = &createEmpiricalInfection;
     
   // alpha1 corresponds to 1 day before first patent, alpha2 2 days before first patent etc.
   _alpha1=0.2647;

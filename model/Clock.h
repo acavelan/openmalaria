@@ -29,7 +29,7 @@
  *    class of model/sim.h).
  *  - OM::SimClock: the simulation clock (time-step interval, dates, t0/t1,
  *    update markers). Owned by OM::RunContext; init/initInterval defined in
- *    core/run.cpp.
+ *    run.cpp.
  **/
 #ifndef Hmod_Clock
 #define Hmod_Clock
@@ -51,7 +51,7 @@ typedef int SimTime;
 
 namespace OM {
 
-class RunContext;  // SimClock::init takes a reference (defined in core/RunContext.h)
+class RunContext;  // SimClock::init takes a reference (defined in RunContext.h)
 
 namespace util {
     class ModelNameProvider;

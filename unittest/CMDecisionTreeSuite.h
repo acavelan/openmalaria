@@ -55,7 +55,7 @@ public:
         ETS_ASSERT( human.get() != 0 );
         UnittestUtil::setHumanWH( *human,
                 UnitTest::makeWHMock(UnittestUtil::ctx()) );
-        whm = static_cast<WHMockState*>(UnittestUtil::ctx().ext->whMock->state);
+        whm = static_cast<WHMockState*>(UnittestUtil::ctx().whMock->state);
         ETS_ASSERT( whm != 0 );
 
         ageYears = 21;   // any real age will do for most tests

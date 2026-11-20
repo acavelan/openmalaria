@@ -1,5 +1,4 @@
 #include "Host/WithinHost/WHInterface.h"
-#include "core/RunExtensions.h"
 #include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
 #include "util/ModelOptions.h"
@@ -66,7 +65,7 @@ WHInterface::WHInterface(WHInterface&&) = default;
 
 // -----  Kind dispatch  -----
 //
-// The Kind::Mock branch calls through the hook table on ctx.ext (installed by
+// The Kind::Mock branch calls through the hook table on RunContext (installed by
 // unittest/WHMock.cpp); other Mock branches reproduce the old WHMock's
 // unimplemented_exception() behaviour directly. Production never constructs
 // the Mock kind.
@@ -101,7 +100,7 @@ void WHInterface::importInfection(LocalRng& rng){
 
 void WHInterface::treatment( Host::Human& human, TreatmentId treatId ){
     if( m_kind == Kind::Mock ){
-        const RunExtensions::WHMockHooks* hooks = ctx.ext->whMock;
+        const RunContext::WHMockHooks* hooks = ctx.whMock;
         hooks->treatment( hooks->state );
         return;
     }
@@ -118,7 +117,7 @@ bool WHInterface::treatSimple( Host::Human& human, SimTime timeLiver, SimTime ti
     switch( m_kind ){
     case Kind::Vivax: return treatSimple_vivax( human, timeLiver, timeBlood );
     case Kind::Mock: {
-        const RunExtensions::WHMockHooks* hooks = ctx.ext->whMock;
+        const RunContext::WHMockHooks* hooks = ctx.whMock;
         return hooks->treatSimple( hooks->state, timeLiver, timeBlood );
     }
     default: return treatSimple_falciparum( human, timeLiver, timeBlood );
@@ -131,7 +130,7 @@ void WHInterface::treatPkPd(size_t schedule, size_t dosages, double age, double 
     case Kind::Common: treatPkPd_common( schedule, dosages, age, delay_d ); break;
     case Kind::Descriptive: treatPkPd_descriptive( schedule, dosages, age, delay_d ); break;
     case Kind::Mock: {
-        const RunExtensions::WHMockHooks* hooks = ctx.ext->whMock;
+        const RunContext::WHMockHooks* hooks = ctx.whMock;
         hooks->treatPkPd( hooks->state, ctx, schedule, dosages, age, delay_d );
     }
     }
@@ -151,7 +150,7 @@ void WHInterface::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int
 double WHInterface::getTotalDensity() const{
     if( m_kind == Kind::Vivax ) return getTotalDensity_vivax();
     if( m_kind == Kind::Mock ){
-        const RunExtensions::WHMockHooks* hooks = ctx.ext->whMock;
+        const RunContext::WHMockHooks* hooks = ctx.whMock;
         return hooks->getTotalDensity( hooks->state );
     }
     return totalDensity;
@@ -160,7 +159,7 @@ double WHInterface::getTotalDensity() const{
 bool WHInterface::diagnosticResult( LocalRng& rng, const Diagnostic& diagnostic ) const{
     if( m_kind == Kind::Vivax ) return diagnosticResult_vivax( rng, diagnostic );
     if( m_kind == Kind::Mock ){
-        const RunExtensions::WHMockHooks* hooks = ctx.ext->whMock;
+        const RunContext::WHMockHooks* hooks = ctx.whMock;
         return hooks->diagnosticResult( hooks->state, rng, diagnostic );
     }
     return diagnosticResult_falciparum( rng, diagnostic );

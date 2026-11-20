@@ -23,7 +23,7 @@
 #ifndef Hmod_CM5DayCommon
 #define Hmod_CM5DayCommon
 
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Host/WithinHost/State.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"

@@ -23,7 +23,7 @@
 #ifndef Hmod_human
 #define Hmod_human
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Host/HostColumns.h"
 #include "Transmission/PerHost.h"
 #include "InfectionIncidenceModel.h"

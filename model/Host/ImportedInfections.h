@@ -24,7 +24,7 @@
 #define OM_IMPORTED_INFECTIONS
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 namespace scnXml { class ImportedInfections; }
 #include "util/errors.h"
 #include "util/UnitParse.h"

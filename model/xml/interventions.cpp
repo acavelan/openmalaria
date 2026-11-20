@@ -25,8 +25,7 @@
 // inline ImportedInfections::init became an out-of-line definition).
 
 #include "Clock.h"
-#include "core/RunExtensions.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Host/ImportedInfections.h"
 #include "Population.h"
 #include "interventions/InterventionManager.h"
@@ -994,9 +993,9 @@ VaccineParams::VaccineParams( RunContext& ctx, ComponentId component, const scnX
     
     opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
 
-    if( ctx.ext->vaccineReportComponent == ComponentId::wholePop() /* the initial value */ ){
+    if( ctx.vaccineReportComponent == ComponentId::wholePop() /* the initial value */ ){
         // set to the first type described
-        ctx.ext->vaccineReportComponent = component;
+        ctx.vaccineReportComponent = component;
     }
 
     const scnXml::VaccineDescription::InitialEfficacySequence ies = vd.getInitialEfficacy();
@@ -1088,7 +1087,7 @@ static void reg_at( std::vector<const T*>& v, ComponentId id, const T* p ){
 void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &intervElt,
                                Transmission::TransmissionModel &transmission)
 {
-    ctx.ext->nextTimed = 0;
+    ctx.nextTimed = 0;
 
     // changeHS and changeEIR timed deployments: identical loops differing only
     // in payload kind and error prefix (former duplicated blocks, merged).
@@ -1099,7 +1098,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             {
                 SimTime date = UnitParse::readDate(ctx.clock, it.getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
                 check_timed_date(ctx, date);
-                ctx.ext->timed.push_back(timed_deployment(date, kind, mk(it)));
+                ctx.timed->push_back(timed_deployment(date, kind, mk(it)));
             }
             catch (const util::format_error &e)
             {
@@ -1132,23 +1131,23 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
         for (auto it = human.getComponent().begin(), end = human.getComponent().end(); it != end; ++it)
         {
             const scnXml::HumanInterventionComponent &component = *it;
-            if (ctx.ext->identifierMap.count(component.getId()) > 0)
+            if (ctx.identifierMap.count(component.getId()) > 0)
             {
                 ostringstream msg;
                 msg << "The id attribute of interventions.human.component elements must be unique; found \"" << component.getId()
                     << "\" twice.";
                 throw util::xml_scenario_error(msg.str());
             }
-            ComponentId id(ctx.ext->humanComponents.size()); // i.e. index of next item
-            ctx.ext->identifierMap.insert(make_pair(component.getId(), id));
+            ComponentId id(ctx.humanComponents->size()); // i.e. index of next item
+            ctx.identifierMap.insert(make_pair(component.getId(), id));
 
             SimTime expireAfter = sim::future();
             if (component.getSubPopRemoval().present())
             {
                 const scnXml::SubPopRemoval &removeOpts = component.getSubPopRemoval().get();
-                if (removeOpts.getOnFirstBout()) { ctx.ext->removeAtIds[SubPopRemove::ON_FIRST_BOUT].push_back(id); }
-                if (removeOpts.getOnFirstInfection()) { ctx.ext->removeAtIds[SubPopRemove::ON_FIRST_INFECTION].push_back(id); }
-                if (removeOpts.getOnFirstTreatment()) { ctx.ext->removeAtIds[SubPopRemove::ON_FIRST_TREATMENT].push_back(id); }
+                if (removeOpts.getOnFirstBout()) { ctx.removeAtIds[SubPopRemove::ON_FIRST_BOUT].push_back(id); }
+                if (removeOpts.getOnFirstInfection()) { ctx.removeAtIds[SubPopRemove::ON_FIRST_INFECTION].push_back(id); }
+                if (removeOpts.getOnFirstTreatment()) { ctx.removeAtIds[SubPopRemove::ON_FIRST_TREATMENT].push_back(id); }
                 if (removeOpts.getAfterYears().present()) { expireAfter = ctx.clock.from_years_n(removeOpts.getAfterYears().get()); }
             }
 
@@ -1171,18 +1170,18 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             else
                 throw util::xml_scenario_error("expected intervention.human.component element to have a "
                                                "child, didn't find it (perhaps I need updating)");
-            ctx.ext->humanComponents.push_back(std::move(comp));
+            ctx.humanComponents->push_back(std::move(comp));
         }
 
         // Fill per-type parameter registries. Payload pointers stay valid:
         // humanComponents is append-only and never shrinks (7.2b).
-        for (auto& c : ctx.ext->humanComponents) {
+        for (auto& c : (*ctx.humanComponents)) {
             switch (c.kind) {
-            case Component::ITN: reg_at(ctx.ext->itnComponents, c.id, &std::get<ITNParams>(c.data)); break;
-            case Component::IRS: reg_at(ctx.ext->irsComponents, c.id, &std::get<IRSParams>(c.data)); break;
-            case Component::GVI: reg_at(ctx.ext->gviComponents, c.id, &std::get<GVIParams>(c.data)); break;
+            case Component::ITN: reg_at(ctx.itnComponents, c.id, &std::get<ITNParams>(c.data)); break;
+            case Component::IRS: reg_at(ctx.irsComponents, c.id, &std::get<IRSParams>(c.data)); break;
+            case Component::GVI: reg_at(ctx.gviComponents, c.id, &std::get<GVIParams>(c.data)); break;
             case Component::PEV: case Component::BSV: case Component::TBV:
-                reg_at(ctx.ext->vaccineComponents, c.id, &std::get<VaccineParams>(c.data)); break;
+                reg_at(ctx.vaccineComponents, c.id, &std::get<VaccineParams>(c.data)); break;
             default: break;
             }
         }
@@ -1227,7 +1226,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
                         {
                             end = UnitParse::readDate(ctx.clock, it2->getEnd().get(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
                         }
-                        ctx.ext->continuous.push_back(ContinuousHumanDeployment::read(ctx, begin, end, *it2, intervention, subPop, complement));
+                        ctx.continuous->push_back(ContinuousHumanDeployment::read(ctx, begin, end, *it2, intervention, subPop, complement));
                     }
                     catch (const util::format_error &e)
                     {
@@ -1295,7 +1294,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
                         ComponentId cumCovComponent = getComponentId(ctx, cumCov.getComponent());
                         for (auto deploy = deployTimes.begin(), end = deployTimes.end(); deploy != end; ++deploy)
                         {
-                            ctx.ext->timed.push_back(timed_deployment(deploy->first,
+                            ctx.timed->push_back(timed_deployment(deploy->first,
                                 TimedDeploymentKind::CUMULATIVE_HUMAN,
                                 CumulativeHumanParams{ TimedHumanParams::read(ctx, deploy->first, *deploy->second, intervention, subPop, complement), cumCovComponent }));
                         }
@@ -1304,7 +1303,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
                     {
                         for (auto deploy = deployTimes.begin(), end = deployTimes.end(); deploy != end; ++deploy)
                         {
-                            ctx.ext->timed.push_back(timed_deployment(deploy->first,
+                            ctx.timed->push_back(timed_deployment(deploy->first,
                                 TimedDeploymentKind::HUMAN,
                                 TimedHumanParams::read(ctx, deploy->first, *deploy->second, intervention, subPop, complement)));
                         }
@@ -1320,7 +1319,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
     if (intervElt.getImportedInfections().present())
     {
         const scnXml::ImportedInfections &ii = intervElt.getImportedInfections().get();
-        ctx.ext->importedInfections.init(ctx, ii);
+        ctx.importedInfections->init(ctx, ii);
     }
     // Must come after vaccines are initialised:
     if (intervElt.getInsertR_0Case().present())
@@ -1340,7 +1339,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             {
                 SimTime date = UnitParse::readDate(ctx.clock, it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
                 check_timed_date(ctx, date);
-                ctx.ext->timed.push_back(timed_deployment(date, TimedDeploymentKind::UNINFECT_VECTORS));
+                ctx.timed->push_back(timed_deployment(date, TimedDeploymentKind::UNINFECT_VECTORS));
             }
         }
     }
@@ -1364,7 +1363,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
                     {
                         SimTime date = UnitParse::readDate(ctx.clock, it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
                         check_timed_date(ctx, date);
-                        ctx.ext->timed.push_back(timed_deployment(date, TimedDeploymentKind::VECTOR, VectorDeployParams{instance}));
+                        ctx.timed->push_back(timed_deployment(date, TimedDeploymentKind::VECTOR, VectorDeployParams{instance}));
                     }
                     instance++;
                 }
@@ -1390,7 +1389,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
                         SimTime date =
                             UnitParse::readDate(ctx.clock, deploy.getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
                         SimTime lifespan = UnitParse::readDuration(ctx.clock, deploy.getLifespan(), UnitParse::NONE);
-                        ctx.ext->timed.push_back(timed_deployment(date, TimedDeploymentKind::ADD_NHH,
+                        ctx.timed->push_back(timed_deployment(date, TimedDeploymentKind::ADD_NHH,
                             read_add_nhh(ctx, date, elt.getName(), lifespan, elt.getDescription().getAnopheles(), transmission)));
                     }
                 }
@@ -1419,7 +1418,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
                         SimTime date = UnitParse::readDate(ctx.clock, it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
                         check_timed_date(ctx, date);
                         nhh_mods_setup(ctx, instance, elt.getNonHumanHostsName(), elt.getDescription().getAnopheles(), decay, transmission);
-                        ctx.ext->timed.push_back(timed_deployment(date, TimedDeploymentKind::NHH_MODS,
+                        ctx.timed->push_back(timed_deployment(date, TimedDeploymentKind::NHH_MODS,
                             NhhModsDeployParams{instance, elt.getNonHumanHostsName()}));
                     }
                     instance++;
@@ -1446,7 +1445,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
                         double ratio = deploy.getRatioToHumans();
                         SimTime lifespan = UnitParse::readDuration(ctx.clock, deploy.getLifespan(), UnitParse::NONE);
                         check_timed_date(ctx, date);
-                        ctx.ext->timed.push_back(timed_deployment(date, TimedDeploymentKind::TRAP,
+                        ctx.timed->push_back(timed_deployment(date, TimedDeploymentKind::TRAP,
                             TrapDeployParams{instance, ratio, lifespan}));
                     }
                 }
@@ -1460,29 +1459,29 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
     // lists must be sorted, increasing
     // For reproducability, we need to use stable_sort, not sort.
     // parity: b — stable_sort order = reproducibility contract; comparator ties resolve by insertion order
-    stable_sort(ctx.ext->continuous.begin(), ctx.ext->continuous.end(), byDeployTime);
-    stable_sort(ctx.ext->timed.begin(), ctx.ext->timed.end(), byDeployTime);
+    stable_sort(ctx.continuous->begin(), ctx.continuous->end(), byDeployTime);
+    stable_sort(ctx.timed->begin(), ctx.timed->end(), byDeployTime);
 
     // make sure the list ends with something always in the future, so we don't
-    // have to check ctx.ext->nextTimed is within range:
-    ctx.ext->timed.push_back(timed_deployment(sim::future(), TimedDeploymentKind::DUMMY));
+    // have to check ctx.nextTimed is within range:
+    ctx.timed->push_back(timed_deployment(sim::future(), TimedDeploymentKind::DUMMY));
 
     if (util::CommandLine::option(util::CommandLine::PRINT_INTERVENTIONS))
     {
         cout << "Continuous deployments:" << endl << "begin\tend\tage\tsub pop\tcompl\tcoverag\tcomponents" << endl;
-        for (auto it = ctx.ext->continuous.begin(); it != ctx.ext->continuous.end(); ++it)
+        for (auto it = ctx.continuous->begin(); it != ctx.continuous->end(); ++it)
         {
             it->print_details(std::cout);
             cout << endl;
         }
         cout << "Timed deployments:" << endl << "time\tmin age\tmax age\tsub pop\tcompl\tcoverag\tcomponents" << endl;
-        for (auto &deploy : ctx.ext->timed)
+        for (auto &deploy : (*ctx.timed))
         {
             print_timed_details(std::cout, deploy);
             cout << endl;
         }
         cout << "Human components:" << endl;
-        for (auto &component : ctx.ext->humanComponents)
+        for (auto &component : (*ctx.humanComponents))
         {
             print_component(cout, component);
             cout << endl;

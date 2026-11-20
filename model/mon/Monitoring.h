@@ -104,7 +104,7 @@ void initStores(RunContext& ctx, const std::vector<OutMeasure>& enabledMeasures,
 
 } // namespace internal
 
-// ----- info API (per-run state: ctx.ext->monitoring) -----
+// ----- info API (per-run state: (*ctx.monitoring)) -----
 
 size_t eventSurveyNumber(RunContext& ctx);
 size_t statSurveyNumber(RunContext& ctx);

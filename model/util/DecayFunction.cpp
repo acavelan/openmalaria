@@ -25,7 +25,7 @@
 #include <memory>
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "util/sampler.h"
 #include "util/UnitParse.h"
 #include "util/DecayFunction.h"

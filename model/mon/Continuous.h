@@ -70,7 +70,7 @@ namespace Continuous {
 	
 	/// Generate time-step's output. Called at beginning of time step.
         /// Passed population since some callbacks use this to generate output.
-	void update (const RunContext& ctx, Population &population);
+	void update (RunContext& ctx, Population &population);
 
 } // namespace Continuous
 } // namespace mon

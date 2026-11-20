@@ -21,9 +21,9 @@
  */
 
 #include "Clock.h"
-#include "core/RunContext.h"
-#include "core/RunExtensions.h"
+#include "RunContext.h"
 #include "interventions/IvState.h"
+#include "interventions/Components.h"
 #include "interventions/ITN.h"
 #include "interventions/IRS.h"
 #include "interventions/GVI.h"
@@ -46,7 +46,7 @@ void iv_deploy( RunContext& ctx, Host::Human& human, const ComponentConfig& para
             LocalRng& rng = human.rng();
             switch( r.kind ) {
             case Component::ITN: {
-                const ITNParams& p = *ctx.ext->itnComponents[r.id.id];
+                const ITNParams& p = *ctx.itnComponents[r.id.id];
                 r.deploy = ctx.clock.nowOrTs1();
                 r.disposal = ctx.clock.nowOrTs1() + p.attritionOfNets->sampleAgeOfDecay(rng);
                 r.n_holes = 0;
@@ -61,7 +61,7 @@ void iv_deploy( RunContext& ctx, Host::Human& human, const ComponentConfig& para
                 break; }
             case Component::IRS:
                 r.deploy = ctx.clock.nowOrTs1();
-                r.initial_insecticide = ctx.ext->irsComponents[r.id.id]->sampleInitialInsecticide(rng);
+                r.initial_insecticide = ctx.irsComponents[r.id.id]->sampleInitialInsecticide(rng);
                 break;
             default:  // GVI: only the timestamp resets
                 r.deploy = ctx.clock.nowOrTs1();
@@ -78,7 +78,7 @@ void iv_deploy( RunContext& ctx, Host::Human& human, const ComponentConfig& para
     LocalRng& rng = human.rng();
     switch( r.kind ) {
     case Component::ITN: {
-        const ITNParams& p = *ctx.ext->itnComponents[r.id.id];
+        const ITNParams& p = *ctx.itnComponents[r.id.id];
         // Net rips and insecticide loss are assumed to co-vary dependent on
         // handling of net. They are sampled once per human: human handling
         // is presumed to be the largest cause of variance.
@@ -100,13 +100,13 @@ void iv_deploy( RunContext& ctx, Host::Human& human, const ComponentConfig& para
     case Component::IRS: {
         // parity: draw order — old HumanIRS ctor member-init sampled
         // insecticide BEFORE the decay het (both per deployment / per human)
-        const IRSParams& p = *ctx.ext->irsComponents[r.id.id];
+        const IRSParams& p = *ctx.irsComponents[r.id.id];
         r.initial_insecticide = p.sampleInitialInsecticide(rng);
         r.decay = p.insecticideDecay.get();
         r.decay_factor = p.insecticideDecay->sample_het_factor(rng);
         break; }
     case Component::GVI: {
-        const GVIParams& p = *ctx.ext->gviComponents[r.id.id];
+        const GVIParams& p = *ctx.gviComponents[r.id.id];
         // Varience factor of decay is sampled once per human: human is
         // assumed to account for most variance.
         r.decay = p.decay.get();
@@ -139,7 +139,7 @@ void iv_update( RunContext& ctx, Host::Human& human )
 
         double lambda = r.n_holes * r.rip_rate;
         if (lambda > 0)
-            r.hole_index += ctx.ext->itnComponents[r.id.id]->ripFactor * human.rng().poisson( lambda );
+            r.hole_index += ctx.itnComponents[r.id.id]->ripFactor * human.rng().poisson( lambda );
     }
 }
 
@@ -162,18 +162,18 @@ double iv_rel_attractiveness( RunContext& ctx, const IvRecord& r, size_t species
     switch( r.kind ) {
     case Component::ITN: {
         if( r.deploy == sim::never() ) return 1.0;
-        const ITNParams& params = *ctx.ext->itnComponents[r.id.id];
+        const ITNParams& params = *ctx.itnComponents[r.id.id];
         const ITNParams::ITNAnopheles& anoph = params.species[speciesIndex];
         return anoph.relativeAttractiveness( r.hole_index, insecticide_content(ctx, r) );
     }
     case Component::IRS: {
-        const IRSParams& params = *ctx.ext->irsComponents[r.id.id];
+        const IRSParams& params = *ctx.irsComponents[r.id.id];
         const IRSParams::IRSAnopheles& anoph = params.species[speciesIndex];
         double effect = anoph.relativeAttractiveness( insecticide_content(ctx, r) );
         return anoph.byProtection( effect );
     }
     case Component::GVI: {
-        const GVIParams& params = *ctx.ext->gviComponents[r.id.id];
+        const GVIParams& params = *ctx.gviComponents[r.id.id];
         const GVIParams::GVIAnopheles& anoph = params.species[speciesIndex];
         double effect = (1.0 - anoph.deterrency * gvi_survival(ctx, r));
         return anoph.byProtection( effect );
@@ -186,18 +186,18 @@ double iv_preprandial_survival( RunContext& ctx, const IvRecord& r, size_t speci
     switch( r.kind ) {
     case Component::ITN: {
         if( r.deploy == sim::never() ) return 1.0;
-        const ITNParams& params = *ctx.ext->itnComponents[r.id.id];
+        const ITNParams& params = *ctx.itnComponents[r.id.id];
         const ITNParams::ITNAnopheles& anoph = params.species[speciesIndex];
         return anoph.preprandialSurvivalFactor( r.hole_index, insecticide_content(ctx, r) );
     }
     case Component::IRS: {
-        const IRSParams& params = *ctx.ext->irsComponents[r.id.id];
+        const IRSParams& params = *ctx.irsComponents[r.id.id];
         const IRSParams::IRSAnopheles& anoph = params.species[speciesIndex];
         double effect = anoph.preprandialSurvivalFactor( insecticide_content(ctx, r) );
         return anoph.byProtection( effect );
     }
     case Component::GVI: {
-        const GVIParams& params = *ctx.ext->gviComponents[r.id.id];
+        const GVIParams& params = *ctx.gviComponents[r.id.id];
         const GVIParams::GVIAnopheles& anoph = params.species[speciesIndex];
         double effect = (1.0 - anoph.preprandialKilling * gvi_survival(ctx, r));
         return anoph.byProtection( effect );
@@ -210,18 +210,18 @@ double iv_postprandial_survival( RunContext& ctx, const IvRecord& r, size_t spec
     switch( r.kind ) {
     case Component::ITN: {
         if( r.deploy == sim::never() ) return 1.0;
-        const ITNParams& params = *ctx.ext->itnComponents[r.id.id];
+        const ITNParams& params = *ctx.itnComponents[r.id.id];
         const ITNParams::ITNAnopheles& anoph = params.species[speciesIndex];
         return anoph.postprandialSurvivalFactor( r.hole_index, insecticide_content(ctx, r) );
     }
     case Component::IRS: {
-        const IRSParams& params = *ctx.ext->irsComponents[r.id.id];
+        const IRSParams& params = *ctx.irsComponents[r.id.id];
         const IRSParams::IRSAnopheles& anoph = params.species[speciesIndex];
         double effect = anoph.postprandialSurvivalFactor( insecticide_content(ctx, r) );
         return anoph.byProtection( effect );
     }
     case Component::GVI: {
-        const GVIParams& params = *ctx.ext->gviComponents[r.id.id];
+        const GVIParams& params = *ctx.gviComponents[r.id.id];
         const GVIParams::GVIAnopheles& anoph = params.species[speciesIndex];
         double effect = (1.0 - anoph.postprandialKilling * gvi_survival(ctx, r));
         return anoph.byProtection( effect );
@@ -234,18 +234,18 @@ double iv_rel_fecundity( RunContext& ctx, const IvRecord& r, size_t speciesIndex
     switch( r.kind ) {
     case Component::ITN: {
         if( r.deploy == sim::never() ) return 1.0;
-        const ITNParams& params = *ctx.ext->itnComponents[r.id.id];
+        const ITNParams& params = *ctx.itnComponents[r.id.id];
         const ITNParams::ITNAnopheles& anoph = params.species[speciesIndex];
         return anoph.relFecundity( r.hole_index, insecticide_content(ctx, r) );
     }
     case Component::IRS: {
-        const IRSParams& params = *ctx.ext->irsComponents[r.id.id];
+        const IRSParams& params = *ctx.irsComponents[r.id.id];
         const IRSParams::IRSAnopheles& anoph = params.species[speciesIndex];
         double effect = anoph.fecundityEffect( insecticide_content(ctx, r) );
         return anoph.byProtection( effect );
     }
     case Component::GVI: {
-        const GVIParams& params = *ctx.ext->gviComponents[r.id.id];
+        const GVIParams& params = *ctx.gviComponents[r.id.id];
         const GVIParams::GVIAnopheles& anoph = params.species[speciesIndex];
         double effect = (1.0 - anoph.fecundityReduction * gvi_survival(ctx, r));
         return anoph.byProtection( effect );

@@ -29,8 +29,7 @@
 #include "sections.h"
 
 #include "Clock.h"
-#include "core/RunContext.h"
-#include "core/RunExtensions.h"
+#include "RunContext.h"
 #include "Host/NeonatalMortality.h"
 #include "Host/InfectionIncidenceModel.h"
 #include "Host/ImportedInfections.h"
@@ -83,7 +82,7 @@ void ckStatics (Archive& a, RunContext& ctx) {
     if (a.reading())
         ctx.genotypes.current_mode =
             WithinHost::Genotypes::SampleMode (mode);
-    ctx.ext->importedInfections.checkpoint (a);
+    ctx.importedInfections->checkpoint (a);
 }
 
 namespace {
@@ -102,17 +101,16 @@ void fixedVector (Archive& a, std::vector<T>& v) {
 } // namespace
 
 void ckMonitoring (Archive& a, RunContext& ctx) {
-    auto& ext = *ctx.ext;
     // Continuous output: resume position in the cts file (header written by
     // Continuous::init; rows are flushed per record, so this is exact).
-    a.value (ext.ctsStreamOffset);
-    if (a.reading() && ext.ctsPeriod != sim::zero()) {
-        ext.ctsOStream.seekp (ext.ctsStreamOffset, std::ios::beg);
-        if (ext.ctsOStream.fail())
+    a.value (ctx.ctsStreamOffset);
+    if (a.reading() && ctx.ctsPeriod != sim::zero()) {
+        ctx.ctsOStream.seekp (ctx.ctsStreamOffset, std::ios::beg);
+        if (ctx.ctsOStream.fail())
             throw checkpoint_error ("continuous output: can't seek to saved position");
     }
 
-    auto& rt = ext.monitoring;
+    auto& rt = *ctx.monitoring;
     a.boolean (rt.isInit);
     a.value (rt.surveyIndex);
     a.value (rt.survNumEvent);

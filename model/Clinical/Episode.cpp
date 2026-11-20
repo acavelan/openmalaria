@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Clinical/Episode.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"

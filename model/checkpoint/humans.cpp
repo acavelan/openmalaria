@@ -40,8 +40,7 @@
 #include "Clinical/ClinicalModel.h"
 #include "Clinical/Episode.h"
 #include "PkPd/LSTMDrug.h"
-#include "core/RunContext.h"
-#include "core/RunExtensions.h"
+#include "RunContext.h"
 
 namespace OM {
 
@@ -286,13 +285,13 @@ void ckWH (Archive& a, RunContext& ctx, WHInterface& wh, util::LocalRng& rng) {
             // set); the other Common kinds use the factory from WH init.
             // Constructor draws are overwritten, like the Human ctor's.
             const bool desc = wh.m_kind == WHInterface::Kind::Descriptive;
-            if (!desc && ctx.ext->createInfection == nullptr)
+            if (!desc && ctx.createInfection == nullptr)
                 throw checkpoint_error ("within-host infection factory unset");
             for (uint64_t i = 0; i < n; ++i) {
                 WithinHost::Infection* inf = desc ?
                     WithinHost::infection_new (ctx, rng, 0, 0,
                         WithinHost::Infection::Kind::Descriptive) :
-                    ctx.ext->createInfection (ctx, rng, 0, 0);
+                    ctx.createInfection (ctx, rng, 0, 0);
                 inf->checkpoint (a);
                 wh.infections.push_back (inf);
             }

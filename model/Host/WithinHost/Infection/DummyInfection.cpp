@@ -21,7 +21,6 @@
  */
 
 #include "Host/WithinHost/Infection/Infection.h"
-#include "core/RunExtensions.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/ModelOptions.h"
 
@@ -36,7 +35,7 @@ Infection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID
 }
 
 void infection_init_dummy (RunContext& ctx) {
-    ctx.ext->createInfection = &createDummyInfection;
+    ctx.createInfection = &createDummyInfection;
 }
 
 bool update_density_dummy( Infection& inf, LocalRng& rng, double survivalFactor, SimTime, double ){
