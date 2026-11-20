@@ -24,9 +24,8 @@
 #define OM_INTERVENTIONS_ITN
 
 #include "core/RunContext.h"
+#include "interventions/ComponentId.h"
 #include "util/DecayFunction.h"
-#include "Transmission/VectorIntervention.h"
-#include "interventions/IvState.h"
 #include "util/sampler.h"
 namespace scnXml
 {
@@ -155,28 +154,17 @@ namespace factors {
 
 // —————  main, public classes  —————
 
-class ITNComponent : public Transmission::HumanVectorInterventionComponent {
+// ITN component parameters (phase 7.2b: plain Component payload struct; the
+// HumanInterventionComponent/HumanVectorInterventionComponent class bases and
+// the virtual deploy/componentType/print_details are gone — deployment is the
+// deploy_component switch in model/xml/HumanInterventionComponents.h).
+struct ITNParams {
 public:
-    ITNComponent( RunContext& ctx, ComponentId id, const scnXml::ITNDescription& elt,
+    ITNParams( RunContext& ctx, ComponentId id, const scnXml::ITNDescription& elt,
                const map< string, size_t >& species_name_map );
     
-    virtual void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const;
+    // members are public: read by the iv_* record functions (interventions/IvState)
     
-    virtual Component::Type componentType() const;
-    
-    virtual void print_details( std::ostream& out )const;
-    
-    // parameters are read by the iv_* record functions (interventions/IvState)
-    friend void iv_deploy( RunContext&, Host::Human&, const Transmission::HumanVectorInterventionComponent& );
-    friend void iv_update( RunContext&, Host::Human& );
-    friend double iv_rel_attractiveness( RunContext&, const IvRecord&, size_t );
-    friend double iv_preprandial_survival( RunContext&, const IvRecord&, size_t );
-    friend double iv_postprandial_survival( RunContext&, const IvRecord&, size_t );
-    friend double iv_rel_fecundity( RunContext&, const IvRecord&, size_t );
-    friend void iv_checkpoint( RunContext&, std::vector<IvRecord>&, ostream& );
-    friend void iv_checkpoint( RunContext&, std::vector<IvRecord>&, istream& );
-    
-private:
     /** Per mosquito-species parameters for extended ITN model. */
     class ITNAnopheles {
     public:

@@ -759,9 +759,8 @@ void factors::RelativeAttractiveness::initTwoStage (
     }
 }
 
-ITNComponent::ITNComponent( RunContext& ctx, ComponentId id, const scnXml::ITNDescription& elt,
+ITNParams::ITNParams( RunContext& ctx, ComponentId /*id*/, const scnXml::ITNDescription& elt,
         const map<string, size_t>& species_name_map ) :
-        Transmission::HumanVectorInterventionComponent(id),
         ripFactor( numeric_limits<double>::signaling_NaN() )
 {
     initialInsecticide.setParams( elt.getInitialInsecticide() );
@@ -795,11 +794,9 @@ ITNComponent::ITNComponent( RunContext& ctx, ComponentId id, const scnXml::ITNDe
     }
     checker.checkNoneMissed();
     
-    if( ctx.ext->itnComponents.size() <= id.id ) ctx.ext->itnComponents.resize( id.id+1, 0 );
-    ctx.ext->itnComponents[id.id] = this;
 }
 
-void ITNComponent::ITNAnopheles::init(
+void ITNParams::ITNAnopheles::init(
     const scnXml::ITNDescription::AnophelesParamsType& elt,
     double proportionUse,
     double maxInsecticide)
@@ -871,9 +868,8 @@ void ITNComponent::ITNAnopheles::init(
     proportionUnprotected = 1.0 - proportionProtected;
 }
 
-IRSComponent::IRSComponent( RunContext& ctx, ComponentId id, const scnXml::IRSDescription& elt,
-        const map<string,size_t>& species_name_map ) :
-        Transmission::HumanVectorInterventionComponent(id)
+IRSParams::IRSParams( RunContext& ctx, ComponentId /*id*/, const scnXml::IRSDescription& elt,
+        const map<string,size_t>& species_name_map )
 {
     initialInsecticide.setParams( elt.getInitialInsecticide() );
     const double maxProp = 0.999;       //NOTE: this could be exposed in XML, but probably doesn't need to be
@@ -901,11 +897,9 @@ IRSComponent::IRSComponent( RunContext& ctx, ComponentId id, const scnXml::IRSDe
     }
     checker.checkNoneMissed();
     
-    if( ctx.ext->irsComponents.size() <= id.id ) ctx.ext->irsComponents.resize( id.id+1, 0 );
-    ctx.ext->irsComponents[id.id] = this;
 }
 
-void IRSComponent::IRSAnopheles::init(
+void IRSParams::IRSAnopheles::init(
     const scnXml::IRSDescription::AnophelesParamsType& elt,
     double proportionUse,
     double maxInsecticide)
@@ -929,7 +923,7 @@ void IRSComponent::IRSAnopheles::init(
     proportionUnprotected = 1.0 - proportionProtected;
 }
 
-void IRSComponent::IRSAnopheles::RelativeAttractiveness::init(const scnXml::IRSDeterrency& elt){
+void IRSParams::IRSAnopheles::RelativeAttractiveness::init(const scnXml::IRSDeterrency& elt){
     double PF = elt.getInsecticideFactor();
     insecticideScaling = elt.getInsecticideScalingFactor();
     if( !( PF > 0.0) ){
@@ -958,7 +952,7 @@ void IRSComponent::IRSAnopheles::RelativeAttractiveness::init(const scnXml::IRSD
     lPF = log( PF );
 }
 
-void IRSComponent::IRSAnopheles::SurvivalFactor::init(const scnXml::IRSKillingEffect& elt,
+void IRSParams::IRSAnopheles::SurvivalFactor::init(const scnXml::IRSKillingEffect& elt,
                                                    bool postPrandial, double maxInsecticide){
     BF = elt.getBaseFactor();
     PF = elt.getInsecticideFactor();
@@ -1012,9 +1006,8 @@ void IRSComponent::IRSAnopheles::SurvivalFactor::init(const scnXml::IRSKillingEf
     }
 }
 
-GVIComponent::GVIComponent( RunContext& ctx, ComponentId id, const scnXml::GVIDescription& elt,
-        const map<string,size_t>& species_name_map ) :
-        Transmission::HumanVectorInterventionComponent(id)
+GVIParams::GVIParams( RunContext& ctx, ComponentId /*id*/, const scnXml::GVIDescription& elt,
+        const map<string,size_t>& species_name_map )
 {
     decay = DecayFunction::makeObject( ctx.clock, elt.getDecay(), "interventions.human.vector.decay" );
     // assume usage modifier is 100% if none is specified
@@ -1038,11 +1031,9 @@ GVIComponent::GVIComponent( RunContext& ctx, ComponentId id, const scnXml::GVIDe
     }
     checker.checkNoneMissed();
     
-    if( ctx.ext->gviComponents.size() <= id.id ) ctx.ext->gviComponents.resize( id.id+1, 0 );
-    ctx.ext->gviComponents[id.id] = this;
 }
 
-void GVIComponent::GVIAnopheles::init(const scnXml::GVIDescription::AnophelesParamsType& elt,
+void GVIParams::GVIAnopheles::init(const scnXml::GVIDescription::AnophelesParamsType& elt,
                                           double proportionUse)
 {
     assert( (std::isnan)(deterrency) ); // double init
@@ -1061,8 +1052,7 @@ void GVIComponent::GVIAnopheles::init(const scnXml::GVIDescription::AnophelesPar
     proportionUnprotected = 1.0 - proportionProtected;
 }
 
-VaccineComponent::VaccineComponent( RunContext& ctx, ComponentId component, const scnXml::VaccineDescription& vd, Vaccine::Types type ) :
-        HumanInterventionComponent(component),
+VaccineParams::VaccineParams( RunContext& ctx, ComponentId component, const scnXml::VaccineDescription& vd, Vaccine::Types type ) :
         type(type),
         decayFunc(DecayFunction::makeObject( ctx.clock, vd.getDecay(), "decay" )),
         efficacyB(vd.getEfficacyB().getValue())
@@ -1151,12 +1141,17 @@ VaccineComponent::VaccineComponent( RunContext& ctx, ComponentId component, cons
     for(size_t i = 0; i < initialMeanEfficacy.size(); ++i)
         initialMeanEfficacy[i] = ies[i].getValue();*/
     
-    if( ctx.ext->vaccineComponents.size() <= component.id ) ctx.ext->vaccineComponents.resize( component.id + 1 );
-    assert( ctx.ext->vaccineComponents[component.id] == 0 );
-    ctx.ext->vaccineComponents[component.id] = this;
 }
 
 // ———  InterventionManager  ———
+
+/// Register a per-type component parameter payload under id.
+template<typename T>
+static void reg_at( std::vector<const T*>& v, ComponentId id, const T* p ){
+    if( v.size() <= id.id ) v.resize( id.id + 1, nullptr );
+    assert( v[id.id] == nullptr );
+    v[id.id] = p;
+}
 
 void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &intervElt, const Population &population,
                                Transmission::TransmissionModel &transmission)
@@ -1244,59 +1239,71 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
                 if (removeOpts.getAfterYears().present()) { expireAfter = ctx.clock.from_years_n(removeOpts.getAfterYears().get()); }
             }
 
-            HumanInterventionComponent *hiComponent;
-            if (component.getScreen().present()) { hiComponent = new ScreenComponent(ctx, id, component.getScreen().get()); }
-            else if (component.getTreatSimple().present())
-            {
-                hiComponent = new TreatSimpleComponent(ctx, id, component.getTreatSimple().get());
+            ComponentConfig comp{id, Component::RECRUIT_ONLY, expireAfter, RecruitOnlyParams{}};
+            if (component.getScreen().present()) {
+                comp.kind = Component::SCREEN;
+                comp.data.emplace<ScreenParams>(ctx, component.getScreen().get());
             }
-            else if (component.getTreatPKPD().present())
-            {
-                hiComponent = new TreatPKPDComponent(ctx, id, component.getTreatPKPD().get());
+            else if (component.getTreatSimple().present()) {
+                comp.kind = Component::TREAT_SIMPLE;
+                comp.data.emplace<TreatSimpleParams>(ctx, component.getTreatSimple().get());
             }
-            else if (component.getDecisionTree().present())
-            {
-                hiComponent = new DecisionTreeComponent(ctx, id, component.getDecisionTree().get());
+            else if (component.getTreatPKPD().present()) {
+                comp.kind = Component::TREAT_PKPD;
+                comp.data.emplace<TreatPKPDParams>(ctx, component.getTreatPKPD().get());
             }
-            else if (component.getPEV().present())
-            {
-                hiComponent = new VaccineComponent(ctx, id, component.getPEV().get(), Vaccine::PEV);
+            else if (component.getDecisionTree().present()) {
+                comp.kind = Component::CM_DT;
+                comp.data.emplace<DecisionTreeParams>(ctx, component.getDecisionTree().get());
             }
-            else if (component.getBSV().present())
-            {
-                hiComponent = new VaccineComponent(ctx, id, component.getBSV().get(), Vaccine::BSV);
+            else if (component.getPEV().present()) {
+                comp.kind = Component::PEV;
+                comp.data.emplace<VaccineParams>(ctx, id, component.getPEV().get(), Vaccine::PEV);
             }
-            else if (component.getTBV().present())
-            {
-                hiComponent = new VaccineComponent(ctx, id, component.getTBV().get(), Vaccine::TBV);
+            else if (component.getBSV().present()) {
+                comp.kind = Component::BSV;
+                comp.data.emplace<VaccineParams>(ctx, id, component.getBSV().get(), Vaccine::BSV);
             }
-            else if (component.getITN().present())
-            {
-                hiComponent = new ITNComponent(ctx, id, component.getITN().get(), species_index_map);
+            else if (component.getTBV().present()) {
+                comp.kind = Component::TBV;
+                comp.data.emplace<VaccineParams>(ctx, id, component.getTBV().get(), Vaccine::TBV);
             }
-            else if (component.getIRS().present())
-            {
-                hiComponent = new IRSComponent(ctx, id, component.getIRS().get(), species_index_map);
+            else if (component.getITN().present()) {
+                comp.kind = Component::ITN;
+                comp.data.emplace<ITNParams>(ctx, id, component.getITN().get(), species_index_map);
             }
-            else if (component.getGVI().present())
-            {
-                hiComponent = new GVIComponent(ctx, id, component.getGVI().get(), species_index_map);
+            else if (component.getIRS().present()) {
+                comp.kind = Component::IRS;
+                comp.data.emplace<IRSParams>(ctx, id, component.getIRS().get(), species_index_map);
             }
-            else if (component.getRecruitmentOnly().present())
-            {
-                hiComponent = new RecruitmentOnlyComponent(id);
+            else if (component.getGVI().present()) {
+                comp.kind = Component::GVI;
+                comp.data.emplace<GVIParams>(ctx, id, component.getGVI().get(), species_index_map);
             }
-            else if (component.getClearImmunity().present())
-            {
-                hiComponent = new ClearImmunityComponent(id);
+            else if (component.getRecruitmentOnly().present()) {
+            }
+            else if (component.getClearImmunity().present()) {
+                comp.kind = Component::CLEAR_IMMUNITY;  // no payload (cf. RecruitOnly)
             }
             else
             {
                 throw util::xml_scenario_error("expected intervention.human.component element to have a "
                                                "child, didn't find it (perhaps I need updating)");
             }
-            hiComponent->setExpireAfter(expireAfter);
-            ctx.ext->humanComponents.push_back(unique_ptr<HumanInterventionComponent>(hiComponent));
+            ctx.ext->humanComponents.push_back(std::move(comp));
+        }
+
+        // Fill per-type parameter registries. Payload pointers stay valid:
+        // humanComponents is append-only and never shrinks (7.2b).
+        for (auto& c : ctx.ext->humanComponents) {
+            switch (c.kind) {
+            case Component::ITN: reg_at(ctx.ext->itnComponents, c.id, &std::get<ITNParams>(c.data)); break;
+            case Component::IRS: reg_at(ctx.ext->irsComponents, c.id, &std::get<IRSParams>(c.data)); break;
+            case Component::GVI: reg_at(ctx.ext->gviComponents, c.id, &std::get<GVIParams>(c.data)); break;
+            case Component::PEV: case Component::BSV: case Component::TBV:
+                reg_at(ctx.ext->vaccineComponents, c.id, &std::get<VaccineParams>(c.data)); break;
+            default: break;
+            }
         }
 
         // 2. Read the list of deployments
@@ -1610,7 +1617,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
         cout << "Human components:" << endl;
         for (auto &component : ctx.ext->humanComponents)
         {
-            component->print_details(cout);
+            print_component(cout, component);
             cout << endl;
         }
     }

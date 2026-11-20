@@ -50,7 +50,20 @@ unittest 3,794 LOC; `interventions/` dir 2,837 LOC (cloc); p6 bench **12.58s** m
    sites → `human.vaccine_factor(type, genotype=0)` method (Human.cpp one-liner).
    Draw order kept: first dose het BEFORE per-genotype beta draws; getFactor
    product = insertion order (parity c); age = ts1()−time_last.
-   [ ] 7.2b config-side HumanInterventionComponent tree flatten (deploy switch).
+   [x] 7.2b config-side HumanInterventionComponent tree FLATTENED.
+   `Component{ id, kind, duration, variant<RecruitOnly|Screen|TreatSimple|
+   TreatPKPD|DecisionTree|VaccineParams|ITNParams|IRSParams|GVIParams> }` in new
+   interventions/Components.h (name ComponentConfig — Component::Type is an
+   enum-namespace, clash); `deploy_component`/`print_component` switches in
+   xml/HumanInterventionComponents.h (draw/mon order verbatim; ITN/IRS/GVI:
+   iv_deploy BEFORE recordDeploy). HumanIntervention stores ComponentIds,
+   stable_sort by kind (contract b preserved); registries = payload pointers,
+   filled pass-2 after component loop (append-only vector). Base classes
+   HumanInterventionComponent/HumanVectorInterventionComponent + VectorIntervention.h
+   + asVectorIntervention + getComponent + ALL friend blocks DEAD (payloads
+   public). ITN.h/IRS.h/GVI.h now leaf-ish (no Interfaces include). interventions/
+   = 1,456 code LOC (plan ceiling 1,350–1,550: inside). PRINT_INTERVENTIONS
+   output byte-checked vs A0 (2ITNs + PEV).
 3. [ ] 7.3 ITN 3-state columns NEVER/ACTIVE/DISCARDED + §9 scalars; draw order EXACT
    (1 shared NormalSample → hole/rip/insecticide-decay (0 extra draws), attrition age
    (0–1 draws), initial insecticide; update = Poisson(holes) then Poisson(rips) only if
@@ -119,7 +132,16 @@ unittest 3,794 LOC; `interventions/` dir 2,837 LOC (cloc); p6 bench **12.58s** m
   do NOT "fix").
 
 ## Gates log
-- (7.2a-ii, this commit) vaccine → `vac` record column. Deleted
+- (7.2b, this commit) config-side flatten: HumanInterventionComponent class
+  tree (10 classes, 2 base levels) → ComponentConfig{kind, variant payload} +
+  deploy_component/print_component switches. Deleted VectorIntervention.h
+  (asVectorIntervention seam had no callers since 7.2a-i), getComponent, all
+  friend blocks, per-class componentType/print_details. Registries payload
+  ptrs, pass-2 fill. Draw/mon order verbatim incl. iv_deploy-before-report and
+  addToCohort-before-deploy. build clean; unittest 94/94; ctest 52/52; T1 a
+  53/53; T1 b 1-4 4/4; PRINT_INTERVENTIONS stdout diff == A0 (2ITNs, PEV).
+  interventions/ 2,549→1,456 code LOC total since 7.2a start.
+- (7.2a-ii, earlier commit) vaccine → `vac` record column. Deleted
   PerHumanVaccine/PerEffectPerHumanVaccine + Human::vaccine member +
   possiblyVaccinate/getFactor methods; Human::vaccine_factor method wraps
   interventions::vaccine_factor free fn (Vaccine.cpp; VaccineComponent

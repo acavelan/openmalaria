@@ -148,19 +148,8 @@ double factors::RelativeAttractiveness::relativeAttractiveness (
 }
 
 
-// —————  main, public classes  —————
-
-void ITNComponent::deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
-    iv_deploy( ctx, human, *this );
-    mon::recordDeploy(mon::measure("nMassITNs"), mon::measure("nEPI_ITNs"), human, method);
-}
-
-Component::Type ITNComponent::componentType() const{
-    return Component::ITN;
-}
-
-void ITNComponent::print_details( std::ostream& out )const{
-    out << id().id << "\tITN";
-}
+// —————  main, public class  —————
+// (phase 7.2b: deploy/componentType/print_details virtuals are gone — the
+// deploy_component switch calls iv_deploy + the mon report)
 
 } }

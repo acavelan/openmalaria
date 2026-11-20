@@ -24,9 +24,7 @@
 #define OM_INTERVENTIONS_GVI
 
 #include "core/RunContext.h"
-#include "Transmission/VectorIntervention.h"
-#include "interventions/Interfaces.h"
-#include "interventions/IvState.h"
+#include "interventions/ComponentId.h"
 #include "util/DecayFunction.h"
 #include "util/sampler.h"
 namespace scnXml
@@ -39,32 +37,19 @@ namespace OM { namespace interventions {
     using util::DecayFunction;
     using util::LocalRng;
 
-/** Constant parameters for generic vector intervention model. */
-class GVIComponent : public Transmission::HumanVectorInterventionComponent {
+/** Constant parameters for generic vector intervention model (phase 7.2b:
+ * plain Component payload struct — cf. ITNParams; members public: read by
+ * the iv_* record functions). */
+struct GVIParams {
 public:
     /** Initialise parameters
      * 
      * @param elt Component description from XML
      * @param species_name_map Map of species names to indices.
      */
-    GVIComponent( RunContext& ctx, ComponentId, const scnXml::GVIDescription& elt,
+    GVIParams( RunContext& ctx, ComponentId, const scnXml::GVIDescription& elt,
                const map<string,size_t>& species_name_map );
     
-    void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const;
-    
-    virtual Component::Type componentType() const;
-    
-    virtual void print_details( std::ostream& out )const;
-    
-    // parameters are read by the iv_* record functions (interventions/IvState)
-    friend void iv_deploy( RunContext&, Host::Human&, const Transmission::HumanVectorInterventionComponent& );
-    friend double iv_rel_attractiveness( RunContext&, const IvRecord&, size_t );
-    friend double iv_preprandial_survival( RunContext&, const IvRecord&, size_t );
-    friend double iv_postprandial_survival( RunContext&, const IvRecord&, size_t );
-    friend double iv_rel_fecundity( RunContext&, const IvRecord&, size_t );
-    friend void iv_checkpoint( RunContext&, std::vector<IvRecord>&, istream& );
-    
-private:
     /** Per mosquito-species parameters for generic vector intervention model. */
     class GVIAnopheles {
     public:
@@ -89,11 +74,6 @@ private:
         double preprandialKilling;
         double postprandialKilling;
         double fecundityReduction;
-        
-        friend double iv_rel_attractiveness( RunContext&, const IvRecord&, size_t );
-        friend double iv_preprandial_survival( RunContext&, const IvRecord&, size_t );
-        friend double iv_postprandial_survival( RunContext&, const IvRecord&, size_t );
-        friend double iv_rel_fecundity( RunContext&, const IvRecord&, size_t );
     };
     
     unique_ptr<DecayFunction> decay;

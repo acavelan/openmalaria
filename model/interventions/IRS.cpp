@@ -33,34 +33,26 @@
 
 namespace OM { namespace interventions {
 
-void IRSComponent::deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
-    iv_deploy( ctx, human, *this );
-    mon::recordDeploy(mon::measure("nMassIRS"), mon::measure("nCtsIRS"), human, method);
-}
+// (phase 7.2b: deploy/componentType/print_details virtuals are gone — the
+// deploy_component switch calls iv_deploy + the mon report)
 
-Component::Type IRSComponent::componentType()const{ return Component::IRS; }
-
-void IRSComponent::print_details( std::ostream& out )const{
-    out << id().id << "\tIRS";
-}
-
-IRSComponent::IRSAnopheles::RelativeAttractiveness::RelativeAttractiveness() :
+IRSParams::IRSAnopheles::RelativeAttractiveness::RelativeAttractiveness() :
     lPF( numeric_limits< double >::signaling_NaN() ),
     insecticideScaling( numeric_limits< double >::signaling_NaN() )
 {}
-IRSComponent::IRSAnopheles::SurvivalFactor::SurvivalFactor() :
+IRSParams::IRSAnopheles::SurvivalFactor::SurvivalFactor() :
     BF( numeric_limits< double >::signaling_NaN() ),
     PF( numeric_limits< double >::signaling_NaN() ),
     insecticideScaling( numeric_limits< double >::signaling_NaN() ),
     invBaseSurvival( numeric_limits< double >::signaling_NaN() )
 {}
-void IRSComponent::IRSAnopheles::SurvivalFactor::init1(){
+void IRSParams::IRSAnopheles::SurvivalFactor::init1(){
     BF = 0.0;
     PF = 0.0;
     insecticideScaling = 0.0;
     invBaseSurvival = 1.0;
 }
-double IRSComponent::IRSAnopheles::RelativeAttractiveness::relativeAttractiveness(
+double IRSParams::IRSAnopheles::RelativeAttractiveness::relativeAttractiveness(
         double insecticideContent
 ) const {
     double insecticideComponent = 1.0 - exp(-insecticideContent*insecticideScaling);
@@ -68,7 +60,7 @@ double IRSComponent::IRSAnopheles::RelativeAttractiveness::relativeAttractivenes
     assert( relAvail>=0.0 );
     return relAvail;
 }
-double IRSComponent::IRSAnopheles::SurvivalFactor::survivalFactor(
+double IRSParams::IRSAnopheles::SurvivalFactor::survivalFactor(
         double insecticideContent
 ) const {
     double insecticideComponent = 1.0 - exp(-insecticideContent*insecticideScaling);
@@ -79,7 +71,7 @@ double IRSComponent::IRSAnopheles::SurvivalFactor::survivalFactor(
     return survivalFactor;
 }
 
-double IRSComponent::sampleInitialInsecticide(LocalRng& rng) const{
+double IRSParams::sampleInitialInsecticide(LocalRng& rng) const{
     double sample = initialInsecticide.sample(rng);
     if( sample < 0.0 )
         sample = 0.0;       // avoid negative samples

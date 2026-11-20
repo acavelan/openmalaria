@@ -24,9 +24,8 @@
 #define OM_INTERVENTIONS_IRS
 
 #include "core/RunContext.h"
+#include "interventions/ComponentId.h"
 #include "util/DecayFunction.h"
-#include "Transmission/VectorIntervention.h"
-#include "interventions/IvState.h"
 namespace scnXml
 {
     class IRSDescription;
@@ -41,26 +40,13 @@ namespace interventions {
     using util::NormalSampler;
     using util::LocalRng;
 
-class IRSComponent : public Transmission::HumanVectorInterventionComponent {
+// IRS component parameters (phase 7.2b: plain Component payload struct —
+// cf. ITNParams). Members public: read by the iv_* record functions.
+struct IRSParams {
 public:
-    IRSComponent( RunContext& ctx, ComponentId id, const scnXml::IRSDescription& elt,
+    IRSParams( RunContext& ctx, ComponentId id, const scnXml::IRSDescription& elt,
         const map<string,size_t>& species_name_map );
     
-    virtual void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const;
-    
-    virtual Component::Type componentType() const;
-    
-    virtual void print_details( std::ostream& out )const;
-    
-    // parameters are read by the iv_* record functions (interventions/IvState)
-    friend void iv_deploy( RunContext&, Host::Human&, const Transmission::HumanVectorInterventionComponent& );
-    friend double iv_rel_attractiveness( RunContext&, const IvRecord&, size_t );
-    friend double iv_preprandial_survival( RunContext&, const IvRecord&, size_t );
-    friend double iv_postprandial_survival( RunContext&, const IvRecord&, size_t );
-    friend double iv_rel_fecundity( RunContext&, const IvRecord&, size_t );
-    friend void iv_checkpoint( RunContext&, std::vector<IvRecord>&, istream& );
-    
-private:
     /** Per mosquito-species parameters for extended IRS model. */
     class IRSAnopheles {
     public:

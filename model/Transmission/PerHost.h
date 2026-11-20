@@ -42,7 +42,6 @@ namespace Transmission {
 using util::AgeGroupInterpolator;
 using util::LocalRng;
 
-class HumanVectorInterventionComponent;
 
 /** Stores vector model data applicable between a category of host and a
  * mosquito species: intervention descriptions and model parameters.

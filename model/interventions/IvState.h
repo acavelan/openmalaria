@@ -24,8 +24,8 @@
 // (HostColumns.h), no per-host classes. Bodies here moved verbatim from the
 // deleted HumanITN/HumanIRS/HumanGVI (PerHostInterventionData) classes.
 // Leaf header: IvRecord + free functions only (implementation pulls in the
-// ITN/IRS/GVI component registries); the component headers friend-declare
-// these for private-parameter access.
+// ITN/IRS/GVI parameter registries; 7.2b made the parameters plain public
+// structs, so no friend declarations are needed).
 
 #ifndef Hmod_interventions_IvState
 #define Hmod_interventions_IvState
@@ -36,14 +36,13 @@
 namespace OM {
 class RunContext;
 namespace Host { class Human; }
-namespace Transmission { class HumanVectorInterventionComponent; }
 namespace interventions {
+struct ComponentConfig;  // interventions/Components.h
 
 /** Deploy a vector intervention on a human: the component's existing record
  * is reset in place (redeploy draws), else a record is appended (first-use
  * draws). Draw order pinned (§9); list order is load-bearing (parity: c). */
-void iv_deploy( RunContext& ctx, Host::Human& human,
-    const Transmission::HumanVectorInterventionComponent& params );
+void iv_deploy( RunContext& ctx, Host::Human& human, const ComponentConfig& params );
 
 /// Call once per time step (old PerHost::update loop; only ITNs mutate).
 void iv_update( RunContext& ctx, Host::Human& human );
