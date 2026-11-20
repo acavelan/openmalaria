@@ -174,3 +174,10 @@ order of side-effecting calls all preserved explicitly.
   two liverStageDrug blocks; getHealthSystemACRByName one-lined. String-literal
   multiset audited against baseline per file: only 2->1 counts from the shared
   helpers, zero text changes. Gate: ctest 52/52, unittest OK, T1 tier-a 53/53.
+- entomology.cpp 460->435 (-25): averageEIR overloads share averageEIR_seq;
+  both changeEIRIntervention variants share fill_intervention_eir (cerr variant
+  kept via flag; minEIR hoist in the non-vector variant is unobservable since
+  EIRDaily has minOccurs=1); four initVectorInterv range-check+set blocks ->
+  set_interv_decay (resizes kept at call sites before present(); sugar slot's
+  seekingDeathRateIncrease tag quirk and "intrevention" typo verbatim);
+  duplicate include + empty forcedEIR if-block removed. Gate: 52/52, OK, 53/53.
