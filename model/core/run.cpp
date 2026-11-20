@@ -290,7 +290,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
         Host::InfectionIncidenceModel::preMainSimInit();
         Clinical::InfantMortality::preMainSimInit();
         ctx.genotypes.preMainSimInit();
-        population->resetRecentBirths();
+        population->recentBirths = 0;
         transmission->summarize(ctx); // Only to reset TransmissionModel::inoculationsPerAgeGroup
         mon::initMainSim(ctx);
 
