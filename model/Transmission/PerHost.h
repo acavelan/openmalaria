@@ -227,7 +227,9 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
         anoph_prob_resting() & stream;
         rel_avail_het() & stream;
         outside_trans() & stream;
-        copulaGaussianSamples & stream;
+        // 7.4: copulaGaussianSamples moved to the copula_g column (and its
+        // wire entry deleted: interventions carry zero checkpoint bytes —
+        // user invariant; restore re-applies via event replay).
         interventions::iv_checkpoint( *ctx, cols->iv[row], stream );
     }
     //@}
@@ -252,12 +254,6 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
     /// The host human's SoA columns/row (see bind_columns).
     HumanColumns* cols = nullptr;
     size_t row = 0;
-
-    /** @brief gaussian sample used in the deployment of intervention 
-     * components using the gaussian copula transformation. The factors are 
-     * component specific and are sampled once per human during the first 
-     * deployment attempt. */
-    std::map<interventions::ComponentId, double> copulaGaussianSamples; 
 
 private:
     static AgeGroupInterpolator relAvailAge;

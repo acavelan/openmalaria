@@ -27,6 +27,7 @@
 #include "interventions/ComponentId.h"
 #include "util/random.h"
 #include <limits>
+#include <map>
 #include <utility>
 #include <vector>
 
@@ -127,6 +128,10 @@ struct HumanColumns {
     /// Vaccine dose records (old Human::vaccine PerHumanVaccine::effects list;
     /// insertion order — see VacRecord).
     std::vector<std::vector<VacRecord>> vac;
+    /// Gaussian-copula deployment samples (old PerHost::copulaGaussianSamples
+    /// map, 7.4): one gaussian per (human, subPop component) the first time a
+    /// correlated deployment attempts that sub-population; value never changes.
+    std::vector<std::map<interventions::ComponentId, double>> copula_g;
 
     /** Add a row for a newly constructed Human, at the exact moment of its old
      * member inits: rng is copy-seeded from `master` HERE (RNG RULE); dob set;
@@ -156,6 +161,7 @@ struct HumanColumns {
         outside_trans.push_back( 0u );
         iv.emplace_back();
         vac.emplace_back();
+        copula_g.emplace_back();
         return rng.size() - 1;
     }
 
@@ -185,6 +191,7 @@ struct HumanColumns {
         outside_trans.erase( outside_trans.begin() + r );
         iv.erase( iv.begin() + r );
         vac.erase( vac.begin() + r );
+        copula_g.erase( copula_g.begin() + r );
     }
 };
 

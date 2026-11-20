@@ -64,12 +64,19 @@ unittest 3,794 LOC; `interventions/` dir 2,837 LOC (cloc); p6 bench **12.58s** m
    public). ITN.h/IRS.h/GVI.h now leaf-ish (no Interfaces include). interventions/
    = 1,456 code LOC (plan ceiling 1,350–1,550: inside). PRINT_INTERVENTIONS
    output byte-checked vs A0 (2ITNs + PEV).
-3. [ ] 7.3 ITN 3-state columns NEVER/ACTIVE/DISCARDED + §9 scalars; draw order EXACT
-   (1 shared NormalSample → hole/rip/insecticide-decay (0 extra draws), attrition age
-   (0–1 draws), initial insecticide; update = Poisson(holes) then Poisson(rips) only if
-   n_holes*rip_rate>0; IRS order = insecticide THEN het_sample).
-4. [ ] 7.4 copula g per (host, subPop-id — NOT component) → column (replaces
-   `copulaGaussianSamples` std::map; iteration/wire order was ComponentId-ascending).
+3. [x] 7.3 VERIFIED (no code change — all §9 clauses already hold from 7.2a-i):
+   3-state anchor comment HostColumns.h:40-41 (NEVER=no record, ACTIVE=deploy!=
+   never(), DISCARDED=deploy==never() post-attrition); first-use draws shared
+   NormalSample→hole/rip/decay-het (0 extra)→attrition age (0–1, Constant/Step 0)
+   →initial insecticide (IvState.cpp:88-101, redeploy 53-63 same tail); update =
+   Poisson(holes) if hole_rate>0 then Poisson(rips) if n_holes*rip_rate>0; IRS =
+   insecticide THEN het (IvState.cpp:107-109). Canaries VecFull/LifeNet/2ITNs in
+   tier-a 53/53 (7.2b gates run).
+4. [x] 7.4 copula g → `copula_g` column (std::vector<std::map<ComponentId,double>>,
+   HostColumns; old key WAS subPop-id `d.subPop`, per (host, subPop) as §9 wants).
+   append_row/erase_at mirrored; Deployments.h reads/writes via
+   human.cols->copula_g[human.row]; wire entry deleted outright (dead weight,
+   user invariant — empty at checkpoint by definition anyway).
 5. [ ] 7.5 zero intervention checkpoint bytes — **USER DIRECTIVE 2026-11-20 (overrides
    earlier wording): interventions NEVER need checkpointing. Firm invariant, not something
    to verify.** Reason: checkpoint happens after warmup, before any intervention, so at
@@ -132,7 +139,11 @@ unittest 3,794 LOC; `interventions/` dir 2,837 LOC (cloc); p6 bench **12.58s** m
   do NOT "fix").
 
 ## Gates log
-- (7.2b, this commit) config-side flatten: HumanInterventionComponent class
+- (7.4, this commit) copula g map (PerHost member) -> copula_g column; wire
+  entry deleted per user invariant. build clean; unittest 94/94; ctest 52/52
+  (incl. GaussianCopulaGamma/Lognormal #45/#46, 12/12a two-runs); T1 a 53/53;
+  T1 b 1-4 4/4.
+- (7.2b, earlier commit) config-side flatten: HumanInterventionComponent class
   tree (10 classes, 2 base levels) → ComponentConfig{kind, variant payload} +
   deploy_component/print_component switches. Deleted VectorIntervention.h
   (asVectorIntervention seam had no callers since 7.2a-i), getComponent, all
