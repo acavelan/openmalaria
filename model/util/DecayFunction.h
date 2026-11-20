@@ -113,10 +113,24 @@ public:
 
     inline double eval(double ageDays) const {
         if(increasing)
-            return 1.0 - compute( ageDays ) * initialEfficacy;
+            return 1.0 - compute_with( ageDays, hetFactor ) * initialEfficacy;
         else
-            return compute( ageDays ) * initialEfficacy;
+            return compute_with( ageDays, hetFactor ) * initialEfficacy;
     }
+
+    /** eval() with an explicit heterogeneity factor: applies `factor` at
+     * EVERY node (like a hetSample clone's recursive setFactor) without
+     * cloning. Used by per-host IvRecords (old insecticideDecayHet clones). */
+    inline double eval_with(double ageDays, double factor) const {
+        if(increasing)
+            return 1.0 - compute_with( ageDays, factor ) * initialEfficacy;
+        else
+            return compute_with( ageDays, factor ) * initialEfficacy;
+    }
+
+    /// Sample just the heterogeneity factor (what hetSample() would clone in).
+    double sample_het_factor(LocalRng& rng) const { return het->sample(rng); }
+    double sample_het_factor(NormalSample sample) const { return het->sample(sample); }
 
     /** Checkpoint a sampled copy, recreating it from this configured function.
      * Wire format frozen: bool present + double hetFactor. */
@@ -125,7 +139,8 @@ public:
 
 private:
     /// The formula switch: one case per Kind (was one virtual per subclass).
-    double compute(double ageDays) const;
+    /// `factor` is the heterogeneity factor applied at every node.
+    double compute_with(double ageDays, double factor) const;
 
     void setFactor(double factor) {
         hetFactor = factor;

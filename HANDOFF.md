@@ -30,16 +30,21 @@ unittest 3,794 LOC; `interventions/` dir 2,837 LOC (cloc); p6 bench **12.58s** m
 - perf events BLOCKED (paranoid=2). Untracked PROMPT.md/email = user files, leave.
 
 ## Plan (order = plan §7 row 7 / §9; each step ends green+committed)
-1. [x] 7.1 flat timed deployments — see Gates log head.
-2. [ ] 7.2 dense components by type-rank + per-host vector-intervention state →
-   HumanColumns (`iv` column of per-host deploy records kept in DEPLOY-HISTORY ORDER —
-   contract c multiplies effects in that exact order; a type-split would reassociate FP
-   = divergence. Records carry {component id/params ptr, deploy date, disposal, state,
-   n_holes/hole_index/hole_rate/rip_rate, insecticide+decay ptr+factor}).
-   HumanITN/HumanIRS/HumanGVI/HumanVaccine/PerHostInterventionData classes DIE;
-   `PerHost::deployComponent/update/effect accessors` → free fns over columns.
-   Vaccine state: same treatment (per-host record list; `human.vaccine.getFactor`
-   sites ≈10 in within-host/incidence models — rename to a Human method).
+1. [x] 7.1 flat timed deployments — see Gates log.
+2. [~] 7.2 dense components by type-rank:
+   [x] 7.2a-i per-host VECTOR-intervention state dissolved: HumanITN/HumanIRS/
+   HumanGVI/PerHostInterventionData classes DEAD; `iv` column
+   (`vector<vector<IvRecord>>` in HostColumns, history order = contract c);
+   free fns `iv_deploy/iv_update/iv_*/iv_checkpoint` in interventions/IvState.{h,cpp}
+   (component headers friend them for private params); DecayFunction: `compute` →
+   `compute_with(age,factor)` + public `eval_with(age,factor)` +
+   `sample_het_factor(rng|NormalSample)` (het-clone replacement, bit-identical);
+   HumanVectorInterventionComponent now carries NO per-host API (makeHumanPart/
+   asITN/asIRS virtuals deleted); hasActiveInterv = kind+deploy scan, no registry.
+   Wire = NEW uniform record layout (wire free; resume bit-verified vs A0, see gates).
+   [ ] 7.2a-ii vaccine: PerHumanVaccine/PerEffectPerHumanVaccine → record column
+   (Human::vaccine member + 12 getFactor sites + its wire).
+   [ ] 7.2b config-side HumanInterventionComponent tree flatten (deploy switch).
 3. [ ] 7.3 ITN 3-state columns NEVER/ACTIVE/DISCARDED + §9 scalars; draw order EXACT
    (1 shared NormalSample → hole/rip/insecticide-decay (0 extra draws), attrition age
    (0–1 draws), initial insecticide; update = Poisson(holes) then Poisson(rips) only if
@@ -102,7 +107,20 @@ unittest 3,794 LOC; `interventions/` dir 2,837 LOC (cloc); p6 bench **12.58s** m
   do NOT "fix").
 
 ## Gates log
-- (7.1, this commit) flat TimedDeploymentKind + variant payloads; class tree deleted
+- (7.2a-i, this commit) per-host vector-intervention state → `iv` record column.
+  Deleted: HumanITN/HumanIRS/HumanGVI/PerHostInterventionData + makeHumanPart/
+  asITN/asIRS virtuals + PerHost::deployComponent/checkpointIntervs (−589 lines,
+  model 18,895→18,854). New: HostColumns IvRecord+iv (append_row/erase_at mirrored),
+  interventions/IvState.{h,cpp} (deploy/update/4 effects/checkpoint free fns,
+  component classes friend them), DecayFunction eval_with/sample_het_factor.
+  Draw orders moved verbatim (ITN: shared NormalSample→hole/rip/insecticide-het→
+  attrition→clamped insecticide, ctor deployTime=now(), redeploy=nowOrTs1(); IRS:
+  insecticide FIRST then het, per old ctor member-init; GVI: single het).
+  build clean; unittest 94/94; ctest 52/52 (incl. checkpoint two-run suites);
+  T1 a 53/53; T1 b 1-4 4/4; 2ITNs new-binary two-run resume == A0 single run
+  (new uniform record wire round-trips: id,kind,deploy,disposal,n_holes,hole_index,
+  insecticide,hole_rate,rip_rate,factor; decay ptr recovered from registry on load).
+- (7.1, earlier commit) flat TimedDeploymentKind + variant payloads; class tree deleted
   (TimedDeployment/Derivatives + 5 xml-local classes → read/builders + free deploy
   fns); RunExtensions timed = value vector; deploy loop + loadFromCheckpoint flat.
   A0 reference REBUILT from cfc3c8e0 (recipe regenerated; p6-code tier-a 53/53 proves

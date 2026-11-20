@@ -35,43 +35,43 @@ namespace util {
 
 // ----  formula switch (one case per Kind; origins = old virtual subclasses)  ----
 
-double DecayFunction::compute(double effectiveAge) const {
+double DecayFunction::compute_with(double effectiveAge, double factor) const {
     switch(kind) {
     case Kind::Constant:
         // parity: xml/util.cpp:163 (old ConstantDecayFunction) — note: all decay
         // functions must return 0 when time > 0 and default-constructed.
-        if( effectiveAge * hetFactor == numeric_limits<double>::infinity() )
+        if( effectiveAge * factor == numeric_limits<double>::infinity() )
             return 0.0;
         return 1.0;
     case Kind::Step:  // parity: xml/util.cpp:187
-        if( effectiveAge * invL * hetFactor < 1.0 )
+        if( effectiveAge * invL * factor < 1.0 )
             return 1.0;
         else
             return 0.0;
     case Kind::Linear:  // parity: xml/util.cpp:215
-        if( effectiveAge * invL * hetFactor < 1.0 )
-            return 1.0 - effectiveAge * invL * hetFactor;
+        if( effectiveAge * invL * factor < 1.0 )
+            return 1.0 - effectiveAge * invL * factor;
         else
             return 0.0;
     case Kind::Exponential:  // parity: xml/util.cpp:244
-        return exp( -effectiveAge * invL * hetFactor );
+        return exp( -effectiveAge * invL * factor );
     case Kind::Weibull: {  // parity: xml/util.cpp:270
-        double p = -pow(effectiveAge * invL * hetFactor, k);
+        double p = -pow(effectiveAge * invL * factor, k);
         if(p < -700.0)
             return 0.0;
         else
             return exp(p);
     }
     case Kind::Hill:  // parity: xml/util.cpp:300
-        return 1.0 / (1.0 + pow(effectiveAge * invL * hetFactor, k));
+        return 1.0 / (1.0 + pow(effectiveAge * invL * factor, k));
     case Kind::SmoothCompact:  // parity: xml/util.cpp:326
-        if( effectiveAge * invL * hetFactor < 1.0 )
-            return exp( k - k / (1.0 - pow(effectiveAge * invL * hetFactor, 2.0)) );
+        if( effectiveAge * invL * factor < 1.0 )
+            return exp( k - k / (1.0 - pow(effectiveAge * invL * factor, 2.0)) );
         else
             return 0.0;
     case Kind::Plus: case Kind::Minus: case Kind::Divides: case Kind::Multiplies: {
         // parity: xml/util.cpp:364 — clamp order std::max(std::min(v, 1.0), 0.0) kept.
-        double a = f1->eval(effectiveAge), b = f2->eval(effectiveAge);
+        double a = f1->eval_with(effectiveAge, factor), b = f2->eval_with(effectiveAge, factor);
         double v = kind == Kind::Plus ? a + b : kind == Kind::Minus ? a - b
                : kind == Kind::Divides ? a / b : a * b;
         return max(min(v, 1.0), 0.0);
@@ -80,7 +80,7 @@ double DecayFunction::compute(double effectiveAge) const {
         // Emax model: E(C)=Emax*C^slope/(C^slope + IC50^slope), C=C0*f(t).
         // parity: xml/util.cpp:439
         const double concentrationPow =
-            std::pow(initialConcentration * f1->eval(effectiveAge), slope);
+            std::pow(initialConcentration * f1->eval_with(effectiveAge, factor), slope);
         const double efficacy = Emax * concentrationPow / (concentrationPow + IC50);
         return std::max(std::min(efficacy, 1.0), 0.0);
     }

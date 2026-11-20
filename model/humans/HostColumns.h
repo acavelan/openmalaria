@@ -32,6 +32,32 @@
 
 namespace OM {
 
+namespace util { class DecayFunction; }
+
+/** Per-host vector-intervention record (ITN/IRS/GVI), stored in DEPLOY-HISTORY
+ * order (parity: c — the effect FP products multiply in this exact order;
+ * redeploy updates the matching record in place, never reorders).
+ * §9 3-state: NEVER = no record for the component; ACTIVE = deploy != never();
+ * DISCARDED = deploy == never() after ITN attrition. decay/decay_factor
+ * replace the old per-host DecayFunction hetSample clone (eval_with applies
+ * the factor; pointer targets the component's config). */
+struct IvRecord {
+    /// ComponentId has no default ctor; max() = never-a-valid-id (records are
+    /// filled field-by-field at deploy/checkpoint-read before use).
+    IvRecord() : id( std::numeric_limits<size_t>::max() ) {}
+    interventions::ComponentId id;
+    interventions::Component::Type kind;   // type-rank (ITN/IRS/GVI)
+    SimTime deploy = sim::never();         // time of last (re)deployment
+    SimTime disposal = sim::never();       // ITN attrition time
+    int n_holes = 0;                       // ITN: total holes
+    double hole_index = 0.0;               // ITN: number+size measure
+    double initial_insecticide = 0.0;      // ITN/IRS mg/m² (resampled per deploy)
+    double hole_rate = 0.0;                // ITN holes/step (sampled once per human)
+    double rip_rate = 0.0;                 // ITN rips/hole/step (ditto)
+    const util::DecayFunction* decay = nullptr;  // component config (never owned)
+    double decay_factor = 0.0;             // per-human het sample of decay
+};
+
 /** Persistent per-host SoA columns (plan §7 row 6 pinned list; owner module,
  * passed by reference, never global).
  *
@@ -81,6 +107,9 @@ struct HumanColumns {
     /// Outside-transmission flag (old bool PerHost::outsideTransmission;
     /// u8 keeps the 1-byte wire shape).
     std::vector<uint8_t> outside_trans;
+    /// Vector-intervention deployment records (old PerHost::activeComponents
+    /// polymorphic list; history order — see IvRecord).
+    std::vector<std::vector<IvRecord>> iv;
 
     /** Add a row for a newly constructed Human, at the exact moment of its old
      * member inits: rng is copy-seeded from `master` HERE (RNG RULE); dob set;
@@ -108,6 +137,7 @@ struct HumanColumns {
         anoph_prob_resting.emplace_back();
         rel_avail_het.push_back( std::numeric_limits<double>::signaling_NaN() );
         outside_trans.push_back( 0u );
+        iv.emplace_back();
         return rng.size() - 1;
     }
 
@@ -135,6 +165,7 @@ struct HumanColumns {
         anoph_prob_resting.erase( anoph_prob_resting.begin() + r );
         rel_avail_het.erase( rel_avail_het.begin() + r );
         outside_trans.erase( outside_trans.begin() + r );
+        iv.erase( iv.begin() + r );
     }
 };
 
