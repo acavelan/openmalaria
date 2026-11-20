@@ -33,7 +33,7 @@
 #include "Host/Human.h"
 #include "PkPd/LSTMModel.h"
 #include "PkPd/LSTMDrugType.h"
-#include "PkPd/LSTMTreatments.h"
+#include "PkPd/LSTMMedicate.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "Host/WithinHost/Infection/Infection.h"
