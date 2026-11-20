@@ -148,6 +148,10 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
     bool treatmentLiver = treatExpiryLiver > ctx.clock.ts0();
     bool treatmentBlood = treatExpiryBlood > ctx.clock.ts0();
 
+    // p7b B4 hoist: vaccine_factor is pure over the host's (frozen during host
+    // update) vac column and returns exactly 1.0 when it is empty — same value,
+    // one check per host instead of one call per infection.
+    const bool anyVac = human.has_vaccines();
     for(auto inf = infections.begin(); inf != infections.end();) {
         //NOTE: it would be nice to combine this code with that in
         // CommonWithinHost.cpp, but a few changes would be needed:
@@ -169,7 +173,7 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
         // See MAX_DENS_CORRECTION in DescriptiveInfection.cpp.
         double infStepMaxDens = timeStepMaxDensity;
         double immSurvFact = immunitySurvivalFactor(ageInYears, (*inf)->cumulativeExposureJ());
-        double bsvFactor = human.vaccine_factor(interventions::Vaccine::BSV, opt_vaccine_genotype? (*inf)->genotype() : 0);
+        double bsvFactor = anyVac ? human.vaccine_factor(interventions::Vaccine::BSV, opt_vaccine_genotype? (*inf)->genotype() : 0) : 1.0;
 
         (*inf)->determineDensities(rng, imm_h_ref(), infStepMaxDens, immSurvFact, _innateImmSurvFact, bsvFactor);
 
