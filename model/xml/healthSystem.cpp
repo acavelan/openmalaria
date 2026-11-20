@@ -212,8 +212,6 @@ extern bool opt_event_scheduler, opt_imm_outcomes;
 extern double oddsRatioThreshold;
 // State defined in EventScheduler.cpp (external linkage):
 extern bool opt_non_malaria_fevers;
-// State defined in ESCaseManagement.cpp (external linkage):
-extern const FlatTree *escm_uncomplicated, *escm_complicated;
 // State defined in DecisionTree5Day.cpp (external linkage):
 extern const FlatTree *treeUCOfficial, *treeUCSelfTreat;
 

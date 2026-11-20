@@ -23,9 +23,14 @@
 #ifndef Hmod_AgeDistribution
 #define Hmod_AgeDistribution
 
+#include <fstream>
+#include <limits>
 #include <map>
 
 #include "Global.h"
+#include "core/RunContext.h"
+#include "util/CommandLine.h"
+#include "util/errors.h"
 
 namespace scnXml {
     class AgeGroupValues;
@@ -89,20 +94,44 @@ struct AgeGroupInterpolator
     }
 
     /** Scale function by factor. */
-    void scale( double factor );
+    void scale( double factor ){
+        if( kind == Kind::Dummy ) dummyThrow();
+        for( auto& kv : data ) kv.second *= factor;
+    }
 
     /** Find the youngest age which is the global maximum (i.e. the age at
      * which individuals are considered adults where all adults have the same
      * same value). */
-    double firstGlobalMaximum() const;
+    double firstGlobalMaximum() const {
+        if( kind == Kind::Dummy ) dummyThrow();
+        double age = 0.0, max = numeric_limits<double>::min();
+        for( const auto& kv : data ){
+            if( kv.second > max ){
+                max = kv.second;
+                age = kv.first;
+            }
+        }
+        return age;
+    }
 
 private:
     /** Cold path: old AgeGroupDummy methods threw; keep one throw site. */
-    [[noreturn]] void dummyThrow() const;
+    [[noreturn]] void dummyThrow() const {
+        throw TRACED_EXCEPTION_DEFAULT( "AgeGroupDummy" );
+    }
 
     /** Sample interpolator between 0 and max age, outputting to a csv file
      * called name.csv. */
-    void outputSamples( const SimClock& clock, const string name );
+    void outputSamples( const SimClock& clock, const string name ){
+        if( !util::CommandLine::option(util::CommandLine::SAMPLE_INTERPOLATIONS) ){
+            return;
+        }
+        ofstream fstream( (name+".csv").c_str() );
+        double max = sim::inYears(clock.max_human_age);
+        for( double age = 0.0; age < max; age += 0.1 ){
+            fstream << age << "," << this->eval( age ) << endl;
+        }
+    }
 
     Kind kind;
     /// Breakpoints (lower-age-bound or interpolation points) in numeric key order.

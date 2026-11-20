@@ -128,5 +128,12 @@ inline void ensure_extensions( RunContext& ctx ){
     if( !ctx.ext ) ctx.ext = new RunExtensions();
 }
 
+// The one accessor for a TreatmentId (member definition keeps friend access
+// to TreatmentId::id; needs whTreatments, so it lives after RunExtensions).
+inline const WithinHost::Treatments& WithinHost::Treatments::select( RunContext& ctx, TreatmentId treatId ){
+    assert( treatId.id < ctx.ext->whTreatments.size() );
+    return ctx.ext->whTreatments[treatId.id];
+}
+
 }
 #endif
