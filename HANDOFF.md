@@ -33,10 +33,22 @@ reverted+logged if ≤ noise floor (max(1.0%, 2×MAD)). Full p7 handoff: `git sh
 
 ## Status
 - [x] branch created off p7-green
-- [ ] A: A1 build + LTO T1 bit-check (tier-b seed 1)
-- [ ] A: PGO corpus + A2 build + T1 bit-check (tier-b seed 1) + bench + PERF row 7b-A
+- [x] A: A1 build + LTO T1 bit-check (tier-b s1–2 PASS; LTO proven at link, symtab halved)
+- [x] A: PGO corpus + A2 build + T1 bit-check (tier-b s1–2 PASS) + bench + PERF row 7b-A
+      ⇒ **NEW YARDSTICK A2 = 12.43 CPU-s (MAD .010)**; A1 = 12.37; ratio vs frozen 11.34 =
+      0.912 (true structural cost +9.6%); vs current A0-class 12.47 = flat. PGO lever is DEAD
+      on this tree (1.003 vs baseline 1.087) — levers must be real code changes.
 - [ ] B1 arena; B2 rng compaction; B3 forcedEIR; B4 perf hoists (each: own commit + PERF row)
 - [ ] FINAL: T1 a+b 63/63, ctest 52/52, unittest 94/94, cloc, census touch, final report
+- Lever measurement: rebuild lever INTO build-p7b-a2 (profiles from pre-lever tree are fine;
+  same flags/dir) AND into build-p7b (gate build) for ctest/unittest/tier-a.
+
+## Gates log
+- (stage setup) branch p7b-levers off p7-green 324958dc; env inventory verified
+  (recipe check passes at parity startup; om-bench + om-ref intact).
+- (stage A, this commit) A1: LTO bit-check 2/2 identical; A2: profile-use proven (.text
+  +5.3% vs A1, +5 extra inlines on Population.cpp probe), bit-check 2/2 identical; benches
+  A1 12.37 MAD .010 / A2 12.43 MAD .010; recipe+A2 binary stamped to /tmp/opencode/om-ref/A2new/.
 
 ## Traps (inherited, all live)
 - set_row REBIND on any column shape change (B2 tripwire; death-heavy ctest catches, tier-a doesn't).
@@ -47,6 +59,3 @@ reverted+logged if ≤ noise floor (max(1.0%, 2×MAD)). Full p7 handoff: `git sh
 - Checkpoints may break freely (re-bless from A0 reference in same commit + round-trip smoke).
 - Untracked PROMPT.md/email = user files, leave alone.
 
-## Gates log
-- (stage setup) branch p7b-levers off p7-green 324958dc; env inventory verified
-  (recipe check passes at parity startup; om-bench + om-ref intact).
