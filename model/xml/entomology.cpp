@@ -33,7 +33,6 @@
 #include "core/RunContext.h"
 #include "Transmission/TransmissionModel.h"
 #include "Transmission/transmission.h"
-#include "Transmission/TransmissionModel.h"
 #include "Transmission/PerHost.h"
 #include "Transmission/Anopheles/AnophelesModel.h"
 #include "Transmission/Anopheles/EmergenceRateEstimator.h"
