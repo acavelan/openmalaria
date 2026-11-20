@@ -84,3 +84,29 @@ MERGE NOTE for main session: branch p7b-levers, merge like p7; consider tag p7b-
 - Checkpoints may break freely (re-bless from A0 reference in same commit + round-trip smoke).
 - Untracked PROMPT.md/email = user files, leave alone.
 
+
+---
+
+## 7d addendum — INDEPENDENT PGO RE-TEST (branch `p7d-pgo` off `p7b-green` = 0c895755; worktree `/home/razlock/.local/share/opencode/worktree/3fb2ad/p7d-pgo`)
+
+Verdict: **7b's "PGO collapsed to 1.003" was an un-measurement — that pass-2 built
+LTO-only.** True PGO on p7b-green: **11.15 CPU-s** (A1-LTO 11.98, A0-class 12.23;
+c3-pinned, median-of-5, MAD ≤ .010; A0 re-bench after A2 reproduced 12.23 — no drift).
+Flags lever = 1.097× vs A0. A2true T1 63/63 bit-clean ⇒ yardstick candidate stamped
+`/tmp/opencode/om-ref/A2true/{openMalaria,recipe.json}` (sha256 1df91b2c…).
+PERF.md row `7d-A-amended` carries the correction; 7b history rows untouched.
+
+Environment (mine, do not reuse others'):
+- `build-p7d-a0` = A0 gate (Release `-ffp-contract=off` `-DOM_BOXTEST_BINARY=ON`) — ctest 52/52, unittest 94 green.
+- `build-p7d-lto` = A1 = A0-class + `-flto=auto`, tests OFF.
+- `build-p7d-gen` = **BOTH PGO passes (single dir, flag-flip)**: pass-1 `-fprofile-abs-path -fprofile-generate=/home/razlock/git/fork/pgodata-p7d` (tests ON, corpus run), then same dir reconfigured `-fprofile-abs-path -fprofile-use=/home/razlock/git/fork/pgodata-p7d -fprofile-correction` (tests OFF). The bin there is A2true. `pgodata-p7d` (81 gcda) is the profile corpus — keep if A2true must be rebuilt.
+- `build-p7d-a2` = cross-dir pass-2 dead end (evidence: 9,407 `-Werror=coverage-mismatch` from path-keyed generated schema sources). Do not resurrect; single-dir flip is the only recipe that loads profiles cleanly here.
+- Bench: `/tmp/opencode/om-bench-p7d/bench3.sh` (taskset **-c 3**; 7c owns c5; runs from that dir — XSD symlinks live there, same trap as om-bench).
+- `ln -sfn build-p7d-a0 build` in this worktree: parity.py wants `<repo>/build/schema/scenario_current.xsd` for tier-a (box scenarios point at `scenario_current.xsd`).
+
+PGO wiring traps (each cost an experiment — do not re-learn):
+1. gcda flat names in `-fprofile-*=dir` are keyed on the **absolute object path**; a different build dir never finds them (microtest: `dirA`-generated gcda invisible to `dirB` compile, even with abs-path + same =dir).
+2. Generated `schema/*.cpp` live **inside the build dir** → their gcov location identity contains the build-dir path → cross-dir pass-2 = coverage-mismatch storm. Hence: single dir, flip flags, full rebuild (`rm -rf` first — flag change alone does not force Makefile recompiles).
+3. Never build pass-2 with `-Wno-missing-profile`; missing-profile warnings are the ONLY symptom of a dead profile (that's how 7b shipped LTO-only believing it was PGO). Verify loading instead: gcda count + clean log + inline-dump control (see PERF 7d-A-amended; control artifacts `/tmp/opencode/p7d-ctl/{lto-link,pgo-link}/`).
+
+Corpus that produced the 81 gcda (keep representative of the benchmark): gen-build ctest 52 (all box scenarios exercise checkpoint stop/resume) + unittest 94 + example@2000 `--seed 1..4` + scenarioVecFullTest ×2 + example@2000 seed 1 `--checkpoint-stop` then `--checkpoint` resume (run from a dir holding the XSD).
