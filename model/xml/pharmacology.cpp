@@ -54,7 +54,7 @@ LSTMDrugPD::LSTMDrugPD(const scnXml::Phenotype& phenotype) {
     V = phenotype.getMax_killing_rate();
 }
 
-void LSTMDrugType::init(RunContext& ctx, const scnXml::Pharmacology::DrugsType& drugData) {
+void LSTMDrugType::init(Context& ctx, const scnXml::Pharmacology::DrugsType& drugData) {
     DrugRegistry& reg = ctx.drugs;
     vector<LSTMDrugType>& drugTypes = reg.drugTypes;
     map<string, size_t>& drugTypeNames = reg.drugTypeNames;
@@ -71,7 +71,7 @@ void LSTMDrugType::init(RunContext& ctx, const scnXml::Pharmacology::DrugsType& 
     }
 }
 
-LSTMDrugType::LSTMDrugType(RunContext& ctx, size_t index, const scnXml::PKPDDrug& drugData)
+LSTMDrugType::LSTMDrugType(Context& ctx, size_t index, const scnXml::PKPDDrug& drugData)
     : index(index), metabolite(0), negligible_concentration(numeric_limits<double>::quiet_NaN()),
       neg_m_exp(numeric_limits<double>::quiet_NaN()), mwr(numeric_limits<double>::quiet_NaN()),
       ic50_log_corr(numeric_limits<double>::quiet_NaN()), ic50_corr_factor(numeric_limits<double>::quiet_NaN()) {
@@ -318,7 +318,7 @@ void read_dosage_table(DosageTable& out, const xsd::cxx::tree::sequence<scnXml::
     out.table[numeric_limits<double>::infinity()] = lastMult;
 }
 
-void LSTMTreatments::init(RunContext& ctx, const scnXml::Treatments& data) {
+void LSTMTreatments::init(Context& ctx, const scnXml::Treatments& data) {
     TreatmentRegistry& reg = ctx.treatments;
     vector<Schedule>& schedules = reg.schedules;
     map<string, size_t>& scheduleNames = reg.scheduleNames;
@@ -358,7 +358,7 @@ void LSTMTreatments::init(RunContext& ctx, const scnXml::Treatments& data) {
 
 // ———  LSTMModel::init (origin: LSTMModel.cpp)  ———
 
-void LSTMModel::init(RunContext& ctx, const scnXml::Scenario& scenario) {
+void LSTMModel::init(Context& ctx, const scnXml::Scenario& scenario) {
     if (scenario.getPharmacology().present()) {
         LSTMDrugType::init(ctx, scenario.getPharmacology().get().getDrugs());
         LSTMTreatments::init(ctx, scenario.getPharmacology().get().getTreatments());

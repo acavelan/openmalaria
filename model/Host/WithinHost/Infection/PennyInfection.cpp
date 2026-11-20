@@ -144,11 +144,11 @@ const double Omega = 0.00025;
 
 //@}
 
-Infection* createPennyInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+Infection* createPennyInfection(Context& ctx, LocalRng& rng, uint32_t protID, int origin) {
     return new PennyInfection(ctx, rng, protID, origin);
 }
 
-void PennyInfection::init(RunContext& ctx) {
+void PennyInfection::init(Context& ctx) {
     ctx.createInfection = &createPennyInfection;
 
     if (util::ModelOptions::option(util::IMMUNE_THRESHOLD_GAMMA)) {
@@ -165,7 +165,7 @@ void PennyInfection::init(RunContext& ctx) {
 }
 
 // immune-threshold draws at the old infection_ctor_penny() slots
-PennyInfection::PennyInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin)
+PennyInfection::PennyInfection(Context& ctx, LocalRng& rng, uint32_t genotype, int origin)
     : Infection(ctx, genotype, origin, Kind::Penny) {
     auto* penny = this; // alias: body below verbatim
     constexpr int delta_C = PennyInfection::delta_C;

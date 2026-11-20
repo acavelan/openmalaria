@@ -27,7 +27,7 @@
 // WHVivax.cpp (extern re-declared below).
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/CommandLine.h"
@@ -64,7 +64,7 @@ extern bool ignoreNoPQ;
 extern double pHetNoPQ, pReceivePQ, effectivenessPQ;
 
 std::unique_ptr<HypnozoiteReleaseDistribution>
-createHypnozoiteReleaseDistribution(RunContext& ctx, const scnXml::HypnozoiteReleaseDistribution& elt) {
+createHypnozoiteReleaseDistribution(Context& ctx, const scnXml::HypnozoiteReleaseDistribution& elt) {
     return std::make_unique<HypnozoiteReleaseDistribution>(ctx, createSampler(elt), elt.getLatentRelapse());
 }
 
@@ -82,7 +82,7 @@ void initNHypnozoites() {
     }
 }
 
-void WHVivax::init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model) {
+void WHVivax::init(Context& ctx, const OM::Parameters& parameters, const scnXml::Model& model) {
 
     // Default value to use if no <parameters> element is present in XML.
     latentP = read_latentP(ctx.clock, model);

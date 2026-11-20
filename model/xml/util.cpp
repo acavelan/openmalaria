@@ -27,7 +27,7 @@
 // model headers (scnXml types forward-declared there). Call sites unchanged.
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "util/AgeGroupInterpolation.h"
 #include "util/CommandLine.h"
 #include "util/DecayFunction.h"

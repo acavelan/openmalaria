@@ -22,7 +22,7 @@
 
 #pragma once
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "Host/HostColumns.h"
 #include "Transmission/PerHost.h"
 #include "InfectionIncidenceModel.h"
@@ -49,7 +49,7 @@ class Human {
   public:
     /// The run this human belongs to (clock: ctx->clock). Set at
     /// construction; a pointer so Human stays move-assignable.
-    RunContext* ctx;
+    Context* ctx;
 
     /// This human's SoA columns (owned by Population; same lifetime as ctx).
     HumanColumns* cols;
@@ -62,7 +62,7 @@ class Human {
     * @param dateOfBirth date of birth (usually start of next time step)
     * @param columns persistent columns receiving this human's row (the rng
     * row is copy-seeded from the master HERE — the old member-init moment) */
-    Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns);
+    Human(Context& ctx, SimTime dateOfBirth, HumanColumns& columns);
 
     /// Allow move construction
     Human(Human&&) = default;
@@ -139,7 +139,7 @@ class Human {
     inline uint32_t& nextCtsDist();
 };
 
-void summarize(RunContext& ctx, Human& human, bool surveyOnlyNewEp);
+void summarize(Context& ctx, Human& human, bool surveyOnlyNewEp);
 
 /** Per-sweep scratch reused across humans within a time step (owned by the
  * sweep caller — the run loop). Holds the EIR-per-genotype out-vectors that
@@ -158,7 +158,7 @@ struct HostScratch {
  * phase 7 dissolves them into columns and the view shrinks toward
  * {cols,row,rng,scratch,iv,mon}. */
 struct HostView {
-    RunContext& ctx;
+    Context& ctx;
     Human& human;
     Transmission::TransmissionModel& transmission;
     HostScratch& scratch;
@@ -174,7 +174,7 @@ void host_within_host_update(HostView& v);
 void host_clinical_update(HostView& v);
 void host_update_infant_deaths(HostView& v);
 
-void update(RunContext& ctx, Human& human, Transmission::TransmissionModel& transmission, HostScratch& scratch);
+void update(Context& ctx, Human& human, Transmission::TransmissionModel& transmission, HostScratch& scratch);
 
 inline SimTime Human::age(SimTime time) const { return time - cols->dob[row]; }
 

@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "Host/HostColumns.h"
 #include "util/random.h"
 #include "util/sampler.h"
@@ -105,9 +105,9 @@ extern bool reportInfectionsByGenotype;
 
 struct HypnozoiteReleaseDistribution {
     /// The run this sampler serves (clock accessed as ctx.clock).
-    RunContext& ctx;
+    Context& ctx;
 
-    HypnozoiteReleaseDistribution(RunContext& ctx, std::unique_ptr<util::Sampler> sampler, double latentRelapse)
+    HypnozoiteReleaseDistribution(Context& ctx, std::unique_ptr<util::Sampler> sampler, double latentRelapse)
         : ctx(ctx), sampler(std::move(sampler)), latentRelapse(latentRelapse) {}
 
     /// Sample the time until next release
@@ -153,9 +153,9 @@ class VivaxBrood {
      * prevent VivaxBrood being default-constructed by its container.
      */
     /// The run this brood belongs to (clock accessed as ctx.clock).
-    RunContext& ctx;
+    Context& ctx;
 
-    VivaxBrood(RunContext& ctx, LocalRng& rng, int origin, WHInterface* host);
+    VivaxBrood(Context& ctx, LocalRng& rng, int origin, WHInterface* host);
     ~VivaxBrood();
     struct UpdResult {
         UpdResult() : newPrimaryBS(false), newRelapseBS(false), newRelapsebBS(false), newBS(false) {}
@@ -225,7 +225,7 @@ class VivaxBrood {
  *                                        infection variants
  *   WHDescriptive  DescriptiveWithinHost.cpp  the original descriptive model
  *   WHMock         unittest/WHMock.h    unit-test backend (installs the hook
- *                                        table on RunContext::WHMockHooks)
+ *                                        table on Context::WHMockHooks)
  * WHCommon and WHDescriptive share the P. falciparum immunity machinery in
  * the intermediate WHFalciparum layer (WHFalciparum.cpp).
  *
@@ -246,25 +246,25 @@ class WHInterface {
     }
 
     /// The run this model belongs to (clock accessed as ctx.clock).
-    RunContext& ctx;
+    Context& ctx;
 
     /// @brief Static methods
     //@{
     /// Initialise static parameters (all model variants; selects the variant
     /// via ModelOptions, xml/scenario.cpp).
-    static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario);
+    static void init(Context& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario);
 
     /** Configure a new treatment option, and return the code used to select
      * that option later. */
-    static TreatmentId addTreatment(RunContext& ctx, const scnXml::TreatmentOption& desc);
+    static TreatmentId addTreatment(Context& ctx, const scnXml::TreatmentOption& desc);
 
     /// Create an instance using the appropriate model (one line per variant).
-    static unique_ptr<WHInterface> createWithinHostModel(RunContext& ctx, LocalRng& rng, double comorbidityFactor);
+    static unique_ptr<WHInterface> createWithinHostModel(Context& ctx, LocalRng& rng, double comorbidityFactor);
     //@}
 
     /// Base ctor: no state beyond the tag, no draws — every variant's draws
     /// live in its own ctor at the old ctor* fragment stream positions.
-    WHInterface(RunContext& ctx, Kind kind) : ctx(ctx), kind(kind) {}
+    WHInterface(Context& ctx, Kind kind) : ctx(ctx), kind(kind) {}
 
     virtual ~WHInterface() {}
 
@@ -440,13 +440,13 @@ class WHInterface {
 class WHFalciparum : public WHInterface {
   public:
     /// Initialise P. falciparum immunity statics (Common/Descriptive variants).
-    static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model);
+    static void init(Context& ctx, const OM::Parameters& parameters, const scnXml::Model& model);
     static void setParams(double cumYStar, double cumHStar, double aM, double dM); // for unit test only
 
     /// Shared P. falciparum immunity ctor fragment (pathogenesis model +
     /// innate draw + y_lag buffers); draws stream position = old
     /// ctorFalciparum(). Kind comes from the concrete variant.
-    WHFalciparum(RunContext& ctx, LocalRng& rng, double comorbidityFactor, Kind kind);
+    WHFalciparum(Context& ctx, LocalRng& rng, double comorbidityFactor, Kind kind);
     ~WHFalciparum() override;
 
     double probTransmissionToMosquito(vector<double>& probTransGenotype_i,
@@ -523,9 +523,9 @@ class WHFalciparum : public WHInterface {
 class WHCommon final : public WHFalciparum {
   public:
     /// Initialise Common-variant statics.
-    static void init(RunContext& ctx, const scnXml::Scenario& scenario);
+    static void init(Context& ctx, const scnXml::Scenario& scenario);
 
-    WHCommon(RunContext& ctx, LocalRng& rng, double comorbidityFactor);
+    WHCommon(Context& ctx, LocalRng& rng, double comorbidityFactor);
 
     bool summarize(Host::Human& human) const override;
     void importInfection(LocalRng& rng) override;
@@ -541,9 +541,9 @@ class WHCommon final : public WHFalciparum {
 class WHDescriptive final : public WHFalciparum {
   public:
     /// Initialise Descriptive-variant statics. Must run after monitoring is set up.
-    static void init(RunContext& ctx);
+    static void init(Context& ctx);
 
-    WHDescriptive(RunContext& ctx, LocalRng& rng, double comorbidityFactor);
+    WHDescriptive(Context& ctx, LocalRng& rng, double comorbidityFactor);
 
     bool summarize(Host::Human& human) const override;
     void importInfection(LocalRng& rng) override;
@@ -559,7 +559,7 @@ class WHDescriptive final : public WHFalciparum {
 class WHVivax final : public WHInterface {
   public:
     /// Initialise vivax statics.
-    static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model);
+    static void init(Context& ctx, const OM::Parameters& parameters, const scnXml::Model& model);
 
     /** Called when health system parameters are loaded.
      * 
@@ -567,7 +567,7 @@ class WHVivax final : public WHInterface {
      */
     static void setHSParameters(const scnXml::LiverStageDrug*);
 
-    WHVivax(RunContext& ctx, LocalRng& rng, double comorbidityFactor);
+    WHVivax(Context& ctx, LocalRng& rng, double comorbidityFactor);
     ~WHVivax() override;
 
     double probTransmissionToMosquito(vector<double>& probTransGenotype_i,

@@ -22,7 +22,7 @@
 
 #include "Clock.h"
 
-#include "RunContext.h"
+#include "Context.h"
 
 #include "util/errors.h"
 #include "util/CommandLine.h"
@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
     int exitStatus = EXIT_SUCCESS;
 
     string scenarioFile;
-    RunContext ctx; // everything this run owns (plan §5)
+    Context ctx; // everything this run owns (plan §5)
 
     try {
         scenarioFile = util::CommandLine::parse(argc, argv);

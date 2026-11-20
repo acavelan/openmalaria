@@ -43,7 +43,7 @@ using internal::Condition;
 
 namespace {
 
-uint32_t cohortSetOutputId(RunContext& ctx, uint32_t cohortSet) {
+uint32_t cohortSetOutputId(Context& ctx, uint32_t cohortSet) {
     auto& runtime = (*ctx.monitoring);
     uint32_t outNum = 0;
     assert((cohortSet >> runtime.cohortSubPopNumbers.size()) == 0);
@@ -76,7 +76,7 @@ size_t MeasureStore::index(size_t a, size_t c, size_t sp, size_t g, size_t d) co
 
 namespace {
 
-void addStore(RunContext& ctx, const OutMeasure& om, size_t nSpecies, size_t nDrugs, bool forceNoCategories) {
+void addStore(Context& ctx, const OutMeasure& om, size_t nSpecies, size_t nDrugs, bool forceNoCategories) {
     auto& runtime = (*ctx.monitoring);
     assert(om.measure < MeasureCount);
     MeasureStore store;
@@ -102,7 +102,7 @@ void addStore(RunContext& ctx, const OutMeasure& om, size_t nSpecies, size_t nDr
 
 } // namespace
 
-void initStores(RunContext& ctx, const vector<OutMeasure>& enabledMeasures, size_t nSpecies, size_t nDrugs) {
+void initStores(Context& ctx, const vector<OutMeasure>& enabledMeasures, size_t nSpecies, size_t nDrugs) {
     auto& runtime = (*ctx.monitoring);
     runtime.stores.clear();
     runtime.storesByMeasure.assign(MeasureCount, {});
@@ -110,14 +110,14 @@ void initStores(RunContext& ctx, const vector<OutMeasure>& enabledMeasures, size
         addStore(ctx, om, nSpecies, nDrugs, false);
 }
 
-void ensureConditionStore(RunContext& ctx, const OutMeasure& om) {
+void ensureConditionStore(Context& ctx, const OutMeasure& om) {
     auto& runtime = (*ctx.monitoring);
     assert(om.measure < MeasureCount);
     if (runtime.storesByMeasure[om.measure].empty())
         addStore(ctx, om, 1, 1, true);
 }
 
-double surveySum(RunContext& ctx, Measure measure, size_t survey) {
+double surveySum(Context& ctx, Measure measure, size_t survey) {
     auto& runtime = (*ctx.monitoring);
     assert(measure < runtime.storesByMeasure.size());
     if (runtime.storesByMeasure[measure].empty())
@@ -135,7 +135,7 @@ double surveySum(RunContext& ctx, Measure measure, size_t survey) {
 
 namespace {
 
-void updateConditions(RunContext& ctx) {
+void updateConditions(Context& ctx) {
     auto& runtime = (*ctx.monitoring);
     const size_t survey = statSurveyNumber(ctx);
     if (survey == NOT_USED)
@@ -160,7 +160,7 @@ void writeTextRow(ostream& stream, int survey, int column, int measure, double v
 size_t outputAgeGroups(const internal::MeasureStore& store) { return store.nAges == 1 ? 1 : store.nAges - 1; }
 
 template <class Writer>
-void writeMeasure(RunContext& ctx, ostream& stream, Writer writeRow, size_t survey,
+void writeMeasure(Context& ctx, ostream& stream, Writer writeRow, size_t survey,
                   const internal::MeasureStore& store) {
     const OutMeasure& om = store.output;
     const size_t surveyStart = survey * store.size();
@@ -196,7 +196,7 @@ void writeMeasure(RunContext& ctx, ostream& stream, Writer writeRow, size_t surv
 enum class ValueType { All, Integer, Double };
 
 template <class Writer>
-void writeRows(RunContext& ctx, ostream& stream, Writer writeRow, ValueType type = ValueType::All) {
+void writeRows(Context& ctx, ostream& stream, Writer writeRow, ValueType type = ValueType::All) {
     auto& runtime = (*ctx.monitoring);
     for (size_t survey = 0; survey < runtime.nSurveys; ++survey) {
         for (const internal::MeasureStore& store : runtime.stores) {
@@ -211,7 +211,7 @@ void writeRows(RunContext& ctx, ostream& stream, Writer writeRow, ValueType type
     }
 }
 
-uint64_t countRows(RunContext& ctx, bool isDouble) {
+uint64_t countRows(Context& ctx, bool isDouble) {
     auto& runtime = (*ctx.monitoring);
     uint64_t count = isDouble && runtime.reportIMR >= 0 ? 1 : 0;
     for (const internal::MeasureStore& store : runtime.stores) {
@@ -223,7 +223,7 @@ uint64_t countRows(RunContext& ctx, bool isDouble) {
     return count;
 }
 
-void writeBinary(RunContext& ctx, ostream& stream) {
+void writeBinary(Context& ctx, ostream& stream) {
     static_assert(std::endian::native == std::endian::little, "output.bin uses little-endian values");
     static_assert(sizeof(double) == 8 && std::numeric_limits<double>::is_iec559, "output.bin needs IEEE-754 doubles");
     static_assert(std::numeric_limits<int>::digits <= std::numeric_limits<int32_t>::digits,
@@ -263,10 +263,10 @@ void writeBinary(RunContext& ctx, ostream& stream) {
         ValueType::Double);
 }
 
-void writeText(RunContext& ctx, ostream& stream) { writeRows(ctx, stream, writeTextRow); }
+void writeText(Context& ctx, ostream& stream) { writeRows(ctx, stream, writeTextRow); }
 
 template <class Stream, class Writer>
-void writeOutput(RunContext& ctx, const string& filename, ios::openmode mode, Writer writer) {
+void writeOutput(Context& ctx, const string& filename, ios::openmode mode, Writer writer) {
     Stream stream(filename.c_str(), mode);
     if (!stream.rdbuf()->is_open()) {
         throw util::base_exception("Unable to open monitoring output file \"" + filename + "\"", util::Error::FileIO);
@@ -278,7 +278,7 @@ void writeOutput(RunContext& ctx, const string& filename, ios::openmode mode, Wr
     }
 }
 
-void updateSurveyNumbers(RunContext& ctx) {
+void updateSurveyNumbers(Context& ctx) {
     auto& runtime = (*ctx.monitoring);
     // first survey from the cursor that is in use; original loop left NOT_USED
     // when the scan found none (all-remainers were NOT_USED) — same via ternary
@@ -288,7 +288,7 @@ void updateSurveyNumbers(RunContext& ctx) {
 }
 
 } // namespace
-size_t setupCondition(RunContext& ctx, const string& measureName, double minValue, double maxValue, bool initialState) {
+size_t setupCondition(Context& ctx, const string& measureName, double minValue, double maxValue, bool initialState) {
     auto& runtime = (*ctx.monitoring);
     const OutMeasure om = findOutMeasure(measureName);
     if (om.measure == invalidMeasure) {
@@ -304,13 +304,13 @@ size_t setupCondition(RunContext& ctx, const string& measureName, double minValu
     return runtime.conditions.size() - 1;
 }
 
-bool checkCondition(RunContext& ctx, size_t conditionKey) {
+bool checkCondition(Context& ctx, size_t conditionKey) {
     auto& runtime = (*ctx.monitoring);
     assert(conditionKey < runtime.conditions.size());
     return runtime.conditions[conditionKey].value;
 }
 
-static void recordValue(RunContext& ctx, Measure measure, size_t survey, size_t age, uint32_t cohort, size_t species,
+static void recordValue(Context& ctx, Measure measure, size_t survey, size_t age, uint32_t cohort, size_t species,
                         size_t genotype, size_t drug, double val, int outId = 0) {
     auto& runtime = (*ctx.monitoring);
     if (survey == NOT_USED)
@@ -333,7 +333,7 @@ static void recordValue(RunContext& ctx, Measure measure, size_t survey, size_t 
     }
 }
 
-void recordStat(RunContext& ctx, Measure measure, double val, size_t species, size_t genotype) {
+void recordStat(Context& ctx, Measure measure, double val, size_t species, size_t genotype) {
     recordValue(ctx, measure, statSurveyNumber(ctx), 0, 0, species, genotype, 0, val);
 }
 
@@ -342,7 +342,7 @@ void recordStat(Measure measure, const Host::Human& human, double val, size_t sp
                 species, genotype, drug, val);
 }
 
-void recordEvent(RunContext& ctx, Measure measure, size_t survey, size_t age, uint32_t cohort) {
+void recordEvent(Context& ctx, Measure measure, size_t survey, size_t age, uint32_t cohort) {
     recordValue(ctx, measure, survey, age, cohort, 0, 0, 0, 1.0);
 }
 
@@ -362,21 +362,21 @@ void recordDeploy(Measure timedMeasure, Measure ctsMeasure, const Host::Human& h
 
 // ———  surveys  ———
 
-void initMainSim(RunContext& ctx) {
+void initMainSim(Context& ctx) {
     auto& runtime = (*ctx.monitoring);
     runtime.surveyIndex = 0;
     runtime.isInit = true;
     updateSurveyNumbers(ctx);
 }
 
-void concludeSurvey(RunContext& ctx) {
+void concludeSurvey(Context& ctx) {
     auto& runtime = (*ctx.monitoring);
     updateConditions(ctx);
     runtime.surveyIndex += 1;
     updateSurveyNumbers(ctx);
 }
 
-void writeSurveyData(RunContext& ctx) {
+void writeSurveyData(Context& ctx) {
     string filename = util::CommandLine::getOutputName();
     const bool binary = util::CommandLine::getOutputFormat() == util::CommandLine::OutputFormat::BIN;
     const auto writer = binary ? writeBinary : writeText;
@@ -389,14 +389,14 @@ void writeSurveyData(RunContext& ctx) {
     }
 }
 
-void updateAgeGroup(RunContext& ctx, uint16_t& index, SimTime age) {
+void updateAgeGroup(Context& ctx, uint16_t& index, SimTime age) {
     auto& runtime = (*ctx.monitoring);
     while (age >= runtime.ageGroupUpperBound[index]) {
         ++index;
     }
 }
 
-uint32_t updateCohortSet(RunContext& ctx, uint32_t old, interventions::ComponentId subPop, bool isMember) {
+uint32_t updateCohortSet(Context& ctx, uint32_t old, interventions::ComponentId subPop, bool isMember) {
     auto& runtime = (*ctx.monitoring);
     auto it = runtime.cohortSubPopIds.find(subPop);
     if (it == runtime.cohortSubPopIds.end())
@@ -407,21 +407,21 @@ uint32_t updateCohortSet(RunContext& ctx, uint32_t old, interventions::Component
 
 // ----- info API (run state: (*ctx.monitoring); ext-free, so out-of-line here) -----
 
-size_t eventSurveyNumber(RunContext& ctx) { return ctx.monitoring->survNumEvent; }
+size_t eventSurveyNumber(Context& ctx) { return ctx.monitoring->survNumEvent; }
 
-size_t statSurveyNumber(RunContext& ctx) {
+size_t statSurveyNumber(Context& ctx) {
     const auto& r = (*ctx.monitoring);
     return r.isInit && r.surveyIndex < r.surveyDates.size() ? r.surveyDates[r.surveyIndex].num : NOT_USED;
 }
 
-bool isReported(RunContext& ctx) { return !ctx.monitoring->isInit || statSurveyNumber(ctx) != NOT_USED; }
+bool isReported(Context& ctx) { return !ctx.monitoring->isInit || statSurveyNumber(ctx) != NOT_USED; }
 
-SimTime nextSurveyDate(RunContext& ctx) {
+SimTime nextSurveyDate(Context& ctx) {
     const auto& r = (*ctx.monitoring);
     return r.isInit && r.surveyIndex < r.surveyDates.size() ? r.surveyDates[r.surveyIndex].date : sim::future();
 }
 
-bool isUsed(RunContext& ctx, Measure measure) {
+bool isUsed(Context& ctx, Measure measure) {
     assert(measure < MeasureCount);
     return !ctx.monitoring->storesByMeasure[measure].empty();
 }

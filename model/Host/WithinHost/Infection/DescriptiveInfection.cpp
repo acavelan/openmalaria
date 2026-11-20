@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "RunContext.h"
+#include "Context.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/random.h"
 #include "util/CommandLine.h"
@@ -50,7 +50,7 @@ bool bugfix_max_dens = true, bugfix_innate_max_dens = true;
 
 // ———  static init/clear ———
 
-void DescriptiveInfection::init(RunContext& ctx, const Parameters& parameters) {
+void DescriptiveInfection::init(Context& ctx, const Parameters& parameters) {
     // Error checks
     if (ctx.clock.one_TS() != 5) {
         // To support non-5-day time-step models, either different data would
@@ -118,7 +118,7 @@ void DescriptiveInfection::init(RunContext& ctx, const Parameters& parameters) {
 
 // ———  non-static init  ———
 
-SimTime DescriptiveInfection::sample_duration(RunContext& ctx, LocalRng& rng) {
+SimTime DescriptiveInfection::sample_duration(Context& ctx, LocalRng& rng) {
     // Forgive the excess precision; it just avoids having to update all expected results
     double dur_mean = 5.1300001144409179688;
     double dur_sigma = 0.80000001192092895508;
@@ -138,7 +138,7 @@ SimTime DescriptiveInfection::sample_duration(RunContext& ctx, LocalRng& rng) {
 
 // The duration draw keeps the slot the old infection_new()/member ctor's init
 // list held — nothing else draws between construction and here.
-DescriptiveInfection::DescriptiveInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin)
+DescriptiveInfection::DescriptiveInfection(Context& ctx, LocalRng& rng, uint32_t genotype, int origin)
     : Infection(ctx, genotype, origin, Kind::Descriptive) {
     duration = sample_duration(this->ctx, rng);
     assert(this->ctx.clock.one_TS() == 5);

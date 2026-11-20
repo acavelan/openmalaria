@@ -26,7 +26,7 @@
 #include "PkPd/LSTMDrug.h"
 #include "PkPd/LSTMModel.h"
 #include "PkPd/LSTMMedicate.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "mon/Monitoring.h"
 #include "util/errors.h"
 
@@ -41,7 +41,7 @@ namespace PkPd {
 
 // ———  non-static simulation time functions  ———
 
-void LSTMModel::prescribe(RunContext& ctx, size_t schedule, size_t dosage, double age, double body_mass,
+void LSTMModel::prescribe(Context& ctx, size_t schedule, size_t dosage, double age, double body_mass,
                           double delay_d) {
     DosageTable& table = ctx.treatments.dosages[dosage];
     double key = table.useMass ? body_mass : age;
@@ -53,7 +53,7 @@ void LSTMModel::prescribe(RunContext& ctx, size_t schedule, size_t dosage, doubl
     }
 }
 
-void LSTMModel::medicate(RunContext& ctx, LocalRng& rng) {
+void LSTMModel::medicate(Context& ctx, LocalRng& rng) {
     if (medicateQueue.empty())
         return;
 
@@ -71,7 +71,7 @@ void LSTMModel::medicate(RunContext& ctx, LocalRng& rng) {
     }
 }
 
-void LSTMModel::medicateDrug(RunContext& ctx, LocalRng& rng, size_t typeIndex, double qty, double time) {
+void LSTMModel::medicateDrug(Context& ctx, LocalRng& rng, size_t typeIndex, double qty, double time) {
     //TODO: might be a little faster if m_drugs was pre-allocated with a slot for each drug type, using a null pointer
     for (auto& drug : m_drugs) {
         if (drug->getIndex() == typeIndex) {
@@ -120,7 +120,7 @@ void LSTMModel::decayDrugs(double body_mass) {
     }
 }
 
-void LSTMModel::summarize(RunContext& ctx, const Host::Human& human) const {
+void LSTMModel::summarize(Context& ctx, const Host::Human& human) const {
     const vector<size_t>& drugsInUse(ctx.drugs.getDrugsInUse());
     for (size_t index : drugsInUse) {
         for (auto& drug : m_drugs) {

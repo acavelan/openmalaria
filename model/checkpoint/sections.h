@@ -29,7 +29,7 @@
 #include "Stream.h"
 
 namespace OM {
-class RunContext;
+class Context;
 class Population;
 namespace Transmission {
 class TransmissionModel;
@@ -37,10 +37,10 @@ class TransmissionModel;
 
 namespace checkpoint {
 
-void ckStatics(Archive&, RunContext&);
-void ckMonitoring(Archive&, RunContext&);
-void ckTransmission(Archive&, RunContext&, Transmission::TransmissionModel&);
-void ckHumans(Archive&, RunContext&, Population&);
+void ckStatics(Archive&, Context&);
+void ckMonitoring(Archive&, Context&);
+void ckTransmission(Archive&, Context&, Transmission::TransmissionModel&);
+void ckHumans(Archive&, Context&, Population&);
 
 } // namespace checkpoint
 } // namespace OM

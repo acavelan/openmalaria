@@ -29,7 +29,7 @@
 // defined in the original files (extern re-declared below).
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "Parameters.h"
 #include "Host/NeonatalMortality.h"
 #include "Host/WithinHost/Diagnostic.h"
@@ -75,7 +75,7 @@ extern double pg_indirRiskCoFactor, pg_severeMalThreshold, pg_comorbIntercept, p
 extern AgeGroupInterpolator pg_NMF_incidence;
 extern bool opt_predetermined_episodes, opt_mueller_pres_model;
 
-void PathogenesisModel::init(RunContext& ctx, const Parameters& parameters, const scnXml::Clinical& clinical,
+void PathogenesisModel::init(Context& ctx, const Parameters& parameters, const scnXml::Clinical& clinical,
                              bool nmfOnly) {
     if (util::ModelOptions::option(util::NON_MALARIA_FEVERS)) {
         if (!clinical.getNonMalariaFevers().present()) {
@@ -108,7 +108,7 @@ void PathogenesisModel::init(RunContext& ctx, const Parameters& parameters, cons
 
 }
 
-TreatmentId Treatments::addTreatment(RunContext& ctx, const scnXml::TreatmentOption& desc) {
+TreatmentId Treatments::addTreatment(Context& ctx, const scnXml::TreatmentOption& desc) {
     Treatments treatment(ctx, desc);
     TreatmentId id(ctx.whTreatments->size());
     ctx.whTreatments->push_back(std::move(treatment));
@@ -124,7 +124,7 @@ Treatments::Stages stageFromString(const std::string& str) {
         return Treatments::BOTH;
     throw util::format_error(std::string("stage must be liver, blood or both, not ").append(str));
 }
-Treatments::Treatments(RunContext& ctx, const scnXml::TreatmentOption& elt)
+Treatments::Treatments(Context& ctx, const scnXml::TreatmentOption& elt)
     : TriggeredDeployments(ctx, elt), timeLiver(sim::zero()), timeBlood(sim::zero()) {
     for (auto it = elt.getClearInfections().begin(), end = elt.getClearInfections().end(); it != end; ++it) {
         try {
@@ -159,7 +159,7 @@ using namespace OM::util;
 extern std::vector<double> prevByGestationalAge;
 extern const WithinHost::Diagnostic* neonatalDiagnostic;
 
-void NeonatalMortality::init(RunContext& ctx, const scnXml::Clinical& clinical) {
+void NeonatalMortality::init(Context& ctx, const scnXml::Clinical& clinical) {
     SimTime fiveMonths = sim::fromDays(5 * 30);
     prevByGestationalAge.assign(ctx.clock.inSteps(fiveMonths), 0.0);
 
@@ -216,7 +216,7 @@ extern const FlatTree *treeUCOfficial, *treeUCSelfTreat;
 namespace {
 
 struct CompileCtx {
-    RunContext& ctx;
+    Context& ctx;
     FlatTree& t;
     bool isUC;
     uint32_t add(DTKind kind) {
@@ -558,7 +558,7 @@ uint32_t compile_node(CompileCtx& c, const scnXml::DecisionTree& node) {
 
 } // unnamed namespace
 
-const FlatTree& compile_decision_tree(RunContext& ctx, const scnXml::DecisionTree& node, bool isUC) {
+const FlatTree& compile_decision_tree(Context& ctx, const scnXml::DecisionTree& node, bool isUC) {
     std::unique_ptr<FlatTree> tree(new FlatTree());
     CompileCtx c{ctx, *tree, isUC};
     tree->root = compile_node(c, node);
@@ -570,7 +570,7 @@ const FlatTree& compile_decision_tree(RunContext& ctx, const scnXml::DecisionTre
     return r;
 }
 
-void ClinicalEventScheduler::init(RunContext& ctx, const Parameters& parameters, const scnXml::Clinical& clinical) {
+void ClinicalEventScheduler::init(Context& ctx, const Parameters& parameters, const scnXml::Clinical& clinical) {
     if (ctx.clock.one_TS() != sim::oneDay())
         throw util::xml_scenario_error("ClinicalEventScheduler is only designed for a 1-day time step.");
 
@@ -642,7 +642,7 @@ void ClinicalEventScheduler::setParameters(const SimClock& clock, const scnXml::
         severeNmfMortality.set(clock, nmfDesc.getCFR(), "CFR");
     }
 }
-void ESCaseManagement::setHealthSystem(RunContext& ctx, const scnXml::HSEventScheduler& esData) {
+void ESCaseManagement::setHealthSystem(Context& ctx, const scnXml::HSEventScheduler& esData) {
     escm_uncomplicated = &compile_decision_tree(ctx, esData.getUncomplicated(), true);
     escm_complicated = &compile_decision_tree(ctx, esData.getComplicated(), false);
 
@@ -697,7 +697,7 @@ const scnXml::TreatmentActions::CQOptional& getHealthSystemTreatmentOptional(con
         return treatActs.getQN();
     throw util::xml_scenario_error("healthSystem.drugRegimen: firstLine / secondLine / inpatient has bad value");
 }
-WithinHost::TreatmentId getHealthSystemTreatmentByName(RunContext& ctx, const scnXml::TreatmentActions& treatActs,
+WithinHost::TreatmentId getHealthSystemTreatmentByName(Context& ctx, const scnXml::TreatmentActions& treatActs,
                                                        const string& drug) {
     const scnXml::TreatmentActions::CQOptional& elt = getHealthSystemTreatmentOptional(treatActs, drug);
     if (!elt.present())
@@ -743,7 +743,7 @@ static void set_liver_stage(const xsd::cxx::tree::optional<scnXml::LiverStageDru
     }
 }
 
-void ImmediateOutcomes::setHealthSystem(RunContext& ctx, const scnXml::HSImmediateOutcomes& hsDescription) {
+void ImmediateOutcomes::setHealthSystem(Context& ctx, const scnXml::HSImmediateOutcomes& hsDescription) {
     const string &firstLine = hsDescription.getDrugRegimen().getFirstLine(),
                  &secondLine = hsDescription.getDrugRegimen().getSecondLine(),
                  &inpatient = hsDescription.getDrugRegimen().getInpatient();
@@ -804,7 +804,7 @@ void ImmediateOutcomes::setHealthSystem(RunContext& ctx, const scnXml::HSImmedia
 
     set_liver_stage(hsDescription.getLiverStageDrug());
 }
-void DecisionTree5Day::setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& hsDescription) {
+void DecisionTree5Day::setHealthSystem(Context& ctx, const scnXml::HSDT5Day& hsDescription) {
     set_access_probabilities(hsDescription);
 
     treeUCOfficial = &compile_decision_tree(ctx, hsDescription.getTreeUCOfficial(), true);
@@ -815,7 +815,7 @@ void DecisionTree5Day::setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& 
 
     set_liver_stage(hsDescription.getLiverStageDrug());
 }
-void ClinicalModel::init(RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario) {
+void ClinicalModel::init(Context& ctx, const Parameters& parameters, const scnXml::Scenario& scenario) {
     const scnXml::Clinical& clinical = scenario.getModel().getClinical();
     try {
         indirectMortBugfix = util::ModelOptions::option(util::INDIRECT_MORTALITY_FIX);
@@ -847,7 +847,7 @@ void ClinicalModel::init(RunContext& ctx, const Parameters& parameters, const sc
     }
 }
 
-void ClinicalModel::setHS(RunContext& ctx, const scnXml::HealthSystem& healthSystem) {
+void ClinicalModel::setHS(Context& ctx, const scnXml::HealthSystem& healthSystem) {
     caseFatalityRate.set(ctx.clock, healthSystem.getCFR(), "CFR");
     pSequelaeInpatient.set(ctx.clock, healthSystem.getPSequelaeInpatient(), "pSequelaeInpatient");
     // Presence check + message for the three sections; bytes composed from the

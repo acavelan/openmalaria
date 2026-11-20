@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "interventions/Interfaces.h"
 
 using namespace std;
@@ -67,10 +67,10 @@ class Treatments : public interventions::TriggeredDeployments {
     //@{
     /** Configure a new treatment option, and return the code used to select
      * that option later. */
-    static TreatmentId addTreatment(RunContext& ctx, const scnXml::TreatmentOption& desc);
+    static TreatmentId addTreatment(Context& ctx, const scnXml::TreatmentOption& desc);
 
     /** Return the corresponding treatment description. */
-    static const Treatments& select(RunContext& ctx, TreatmentId treatId);
+    static const Treatments& select(Context& ctx, TreatmentId treatId);
     //@}
 
     /// @brief Types used by the non-static methods
@@ -88,7 +88,7 @@ class Treatments : public interventions::TriggeredDeployments {
 
   private:
     // non-static:
-    Treatments(RunContext& ctx, const scnXml::TreatmentOption& elt);
+    Treatments(Context& ctx, const scnXml::TreatmentOption& elt);
 };
 
 }

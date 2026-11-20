@@ -21,7 +21,7 @@
  */
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Diagnostic.h"
@@ -42,14 +42,14 @@ extern bool bugfix_max_dens; // DescriptiveInfection.cpp
 bool reportPatentInfected = false;
 // -----  Initialization  -----
 
-void WHDescriptive::init(RunContext& ctx) {
+void WHDescriptive::init(Context& ctx) {
     reportPatentInfected = (mon::isUsed(ctx, mon::measure("totalPatentInf")) ||
                             mon::isUsed(ctx, mon::measure("totalPatentInf_Imported")) ||
                             mon::isUsed(ctx, mon::measure("totalPatentInf_Introduced")) ||
                             mon::isUsed(ctx, mon::measure("totalPatentInf_Indigenous")));
 }
 
-WHDescriptive::WHDescriptive(RunContext& ctx, LocalRng& rng, double comorbidityFactor)
+WHDescriptive::WHDescriptive(Context& ctx, LocalRng& rng, double comorbidityFactor)
     : WHFalciparum(ctx, rng, comorbidityFactor, Kind::Descriptive) {
     assert(ctx.clock.one_TS() == sim::fromDays(5));
     opt_vaccine_genotype = util::ModelOptions::option(util::VACCINE_GENOTYPE);

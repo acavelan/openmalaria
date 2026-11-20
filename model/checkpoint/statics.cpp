@@ -30,7 +30,7 @@
 #include "sections.h"
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "Host/NeonatalMortality.h"
 #include "Host/InfectionIncidenceModel.h"
 #include "Host/ImportedInfections.h"
@@ -74,7 +74,7 @@ void infantMortalityStatics(checkpoint::Archive& a) {
 
 namespace checkpoint {
 
-void ckStatics(Archive& a, RunContext& ctx) {
+void ckStatics(Archive& a, Context& ctx) {
     Host::neonatalStatics(a);
     Host::infectionIncidenceStatics(a);
     Clinical::infantMortalityStatics(a);
@@ -99,7 +99,7 @@ template <class T> void fixedVector(Archive& a, std::vector<T>& v) {
 }
 } // namespace
 
-void ckMonitoring(Archive& a, RunContext& ctx) {
+void ckMonitoring(Archive& a, Context& ctx) {
     // Continuous output: resume position in the cts file (header written by
     // Continuous::init; rows are flushed per record, so this is exact).
     a.value(ctx.ctsStreamOffset);

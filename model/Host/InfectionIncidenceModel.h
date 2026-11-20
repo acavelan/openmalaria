@@ -54,15 +54,15 @@ class InfectionIncidenceModel {
 
   protected:
     /// The run this model belongs to (clock accessed as ctx.clock).
-    RunContext& ctx;
+    Context& ctx;
 
   public:
     ///@brief Static initialisation & constructors
     //@{
     /// Read in/initialise parameters
-    static void init(RunContext& ctx, const Parameters& parameters);
+    static void init(Context& ctx, const Parameters& parameters);
     /// Create a new instance (Kind selected from the model options)
-    static InfectionIncidenceModel* createModel(RunContext& ctx);
+    static InfectionIncidenceModel* createModel(Context& ctx);
 
     /// Reset summary outputs at beginning of main simulation
     static inline void preMainSimInit() { ctsNewInfections = 0; }
@@ -70,7 +70,7 @@ class InfectionIncidenceModel {
 
   protected:
     /// Create a new model
-    explicit InfectionIncidenceModel(RunContext& ctx, Kind kind)
+    explicit InfectionIncidenceModel(Context& ctx, Kind kind)
         : ctx(ctx), kind(kind), m_pInfected(0.0), m_cumulativeEIRa(0.0) {}
 
   public:

@@ -22,7 +22,7 @@
 
 // p8-files: header fold rejected — this TU reads Human/WHInterface, so inlining
 // into Episode.h would drag that chain into the whole clinical cone.
-#include "RunContext.h"
+#include "Context.h"
 #include "Clinical/Episode.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
@@ -38,7 +38,7 @@ void Episode::flush() {
     time = sim::never();
 }
 
-void Episode::update(RunContext& ctx, const Host::Human& human, Episode::State newState) {
+void Episode::update(Context& ctx, const Host::Human& human, Episode::State newState) {
     bool toReport = false;
 
     if (healthSystemMemoryFix && (time + ClinicalModel::hsMemory() <= ctx.clock.ts0()))

@@ -79,7 +79,7 @@ class Episode {
         RUN_CM_TREE = 0x10000, ///< Flag to indicate that CM tree should be run now or after a delay
     };
 
-    explicit Episode(RunContext& ctx)
+    explicit Episode(Context& ctx)
         : time(sim::never()), surveyPeriod(mon::NOT_USED), ageGroup(0), cohortSet(0), state(NONE), rctx(&ctx) {
         healthSystemMemoryFix = util::ModelOptions::option(util::HEALTH_SYSTEM_MEMORY_FIX);
     };
@@ -94,7 +94,7 @@ class Episode {
      * @param human The human whose info is being reported
      * @param newState The severity (diagnosis) and outcome.
      */
-    void update(RunContext& ctx, const Host::Human& human, Episode::State newState);
+    void update(Context& ctx, const Host::Human& human, Episode::State newState);
 
     /// Time of event, potentially never
     SimTime time = sim::never();
@@ -121,7 +121,7 @@ class Episode {
 
     bool healthSystemMemoryFix = false;
     /// The run this episode reports to (set at construction).
-    RunContext* rctx;
+    Context* rctx;
 };
 
 }

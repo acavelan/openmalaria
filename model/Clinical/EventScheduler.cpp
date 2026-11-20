@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "RunContext.h"
+#include "Context.h"
 #include "Clinical/EventScheduler.h"
 #include "util/random.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -60,7 +60,7 @@ AgeGroupInterpolator ClinicalEventScheduler::MF_need_antibiotic;
 
 // -----  construction, destruction and checkpointing  -----
 
-void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, double ageYears,
+void esClinicalUpdate(CMEventScheduler& cm, Context& ctx, Human& human, double ageYears,
                       WithinHost::Pathogenesis::StatePair& pg) {
     WHInterface& withinHostModel = *human.withinHostModel;
     Episode::State newState = static_cast<Episode::State>(pg.state);

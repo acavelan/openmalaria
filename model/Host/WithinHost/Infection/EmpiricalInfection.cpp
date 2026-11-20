@@ -66,11 +66,11 @@ static double getInflatedDensity(LocalRng& rng, double nonInflatedDensity);
 static double sigma_noise(int ageDays);
 static double sampleSubPatentValue(LocalRng& rng, double mu, double sigma, double upperBound);
 
-Infection* createEmpiricalInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+Infection* createEmpiricalInfection(Context& ctx, LocalRng& rng, uint32_t protID, int origin) {
     return new EmpiricalInfection(ctx, rng, protID, origin);
 }
 
-void EmpiricalInfection::init(RunContext& ctx) {
+void EmpiricalInfection::init(Context& ctx) {
     ctx.createInfection = &createEmpiricalInfection;
 
     // alpha1 corresponds to 1 day before first patent, alpha2 2 days before first patent etc.
@@ -132,7 +132,7 @@ void EmpiricalInfection::init(RunContext& ctx) {
 
 /* Initialises a new infection by assigning the densities for the last 3 prepatent days
 */
-EmpiricalInfection::EmpiricalInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin,
+EmpiricalInfection::EmpiricalInfection(Context& ctx, LocalRng& rng, uint32_t genotype, int origin,
                                        double growthRateMultiplier)
     : Infection(ctx, genotype, origin, Kind::Empirical) {
     //sample the parasite densities for the last 3 prepatent days

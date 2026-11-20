@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "RunContext.h"
+#include "Context.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Diagnostic.h"
@@ -84,7 +84,7 @@ void WHFalciparum::setParams(double cumYStar, double cumHStar, double aM, double
 
 // -----  Non-static  -----
 
-WHFalciparum::WHFalciparum(RunContext& ctx, LocalRng& rng, double comorbidityFactor, Kind kind)
+WHFalciparum::WHFalciparum(Context& ctx, LocalRng& rng, double comorbidityFactor, Kind kind)
     : WHInterface(ctx, kind) {
     pathogenesisModel.reset(Pathogenesis::PathogenesisModel::createPathogenesisModel(comorbidityFactor));
 

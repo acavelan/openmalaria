@@ -26,7 +26,7 @@
 // health-system kinds, DecisionTree5Day and ImmediateOutcomes (one file each
 // before this merge; bodies verbatim).
 
-#include "RunContext.h"
+#include "Context.h"
 #include "Clinical/CM5DayCommon.h"
 #include "Clinical/CMDecisionTree.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -57,7 +57,7 @@ void CM5DayCommon::init() { cfr_pf_use_hospital = util::ModelOptions::option(uti
 
 // ———  per-human, construction and destruction  ———
 
-void clinicalUpdate5Day(ClinicalModel& cm, RunContext& ctx, Human& human, double ageYears,
+void clinicalUpdate5Day(ClinicalModel& cm, Context& ctx, Human& human, double ageYears,
                         WithinHost::Pathogenesis::StatePair& pg) {
     Episode::State pgState = static_cast<Episode::State>(pg.state);
 
@@ -84,7 +84,7 @@ void clinicalUpdate5Day(ClinicalModel& cm, RunContext& ctx, Human& human, double
         human.removeFirstEvent(interventions::SubPopRemove::ON_FIRST_BOUT);
 }
 
-void severeMalaria(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState, double ageYears,
+void severeMalaria(ClinicalModel& cm, Context& ctx, Human& human, Episode::State pgState, double ageYears,
                    int& doomed) {
     // Probability of getting treatment (only part which is case managment):
     double p2 = CM5DayCommon::accessSevere * cm.m_treatmentSeekingFactor;
@@ -193,7 +193,7 @@ const FlatTree *treeUCOfficial = 0, *treeUCSelfTreat = 0;
 
 // ———  per-human, update  ———
 
-void treeUncomplicatedEvent(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState) {
+void treeUncomplicatedEvent(ClinicalModel& cm, Context& ctx, Human& human, Episode::State pgState) {
     // If last treatment prescribed was in recent memory, consider second line.
     CM5DayCommon::CaseType regimen = CM5DayCommon::FirstLine;
     if (cm.t_last_treatment() + ClinicalModel::healthSystemMemory > ctx.clock.ts0()) {
@@ -237,7 +237,7 @@ bool ImmediateOutcomes::useDiagnosticUC = false;
 
 // ———  per-human, update  ———
 
-void immOutUncomplicatedEvent(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState) {
+void immOutUncomplicatedEvent(ClinicalModel& cm, Context& ctx, Human& human, Episode::State pgState) {
     // If last treatment prescribed was in recent memory, consider second line.
     CM5DayCommon::CaseType regimen = CM5DayCommon::FirstLine;
     if (cm.t_last_treatment() + ClinicalModel::healthSystemMemory > ctx.clock.ts0()) {

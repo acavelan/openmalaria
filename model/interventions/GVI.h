@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "RunContext.h"
+#include "Context.h"
 #include "interventions/ComponentId.h"
 #include "util/DecayFunction.h"
 #include "util/sampler.h"
@@ -46,7 +46,7 @@ struct GVIParams {
      * @param elt Component description from XML
      * @param species_name_map Map of species names to indices.
      */
-    GVIParams(RunContext& ctx, ComponentId, const scnXml::GVIDescription& elt,
+    GVIParams(Context& ctx, ComponentId, const scnXml::GVIDescription& elt,
               const map<string, size_t>& species_name_map);
 
     /** Per mosquito-species parameters for generic vector intervention model. */

@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "RunContext.h"
+#include "Context.h"
 #include "Transmission/TransmissionModel.h"
 #include "Population.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -94,7 +94,7 @@ const string& reverseLookup(const map<string, size_t>& m, size_t i) {
 }
 
 TransmissionModel::TransmissionModel(
-    RunContext& ctx, vector<double> initEIR, int interventionMode,
+    Context& ctx, vector<double> initEIR, int interventionMode,
     vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
     vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
     map<string, size_t> speciesIndexList)
@@ -400,7 +400,7 @@ void TransmissionModel::uninfectVectors_vector() {
         s->uninfectVectors();
 }
 
-void TransmissionModel::summarize_vector(RunContext& ctx) {
+void TransmissionModel::summarize_vector(Context& ctx) {
 
     for (size_t i = 0; i < speciesIndex.size(); ++i) {
         species[i]->summarize(ctx, i);

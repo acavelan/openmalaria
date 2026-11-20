@@ -22,7 +22,7 @@
 
 // p8-files: InfectionIncidenceModel.h sits in the Human/WH chain; the per-Kind
 // incidence formula bodies stay here (wide-cone rule).
-#include "RunContext.h"
+#include "Context.h"
 #include "Host/InfectionIncidenceModel.h"
 #include "Host/Human.h"
 #include "Transmission/PerHost.h"
@@ -73,7 +73,7 @@ int InfectionIncidenceModel::ctsNewInfections = 0;
 
 // -----  static initialisation  -----
 
-void InfectionIncidenceModel::init(RunContext& ctx, const Parameters& parameters) {
+void InfectionIncidenceModel::init(Context& ctx, const Parameters& parameters) {
     baseline_avail_shape_param = parameters[Parameter::BASELINE_AVAILABILITY_SHAPE];
     baseline_avail_offset = 0.5 * pow(baseline_avail_shape_param, 2);
 
@@ -137,7 +137,7 @@ void InfectionIncidenceModel::ctsReportNewInfections(const vector<Host::Human>&,
 
 // -----  non-static non-checkpointing constructors  -----
 
-InfectionIncidenceModel* InfectionIncidenceModel::createModel(RunContext& ctx) {
+InfectionIncidenceModel* InfectionIncidenceModel::createModel(Context& ctx) {
     // Kind from model options (read once in init; same dispatch as old factory)
     if (opt_neg_bin_mass_action)
         return new InfectionIncidenceModel(ctx, Kind::NegBinom);

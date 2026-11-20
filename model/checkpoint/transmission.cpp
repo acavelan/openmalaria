@@ -172,7 +172,7 @@ void checkpoint(Archive& a, TransmissionModel& tm) {
 
 namespace checkpoint {
 
-void ckTransmission(Archive& a, RunContext&, Transmission::TransmissionModel& transmission) {
+void ckTransmission(Archive& a, Context&, Transmission::TransmissionModel& transmission) {
     Transmission::checkpoint(a, transmission);
 }
 

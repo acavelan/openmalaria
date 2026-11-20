@@ -51,12 +51,12 @@ inline SimulationMode readMode(const string& str) {
 }
 
 // Factory functions are defined in model/xml/entomology.cpp.
-TransmissionModel* createNonVectorModel(RunContext& ctx, const scnXml::Entomology& entoData);
+TransmissionModel* createNonVectorModel(Context& ctx, const scnXml::Entomology& entoData);
 bool anophelesCompare(const scnXml::AnophelesParams& a1, const scnXml::AnophelesParams& a2);
-Anopheles::AnophelesModel* createAnophelesModel(RunContext& ctx, size_t i, const scnXml::AnophelesParams& anoph,
+Anopheles::AnophelesModel* createAnophelesModel(Context& ctx, size_t i, const scnXml::AnophelesParams& anoph,
                                                 vector<double>& initialisationEIR, int populationSize,
                                                 int interventionMode);
-TransmissionModel* createVectorModel(RunContext& ctx, const scnXml::Entomology& entoData, int populationSize);
-TransmissionModel* createTransmissionModel(RunContext& ctx, const scnXml::Entomology& entoData, int populationSize);
+TransmissionModel* createVectorModel(Context& ctx, const scnXml::Entomology& entoData, int populationSize);
+TransmissionModel* createTransmissionModel(Context& ctx, const scnXml::Entomology& entoData, int populationSize);
 } // namespace Transmission
 } // namespace OM

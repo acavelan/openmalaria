@@ -20,11 +20,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-// p8-files: PopulationAgeStructure.h rides the RunContext.h cone; demography
+// p8-files: PopulationAgeStructure.h rides the Context.h cone; demography
 // spline/parse bodies stay here (wide-cone rule).
 #include "PopulationAgeStructure.h"
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "util/errors.h"
 
 #include <cmath>
@@ -35,9 +35,9 @@
 namespace OM {
 using namespace OM::util;
 
-size_t AgeStructure::getMaxTStepsPerLife(const RunContext& ctx) { return ctx.age.cumAgeProp.size(); }
+size_t AgeStructure::getMaxTStepsPerLife(const Context& ctx) { return ctx.age.cumAgeProp.size(); }
 
-void AgeStructure::init(RunContext& ctx, const scnXml::Demography& demography) {
+void AgeStructure::init(Context& ctx, const scnXml::Demography& demography) {
     auto& cumAgeProp = ctx.age.cumAgeProp;
     // this number of cells are needed:
     cumAgeProp.resize(ctx.clock.inSteps(ctx.clock.max_human_age) + 1);
@@ -46,7 +46,7 @@ void AgeStructure::init(RunContext& ctx, const scnXml::Demography& demography) {
     calcCumAgeProp(ctx);
 }
 
-int AgeStructure::targetCumPop(RunContext& ctx, size_t ageTSteps, int targetPop) {
+int AgeStructure::targetCumPop(Context& ctx, size_t ageTSteps, int targetPop) {
     const auto& cumAgeProp = ctx.age.cumAgeProp;
     size_t index = cumAgeProp.size() - 1 - ageTSteps;
     return (int)floor(cumAgeProp[index] * targetPop + 0.5);
@@ -57,7 +57,7 @@ int AgeStructure::targetCumPop(RunContext& ctx, size_t ageTSteps, int targetPop)
  * groups; splits the infant age groups as a side effect. Called back by the
  * GSL minimiser (wCalcRSS); formerly a public static AgeStructure member,
  * file-local since its only caller is in this TU. Body verbatim. */
-static double setDemoParameters(RunContext& ctx, double param1, double param2) {
+static double setDemoParameters(Context& ctx, double param1, double param2) {
     auto& ageGroupBounds = ctx.age.ageGroupBounds;
     auto& ageGroupPercent = ctx.age.ageGroupPercent;
     double& mu0 = ctx.age.mu0;
@@ -110,7 +110,7 @@ static double wCalcRSS(const gsl_vector* v, void* params) {
     y = gsl_vector_get(v, 1);
 
     // params: the run (see minimizeCalc_rss)
-    return setDemoParameters(*static_cast<RunContext*>(params), x, y);
+    return setDemoParameters(*static_cast<Context*>(params), x, y);
 }
 /** Presumably from AR. Searches iteratively for a minimum to function func.
  *
@@ -118,7 +118,7 @@ static double wCalcRSS(const gsl_vector* v, void* params) {
  * @param param1 Initial guess of first param taken by func
  * @param param2 Initial guess of second
  */
-void minimizeCalc_rss(RunContext& ctx, double param1, double param2) {
+void minimizeCalc_rss(Context& ctx, double param1, double param2) {
     gsl_vector* stepSize = gsl_vector_alloc(2);
     gsl_vector_set_all(stepSize, 0.1);
 
@@ -152,7 +152,7 @@ void minimizeCalc_rss(RunContext& ctx, double param1, double param2) {
     gsl_multimin_fminimizer_free(minimizer);
 }
 
-void AgeStructure::calcCumAgeProp(RunContext& ctx) {
+void AgeStructure::calcCumAgeProp(Context& ctx) {
     auto& cumAgeProp = ctx.age.cumAgeProp;
     const double mu0 = ctx.age.mu0, mu1 = ctx.age.mu1;
     const double alpha0 = ctx.age.alpha0, alpha1 = ctx.age.alpha1;

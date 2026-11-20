@@ -40,7 +40,7 @@ namespace scnXml{
     class PKPDDrug;
     class Phenotype;
 }
-namespace OM { class RunContext;
+namespace OM { class Context;
 namespace WithinHost {
     class Infection;
 }
@@ -110,7 +110,7 @@ public:
     //@{
     /** Initialise the drug model (registry ctx.drugs). Called at start of
      * simulation; defined in model/xml/pharmacology.cpp. */
-    static void init (RunContext& ctx, const scnXml::Drugs& data);
+    static void init (Context& ctx, const scnXml::Drugs& data);
     //@}
     
     
@@ -121,7 +121,7 @@ public:
      * @param index     Index of drug in internal list
      * @param drugData Scenario data for this drug (PK params, PD params per phenotype)
      */
-    LSTMDrugType (RunContext& ctx, size_t index, const scnXml::PKPDDrug& drugData);
+    LSTMDrugType (Context& ctx, size_t index, const scnXml::PKPDDrug& drugData);
     ~LSTMDrugType ();
     
     LSTMDrugType(LSTMDrugType&&) = default;

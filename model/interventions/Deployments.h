@@ -34,7 +34,7 @@
 #pragma once
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "util/errors.h"
 #include "Population.h"
 #include "Transmission/TransmissionModel.h"
@@ -82,7 +82,7 @@ inline bool replayed_on_restore(TimedDeploymentKind kind) {
 
 /** Old TimedDeployment ctor date checks; run at load, before payload reading
  * (same throw/warn order as the old base ctor). */
-inline void check_timed_date(RunContext& ctx, SimTime deployDate) {
+inline void check_timed_date(Context& ctx, SimTime deployDate) {
     if (deployDate < ctx.clock.start_date) {
         throw util::xml_scenario_error("timed intervention deployment: may not be negative");
     } else if (deployDate >= ctx.clock.end_date) {
@@ -92,14 +92,14 @@ inline void check_timed_date(RunContext& ctx, SimTime deployDate) {
 }
 
 /** Deployment restrictions shared by timed and continuous human deployments
- * (old HumanDeploymentBase; its RunContext member is gone — the deploy entry
+ * (old HumanDeploymentBase; its Context member is gone — the deploy entry
  * points already receive ctx). read() is defined in xml/interventions.cpp. */
 struct HumanDeployParams {
-    static HumanDeployParams read(RunContext& ctx, const scnXml::DeploymentBase& deploy,
+    static HumanDeployParams read(Context& ctx, const scnXml::DeploymentBase& deploy,
                                   shared_ptr<const HumanIntervention> intervention, ComponentId subPop,
                                   bool complement);
 
-    inline void deployToHuman(RunContext& ctx, Host::Human& human, mon::Deploy::Method method) const {
+    inline void deployToHuman(Context& ctx, Host::Human& human, mon::Deploy::Method method) const {
         intervention->deploy(ctx, human, method, vaccLimits);
     }
 
@@ -114,7 +114,7 @@ struct HumanDeployParams {
 
 /// Old TimedHumanDeployment filter bounds (read from XML at load).
 struct TimedHumanParams {
-    static TimedHumanParams read(RunContext& ctx, SimTime date, const scnXml::MassDeployment& mass,
+    static TimedHumanParams read(Context& ctx, SimTime date, const scnXml::MassDeployment& mass,
                                  shared_ptr<const HumanIntervention> intervention, ComponentId subPop, bool complement);
 
     HumanDeployParams d;
@@ -164,17 +164,17 @@ struct ChangeEirDeployParams {
 
 // Definitions in xml/interventions.cpp (they need the schema/clinical includes
 // this header must not pull in):
-void timed_deploy_change_hs(RunContext&, Transmission::TransmissionModel&, ChangeHsDeployParams&);
-void timed_deploy_change_eir(RunContext&, Transmission::TransmissionModel&, ChangeEirDeployParams&);
-void timed_deploy_add_nhh(RunContext&, std::vector<Host::Human>&, Transmission::TransmissionModel&,
+void timed_deploy_change_hs(Context&, Transmission::TransmissionModel&, ChangeHsDeployParams&);
+void timed_deploy_change_eir(Context&, Transmission::TransmissionModel&, ChangeEirDeployParams&);
+void timed_deploy_add_nhh(Context&, std::vector<Host::Human>&, Transmission::TransmissionModel&,
                           AddNhhDeployParams&);
-void timed_deploy_nhh_mods(RunContext&, std::vector<Host::Human>&, Transmission::TransmissionModel&,
+void timed_deploy_nhh_mods(Context&, std::vector<Host::Human>&, Transmission::TransmissionModel&,
                            const NhhModsDeployParams&);
 
 // ———  timed human deployments  ———
 
 /// Old TimedHumanDeployment::deploy body, verbatim (filters then bernoulli-last).
-inline void timed_human_deploy(RunContext& ctx, std::vector<Host::Human>& population, const TimedHumanParams& th) {
+inline void timed_human_deploy(Context& ctx, std::vector<Host::Human>& population, const TimedHumanParams& th) {
     const HumanDeployParams& d = th.d;
     for (Human& human : population) {
         const SimTime age = human.age(ctx.clock.now());
@@ -254,7 +254,7 @@ inline void timed_human_deploy(RunContext& ctx, std::vector<Host::Human>& popula
 }
 
 /// Old TimedCumulativeHumanDeployment::deploy body, verbatim.
-inline void timed_cumulative_deploy(RunContext& ctx, std::vector<Host::Human>& population,
+inline void timed_cumulative_deploy(Context& ctx, std::vector<Host::Human>& population,
                                     const CumulativeHumanParams& cum) {
     const TimedHumanParams& th = cum.h;
     const HumanDeployParams& d = th.d;
@@ -315,10 +315,10 @@ struct TimedDeployment {
     TimedDeployment(const TimedDeployment&) = delete;
     TimedDeployment& operator=(const TimedDeployment&) = delete;
 
-    void deploy(RunContext& ctx, std::vector<Host::Human>& population, Transmission::TransmissionModel& transmission);
+    void deploy(Context& ctx, std::vector<Host::Human>& population, Transmission::TransmissionModel& transmission);
 };
 
-inline void TimedDeployment::deploy(RunContext& ctx, std::vector<Host::Human>& population,
+inline void TimedDeployment::deploy(Context& ctx, std::vector<Host::Human>& population,
                                     Transmission::TransmissionModel& transmission) {
     switch (kind) {
 
@@ -433,7 +433,7 @@ inline void print_timed_details(std::ostream& out, const TimedDeployment& td) {
 /** Continuous deployment of an intervention (not polymorphic; kept as a value
  * struct, sorted by deployAge). read() defined in xml/interventions.cpp. */
 struct ContinuousHumanDeployment {
-    static ContinuousHumanDeployment read(RunContext& ctx, SimTime begin, SimTime end,
+    static ContinuousHumanDeployment read(Context& ctx, SimTime begin, SimTime end,
                                           const ::scnXml::ContinuousDeployment& elt,
                                           shared_ptr<const HumanIntervention> intervention, ComponentId subPop,
                                           bool complement);
@@ -442,7 +442,7 @@ struct ContinuousHumanDeployment {
      * 
      * @returns false iff this deployment (and thus all later ones in the
      *  ordered list) happens in the future. */
-    bool filterAndDeploy(RunContext& ctx, Host::Human& human) const {
+    bool filterAndDeploy(Context& ctx, Host::Human& human) const {
         SimTime age = human.age(ctx.clock.now());
         if (deployAge > age) {
             // stop processing continuous deployments for this

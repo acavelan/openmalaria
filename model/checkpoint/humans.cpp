@@ -40,7 +40,7 @@
 #include "Clinical/ClinicalModel.h"
 #include "Clinical/Episode.h"
 #include "PkPd/LSTMDrug.h"
-#include "RunContext.h"
+#include "Context.h"
 
 namespace OM {
 
@@ -217,7 +217,7 @@ void checkpoint(checkpoint::Archive& a, LSTMDrug& drug) {
 }
 
 namespace {
-void ckLSTM(checkpoint::Archive& a, RunContext& ctx, LSTMModel& m, util::LocalRng& hostRng) {
+void ckLSTM(checkpoint::Archive& a, Context& ctx, LSTMModel& m, util::LocalRng& hostRng) {
     uint64_t n = m.m_drugs.size();
     a.value(n);
     if (a.reading()) {
@@ -309,7 +309,7 @@ namespace {
 
 using WithinHost::WHInterface;
 
-void ckWH(Archive& a, RunContext& ctx, WHInterface& wh, util::LocalRng& rng) {
+void ckWH(Archive& a, Context& ctx, WHInterface& wh, util::LocalRng& rng) {
     // Shared P. falciparum block (written for every kind; Vivax leaves most
     // at their defaults — same bytes, simplest symmetric code).
     a.value(wh.numInfs);
@@ -393,7 +393,7 @@ void ckWH(Archive& a, RunContext& ctx, WHInterface& wh, util::LocalRng& rng) {
     }
 }
 
-void ckHuman(Archive& a, RunContext& ctx, Host::Human& h) {
+void ckHuman(Archive& a, Context& ctx, Host::Human& h) {
     auto& c = *h.cols;
     const size_t r = h.row;
     a.value(c.dob[r]);
@@ -426,7 +426,7 @@ void ckHuman(Archive& a, RunContext& ctx, Host::Human& h) {
 
 } // namespace
 
-void ckHumans(Archive& a, RunContext& ctx, Population& population) {
+void ckHumans(Archive& a, Context& ctx, Population& population) {
     uint64_t n = population.humans.size();
     a.value(n);
     a.value(population.recentBirths);

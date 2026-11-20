@@ -54,7 +54,7 @@ namespace {
 
 constexpr uint32_t maxCohortNumber = uint32_t{1} << 21;
 
-static void initAgeGroups(RunContext& ctx, const scnXml::Monitoring& monitoring) {
+static void initAgeGroups(Context& ctx, const scnXml::Monitoring& monitoring) {
     auto& runtime = (*ctx.monitoring);
     const scnXml::MonAgeGroup::GroupSequence& groups = monitoring.getAgeGroup().getGroup();
     if (!(monitoring.getAgeGroup().getLowerbound() <= 0.0)) {
@@ -70,7 +70,7 @@ static void initAgeGroups(RunContext& ctx, const scnXml::Monitoring& monitoring)
 
 } // namespace
 
-void initReporting(RunContext& ctx, const scnXml::Scenario& scenario) {
+void initReporting(Context& ctx, const scnXml::Scenario& scenario) {
     auto& runtime = (*ctx.monitoring);
     runtime.reportIMR = -1;
     const scnXml::MonitoringOptions& optsElt = scenario.getMonitoring().getSurveyOptions();
@@ -136,7 +136,7 @@ void initReporting(RunContext& ctx, const scnXml::Scenario& scenario) {
     internal::initStores(ctx, reportedMeasures, nSpecies, nDrugs);
 }
 
-SimTime readSurveyDates(RunContext& ctx, const scnXml::Monitoring& monitoring) {
+SimTime readSurveyDates(Context& ctx, const scnXml::Monitoring& monitoring) {
     const SimClock& clock = ctx.clock;
     auto& runtime = (*ctx.monitoring);
     const scnXml::Surveys::SurveyTimeSequence& survs = monitoring.getSurveys().getSurveyTime();
@@ -213,7 +213,7 @@ SimTime readSurveyDates(RunContext& ctx, const scnXml::Monitoring& monitoring) {
     return runtime.surveyDates.back().date;
 }
 
-void initCohorts(RunContext& ctx, const scnXml::Monitoring& monitoring) {
+void initCohorts(Context& ctx, const scnXml::Monitoring& monitoring) {
     auto& runtime = (*ctx.monitoring);
     runtime.cohortSubPopNumbers.clear();
     runtime.cohortSubPopIds.clear();
@@ -248,7 +248,7 @@ using util::xml_scenario_error;
 
 /* Initialise: enable outputs registered and requested in XML.
          * Search for Continuous::registerCallback to see outputs available. */
-void init(RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint) {
+void init(Context& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint) {
     auto& ctsOStream = ctx.ctsOStream;
     auto& registered = ctx.ctsRegistered;
     auto& toReport = ctx.ctsToReport;

@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "RunContext.h"
+#include "Context.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Diagnostic.h"
@@ -45,7 +45,7 @@ bool reportInfectedOrPatentInfected = false;
 
 // -----  Initialization  -----
 
-WHCommon::WHCommon(RunContext& ctx, LocalRng& rng, double comorbidityFactor)
+WHCommon::WHCommon(Context& ctx, LocalRng& rng, double comorbidityFactor)
     : WHFalciparum(ctx, rng, comorbidityFactor, Kind::Common) {
     assert(ctx.clock.one_TS() == sim::fromDays(1) || ctx.clock.one_TS() == sim::fromDays(5));
 

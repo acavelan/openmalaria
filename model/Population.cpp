@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "RunContext.h"
+#include "Context.h"
 #include "Population.h"
 #include "mon/Continuous.h"
 
@@ -49,7 +49,7 @@ const vector<double> ctsDemogAgeGroups = {1.0, 5.0, 10.0, 15.0, 25.0};
 
 // -----  non-static methods: creation/destruction, checkpointing  -----
 
-Population::Population(RunContext& ctx, size_t size) : ctx(ctx), size(size) {}
+Population::Population(Context& ctx, size_t size) : ctx(ctx), size(size) {}
 
 void Population::createInitialHumans() {
     /* We create a whole population here, regardless of whether humans can
@@ -118,7 +118,7 @@ void Population::update() {
     }
 }
 
-void registerContinousPopulationCallbacks(RunContext& ctx) {
+void registerContinousPopulationCallbacks(Context& ctx) {
     ostringstream ctsDemogTitle;
     for (double ubound : ctsDemogAgeGroups)
         ctsDemogTitle << "\thost % ≤ " << ubound;
@@ -144,7 +144,7 @@ void ctsHosts(Population& population, ostream& stream) {
     stream << '\t' << population.size;
 }
 
-void ctsHostDemography(RunContext& ctx, Population& population, ostream& stream) {
+void ctsHostDemography(Context& ctx, Population& population, ostream& stream) {
     auto iter = population.humans.crbegin();
     int cumCount = 0;
     for (double ubound : ctsDemogAgeGroups) {
@@ -161,7 +161,7 @@ void ctsRecentBirths(Population& population, ostream& stream) {
     population.recentBirths = 0;
 }
 
-void ctsPatentHosts(RunContext& ctx, Population& population, ostream& stream) {
+void ctsPatentHosts(Context& ctx, Population& population, ostream& stream) {
     int patent = 0;
     for (Host::Human& human : population.humans) {
         auto diag = WithinHost::diagnostics::monitoringDiagnostic(ctx);
@@ -206,7 +206,7 @@ void ctsMedianImmunityY(Population& population, ostream& stream) {
     stream << '\t' << x;
 }
 
-void ctsMeanAgeAvailEffect(RunContext& ctx, Population& population, ostream& stream) {
+void ctsMeanAgeAvailEffect(Context& ctx, Population& population, ostream& stream) {
     int nHumans = 0;
     double avail = 0.0;
     for (Host::Human& human : population.humans) {

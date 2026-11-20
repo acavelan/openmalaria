@@ -223,8 +223,8 @@ scnXml::Scenario scenario(demography, monitoring, interventions, healthSystem, e
 class UnittestUtil {
   public:
     // Shared clock fixture for all suites (one process, many suites).
-    static RunContext& ctx() {
-        static RunContext c;
+    static Context& ctx() {
+        static Context c;
         return c;
     }
     static const SimClock& clock() { return ctx().clock; }

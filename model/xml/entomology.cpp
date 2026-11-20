@@ -30,7 +30,7 @@
 // model/xml/entomology.h) and Anopheles/AnophelesModel.cpp.
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "Transmission/TransmissionModel.h"
 #include "Transmission/transmission.h"
 #include "Transmission/PerHost.h"
@@ -81,7 +81,7 @@ inline double averageEIR(const scnXml::DailyValues& vectorData) {
     return averageEIR_seq(vectorData.getValue(), "no daily values given");
 }
 
-TransmissionModel* createNonVectorModel(RunContext& ctx, const scnXml::Entomology& entoData) {
+TransmissionModel* createNonVectorModel(Context& ctx, const scnXml::Entomology& entoData) {
     const scnXml::NonVector& nonVectorData = entoData.getNonVector().get();
 
     int interventionMode = readMode(entoData.getMode());
@@ -97,7 +97,7 @@ bool anophelesCompare(const scnXml::AnophelesParams& a1, const scnXml::Anopheles
     return (a1.getSeasonality().getAnnualEIR().get() > a2.getSeasonality().getAnnualEIR().get());
 }
 
-Anopheles::AnophelesModel* createAnophelesModel(RunContext& ctx, size_t i, const scnXml::AnophelesParams& anoph,
+Anopheles::AnophelesModel* createAnophelesModel(Context& ctx, size_t i, const scnXml::AnophelesParams& anoph,
                                                 vector<double>& initialisationEIR, int populationSize,
                                                 int interventionMode) {
     Anopheles::AnophelesModel* anophModel;
@@ -327,7 +327,7 @@ Anopheles::AnophelesModel* createAnophelesModel(RunContext& ctx, size_t i, const
     return anophModel;
 }
 
-TransmissionModel* createVectorModel(RunContext& ctx, const scnXml::Entomology& entoData, int populationSize) {
+TransmissionModel* createVectorModel(Context& ctx, const scnXml::Entomology& entoData, int populationSize) {
     const scnXml::Vector& vectorData = entoData.getVector().get();
     scnXml::Vector::AnophelesSequence anophelesList = vectorData.getAnopheles();
 
@@ -374,7 +374,7 @@ TransmissionModel* createVectorModel(RunContext& ctx, const scnXml::Entomology& 
                                  std::move(emergenceRateEstimators), speciesIndex);
 }
 
-TransmissionModel* createTransmissionModel(RunContext& ctx, const scnXml::Entomology& entoData, int populationSize) {
+TransmissionModel* createTransmissionModel(Context& ctx, const scnXml::Entomology& entoData, int populationSize) {
     // Entomology contains either a list of at least one anopheles or a list of at
     // least one EIRDaily.
     TransmissionModel* model;
@@ -404,7 +404,7 @@ TransmissionModel* createTransmissionModel(RunContext& ctx, const scnXml::Entomo
     return model;
 }
 
-TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode,
+TransmissionModel::TransmissionModel(Context& ctx, vector<double> initEIR, int interventionMode,
                                      const scnXml::NonVector& nonVectorData, int eipDuration)
     : TransmissionModel(ctx, std::move(initEIR), interventionMode, Kind::NonVector, {}, {}, {}) {
     nSpore = sim::fromDays(eipDuration);
@@ -444,7 +444,7 @@ TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, in
 // Shared loop tail of both changeEIRIntervention variants: fills
 // interventionEIR with the per-interval mean of max(daily, minEIR). The
 // days_cerr flag reproduces the extra diagnostic of the non-vector variant.
-static void fill_intervention_eir(RunContext& ctx, vector<double>& interventionEIR,
+static void fill_intervention_eir(Context& ctx, vector<double>& interventionEIR,
                                   const scnXml::NonVector::EIRDailySequence& daily, double minEIR, bool days_cerr) {
     vector<int> nDays(ctx.clock.inSteps(sim::fromDays(daily.size() - 1)) + 1, 0);
     interventionEIR.assign(nDays.size(), 0.0);
@@ -502,7 +502,7 @@ PerHostAnophParams::PerHostAnophParams(const scnXml::Mosq& mosq) {
     probMosqSurvivalResting.setParams(mosq.getMosqProbResting());
 }
 
-void PerHost::init(RunContext& ctx, const scnXml::AgeGroupValues& availabilityToMosquitoes) {
+void PerHost::init(Context& ctx, const scnXml::AgeGroupValues& availabilityToMosquitoes) {
     relAvailAge.set(ctx.clock, availabilityToMosquitoes, "availabilityToMosquitoes");
 }
 

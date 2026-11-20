@@ -71,7 +71,7 @@ class ClinicalModel
 {
 protected:
     /// The run this clinical model belongs to (clock accessed as ctx.clock).
-    RunContext& ctx;
+    Context& ctx;
 
 public:
     /// Which case-management behaviour this instance runs (XML-selected).
@@ -80,17 +80,17 @@ public:
     /// @brief Static functions
     //@{
     /// First stage of initialisation
-    static void init ( RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& model );
+    static void init ( Context& ctx, const Parameters& parameters, const scnXml::Scenario& model );
   
     /** Second stage of initialisation, done after interventions are configured
      * 
      * Also done when a certain intervention is deployed. */
-    static void setHS (RunContext& ctx, const scnXml::HealthSystem& healthSystem);
+    static void setHS (Context& ctx, const scnXml::HealthSystem& healthSystem);
     
     /** Return a new ClinicalModel.
      *
      * @param tSF	treatment seeking factor, passed to CaseManagementModel */
-    static unique_ptr<ClinicalModel> createClinicalModel (RunContext& ctx, double tSF);
+    static unique_ptr<ClinicalModel> createClinicalModel (Context& ctx, double tSF);
     //@}
     
     /// Destructor
@@ -138,7 +138,7 @@ public:
     
     /** Construct a per-human instance (base: no RNG draws; the EventScheduler
      * variant rejects treatment-seeking heterogeneity in its own ctor). */
-    ClinicalModel (RunContext& ctx, double tSF, Kind kind);
+    ClinicalModel (Context& ctx, double tSF, Kind kind);
 
     virtual ~ClinicalModel() {}
 
@@ -219,7 +219,7 @@ public:
  * DecisionTree5Day; bodies in CM5DayCommon.cpp. */
 class CMDecisionTree5Day final : public ClinicalModel {
   public:
-    CMDecisionTree5Day(RunContext& ctx, double tSF) : ClinicalModel(ctx, tSF, Kind::DecisionTree5Day) {}
+    CMDecisionTree5Day(Context& ctx, double tSF) : ClinicalModel(ctx, tSF, Kind::DecisionTree5Day) {}
     void doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) override;
     void uncomplicatedEvent(Human& human, Episode::State pgState) override;
 };
@@ -229,7 +229,7 @@ class CMDecisionTree5Day final : public ClinicalModel {
  * ImmediateOutcomes; bodies in CM5DayCommon.cpp. */
 class CMImmediateOutcomes final : public ClinicalModel {
   public:
-    CMImmediateOutcomes(RunContext& ctx, double tSF) : ClinicalModel(ctx, tSF, Kind::ImmediateOutcomes) {}
+    CMImmediateOutcomes(Context& ctx, double tSF) : ClinicalModel(ctx, tSF, Kind::ImmediateOutcomes) {}
     void doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) override;
     void uncomplicatedEvent(Human& human, Episode::State pgState) override;
 };
@@ -242,7 +242,7 @@ class CMImmediateOutcomes final : public ClinicalModel {
 class CMEventScheduler final : public ClinicalModel {
   public:
     /// Rejects treatment-seeking heterogeneity (old ES ctor guard).
-    CMEventScheduler(RunContext& ctx, double tSF);
+    CMEventScheduler(Context& ctx, double tSF);
     void doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) override;
     SimTime timeOfLastTreatment() const override;
 
@@ -262,7 +262,7 @@ class CMEventScheduler final : public ClinicalModel {
 class InfantMortality {
 public:
     /** Initialise parameters. */
-    static void init( RunContext& ctx, const Parameters& parameters );
+    static void init( Context& ctx, const Parameters& parameters );
     static void preMainSimInit();
 
     static void reportRisk(size_t index, bool isDoomed);

@@ -31,7 +31,7 @@ class HSESNMF;
 class Clinical;
 }
 namespace OM {
-class RunContext;
+class Context;
 }
 
 namespace OM {
@@ -86,7 +86,7 @@ class PathogenesisModel {
     enum class Kind { Mueller, Pyrogen, Predet };
 
     /// Calls static init on correct PathogenesisModel.
-    static void init(RunContext& ctx, const Parameters& parameters, const scnXml::Clinical& clinical, bool nmfOnly);
+    static void init(Context& ctx, const Parameters& parameters, const scnXml::Clinical& clinical, bool nmfOnly);
 
     /** Create an instance, Kind dependant on global options.
      *
@@ -112,8 +112,8 @@ class PathogenesisModel {
 
     /// Read parameters (parity: old MuellerPathogenesis::init /
     /// PyrogenPathogenesis::init; called from PathogenesisModel::init in xml).
-    static void initMueller(RunContext& ctx, const Parameters& parameters);
-    static void initPyrogen(RunContext& ctx, const Parameters& parameters);
+    static void initMueller(Context& ctx, const Parameters& parameters);
+    static void initPyrogen(Context& ctx, const Parameters& parameters);
 
   protected:
     /** Create a PathogenesisModel (_pyrogenThres = initPyroThres for the

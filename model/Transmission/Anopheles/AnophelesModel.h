@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "Transmission/PerHost.h"
 #include "util/SimpleDecayingValue.h"
 #include "util/vectors.h"
@@ -181,11 +181,11 @@ struct TrapData {
 class AnophelesModel {
   public:
     /// The run this model belongs to (clock accessed as ctx.clock).
-    RunContext& ctx;
+    Context& ctx;
 
     ///@brief Initialisation and destruction
     //@{
-    AnophelesModel(RunContext& ctx)
+    AnophelesModel(Context& ctx)
         : ctx(ctx), nhh_avail(numeric_limits<double>::signaling_NaN()),
           nhh_sigma_df(numeric_limits<double>::signaling_NaN()), nhh_sigma_dff(numeric_limits<double>::signaling_NaN()),
           // EmergenceModel
@@ -365,7 +365,7 @@ class AnophelesModel {
     double getResRequirements() const { return numeric_limits<double>::quiet_NaN(); }
 
     /// Write some per-species summary information.
-    void summarize(RunContext& ctx, size_t species) const;
+    void summarize(Context& ctx, size_t species) const;
     //@}
 
     MosquitoParams mosq;

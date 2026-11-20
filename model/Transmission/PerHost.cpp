@@ -44,7 +44,7 @@ PerHost::PerHost() {
     // are now the column defaults in append_row.
 }
 
-void PerHost::initialise(RunContext& ctx, LocalRng& rng, double availabilityFactor) {
+void PerHost::initialise(Context& ctx, LocalRng& rng, double availabilityFactor) {
     rel_avail_het() = availabilityFactor;
     anoph_ento_raw().resize(PerHostAnophParams::numSpecies(ctx));
     anoph_ento_avail().resize(PerHostAnophParams::numSpecies(ctx));
@@ -116,19 +116,19 @@ bool PerHost::hasActiveInterv(interventions::Component::Type type) const {
 namespace OM {
 namespace Transmission {
 
-void PerHostAnophParams::init(RunContext& ctx, const scnXml::Mosq& mosq) { ctx.anophParams->emplace_back(mosq); }
+void PerHostAnophParams::init(Context& ctx, const scnXml::Mosq& mosq) { ctx.anophParams->emplace_back(mosq); }
 
-size_t PerHostAnophParams::numSpecies(RunContext& ctx) { return ctx.anophParams->size(); }
+size_t PerHostAnophParams::numSpecies(Context& ctx) { return ctx.anophParams->size(); }
 
-const PerHostAnophParams& PerHostAnophParams::get(RunContext& ctx, size_t species) {
+const PerHostAnophParams& PerHostAnophParams::get(Context& ctx, size_t species) {
     return (*ctx.anophParams)[species];
 }
 
-void PerHostAnophParams::setEntoAvailabilityFactor(RunContext& ctx, size_t species, double entoAvailability) {
+void PerHostAnophParams::setEntoAvailabilityFactor(Context& ctx, size_t species, double entoAvailability) {
     (*ctx.anophParams)[species].entoAvailabilityFactor = entoAvailability;
 }
 
-void PerHostAnophParams::calcAvailabilityPercentiles(RunContext& ctx) {
+void PerHostAnophParams::calcAvailabilityPercentiles(Context& ctx) {
     auto& params = (*ctx.anophParams);
     auto& entoAvailabilityPercentiles = ctx.entoAvailabilityPercentiles;
     int nSamples = 100000;
@@ -161,7 +161,7 @@ void PerHostAnophParams::calcAvailabilityPercentiles(RunContext& ctx) {
     entoAvailabilityPercentiles[0] = 0.0;
 }
 
-double PerHostAnophParams::getEntoAvailabilityPercentile(RunContext& ctx, int p) {
+double PerHostAnophParams::getEntoAvailabilityPercentile(Context& ctx, int p) {
     auto& entoAvailabilityPercentiles = ctx.entoAvailabilityPercentiles;
     if (p >= 0 && p < 100)
         return entoAvailabilityPercentiles[p];

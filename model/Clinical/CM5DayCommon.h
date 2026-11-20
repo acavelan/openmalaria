@@ -28,7 +28,7 @@
 
 #pragma once
 
-#include "RunContext.h"
+#include "Context.h"
 #include "Host/WithinHost/PathogenesisModel.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
@@ -65,13 +65,13 @@ class CM5DayCommon {
 /** Common 5-day clinical update (old CM5DayCommon::doClinicalUpdate; the
  * variant selects the uncomplicatedEvent implementation via the virtual —
  * parity: the old virtual call). */
-void clinicalUpdate5Day(ClinicalModel& cm, RunContext& ctx, Human& human, double ageYears,
+void clinicalUpdate5Day(ClinicalModel& cm, Context& ctx, Human& human, double ageYears,
                         WithinHost::Pathogenesis::StatePair& pg);
 
 /** Called when a severe/complicated (with co-infection) malaria sickness occurs.
  *
  * Note: sets doomed = 4 if patient dies. */
-void severeMalaria(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState, double ageYears,
+void severeMalaria(ClinicalModel& cm, Context& ctx, Human& human, Episode::State pgState, double ageYears,
                    int& doomed);
 
 /**
@@ -92,12 +92,12 @@ class DecisionTree5Day {
   public:
     /** Load health system data from initial data or an intervention's data (both from XML).
      * (Re)loads all data affected by this healthSystem element. */
-    static void setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& hsDescription);
+    static void setHealthSystem(Context& ctx, const scnXml::HSDT5Day& hsDescription);
 };
 
 /// Uncomplicated-case handling for the DecisionTree5Day kind (old
 /// DecisionTree5Day::uncomplicatedEvent).
-void treeUncomplicatedEvent(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState);
+void treeUncomplicatedEvent(ClinicalModel& cm, Context& ctx, Human& human, Episode::State pgState);
 
 /**
  * This models case management at a 5-day time step with all-or-nothing
@@ -118,7 +118,7 @@ class ImmediateOutcomes {
   public:
     /** Load health system data from initial data or an intervention's data (both from XML).
      * (Re)loads all data affected by this healthSystem element. */
-    static void setHealthSystem(RunContext& ctx, const scnXml::HSImmediateOutcomes& hsioData);
+    static void setHealthSystem(Context& ctx, const scnXml::HSImmediateOutcomes& hsioData);
 
     static double cureRateUCOfficial[CM5DayCommon::NumCaseTypes];
     static double cureRateUCSelfTreat[CM5DayCommon::NumCaseTypes];
@@ -128,7 +128,7 @@ class ImmediateOutcomes {
 
 /// Uncomplicated-case handling for the ImmediateOutcomes kind (old
 /// ImmediateOutcomes::uncomplicatedEvent).
-void immOutUncomplicatedEvent(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState);
+void immOutUncomplicatedEvent(ClinicalModel& cm, Context& ctx, Human& human, Episode::State pgState);
 
 }
 }

@@ -21,7 +21,7 @@
  */
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "Transmission/TransmissionModel.h"
 #include "Transmission/Anopheles/AnophelesModel.h"
 #include "Transmission/PerHost.h"
@@ -875,7 +875,7 @@ double AnophelesModel::getLastVecStat(VecStat vs) const {
     }
 }
 
-void AnophelesModel::summarize(RunContext& ctx, size_t species) const {
+void AnophelesModel::summarize(Context& ctx, size_t species) const {
     // Last time step ended at ctx.clock.now(). Values are stored per day, and for
     // the last time step values at ctx.clock.now() and four previos were set.
     // One plus last, plus (0 mod N_v_length) to avoid negatives:

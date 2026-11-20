@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "RunContext.h"
+#include "Context.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
@@ -104,7 +104,7 @@ SimTime sampleReleaseDelay(LocalRng& rng) {
 
 // ———  per-brood code  ———
 
-VivaxBrood::VivaxBrood(RunContext& ctx, LocalRng& rng, int origin, WHInterface* host)
+VivaxBrood::VivaxBrood(Context& ctx, LocalRng& rng, int origin, WHInterface* host)
     : ctx(ctx), primaryHasStarted(false), relapseHasStarted(false), relapsebHasStarted(false), hadEvent(false),
       hadRelapse(false), origin(origin) {
     set<SimTime> releases; // used to initialise releaseDates; a set is better to use now but a vector later
@@ -219,7 +219,7 @@ void VivaxBrood::treatmentLS() {
 
 // ———  per-host code  ———
 
-WHVivax::WHVivax(RunContext& ctx, LocalRng& rng, double comorbidityFactor) : WHInterface(ctx, Kind::Vivax) {
+WHVivax::WHVivax(Context& ctx, LocalRng& rng, double comorbidityFactor) : WHInterface(ctx, Kind::Vivax) {
     if (comorbidityFactor != 1.0) {
         throw TRACED_EXCEPTION_DEFAULT("This vivax model cannot be used with comorbidity heterogeneity");
     }

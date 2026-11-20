@@ -29,12 +29,12 @@
 #include <vector>
 
 namespace OM {
-class RunContext;
+class Context;
 
 /** The simulated human population. */
 class Population {
   public:
-    Population(RunContext& ctx, size_t size);
+    Population(Context& ctx, size_t size);
 
     /** Create the initial population of Humans */
     void createInitialHumans();
@@ -44,7 +44,7 @@ class Population {
     void update();
 
     /** The simulated human hosts */
-    RunContext& ctx;
+    Context& ctx;
 
     /** Persistent SoA columns; row i == humans[i] (model/Host/HostColumns.h) */
     HumanColumns cols;
@@ -57,16 +57,16 @@ class Population {
     int recentBirths = 0;
 };
 
-void registerContinousPopulationCallbacks(RunContext& ctx);
+void registerContinousPopulationCallbacks(Context& ctx);
 
 /// Delegate to print the number of hosts
 void ctsHosts(Population& population, ostream& stream);
 /// Delegate to print cumulative numbers of hosts under various age limits
-void ctsHostDemography(RunContext& ctx, Population& population, ostream& stream);
+void ctsHostDemography(Context& ctx, Population& population, ostream& stream);
 /// Delegate to print the number of births since last count
 void ctsRecentBirths(Population& population, ostream& stream);
 /// Delegate to print the number of patent hosts
-void ctsPatentHosts(RunContext& ctx, Population& population, ostream& stream);
+void ctsPatentHosts(Context& ctx, Population& population, ostream& stream);
 /// Delegate to print immunity's cumulativeh parameter
 void ctsImmunityh(Population& population, ostream& stream);
 /// Delegate to print immunity's cumulativeY parameter (mean across population)
@@ -74,7 +74,7 @@ void ctsImmunityY(Population& population, ostream& stream);
 /// Delegate to print immunity's cumulativeY parameter (median across population)
 void ctsMedianImmunityY(Population& population, ostream& stream);
 /// Delegate to print the mean age-based availability reduction of each human relative to an adult
-void ctsMeanAgeAvailEffect(RunContext& ctx, Population& population, ostream& stream);
+void ctsMeanAgeAvailEffect(Context& ctx, Population& population, ostream& stream);
 void ctsITNCoverage(Population& population, ostream& stream);
 void ctsIRSCoverage(Population& population, ostream& stream);
 void ctsGVICoverage(Population& population, ostream& stream);

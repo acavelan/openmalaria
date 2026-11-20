@@ -28,7 +28,7 @@
  *    plain namespace, no clock dependency (formerly the sim:: static-only
  *    class of model/sim.h).
  *  - OM::SimClock: the simulation clock (time-step interval, dates, t0/t1,
- *    update markers). Owned by OM::RunContext; init/initInterval defined in
+ *    update markers). Owned by OM::Context; init/initInterval defined in
  *    run.cpp.
  **/
 #pragma once
@@ -50,7 +50,7 @@ typedef int SimTime;
 
 namespace OM {
 
-class RunContext; // SimClock::init takes a reference (defined in RunContext.h)
+class Context; // SimClock::init takes a reference (defined in Context.h)
 
 namespace util {
 class ModelNameProvider;
@@ -192,7 +192,7 @@ class SimClock {
     //@}
 
     /// Initial set-up: called by run_simulation via Scenario::load.
-    void init(RunContext& ctx, const scnXml::Scenario& scenario, util::ModelNameProvider mnp);
+    void init(Context& ctx, const scnXml::Scenario& scenario, util::ModelNameProvider mnp);
 
     /** Sets up time step duration: either a named model's interval or the
      * scenario's explicit interval. Must be 1 or 5 days (checked by

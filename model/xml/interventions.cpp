@@ -25,7 +25,7 @@
 // inline ImportedInfections::init became an out-of-line definition).
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "Host/ImportedInfections.h"
 #include "Population.h"
 #include "interventions/InterventionManager.h"
@@ -65,7 +65,7 @@ static SimTime readDate_steps(const SimClock& clock, const std::string& str) {
 
 namespace Host {
 
-void ImportedInfections::init(RunContext& ctx, const scnXml::ImportedInfections& iiElt) {
+void ImportedInfections::init(Context& ctx, const scnXml::ImportedInfections& iiElt) {
     const scnXml::ImportedInfections::TimedType& tElt = iiElt.getTimed();
     try {
         //NOTE: if changing XSD, this should not have a default unit:
@@ -123,13 +123,13 @@ static const string nonvec_err = "vector model interventions can not be used wit
 // schema clone in the TimedDeployment variant, consumed (deleted) on deploy.
 // Never-deployed clones leak at exit — exactly the old classes' behaviour
 // (their destructors never freed these).
-void timed_deploy_change_hs(RunContext& ctx, Transmission::TransmissionModel&, ChangeHsDeployParams& p) {
+void timed_deploy_change_hs(Context& ctx, Transmission::TransmissionModel&, ChangeHsDeployParams& p) {
     Clinical::ClinicalModel::setHS(ctx, *p.newHS);
     delete p.newHS;
     p.newHS = 0;
 }
 
-void timed_deploy_change_eir(RunContext& ctx, Transmission::TransmissionModel& transmission, ChangeEirDeployParams& p) {
+void timed_deploy_change_eir(Context& ctx, Transmission::TransmissionModel& transmission, ChangeEirDeployParams& p) {
     transmission.changeEIRIntervention(*p.newEIR);
     delete p.newEIR;
     p.newEIR = 0;
@@ -147,7 +147,7 @@ void VaccineLimits::set(const scnXml::DeploymentBase& deploy) {
         maxCumDoses = vacc_nonneg(deploy.getVaccMaxCumDoses().get(), "vaccMaxCumDoses: min value is 0");
 }
 
-HumanDeployParams HumanDeployParams::read(RunContext&, const scnXml::DeploymentBase& deploy,
+HumanDeployParams HumanDeployParams::read(Context&, const scnXml::DeploymentBase& deploy,
                                           shared_ptr<const HumanIntervention> intervention, ComponentId subPop,
                                           bool complement) {
     HumanDeployParams d;
@@ -190,7 +190,7 @@ template <class Elt> static void read_avail_limits(const Elt& elt, SimTime& mn, 
         throw util::xml_scenario_error(min_avail_err);
 }
 
-TimedHumanParams TimedHumanParams::read(RunContext& ctx, SimTime date, const scnXml::MassDeployment& mass,
+TimedHumanParams TimedHumanParams::read(Context& ctx, SimTime date, const scnXml::MassDeployment& mass,
                                         shared_ptr<const HumanIntervention> intervention, ComponentId subPop,
                                         bool complement) {
     check_timed_date(ctx, date); // was the TimedDeployment base ctor: runs first
@@ -211,7 +211,7 @@ TimedHumanParams TimedHumanParams::read(RunContext& ctx, SimTime date, const scn
     return th;
 }
 
-ContinuousHumanDeployment ContinuousHumanDeployment::read(RunContext& ctx, SimTime begin, SimTime end,
+ContinuousHumanDeployment ContinuousHumanDeployment::read(Context& ctx, SimTime begin, SimTime end,
                                                           const ::scnXml::ContinuousDeployment& elt,
                                                           shared_ptr<const HumanIntervention> intervention,
                                                           ComponentId subPop, bool complement) {
@@ -259,7 +259,7 @@ static void nhh_slot(const SimClock& clock, M& m, const std::string& intervName,
 /// Old TimedNonHumanHostsDeployment ctor body (decay set-up): runs at load,
 /// once per timed deploy entry (idempotent, as before). check_timed_date is
 /// the caller's (was the TimedDeployment base ctor, which ran first).
-static void nhh_mods_setup(RunContext& ctx, size_t instance, string intervName,
+static void nhh_mods_setup(Context& ctx, size_t instance, string intervName,
                            const scnXml::Description2::AnophelesSequence list, const scnXml::DecayFunction& decay,
                            Transmission::TransmissionModel& transmission) {
     Transmission::TransmissionModel* vectorModel = transmission.isVector() ? &transmission : nullptr;
@@ -302,7 +302,7 @@ static void nhh_mods_setup(RunContext& ctx, size_t instance, string intervName,
 }
 
 /// Old TimedNonHumanHostsDeployment::deploy body, verbatim.
-void timed_deploy_nhh_mods(RunContext& ctx, std::vector<Host::Human>&, Transmission::TransmissionModel& transmission,
+void timed_deploy_nhh_mods(Context& ctx, std::vector<Host::Human>&, Transmission::TransmissionModel& transmission,
                            const NhhModsDeployParams& params) {
     const size_t instance = params.instance;
     const string& intervName = params.intervName;
@@ -325,7 +325,7 @@ void timed_deploy_nhh_mods(RunContext& ctx, std::vector<Host::Human>&, Transmiss
 }
 /// Old TimedAddNonHumanHostsDeployment ctor body (per-species parameter read);
 /// check_timed_date (was the TimedDeployment base ctor) runs first, as before.
-static AddNhhDeployParams read_add_nhh(RunContext& ctx, SimTime date, const string& intervName, SimTime lifespan,
+static AddNhhDeployParams read_add_nhh(Context& ctx, SimTime date, const string& intervName, SimTime lifespan,
                                        const scnXml::Description3::AnophelesSequence list,
                                        Transmission::TransmissionModel& transmission) {
     check_timed_date(ctx, date);
@@ -354,7 +354,7 @@ static AddNhhDeployParams read_add_nhh(RunContext& ctx, SimTime date, const stri
 
 /// Old TimedAddNonHumanHostsDeployment::deploy body, verbatim (nhhParams is
 /// the old member of the same name).
-void timed_deploy_add_nhh(RunContext& ctx, vector<Host::Human>& population,
+void timed_deploy_add_nhh(Context& ctx, vector<Host::Human>& population,
                           Transmission::TransmissionModel& transmission, AddNhhDeployParams& nhhParams) {
     const string& intervName = nhhParams.intervName;
     const SimTime lifespan = nhhParams.lifespan;
@@ -749,7 +749,7 @@ void factors::RelativeAttractiveness::initTwoStage(const scnXml::TwoStageDeterre
     }
 }
 
-ITNParams::ITNParams(RunContext& ctx, ComponentId /*id*/, const scnXml::ITNDescription& elt,
+ITNParams::ITNParams(Context& ctx, ComponentId /*id*/, const scnXml::ITNDescription& elt,
                      const map<string, size_t>& species_name_map)
     : ripFactor(numeric_limits<double>::signaling_NaN()) {
     initialInsecticide.setParams(elt.getInitialInsecticide());
@@ -821,7 +821,7 @@ void ITNParams::ITNAnopheles::init(const scnXml::ITNDescription::AnophelesParams
     set_protected(proportionUse, elt.getPropActive(), proportionProtected, proportionUnprotected);
 }
 
-IRSParams::IRSParams(RunContext& ctx, ComponentId /*id*/, const scnXml::IRSDescription& elt,
+IRSParams::IRSParams(Context& ctx, ComponentId /*id*/, const scnXml::IRSDescription& elt,
                      const map<string, size_t>& species_name_map) {
     initialInsecticide.setParams(elt.getInitialInsecticide());
     const double maxProp = 0.999; //NOTE: this could be exposed in XML, but probably doesn't need to be
@@ -928,7 +928,7 @@ void IRSParams::IRSAnopheles::SurvivalFactor::init(const scnXml::IRSKillingEffec
     }
 }
 
-GVIParams::GVIParams(RunContext& ctx, ComponentId /*id*/, const scnXml::GVIDescription& elt,
+GVIParams::GVIParams(Context& ctx, ComponentId /*id*/, const scnXml::GVIDescription& elt,
                      const map<string, size_t>& species_name_map) {
     decay = DecayFunction::makeObject(ctx.clock, elt.getDecay(), "interventions.human.vector.decay");
     // assume usage modifier is 100% if none is specified
@@ -948,7 +948,7 @@ void GVIParams::GVIAnopheles::init(const scnXml::GVIDescription::AnophelesParams
     set_protected(proportionUse, elt.getPropActive(), proportionProtected, proportionUnprotected);
 }
 
-VaccineParams::VaccineParams(RunContext& ctx, ComponentId component, const scnXml::VaccineDescription& vd,
+VaccineParams::VaccineParams(Context& ctx, ComponentId component, const scnXml::VaccineDescription& vd,
                              Vaccine::Types type)
     : type(type), decayFunc(DecayFunction::makeObject(ctx.clock, vd.getDecay(), "decay")),
       efficacyB(vd.getEfficacyB().getValue()) {
@@ -1052,7 +1052,7 @@ template <typename T> static void reg_at(std::vector<const T*>& v, ComponentId i
     v[id.id] = p;
 }
 
-void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& intervElt,
+void InterventionManager::init(Context& ctx, const scnXml::Interventions& intervElt,
                                Transmission::TransmissionModel& transmission) {
     ctx.nextTimed = 0;
 

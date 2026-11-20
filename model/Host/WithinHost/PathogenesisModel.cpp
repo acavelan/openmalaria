@@ -82,13 +82,13 @@ PathogenesisModel* PathogenesisModel::createPathogenesisModel(double cF) {
 PathogenesisModel::PathogenesisModel(double cF, Kind kind)
     : _comorbidityFactor(cF), kind(kind), _pyrogenThres(kind == Kind::Mueller ? 0.0 : initPyroThres) {}
 
-void PathogenesisModel::initMueller(RunContext& ctx, const Parameters& parameters) {
+void PathogenesisModel::initMueller(Context& ctx, const Parameters& parameters) {
     // parity: old MuellerPathogenesis::init (Submodels.cpp:41)
     rateMultiplier_31 = parameters[Parameter::MUELLER_RATE_MULTIPLIER] * ctx.clock.years_per_step;
     densityExponent_32 = parameters[Parameter::MUELLER_DENSITY_EXPONENT];
 }
 
-void PathogenesisModel::initPyrogen(RunContext& ctx, const Parameters& parameters) {
+void PathogenesisModel::initPyrogen(Context& ctx, const Parameters& parameters) {
     // parity: old PyrogenPathogenesis::init (Submodels.cpp:68)
     initPyroThres = parameters[Parameter::Y_STAR_0];
 

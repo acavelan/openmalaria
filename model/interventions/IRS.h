@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "RunContext.h"
+#include "Context.h"
 #include "interventions/ComponentId.h"
 #include "util/DecayFunction.h"
 #include <cmath>
@@ -47,7 +47,7 @@ namespace interventions {
 // cf. ITNParams). Members public: read by the iv_* record functions.
 struct IRSParams {
 public:
-    IRSParams( RunContext& ctx, ComponentId id, const scnXml::IRSDescription& elt,
+    IRSParams( Context& ctx, ComponentId id, const scnXml::IRSDescription& elt,
         const map<string,size_t>& species_name_map );
     
     /** Per mosquito-species parameters for extended IRS model. */

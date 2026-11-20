@@ -59,13 +59,13 @@ struct RecruitOnlyParams {};
 struct ScreenParams {
     const WithinHost::Diagnostic& diagnostic;
     HumanIntervention positive, negative;
-    ScreenParams(RunContext&, const scnXml::Screen&);
+    ScreenParams(Context&, const scnXml::Screen&);
 };
 
 /// Simple treatment: no PK/PD, just remove parasites.
 struct TreatSimpleParams {
     SimTime timeLiver, timeBlood;
-    TreatSimpleParams(RunContext&, const scnXml::DTTreatSimple&);
+    TreatSimpleParams(Context&, const scnXml::DTTreatSimple&);
 };
 
 /// Treatment via the PK/PD model (single "treatment", cf. CMDTTreatPKPD).
@@ -73,17 +73,17 @@ struct TreatPKPDParams {
     size_t schedule; ///< index of the schedule
     size_t dosage;   ///< index of the dosage table
     double delay_d;  ///< delay in days
-    TreatPKPDParams(RunContext&, const scnXml::DTTreatPKPD&);
+    TreatPKPDParams(Context&, const scnXml::DTTreatPKPD&);
 };
 
 /// Execute a "case management" decision tree.
 struct DecisionTreeParams {
     const Clinical::FlatTree& tree;
-    DecisionTreeParams(RunContext&, const scnXml::DecisionTree&);
+    DecisionTreeParams(Context&, const scnXml::DecisionTree&);
 };
 
 /** One human intervention component (plan: dense, by type-rank).
- * Owned by RunContext::humanComponents, indexed by id.id; never removed,
+ * Owned by Context::humanComponents, indexed by id.id; never removed,
  * so payload pointers (the per-type registries) stay valid. */
 struct ComponentConfig {
     ComponentId id;
@@ -101,7 +101,7 @@ struct ComponentConfig {
 
 /// Deploy component c to human (replaces the old virtual deploy()).
 /// Draws/mon reports happen in the same order as the deleted class bodies.
-void deploy_component(RunContext& ctx, const ComponentConfig& c, Host::Human& human, mon::Deploy::Method method,
+void deploy_component(Context& ctx, const ComponentConfig& c, Host::Human& human, mon::Deploy::Method method,
                       VaccineLimits vaccLimits);
 
 /// One-line component description (PRINT_INTERVENTIONS; old print_details()).

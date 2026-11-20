@@ -39,7 +39,7 @@ class Monitoring;
 }
 
 namespace OM {
-class RunContext;
+class Context;
 namespace Host {
 class Human;
 }
@@ -50,9 +50,9 @@ namespace mon {
 
 // ----- scenario-load API (definitions: model/xml/monitoring.cpp) -----
 
-SimTime readSurveyDates(RunContext& ctx, const scnXml::Monitoring& monitoring);
-void initReporting(RunContext& ctx, const scnXml::Scenario& scenario);
-void initCohorts(RunContext& ctx, const scnXml::Monitoring& monitoring);
+SimTime readSurveyDates(Context& ctx, const scnXml::Monitoring& monitoring);
+void initReporting(Context& ctx, const scnXml::Scenario& scenario);
+void initCohorts(Context& ctx, const scnXml::Monitoring& monitoring);
 
 inline constexpr size_t NOT_USED = std::numeric_limits<size_t>::max();
 
@@ -100,39 +100,39 @@ struct RuntimeState {
     std::vector<std::vector<size_t>> storesByMeasure;
 };
 
-void initStores(RunContext& ctx, const std::vector<OutMeasure>& enabledMeasures, size_t nSpecies, size_t nDrugs);
+void initStores(Context& ctx, const std::vector<OutMeasure>& enabledMeasures, size_t nSpecies, size_t nDrugs);
 
 } // namespace internal
 
 // ----- info API (per-run state: (*ctx.monitoring)) -----
 
-size_t eventSurveyNumber(RunContext& ctx);
-size_t statSurveyNumber(RunContext& ctx);
-bool isReported(RunContext& ctx);
-SimTime nextSurveyDate(RunContext& ctx);
-size_t setupCondition(RunContext& ctx, const std::string& measureName, double minValue, double maxValue,
+size_t eventSurveyNumber(Context& ctx);
+size_t statSurveyNumber(Context& ctx);
+bool isReported(Context& ctx);
+SimTime nextSurveyDate(Context& ctx);
+size_t setupCondition(Context& ctx, const std::string& measureName, double minValue, double maxValue,
                       bool initialState);
-bool checkCondition(RunContext& ctx, size_t conditionKey);
-uint32_t updateCohortSet(RunContext& ctx, uint32_t old, interventions::ComponentId subPop, bool isMember);
+bool checkCondition(Context& ctx, size_t conditionKey);
+uint32_t updateCohortSet(Context& ctx, uint32_t old, interventions::ComponentId subPop, bool isMember);
 
 // ----- management API -----
 
-void updateAgeGroup(RunContext& ctx, uint16_t& index, SimTime age);
-void initMainSim(RunContext& ctx);
-void concludeSurvey(RunContext& ctx);
-void writeSurveyData(RunContext& ctx);
+void updateAgeGroup(Context& ctx, uint16_t& index, SimTime age);
+void initMainSim(Context& ctx);
+void concludeSurvey(Context& ctx);
+void writeSurveyData(Context& ctx);
 
 // ----- direct recording API -----
 
-void recordStat(RunContext& ctx, Measure measure, double val, size_t species = 0, size_t genotype = 0);
+void recordStat(Context& ctx, Measure measure, double val, size_t species = 0, size_t genotype = 0);
 /// The human overloads find the run through human.ctx.
 void recordStat(Measure measure, const Host::Human& human, double val = 1.0, size_t species = 0, size_t genotype = 0,
                 size_t drug = 0);
-void recordEvent(RunContext& ctx, Measure measure, size_t survey, size_t age, uint32_t cohort);
+void recordEvent(Context& ctx, Measure measure, size_t survey, size_t age, uint32_t cohort);
 void recordEvent(Measure measure, const Host::Human& human, double val = 1.0, int outId = 0);
 void recordDeploy(Measure timedMeasure, Measure ctsMeasure, const Host::Human& human, Deploy::Method method,
                   double val = 1.0);
-bool isUsed(RunContext& ctx, Measure measure);
+bool isUsed(Context& ctx, Measure measure);
 
 } // namespace mon
 } // namespace OM

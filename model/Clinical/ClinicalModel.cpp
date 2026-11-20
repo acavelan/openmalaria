@@ -22,7 +22,7 @@
 
 // p8-files: header fold rejected — ClinicalModel.cpp resolves the
 // ClinicalModel<->EventScheduler/CM5DayCommon include cycle; bodies stay here.
-#include "RunContext.h"
+#include "Context.h"
 #include "Clinical/ClinicalModel.h"
 #include "Clinical/CM5DayCommon.h"
 
@@ -52,7 +52,7 @@ util::AgeGroupInterpolator ClinicalModel::pSequelaeInpatient;
 
 // -----  static methods  -----
 
-unique_ptr<ClinicalModel> ClinicalModel::createClinicalModel(RunContext& ctx, double tSF) {
+unique_ptr<ClinicalModel> ClinicalModel::createClinicalModel(Context& ctx, double tSF) {
     // One create-line per variant; the kind flags are set at scenario load
     // (ClinicalModel::init, xml/healthSystem.cpp).
     if (opt_event_scheduler)
@@ -70,12 +70,12 @@ double ClinicalModel::getCommunityCFR(double caseFatalityRatio) {
 
 // -----  non-static construction, destruction and checkpointing  -----
 
-ClinicalModel::ClinicalModel(RunContext& ctx, double tSF, const Kind kind)
+ClinicalModel::ClinicalModel(Context& ctx, double tSF, const Kind kind)
     : kind(kind), ctx(ctx), m_treatmentSeekingFactor(tSF), latestReport(ctx), doomed(NOT_DOOMED) {}
 
 // parity: guard = old ClinicalModel ctor's Kind::EventScheduler check, verbatim
 // (no RNG draws in any ctor; ctor layering cannot shift the stream).
-CMEventScheduler::CMEventScheduler(RunContext& ctx, double tSF)
+CMEventScheduler::CMEventScheduler(Context& ctx, double tSF)
     : ClinicalModel(ctx, tSF, Kind::EventScheduler) {
     if (tSF != 1.0) {
         // p(treatment seeking) is part of tree & handled generically, so we
@@ -173,7 +173,7 @@ vector<int> infantIntervalsAtRisk;
 /// Set by init ()
 double nonMalariaMortality;
 
-void InfantMortality::init(RunContext& ctx, const OM::Parameters& parameters) {
+void InfantMortality::init(Context& ctx, const OM::Parameters& parameters) {
     infantDeaths.resize(ctx.clock.steps_per_year);
     infantIntervalsAtRisk.resize(ctx.clock.steps_per_year);
     nonMalariaMortality = parameters[Parameter::NON_MALARIA_INFANT_MORTALITY];

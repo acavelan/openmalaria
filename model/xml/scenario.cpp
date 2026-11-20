@@ -29,7 +29,7 @@
 // headers (scnXml forward-declared).
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "Parameters.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Genotypes.h"
@@ -77,7 +77,7 @@ extern bool reportInfectedOrPatentInfected;
 // State defined in Diagnostic.cpp (external linkage):
 extern map<string, Diagnostic> diagnostic_set;
 
-void WHInterface::init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario) {
+void WHInterface::init(Context& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario) {
     reportInfectionsByGenotype = mon::isUsed(ctx, mon::measure("nInfectByGenotype")) ||
                                  mon::isUsed(ctx, mon::measure("nPatentByGenotype")) ||
                                  mon::isUsed(ctx, mon::measure("logDensByGenotype"));
@@ -113,7 +113,7 @@ void WHInterface::init(RunContext& ctx, const OM::Parameters& parameters, const 
     }
 }
 
-void WHFalciparum::init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model) {
+void WHFalciparum::init(Context& ctx, const OM::Parameters& parameters, const scnXml::Model& model) {
     sigma_i = sqrt(parameters[Parameter::SIGMA_I_SQ]);
     immPenalty_22 = 1 - exp(parameters[Parameter::IMMUNITY_PENALTY]);
     immEffectorRemain = exp(-parameters[Parameter::IMMUNE_EFFECTOR_DECAY]);
@@ -136,7 +136,7 @@ void WHFalciparum::init(RunContext& ctx, const OM::Parameters& parameters, const
     Infection::init(latentP);
 }
 
-void WHCommon::init(RunContext& ctx, const scnXml::Scenario& scenario) {
+void WHCommon::init(Context& ctx, const scnXml::Scenario& scenario) {
     const scnXml::Human human = scenario.getModel().getHuman();
     if (!human.getWeight().present()) {
         // Technically this is needed by the PK/PD and Molineaux models
@@ -397,7 +397,7 @@ Diagnostic::Diagnostic(const Parameters& parameters, const scnXml::Diagnostic& e
     uses_hrp2 = elt.getMechanism() == "HRP2";
 }
 
-void diagnostics::init(RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario) {
+void diagnostics::init(Context& ctx, const Parameters& parameters, const scnXml::Scenario& scenario) {
     auto& diagnostic_set = ctx.diagnostic_set;
     diagnostic_set.clear(); // compatibility with unit tests
 
@@ -487,7 +487,7 @@ SimTime read_latentP(const SimClock& clock, const scnXml::Model& model) {
 
 namespace OM {
 
-void SimClock::init(RunContext& ctx, const scnXml::Scenario& scenario, util::ModelNameProvider mnp) {
+void SimClock::init(Context& ctx, const scnXml::Scenario& scenario, util::ModelNameProvider mnp) {
     initInterval(scenario, mnp);
     steps_per_year = inSteps(sim::oneYear());
     years_per_step = 1.0 / steps_per_year;

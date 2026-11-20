@@ -25,7 +25,7 @@
 
 #include "Clock.h"
 
-#include "RunContext.h"
+#include "Context.h"
 
 #include "util/errors.h"
 #include "util/CommandLine.h"
@@ -43,8 +43,8 @@
 
 #include "Host/NeonatalMortality.h"
 #include "Transmission/transmission.h"
-// RunContext's pointer members + Treatments::select need these complete
-// (they cannot be pulled in through RunContext.h — include cycle):
+// Context's pointer members + Treatments::select need these complete
+// (they cannot be pulled in through Context.h — include cycle):
 #include "Clinical/CMDecisionTree.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/ImportedInfections.h"
@@ -65,7 +65,7 @@ using namespace OM;
 namespace OM {
 namespace {
 
-void print_progress(const RunContext& ctx, int& lastPercent, SimTime& estEndTime)
+void print_progress(const Context& ctx, int& lastPercent, SimTime& estEndTime)
 // parity: was a by-value param + static lastPercent (latent bug: static never
 // resets in-process); now the caller owns the counter — single-run output unchanged
 {
@@ -76,7 +76,7 @@ void print_progress(const RunContext& ctx, int& lastPercent, SimTime& estEndTime
     }
 }
 
-void print_errno(const RunContext& ctx) {
+void print_errno(const Context& ctx) {
     if (errno != 0) {
         char err[256];
         sprintf(err, "t = %d Please report! Error: ", int(ctx.clock.now()));
@@ -87,7 +87,7 @@ void print_errno(const RunContext& ctx) {
 
 // --save-to FILE: write the checkpoint and exit successfully (main maps
 // cmd_exception code 0 to a clean exit; destructors close the output files).
-void save_and_exit(RunContext& ctx, Population& population, TransmissionModel& transmission, checkpoint::Phase phase,
+void save_and_exit(Context& ctx, Population& population, TransmissionModel& transmission, checkpoint::Phase phase,
                    SimTime& endTime, SimTime& estEndTime) {
     checkpoint::writeCheckpoint(ctx, population, transmission, phase, endTime, estEndTime,
                                 util::CommandLine::getSaveName());
@@ -96,7 +96,7 @@ void save_and_exit(RunContext& ctx, Population& population, TransmissionModel& t
 
 // --save-at DAY (not "main", handled at the main-phase reset): fire once at
 // the first loop boundary at or after the given simulation day.
-void maybe_save(RunContext& ctx, Population& population, TransmissionModel& transmission, bool mainPhase,
+void maybe_save(Context& ctx, Population& population, TransmissionModel& transmission, bool mainPhase,
                 SimTime& endTime, SimTime& estEndTime) {
     const string spec = util::CommandLine::getSaveName().empty() ? string() : util::CommandLine::getSaveAt();
     if (spec.empty() || spec == "main")
@@ -107,7 +107,7 @@ void maybe_save(RunContext& ctx, Population& population, TransmissionModel& tran
 }
 
 // Internal simulation loop
-void run(RunContext& ctx, Population& population, TransmissionModel& transmission, SimTime humanWarmupLength,
+void run(Context& ctx, Population& population, TransmissionModel& transmission, SimTime humanWarmupLength,
          SimTime& endTime, SimTime& estEndTime, bool surveyOnlyNewEp, string phase) {
     int lastPercent = -1;
     const bool mainPhase = phase == "Intervention period";
@@ -174,11 +174,11 @@ void run(RunContext& ctx, Population& population, TransmissionModel& transmissio
 
 } // namespace
 
-/// RunContext ctor/dtor: create/destroy the registry pointer members.
+/// Context ctor/dtor: create/destroy the registry pointer members.
 /// // parity: order — identical to the old ensure_extensions()/RunExtensions
-/// member-init order (declaration order of RunContext.h); registries and
+/// member-init order (declaration order of Context.h); registries and
 /// unittest backend installers depend on it.
-RunContext::RunContext()
+Context::Context()
     : decision_trees(new std::vector<std::unique_ptr<Clinical::FlatTree>>),
       whTreatments(new std::vector<WithinHost::Treatments>),
       humanComponents(new std::vector<interventions::ComponentConfig>),
@@ -189,7 +189,7 @@ RunContext::RunContext()
 
 // (was: delete ext; destroys the old RunExtensions members in the same
 // reverse-declaration order)
-RunContext::~RunContext() {
+Context::~Context() {
     delete monitoring;
     delete anophParams;
     delete importedInfections;
@@ -202,13 +202,13 @@ RunContext::~RunContext() {
 }
 
 // The one accessor for a TreatmentId (plain struct now; needs whTreatments).
-const WithinHost::Treatments& WithinHost::Treatments::select(RunContext& ctx, TreatmentId treatId) {
+const WithinHost::Treatments& WithinHost::Treatments::select(Context& ctx, TreatmentId treatId) {
     assert(treatId.id < ctx.whTreatments->size());
     return (*ctx.whTreatments)[treatId.id];
 }
 
 /// run_simulation() — loads scenario XML and runs the simulation (was main())
-void run_simulation(RunContext& ctx, const std::string& scenarioFile) {
+void run_simulation(Context& ctx, const std::string& scenarioFile) {
     SimTime estEndTime, endTime;
 
     util::set_gsl_handler();

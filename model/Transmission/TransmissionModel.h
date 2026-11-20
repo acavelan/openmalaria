@@ -26,7 +26,7 @@
 #include <fstream>
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "util/errors.h"
 
 namespace scnXml {
@@ -105,20 +105,20 @@ class TransmissionModel {
     enum class Kind { Vector, NonVector };
 
     /// Vector-model constructor (was VectorModel::VectorModel).
-    TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode,
+    TransmissionModel(Context& ctx, vector<double> initEIR, int interventionMode,
                       vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
                       vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
                       map<string, size_t> speciesIndexList);
 
     /// Non-vector constructor (was NonVectorModel; defined in xml/entomology.cpp).
-    TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode,
+    TransmissionModel(Context& ctx, vector<double> initEIR, int interventionMode,
                       const scnXml::NonVector& nonVectorData, int eipDuration);
 
   protected:
     /// The run this model belongs to (clock accessed as ctx.clock).
-    RunContext& ctx;
+    Context& ctx;
 
-    TransmissionModel(RunContext& ctx, vector<double> initialisationEIR, int interventionMode, Kind kind,
+    TransmissionModel(Context& ctx, vector<double> initialisationEIR, int interventionMode, Kind kind,
                       vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
                       vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
                       map<string, size_t> speciesIndexList)
@@ -173,7 +173,7 @@ class TransmissionModel {
     /** Set some summary items.
      *
      * Overriding functions should call this base version too. */
-    void summarize(RunContext& ctx) {
+    void summarize(Context& ctx) {
         mon::recordStat(ctx, mon::measure("nTransmit"),
                         laggedKappa[ctx.clock.moduloSteps(ctx.clock.now(), laggedKappa.size())]);
         mon::recordStat(ctx, mon::measure("annAvgK"), _annualAverageKappa);
@@ -561,7 +561,7 @@ class TransmissionModel {
     void vectorUpdate_vector(const vector<Host::Human>& population);
     void calculateEIR_vector(Host::Human& human, double ageYears, vector<double>& EIR_i, vector<double>& EIR_l) const;
     void uninfectVectors_vector();
-    void summarize_vector(RunContext& ctx);
+    void summarize_vector(Context& ctx);
     void changeEIRIntervention_vector(const scnXml::NonVector& nonVectorData);
 
     void ctsCbN_v0(ostream& stream);

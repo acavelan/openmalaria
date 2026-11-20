@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "RunContext.h"
+#include "Context.h"
 #include "Host/Human.h"
 #include "Host/InfectionIncidenceModel.h"
 #include "Clinical/ClinicalModel.h"
@@ -118,7 +118,7 @@ HumanHet hetSample(util::LocalRng& rng)
     return het;
 }
 
-Human::Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns)
+Human::Human(Context& ctx, SimTime dateOfBirth, HumanColumns& columns)
     : ctx(&ctx), cols(&columns), infIncidence(InfectionIncidenceModel::createModel(ctx)) {
     // parity: order — each Human copies+seeds its LocalRng from the master at
     // construction (append_row builds the rng column row; same ctor point as
@@ -226,7 +226,7 @@ void Human::updateCohortSet() {
 }
 
 // -----  Non-static functions: per-time-step update  -----
-void summarize(RunContext& ctx, Human& human, bool surveyOnlyNewEp) {
+void summarize(Context& ctx, Human& human, bool surveyOnlyNewEp) {
     if (surveyOnlyNewEp && human.clinicalModel->isExistingCase()) {
         // This modifies the denominator to treat the health-system-memory
         // period immediately after a bout as 'not at risk'.
@@ -309,7 +309,7 @@ void host_clinical_update(HostView& v) {
 
 void host_update_infant_deaths(HostView& v) { v.human.clinicalModel->updateInfantDeaths(v.scratch.age0); }
 
-void update(RunContext& ctx, Human& human, Transmission::TransmissionModel& transmission, HostScratch& scratch) {
+void update(Context& ctx, Human& human, Transmission::TransmissionModel& transmission, HostScratch& scratch) {
     HostView v{ctx, human, transmission, scratch};
     // For integer age checks we use age0 to e.g. get 73 steps comparing less than 1 year old
     scratch.age0 = human.age(ctx.clock.ts0());

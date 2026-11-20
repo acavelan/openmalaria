@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 namespace scnXml {
 class ImportedInfections;
 }
@@ -47,7 +47,7 @@ class ImportedInfections {
          * @param iiElt The scenario element with description of rates
          * @returns True if any infections are imported
          */
-    void init(RunContext& ctx, const scnXml::ImportedInfections& iiElt);
+    void init(Context& ctx, const scnXml::ImportedInfections& iiElt);
 
     /** Import this time-step's imported infections, according to initialised rates
          * 
@@ -58,7 +58,7 @@ class ImportedInfections {
          *  person.
          * 
          * @param pop The Population class encapsulating all humans */
-    void import(RunContext& ctx, vector<Human>& population) {
+    void import(Context& ctx, vector<Human>& population) {
         if (rate.size() == 0)
             return; // no imported infections
         SimTime now = ctx.clock.interv;

@@ -26,7 +26,7 @@
 #pragma once
 
 #include "Clock.h"
-#include "RunContext.h"
+#include "Context.h"
 #include "util/errors.h"
 #include <schema/scenario.h>
 #include <fstream>

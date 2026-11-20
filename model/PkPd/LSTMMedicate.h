@@ -115,7 +115,7 @@ public:
     /** Load treatment data from XML into ctx.treatments.
      * 
      * Load drug data (LSTMDrugType::init()) first. */
-    static void init (RunContext& ctx, const scnXml::Treatments& data);
+    static void init (Context& ctx, const scnXml::Treatments& data);
     
 private:
     LSTMTreatments();  // not constructible

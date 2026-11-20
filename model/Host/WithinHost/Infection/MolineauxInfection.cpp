@@ -150,11 +150,11 @@ const double case_specific_data[] = {
 
 // ———  static (non-class-member) code  ———
 
-Infection* createMolineauxInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+Infection* createMolineauxInfection(Context& ctx, LocalRng& rng, uint32_t protID, int origin) {
     return new MolineauxInfection(ctx, rng, protID, origin);
 }
 
-void MolineauxInfection::init(RunContext& ctx, const Parameters& parameters) {
+void MolineauxInfection::init(Context& ctx, const Parameters& parameters) {
     ctx.createInfection = &createMolineauxInfection;
 
     multi_factor_gamma = util::ModelOptions::option(util::PARASITE_REPLICATION_GAMMA);
@@ -196,7 +196,7 @@ void MolineauxInfection::init(RunContext& ctx, const Parameters& parameters) {
 // ———  Molineaux: initialisation  ———
 
 // mi[] + Pc_star/Pm_star draws at the old infection_ctor_molineaux() slots
-MolineauxInfection::MolineauxInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin)
+MolineauxInfection::MolineauxInfection(Context& ctx, LocalRng& rng, uint32_t genotype, int origin)
     : Infection(ctx, genotype, origin, Kind::Molineaux) {
     auto* molineaux = this; // alias: body below verbatim
     constexpr size_t v = MolineauxInfection::v;

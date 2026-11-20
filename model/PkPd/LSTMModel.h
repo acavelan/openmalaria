@@ -31,7 +31,7 @@ namespace scnXml {
 class PKPDMedication;
 }
 namespace OM {
-class RunContext;
+class Context;
 namespace Host {
 class Human;
 }
@@ -76,7 +76,7 @@ struct MedicateData {
 class LSTMModel {
   public:
     /// Static initialisation
-    static void init(RunContext& ctx, const scnXml::Scenario& scenario);
+    static void init(Context& ctx, const scnXml::Scenario& scenario);
 
     /** Prescribe a patient a course of drugs, via the Pk/Pd model
      * 
@@ -89,7 +89,7 @@ class LSTMModel {
      * @param body_mass Mass of human in kg
      * @param delay_d Delay of treatment in days
      */
-    void prescribe(RunContext& ctx, size_t schedule, size_t dosages, double age, double body_mass, double delay_d);
+    void prescribe(Context& ctx, size_t schedule, size_t dosages, double age, double body_mass, double delay_d);
 
     /** Medicate drugs: human takes prescribed drugs which are to be taken this
      * day.
@@ -97,7 +97,7 @@ class LSTMModel {
      * Note: poor adherence on the part of the patient is not modeled here; to
      * model, prescribe with a "poor adherence" schedule.
      */
-    void medicate(RunContext& ctx, LocalRng& rng);
+    void medicate(Context& ctx, LocalRng& rng);
 
     /** Get concentration of the drug at the beginning of the day.
      * 
@@ -118,7 +118,7 @@ class LSTMModel {
     void decayDrugs(double body_mass);
 
     /** Make summaries of drug concentration data. */
-    void summarize(RunContext& ctx, const Host::Human& human) const;
+    void summarize(Context& ctx, const Host::Human& human) const;
 
   public: // simple state record; test util reads the queue directly
     /** Medicate drugs to an individual, which act on infections the following
@@ -135,7 +135,7 @@ class LSTMModel {
      * new infection densities) happens first; hence medicate() will always be
      * called after getDrugFactor in a time step, and a time of zero means the
      * dose has effect from the start of the following time step. */
-    void medicateDrug(RunContext& ctx, LocalRng& rng, size_t typeIndex, double qty, double time);
+    void medicateDrug(Context& ctx, LocalRng& rng, size_t typeIndex, double qty, double time);
 
     /// Drugs with non-zero blood concentrations:
     vector<unique_ptr<LSTMDrug>> m_drugs;
