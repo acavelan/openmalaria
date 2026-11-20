@@ -34,7 +34,6 @@
 #include "util/UnitParse.h"
 #include "util/errors.h"
 #include "util/ModelOptions.h"
-#include "sim.h"
 #include "util/sampler.h"
 #include <schema/healthSystem.h>
 #include <schema/scenario.h>
