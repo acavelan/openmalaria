@@ -12,8 +12,8 @@
  * 
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  * 
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
@@ -22,6 +22,7 @@
 
 #include "WHMock.h"
 #include "Host/WithinHost/Diagnostic.h"
+#include "util/errors.h"
 
 using namespace std;
 
@@ -58,6 +59,65 @@ bool diagnosticResult(const void*, LocalRng& rng, const WithinHost::Diagnostic& 
 }
 
 RunContext::WHMockHooks hooks = { nullptr, &treatment, &treatSimple, &treatPkPd, &getTotalDensity, &diagnosticResult };
+
+/** Within-host model for unit tests (see WHMockState): treatment/treatSimple/
+ * treatPkPd/density/diagnostic run through the hook table on RunContext
+ * (installed by makeWHMock); everything else behaves exactly as the old
+ * Kind::Mock dispatch branch did — throws unimplemented_exception. No
+ * infections, no draws, no state beyond the hook table. */
+class WHMock final : public WithinHost::WHInterface {
+public:
+    explicit WHMock( RunContext& ctx ) : WHInterface( ctx, Kind::Mock ) {}
+
+    void treatment( Host::Human&, WithinHost::TreatmentId ) override {
+        const RunContext::WHMockHooks* h = ctx.whMock;
+        h->treatment( h->state );
+    }
+    bool treatSimple( Host::Human&, SimTime timeLiver, SimTime timeBlood ) override {
+        const RunContext::WHMockHooks* h = ctx.whMock;
+        return h->treatSimple( h->state, timeLiver, timeBlood );
+    }
+    void treatPkPd( size_t schedule, size_t dosages, double age, double delay_d ) override {
+        const RunContext::WHMockHooks* h = ctx.whMock;
+        h->treatPkPd( h->state, ctx, schedule, dosages, age, delay_d );
+    }
+    double getTotalDensity() const override {
+        const RunContext::WHMockHooks* h = ctx.whMock;
+        return h->getTotalDensity( h->state );
+    }
+    bool diagnosticResult( LocalRng& rng, const WithinHost::Diagnostic& diagnostic ) const override {
+        const RunContext::WHMockHooks* h = ctx.whMock;
+        return h->diagnosticResult( h->state, rng, diagnostic );
+    }
+
+    double probTransmissionToMosquito( vector<double>&, vector<double>& ) const override {
+        throw util::unimplemented_exception( "not needed in unit test" );
+    }
+    bool summarize( Host::Human& ) const override {
+        throw util::unimplemented_exception( "not needed in unit test" );
+    }
+    void importInfection( LocalRng& ) override {
+        throw util::unimplemented_exception( "not needed in unit test" );
+    }
+    void optionalPqTreatment( Host::Human& ) override {
+        throw util::unimplemented_exception( "not needed in unit test" );
+    }
+    void update( Host::Human&, LocalRng&, int&, int&, vector<double>&, vector<double>&, double ) override {
+        throw util::unimplemented_exception( "not needed in unit test" );
+    }
+    WithinHost::Pathogenesis::StatePair determineMorbidity( Host::Human&, double, bool ) override {
+        throw util::unimplemented_exception( "not needed in unit test" );
+    }
+    void clearImmunity() override {
+        throw util::unimplemented_exception( "not needed in unit test" );
+    }
+    double getCumulative_h() const override {
+        throw util::unimplemented_exception( "not needed in unit test" );
+    }
+    double getCumulative_Y() const override {
+        throw util::unimplemented_exception( "not needed in unit test" );
+    }
+};
 }
 
 unique_ptr<WithinHost::WHInterface> makeWHMock(RunContext& ctx){
@@ -65,9 +125,7 @@ unique_ptr<WithinHost::WHInterface> makeWHMock(RunContext& ctx){
     state = new WHMockState();
     hooks.state = state;
     ctx.whMock = &hooks;
-    LocalRng rng(0, 0);   // unused: the Mock kind's constructor draws nothing
-    return unique_ptr<WithinHost::WHInterface>(
-        new WithinHost::WHInterface( ctx, rng, 1.0, WithinHost::WHInterface::Kind::Mock ));
+    return unique_ptr<WithinHost::WHInterface>( new WHMock( ctx ) );
 }
 
 }

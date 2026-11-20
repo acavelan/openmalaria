@@ -85,37 +85,37 @@ void WHInterface::init( RunContext& ctx, const OM::Parameters& parameters, const
     
     if( util::ModelOptions::option( util::VIVAX_SIMPLE_MODEL ) ){
         opt_vivax_simple = true;
-        WHInterface::initVivax( ctx, parameters, scenario.getModel() );
+        WHVivax::init( ctx, parameters, scenario.getModel() );
     }else{
-        WHInterface::initFalciparum( ctx, parameters, scenario.getModel() );
+        WHFalciparum::init( ctx, parameters, scenario.getModel() );
         
         if (util::ModelOptions::option (util::DUMMY_WITHIN_HOST_MODEL)) {
             opt_dummy_whm = true;
-            infection_init_dummy (ctx);
+            DummyInfection::init (ctx);
         } else if (util::ModelOptions::option (util::EMPIRICAL_WITHIN_HOST_MODEL)) {
             opt_empirical_whm = true;
-            infection_init_empirical(ctx);    // 1-day time step check
+            EmpiricalInfection::init(ctx);    // 1-day time step check
         } else if (util::ModelOptions::option (util::MOLINEAUX_WITHIN_HOST_MODEL)) {
             opt_molineaux_whm = true;
-            infection_init_molineaux( ctx, parameters );
+            MolineauxInfection::init( ctx, parameters );
         } else if (util::ModelOptions::option (util::PENNY_WITHIN_HOST_MODEL)) {
             opt_penny_whm = true;
-            infection_init_penny(ctx);
+            PennyInfection::init(ctx);
         } else {
-            infection_init_descriptive( ctx, parameters );      // 5-day time step check
+            DescriptiveInfection::init( ctx, parameters );      // 5-day time step check
         }
         opt_common_whm = opt_dummy_whm || opt_empirical_whm
                 || opt_molineaux_whm || opt_penny_whm;
         
         if( opt_common_whm ){
-            WHInterface::initCommon( ctx, scenario );
+            WHCommon::init( ctx, scenario );
         }else{
-            WHInterface::initDescriptive(ctx);
+            WHDescriptive::init(ctx);
         }
     }
 }
 
-void WHInterface::initFalciparum( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model ) {
+void WHFalciparum::init( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model ) {
     sigma_i=sqrt(parameters[Parameter::SIGMA_I_SQ]);
     immPenalty_22=1-exp(parameters[Parameter::IMMUNITY_PENALTY]);
     immEffectorRemain=exp(-parameters[Parameter::IMMUNE_EFFECTOR_DECAY]);
@@ -138,7 +138,7 @@ void WHInterface::initFalciparum( RunContext& ctx, const OM::Parameters& paramet
     Infection::init( latentP );
 }
 
-void WHInterface::initCommon( RunContext& ctx, const scnXml::Scenario& scenario ){
+void WHCommon::init( RunContext& ctx, const scnXml::Scenario& scenario ){
     const scnXml::Human human = scenario.getModel().getHuman();
     if( !human.getWeight().present() ){
         // Technically this is needed by the PK/PD and Molineaux models

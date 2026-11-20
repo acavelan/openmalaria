@@ -38,7 +38,7 @@ using namespace ::OM::util;
     
 // -----  Empirical model statics  -----
 // File scope: this TU is the only reader/writer; re-initialised per run by
-// infection_init_empirical (and reset by independent parameterisation):
+// EmpiricalInfection::init (and reset by independent parameterisation):
 constexpr int _maximumDurationInDays = 418;
 static double _maximumPermittedAmplificationPerCycle;
 static double _subPatentLimit;
@@ -68,11 +68,11 @@ static double sampleSubPatentValue(LocalRng& rng, double mu, double sigma, doubl
 
 
 Infection* createEmpiricalInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
-    return infection_new (ctx, rng, protID, origin, Infection::Kind::Empirical);
+    return new EmpiricalInfection (ctx, rng, protID, origin);
 }
 
 
-void infection_init_empirical(RunContext& ctx){
+void EmpiricalInfection::init(RunContext& ctx){
     ctx.createInfection = &createEmpiricalInfection;
     
   // alpha1 corresponds to 1 day before first patent, alpha2 2 days before first patent etc.
@@ -131,16 +131,18 @@ void infection_init_empirical(RunContext& ctx){
 
 /* Initialises a new infection by assigning the densities for the last 3 prepatent days
 */
-void infection_ctor_empirical(Infection& inf, LocalRng& rng, double growthRateMultiplier) {
-    inf.empirical = std::make_unique<Infection::EmpiricalData>();
+EmpiricalInfection::EmpiricalInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin,
+        double growthRateMultiplier) :
+    Infection (ctx, genotype, origin, Kind::Empirical)
+{
   //sample the parasite densities for the last 3 prepatent days
   //note that the lag decreases with time
-  inf.empirical->_laggedLogDensities[0]=sampleSubPatentValue(rng, _alpha1,_mu1,log(_subPatentLimit));  
-  inf.empirical->_laggedLogDensities[1]=sampleSubPatentValue(rng, _alpha2,_mu2,log(_subPatentLimit)); 
-  inf.empirical->_laggedLogDensities[2]=sampleSubPatentValue(rng, _alpha3,_mu3,log(_subPatentLimit));  
+  _laggedLogDensities[0]=sampleSubPatentValue(rng, _alpha1,_mu1,log(_subPatentLimit));  
+  _laggedLogDensities[1]=sampleSubPatentValue(rng, _alpha2,_mu2,log(_subPatentLimit)); 
+  _laggedLogDensities[2]=sampleSubPatentValue(rng, _alpha3,_mu3,log(_subPatentLimit));  
   //only the immediately preceding value is modified by the growth rate multiplier
-  inf.empirical->_laggedLogDensities[0] += log(growthRateMultiplier); 
-  inf.empirical->_patentGrowthRateMultiplier = growthRateMultiplier;
+  _laggedLogDensities[0] += log(growthRateMultiplier); 
+  _patentGrowthRateMultiplier = growthRateMultiplier;
 }
 
 
@@ -149,9 +151,15 @@ void infection_ctor_empirical(Infection& inf, LocalRng& rng, double growthRateMu
 
 // NOTE: TS never provided a lot of documentation for this code.
 const int EI_MAX_SAMPLES = 10;
-bool update_density_empirical( Infection& inf, LocalRng& rng, double survivalFactor, SimTime bsAge, double ){
+bool EmpiricalInfection::update( LocalRng& rng, double survivalFactor, SimTime now, double ){
+    SimTime bsAge = now - m_startDate - Infection::s_latentP;	// age of post-latent-period blood stage
+    if( bsAge < sim::zero() )
+        return false;	// latent period (liver stage) — don't do anything
+    // aliases: the equation block below is verbatim from the free function
+    // (inf.empirical-> payload refs became inf. member refs)
+    auto& inf = *this;
   //to avoid the formula for the linear predictor being excessively long we introduce L for the lagged densities
-  # define L inf.empirical->_laggedLogDensities
+  # define L inf._laggedLogDensities
   
   if (bsAge >= _maximumDurationInDays || !(L[0] > -999999.9))	// Note: second test is extremely unlikely to fail
     return true;	// cut-off point
@@ -175,7 +183,7 @@ bool update_density_empirical( Infection& inf, LocalRng& rng, double survivalFac
       //include sampling error
       logDensity=rng.gauss(expectedlogDensity,sigma_noise(ageDays));
       //include drug and immunity effects via growthRateMultiplier 
-      logDensity += log(inf.empirical->_patentGrowthRateMultiplier);
+      logDensity += log(inf._patentGrowthRateMultiplier);
       
       if (logDensity <= upperLimitoflogDensity)	//got an acceptable density, we're done
 	break;	// most of the time this should happen first try
@@ -199,9 +207,9 @@ bool update_density_empirical( Infection& inf, LocalRng& rng, double survivalFac
   if (!(localDensity >= 0.0 && amplificationPerCycle <= _maximumPermittedAmplificationPerCycle))	// in case the above tries fail
     localDensity = _maximumPermittedAmplificationPerCycle*exp(L[1]);
   
-  inf.empirical->_laggedLogDensities[2]=inf.empirical->_laggedLogDensities[1];
-  inf.empirical->_laggedLogDensities[1]=inf.empirical->_laggedLogDensities[0];
-  inf.empirical->_laggedLogDensities[0]=log(localDensity);
+  inf._laggedLogDensities[2]=inf._laggedLogDensities[1];
+  inf._laggedLogDensities[1]=inf._laggedLogDensities[0];
+  inf._laggedLogDensities[0]=log(localDensity);
   
   inf.m_density = localDensity;
   inf.m_cumulativeExposureJ += inf.m_density;

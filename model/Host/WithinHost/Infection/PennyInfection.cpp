@@ -108,8 +108,8 @@ static bool immune_threshold_gamma = false;
 static bool update_density_gamma = false;
 
 // TU-local helpers (bodies below)
-static double getClonalSummation(Infection& inf, int ageDays);
-static double getVariantSpecificSummation(Infection& inf, LocalRng& rng, int ageDays);
+static double getClonalSummation(PennyInfection& inf, int ageDays);
+static double getVariantSpecificSummation(PennyInfection& inf, LocalRng& rng, int ageDays);
 
 /* Parameters to assign infection dependent parameters */
 const double mu_Y=3.9700;
@@ -145,10 +145,10 @@ const double Omega=0.00025;
 //@}
 
 Infection* createPennyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
-    return infection_new (ctx, rng, protID, origin, Infection::Kind::Penny);
+    return new PennyInfection (ctx, rng, protID, origin);
 }
 
-void infection_init_penny(RunContext& ctx) {
+void PennyInfection::init(RunContext& ctx) {
     ctx.createInfection = &createPennyInfection;
 
     if(util::ModelOptions::option (util::IMMUNE_THRESHOLD_GAMMA)) {
@@ -164,11 +164,13 @@ void infection_init_penny(RunContext& ctx) {
     }
 }
 
-void infection_ctor_penny(Infection& inf, LocalRng& rng) {
-    inf.penny = std::make_unique<Infection::PennyData>();
-    auto* penny = inf.penny.get();   // alias: body below verbatim
-    constexpr int delta_C = Infection::delta_C;
-    constexpr int delta_V = Infection::delta_V;
+// immune-threshold draws at the old infection_ctor_penny() slots
+PennyInfection::PennyInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin) :
+    Infection (ctx, genotype, origin, Kind::Penny)
+{
+    auto* penny = this;   // alias: body below verbatim
+    constexpr int delta_C = PennyInfection::delta_C;
+    constexpr int delta_V = PennyInfection::delta_V;
     penny->variantSpecificSummation = 0;
     penny->clonalSummation = 0;
     // assign infection dependent immune thresholds
@@ -196,12 +198,16 @@ void infection_ctor_penny(Infection& inf, LocalRng& rng) {
 }
 
 
-bool update_density_penny( Infection& inf, LocalRng& rng, double survivalFactor, SimTime bsAge, double ){
+bool PennyInfection::update( LocalRng& rng, double survivalFactor, SimTime now, double ){
+    SimTime bsAge = now - m_startDate - Infection::s_latentP;	// age of post-latent-period blood stage
+    if( bsAge < sim::zero() )
+        return false;	// latent period (liver stage) — don't do anything
     // aliases: the equation block below is verbatim from the member function
-    auto* penny = inf.penny.get();
-    auto& m_density = inf.m_density;
-    constexpr int delta_C = Infection::delta_C;
-    constexpr int delta_V = Infection::delta_V;
+    // (the old inf.m_density alias is now a plain unqualified member ref)
+    auto& inf = *this;
+    auto* penny = this;
+    constexpr int delta_C = PennyInfection::delta_C;
+    constexpr int delta_V = PennyInfection::delta_V;
     int ageDays = bsAge;       // lazy
     if( bsAge == sim::zero() ){
         // assign initial densities (Y circulating, X sequestered)
@@ -303,9 +309,9 @@ bool update_density_penny( Infection& inf, LocalRng& rng, double survivalFactor,
     return false;
 }
 
-static double getVariantSpecificSummation(Infection& inf, LocalRng& rng, int ageDays) {
-    auto* penny = inf.penny.get();
-    constexpr int delta_V = Infection::delta_V;
+static double getVariantSpecificSummation(PennyInfection& inf, LocalRng& rng, int ageDays) {
+    auto* penny = &inf;
+    constexpr int delta_V = PennyInfection::delta_V;
     // check if new dominant variant has arrived
     // parity: order — local RNG stream: draw call order fixes stream state
     bool newVarDominant = rng.bernoulli(prob_lambda_V);
@@ -324,9 +330,9 @@ static double getVariantSpecificSummation(Infection& inf, LocalRng& rng, int age
     return penny->variantSpecificSummation;
 }
 
-static double getClonalSummation(Infection& inf, int ageDays) {
-    auto* penny = inf.penny.get();
-    constexpr int delta_C = Infection::delta_C;
+static double getClonalSummation(PennyInfection& inf, int ageDays) {
+    auto* penny = &inf;
+    constexpr int delta_C = PennyInfection::delta_C;
     //The effective exposure is computed by adding in the delta_C-day lagged parasite density 
     //and decaying the previous value for the effective exposure with decay parameter rho_C
     size_t index = mod_nn(ageDays, delta_C);

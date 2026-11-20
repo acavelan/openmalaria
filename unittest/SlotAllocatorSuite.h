@@ -111,7 +111,7 @@ public:
         UnittestUtil::Infection_init_latentP_and_NaN();
         
         LocalRng rng(3, 4);
-        WHInterface wh( UnittestUtil::ctx(), rng, 1.0, WHInterface::Kind::Descriptive );
+        WHDescriptive wh( UnittestUtil::ctx(), rng, 1.0 );
         HumanColumns cols; util::MasterRng master(0, 1);
         wh.bind_columns( cols, cols.append_row( sim::zero(), master ) );
         

@@ -727,7 +727,7 @@ static void set_access_probabilities(const HS& hsDescription){
 // liverStageDrug handling was identical in both setHealthSystem paths:
 static void set_liver_stage(const xsd::cxx::tree::optional<scnXml::LiverStageDrug>& elt){
     if( ModelOptions::option(util::VIVAX_SIMPLE_MODEL) ){
-        WithinHost::WHInterface::setHSParametersVivax( elt.present() ? &elt.get() : 0 );
+        WithinHost::WHVivax::setHSParameters( elt.present() ? &elt.get() : 0 );
     }else if( elt.present() ){
         throw util::xml_scenario_error( "health-system's liverStageDrug element only supported by vivax" );
     }

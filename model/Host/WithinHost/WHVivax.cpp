@@ -234,7 +234,8 @@ void VivaxBrood::treatmentLS(){
 
 // ———  per-host code  ———
 
-void WHInterface::ctorVivax( LocalRng& rng, double comorbidityFactor )
+WHVivax::WHVivax( RunContext& ctx, LocalRng& rng, double comorbidityFactor ) :
+    WHInterface( ctx, Kind::Vivax )
 {
     if( comorbidityFactor != 1.0 ){
         throw TRACED_EXCEPTION_DEFAULT( "This vivax model cannot be used with comorbidity heterogeneity" );
@@ -249,7 +250,7 @@ void WHInterface::ctorVivax( LocalRng& rng, double comorbidityFactor )
     noPQ = ( pHetNoPQ > 0.0 && rng.bernoulli(pHetNoPQ) );
 }
 
-void WHInterface::dtorVivax(){
+WHVivax::~WHVivax(){
 #ifdef WHVivaxSamples
     if( this == sampleHost ){
         sampleHost = 0;
@@ -260,7 +261,7 @@ void WHInterface::dtorVivax(){
 
 
 
-double WHInterface::probTransmissionToMosquito_vivax(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l)const{
+double WHVivax::probTransmissionToMosquito(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l)const{
     assert( ctx.genotypes.N() == 1 );
     for(auto inf = vivaxInfections.begin();
          inf != vivaxInfections.end(); ++inf)
@@ -274,7 +275,7 @@ double WHInterface::probTransmissionToMosquito_vivax(vector<double> &probTransGe
 }
 
 
-bool WHInterface::summarize_vivax(Host::Human& human) const{
+bool WHVivax::summarize(Host::Human& human) const{
     if( vivaxInfections.size() == 0 ) return false;  // no vivaxInfections: not patent, nothing to report
     mon::recordStat(mon::measure("nInfect"), human);
     bool patentHost = false;
@@ -291,12 +292,12 @@ bool WHInterface::summarize_vivax(Host::Human& human) const{
     return patentHost;
 }
 
-void WHInterface::importInfection_vivax(LocalRng& rng){
+void WHVivax::importInfection(LocalRng& rng){
     // this means one new liver stage infection, which can result in multiple blood stages
     vivaxInfections.push_back( VivaxBrood( ctx, rng, WithinHost::InfectionOrigin::Imported, this ) );
 }
 
-void WHInterface::update_vivax(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
+void WHVivax::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
         vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears)
 {
     pSevere = 0.0;
@@ -391,7 +392,7 @@ void WHInterface::update_vivax(Host::Human &human, LocalRng& rng, int &nNewInfs_
     }
 }
 
-bool WHInterface::diagnosticResult_vivax( LocalRng& rng, const Diagnostic& diagnostic ) const{
+bool WHVivax::diagnosticResult( LocalRng& rng, const Diagnostic& diagnostic ) const{
     //TODO(monitoring): this shouldn't ignore the diagnostic (especially since
     // it should always return true if diagnostic.density=0)
     for(auto inf = vivaxInfections.begin(); inf != vivaxInfections.end(); ++inf) {
@@ -401,18 +402,18 @@ bool WHInterface::diagnosticResult_vivax( LocalRng& rng, const Diagnostic& diagn
     return false;
 }
 
-Pathogenesis::StatePair WHInterface::determineMorbidity_vivax( Host::Human& human, double ageYears, bool ){
+Pathogenesis::StatePair WHVivax::determineMorbidity( Host::Human& human, double ageYears, bool ){
     mon::recordStat(mon::measure("expectedSevere"), human, pSevere);
     Pathogenesis::StatePair result;     // no indirect mortality in the vivax model
     result.state = morbidity;
     return result;
 }
 
-void WHInterface::clearImmunity_vivax(){
+void WHVivax::clearImmunity(){
     throw TRACED_EXCEPTION_DEFAULT( "vivax model does not include immune suppression" );
 }
 
-void WHInterface::optionalPqTreatment_vivax( Host::Human& human ){
+void WHVivax::optionalPqTreatment( Host::Human& human ){
     // PQ clears liver stages. We don't worry about the effect of PQ on
     // gametocytes, because these are always cleared by blood-stage drugs with
     // Vivax, and PQ is not given without BS drugs. NOTE: this ignores drug failure.
@@ -427,7 +428,7 @@ void WHInterface::optionalPqTreatment_vivax( Host::Human& human ){
         mon::recordEvent(mon::measure("nLiverStageTreatments"), human);
     }
 }
-bool WHInterface::treatSimple_vivax( Host::Human& human, SimTime timeLiver, SimTime timeBlood ){
+bool WHVivax::treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlood ){
     //TODO: this should be implemented properly (allowing effects on next
     // update instead of now)
     
@@ -471,11 +472,11 @@ bool WHInterface::treatSimple_vivax( Host::Human& human, SimTime timeLiver, SimT
 // ———  boring stuff: checkpointing and set-up  ———
 
 char const*const not_impl = "feature not available in Vivax model";
-void WHInterface::treatPkPd_vivax(size_t schedule, size_t dosages, double age, double delay_d){
+void WHVivax::treatPkPd(size_t schedule, size_t dosages, double age, double delay_d){
     throw TRACED_EXCEPTION( not_impl, util::Error::WHFeatures ); }
-double WHInterface::getTotalDensity_vivax() const{ throw TRACED_EXCEPTION( not_impl, util::Error::WHFeatures ); }
-double WHInterface::getCumulative_h_vivax() const{ throw TRACED_EXCEPTION( not_impl, util::Error::WHFeatures ); }
-double WHInterface::getCumulative_Y_vivax() const{ throw TRACED_EXCEPTION( not_impl, util::Error::WHFeatures ); }
+double WHVivax::getTotalDensity() const{ throw TRACED_EXCEPTION( not_impl, util::Error::WHFeatures ); }
+double WHVivax::getCumulative_h() const{ throw TRACED_EXCEPTION( not_impl, util::Error::WHFeatures ); }
+double WHVivax::getCumulative_Y() const{ throw TRACED_EXCEPTION( not_impl, util::Error::WHFeatures ); }
 
 
 }

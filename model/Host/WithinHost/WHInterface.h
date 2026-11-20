@@ -217,24 +217,32 @@ public:  // run state; wire in checkpoint/humans.cpp
 	int origin;
 };
 
+
 /**
  * The within-host models. These models encapsulate the infections and related
  * immunity factors of a single human, starting with infection (i.e. assuming
  * successful innoculation), including some drug action code, and outputting
  * parasite densities.
  *
- * One final class covering all variants, selected by Kind (from the scenario's
- * model choice; never serialised): Vivax (the simple vivax model), Common (the
- * shared P. falciparum model used by the Dummy/Empirical/Molineaux/Penny
- * infection models) and Descriptive (the original descriptive model). Kind
- * ::Mock is only reachable from unit tests (see unittest/WHMock.h; the
- * behaviour lives in a hook table on RunContext (RunContext::WHMockHooks)).
+ * True polymorphism (was the Kind-switched single class): one class per
+ * model-option variant, selected once per run by ModelOptions
+ * (WHInterface::createWithinHostModel below; the kind tag is never
+ * serialised):
+ *   WHVivax        WHVivax.cpp          the simple vivax model (broods)
+ *   WHCommon       CommonWithinHost.cpp  shared P. falciparum model used by
+ *                                        the Dummy/Empirical/Molineaux/Penny
+ *                                        infection variants
+ *   WHDescriptive  DescriptiveWithinHost.cpp  the original descriptive model
+ *   WHMock         unittest/WHMock.h    unit-test backend (installs the hook
+ *                                        table on RunContext::WHMockHooks)
+ * WHCommon and WHDescriptive share the P. falciparum immunity machinery in
+ * the intermediate WHFalciparum layer (WHFalciparum.cpp).
  *
- * Method definitions are split per kind over WHFalciparum.cpp (shared
- * P. falciparum immunity code), CommonWithinHost.cpp, DescriptiveWithinHost.cpp
- * and WHVivax.cpp.
+ * The base holds the state every variant carries (column binding, infection
+ * count, and the immunity/density block that the checkpoint wire writes for
+ * every kind); the per-variant approaches are virtual overrides.
  */
-class WHInterface final {
+class WHInterface {
 public:
     /// The within-host model variant implemented by this instance.
     enum class Kind { Vivax, Common, Descriptive, Mock };
@@ -248,41 +256,27 @@ public:
 
     /// @brief Static methods
     //@{
-    /// Initialise static parameters (all model variants)
+    /// Initialise static parameters (all model variants; selects the variant
+    /// via ModelOptions, xml/scenario.cpp).
     static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario);
-    /// Initialise P. falciparum immunity statics (Common/Descriptive kinds).
-    static void initFalciparum( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model );
-    /// Initialise vivax statics (Vivax kind).
-    static void initVivax( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model );
-    /// Initialise Common-kind statics.
-    static void initCommon(RunContext& ctx, const scnXml::Scenario& scenario);
-    /// Initialise Descriptive-kind statics. Must run after monitoring is set up.
-    static void initDescriptive(RunContext& ctx);
-    
-    /** Called when health system parameters are loaded (Vivax kind).
-     * 
-     * If no "LiverStageDrug" parameters are present, this is still called but with null pointer.
-     */
-    static void setHSParametersVivax( const scnXml::LiverStageDrug* );
     
     /** Configure a new treatment option, and return the code used to select
      * that option later. */
     static TreatmentId addTreatment( RunContext& ctx, const scnXml::TreatmentOption& desc );
 
-    /// Create an instance using the appropriate model
+    /// Create an instance using the appropriate model (one line per variant).
     static unique_ptr<WHInterface> createWithinHostModel( RunContext& ctx, LocalRng& rng, double comorbidityFactor );
     //@}
 
-    /// @brief Constructors, destructors and checkpointing functions
-    //@{
-    WHInterface( RunContext& ctx, LocalRng& rng, double comorbidityFactor, Kind kind );
-    ~WHInterface();
-    
+    /// Base ctor: no state beyond the tag, no draws — every variant's draws
+    /// live in its own ctor at the old ctor* fragment stream positions.
+    WHInterface( RunContext& ctx, Kind kind ) : ctx(ctx), kind(kind) {}
+
+    virtual ~WHInterface() {}
+
     WHInterface(const WHInterface&) = delete;
     WHInterface& operator= (const WHInterface&) = delete;
     WHInterface& operator=(WHInterface&&) = delete;    // ctx reference member
-
-    //@}
 
     /** Return the infectiousness of this human to biting mosquitoes.
      * This step is independent of parasite genetics.
@@ -295,28 +289,33 @@ public:
      * 
      * Calulates the probability for imported infections _i and
      * for local infections _l */
-    double probTransmissionToMosquito(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l)const;
+    virtual double probTransmissionToMosquito(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l)const = 0;
 
     /// @returns true if host has patent parasites
-    bool summarize(Host::Human& human) const;
+    virtual bool summarize(Host::Human& human) const = 0;
 
     /// Create a new infection within this human
-    void importInfection(LocalRng& rng);
+    virtual void importInfection(LocalRng& rng) = 0;
 
     /** Carry out the effects of some treatment option, optionally with intervention deployment.
      * 
      * This is equivalent to calling treatSimple, then deploying any included interventions.
      * 
      * This may be used by intervention deployment, thus should use time 
-     * ctx.clock.nowOrTs1(). */
-    void treatment( Host::Human& human, TreatmentId treatId );
+     * ctx.clock.nowOrTs1().
+     *
+     * Shared by all production variants (treatSimple dispatches virtually;
+     * the Vivax variant uses the same code here; the unittest Mock
+     * overrides). */
+    virtual void treatment( Host::Human& human, TreatmentId treatId );
     
     /// Conditionally gives Primaquine as a treatment. Reports as appropriate.
-    void optionalPqTreatment( Host::Human& human );
+    /// (No PQ treatment for falciparum in current models; Vivax overrides.)
+    virtual void optionalPqTreatment( Host::Human& human ) {}
     
     /** Treat a patient via the simple treatment model. Return true if any
      * blood-stage treatment is administered. Report any liver-stage treatments. */
-    bool treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlood );
+    virtual bool treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlood ) = 0;
     
     /** Give a patient a course of drugs, via the Pk/Pd model
      * 
@@ -327,7 +326,7 @@ public:
      * @param dosages Index of a dosage table
      * @param age Age of human in years
      */
-    void treatPkPd(size_t schedule, size_t dosages, double age, double delay_d);
+    virtual void treatPkPd(size_t schedule, size_t dosages, double age, double delay_d) = 0;
 
     /** Add new infections and update the parasite densities of existing
      * infections. Also update immune status.
@@ -338,13 +337,14 @@ public:
      * @param ageInYears Age of human
      * @param bsvFactor Parasite survival factor for blood-stage vaccines
      */
-    void update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
-        vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears);
+    virtual void update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
+        vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears) = 0;
 
-    /** TODO: this should not need to be exposed. It is currently used by a
+    /** TODO: this should not be exposed. It is currently used by a
      * severe outcome (pDeath) model inside the EventScheduler "case
-     * management" model, and case management diagnostics. */
-    double getTotalDensity() const;
+     * management" model, and case management diagnostics.
+     * (Vivax variant throws.) */
+    virtual double getTotalDensity() const { return totalDensity; }
     
     /** Simulate use of a diagnostic test.
      *
@@ -354,7 +354,7 @@ public:
      * 
      * @returns true when the diagnostic is positive
      */
-    bool diagnosticResult( LocalRng& rng, const Diagnostic& diagnostic ) const;
+    virtual bool diagnosticResult( LocalRng& rng, const Diagnostic& diagnostic ) const = 0;
     
     /** Use the pathogenesis model to determine, based on infection status
      * and random draw, this person't morbidity.
@@ -365,129 +365,25 @@ public:
      * @param ageYears Age of human host in years
      * @param isDoomed True if the human is already doomed to die, used for reporting
      */
-    Pathogenesis::StatePair determineMorbidity( Host::Human& human, double ageYears, bool isDoomed );
+    virtual Pathogenesis::StatePair determineMorbidity( Host::Human& human, double ageYears, bool isDoomed ) = 0;
 
-    /// Special intervention: clears all immunity
-    void clearImmunity();
+    /// Special intervention: clears all immunity.
+    virtual void clearImmunity() = 0;
     
     // TODO(monitoring): these shouldn't have to be exposed (perhaps use summarize to report the data):
-    double getCumulative_h() const;
-    double getCumulative_Y() const;
+    virtual double getCumulative_h() const { return imm_h_ref(); }
+    virtual double getCumulative_Y() const { return imm_Y_ref(); }
 
-    InfectionOrigin getInfectionOrigin() const;
+    /// Vivax/Mock have no per-infection origins (Indigenous); Falciparum
+    /// layer derives from its infection list.
+    virtual InfectionOrigin getInfectionOrigin() const { return InfectionOrigin::Indigenous; }
 
-    /** The maximum number of infections a human can have: owned by
-     * SlotAllocator (above), the single clamp
-     * owner; see its comment for the two RNG-visible modes. */
+    /// Which model this instance is (never serialised; the checkpoint module
+    /// switches on it and static_casts to the derived class — the tag is the
+    /// proof, no dynamic_cast needed).
+    const Kind kind;
 
-public:	// simple data + per-kind fragments (test suites and WH models touch these directly)
-    /// @brief Per-kind constructor/destructor fragments
-    //@{
-    /// Shared P. falciparum immunity state; draws from rng (stream order fixed).
-    void ctorFalciparum( LocalRng& rng, double comorbidityFactor );
-    void ctorVivax( LocalRng& rng, double comorbidityFactor );
-    void ctorCommon( LocalRng& rng, double comorbidityFactor );
-    void ctorDescriptive( LocalRng& rng, double comorbidityFactor );
-    void dtorVivax();
-    void dtorCommon();
-    void dtorDescriptive();
-    //@}
-
-    /// @brief Per-kind implementations behind the public (dispatching) methods
-    //@{
-    double probTransmissionToMosquito_falciparum(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l)const;
-    double probTransmissionToMosquito_vivax(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l)const;
-    
-    bool summarize_common( Host::Human& human )const;
-    bool summarize_descriptive( Host::Human& human ) const;
-    bool summarize_vivax(Host::Human& human) const;
-    
-    void importInfection_vivax(LocalRng& rng);
-    void importInfection_common(LocalRng& rng);
-    void importInfection_descriptive(LocalRng& rng);
-    
-    void treatment_falciparum( Host::Human& human, TreatmentId treatId );
-    void optionalPqTreatment_vivax( Host::Human& human );
-    
-    bool treatSimple_falciparum( Host::Human& human, SimTime timeLiver, SimTime timeBlood );
-    bool treatSimple_vivax( Host::Human& human, SimTime timeLiver, SimTime timeBlood );
-    
-    void treatPkPd_common(size_t schedule, size_t dosage, double age, double delay_d);
-    void treatPkPd_descriptive(size_t schedule, size_t dosages, double age, double delay_d);
-    void treatPkPd_vivax(size_t schedule, size_t dosages, double age, double delay_d);
-    
-    void update_vivax(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
-        vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears);
-    void update_common(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
-        vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears);
-    void update_descriptive(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
-        vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears);
-    /// Reset and refill the m_y_lag_{i,l} infectiousness cache for the current
-    /// tick (shared tail of update_common and update_descriptive).
-    void cache_y_lag();
-    
-    double getTotalDensity_vivax() const;
-    double getCumulative_h_vivax() const;
-    double getCumulative_Y_vivax() const;
-    
-    bool diagnosticResult_falciparum( LocalRng& rng, const Diagnostic& diagnostic ) const;
-    bool diagnosticResult_vivax( LocalRng& rng, const Diagnostic& diagnostic ) const;
-    
-    Pathogenesis::StatePair determineMorbidity_falciparum( Host::Human& human, double ageYears, bool isDoomed );
-    Pathogenesis::StatePair determineMorbidity_vivax( Host::Human& human, double ageYears, bool );
-    
-    void clearImmunity_vivax();
-    void clearImmunity_falciparum();
-    //@}
-
-    //@}
-
-    /// @brief Shared P. falciparum immunity model
-    //@{
-    /** Clear infections of the appropriate stages (Common/Descriptive kinds).
-     * 
-     * @param stage Which stages of the infection are affected
-     */
-    void clearInfections( Treatments::Stages stage );
-    
-    /** Updates for the immunity model − assumes imm_h_ref() and imm_Y_ref()
-     * have already been incremented.
-     *
-     * Applies decay of immunity against asexual blood stages, if present. */
-    void updateImmuneStatus();
-
-    /** @returns A multiplier describing the proportion of parasites surviving
-     * immunity effects this time step.
-     * 
-     * Note that in the Descriptive model this multiplies log(density), but the
-     * new density has no effect on future densities, wheras the Empirical model
-     * multiplies the actual density (which then affects density on the following
-     * time step). */
-    double immunitySurvivalFactor (double ageInYears, double cumulativeExposureJ);
-
-    /** Host-tick-constant part of immunitySurvivalFactor: dH and dA depend on
-     * host immunity accumulators and age only, both frozen during an infection
-     * update loop (imm_h_ref/imm_Y_ref are mutated outside it). Computing once
-     * per host tick saves one exp+div per infection; the per-infection remainder
-     * below reproduces the identical IEEE operand sequence ((dY*dH)*dA). */
-    struct ImmSurvTick {
-        bool active;        ///< imm_h > 1.0 (else dH = dY = 1.0)
-        double immY, invY;  ///< dY inputs, per infection
-        double dH, dA;      ///< hoisted host constants
-    };
-    /** Host-side guard (ageInYears/imm_h/imm_Y NaN) throws here — same message;
-     * a NaN abort ends the run either way. */
-    ImmSurvTick immSurvivalTick (double ageInYears);
-    /** Per-infection remainder; guards cumulativeExposureJ like the two-double
-     * overload above. */
-    double immunitySurvivalFactor (const ImmSurvTick& tick, double cumulativeExposureJ);
-    
-    static void setParams(double cumYStar, double cumHStar, double aM, double dM);   // for unit test only
-    //@}
-    
-    /// Which model this instance is (never serialised).
-    Kind m_kind;
-
+public:	// simple data + fragments (test suites and WH models touch these directly)
     /// The host human's SoA columns/row (bind_columns; immunity state lives
     /// in the imm_* / cum_prim_inf columns).
     HumanColumns* cols = nullptr;
@@ -496,8 +392,6 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
     /// Multiplicity of infection
     int numInfs = 0;
 
-    /// @brief P. falciparum state (unused by the Vivax/Mock kinds)
-    //@{
     //!innate ability to control parasite densities
     double _innateImmSurvFact = 0.0;
 
@@ -539,27 +433,163 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
     /// Length of m_y_lag array. Wouldn't have to be dynamic if Global::interval was known at compile-time.
     /// set by initHumanParameters
     static int y_lag_len;
-    //@}
+};
+
+/**
+ * Shared P. falciparum immunity machinery, behind the Common and Descriptive
+ * variants (bodies: WHFalciparum.cpp; infection-list code shared in
+ * CommonWithinHost.cpp / DescriptiveWithinHost.cpp). Ctor draws the innate
+ * immunity sample exactly where the old ctorFalciparum() did — always before
+ * the derived variant's own ctor body.
+ */
+class WHFalciparum : public WHInterface {
+public:
+    /// Initialise P. falciparum immunity statics (Common/Descriptive variants).
+    static void init( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model );
+    static void setParams(double cumYStar, double cumHStar, double aM, double dM);   // for unit test only
+
+    /// Shared P. falciparum immunity ctor fragment (pathogenesis model +
+    /// innate draw + y_lag buffers); draws stream position = old
+    /// ctorFalciparum(). Kind comes from the concrete variant.
+    WHFalciparum( RunContext& ctx, LocalRng& rng, double comorbidityFactor, Kind kind );
+    ~WHFalciparum() override;
+
+    double probTransmissionToMosquito(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l)const override;
+    bool diagnosticResult( LocalRng& rng, const Diagnostic& diagnostic ) const override;
+    bool treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlood ) override;
+    Pathogenesis::StatePair determineMorbidity( Host::Human& human, double ageYears, bool isDoomed ) override;
+    void clearImmunity() override;
+    InfectionOrigin getInfectionOrigin() const override;
+
+    /** Clear infections of the appropriate stages.
+     * 
+     * @param stage Which stages of the infection are affected
+     */
+    void clearInfections( Treatments::Stages stage );
     
-    /// @brief Common-kind state (infections/opt_vaccine_genotype shared with Descriptive)
-    //@{
+    /** Updates for the immunity model − assumes imm_h_ref() and imm_Y_ref()
+     * have already been incremented.
+     *
+     * Applies decay of immunity against asexual blood stages, if present. */
+    void updateImmuneStatus();
+
+    /** @returns A multiplier describing the proportion of parasites surviving
+     * immunity effects this time step.
+     * 
+     * Note that in the Descriptive model this multiplies log(density), but the
+     * new density has no effect on future densities, wheras the Empirical model
+     * multiplies the actual density (which then affects density on the following
+     * time step). */
+    double immunitySurvivalFactor (double ageInYears, double cumulativeExposureJ);
+
+    /** Host-tick-constant part of immunitySurvivalFactor: dH and dA depend on
+     * host immunity accumulators and age only, both frozen during an infection
+     * update loop (imm_h_ref/imm_Y_ref are mutated outside it). Computing once
+     * per host tick saves one exp+div per infection; the per-infection remainder
+     * below reproduces the identical IEEE operand sequence ((dY*dH)*dA). */
+    struct ImmSurvTick {
+        bool active;        ///< imm_h > 1.0 (else dH = dY = 1.0)
+        double immY, invY;  ///< dY inputs, per infection
+        double dH, dA;      ///< hoisted host constants
+    };
+    /** Host-side guard (ageInYears/imm_h/imm_Y NaN) throws here — same message;
+     * a NaN abort ends the run either way. */
+    ImmSurvTick immSurvivalTick (double ageInYears);
+    /** Per-infection remainder; guards cumulativeExposureJ like the two-double
+     * overload above. */
+    double immunitySurvivalFactor (const ImmSurvTick& tick, double cumulativeExposureJ);
+
+    /// Reset and refill the m_y_lag_{i,l} infectiousness cache for the current
+    /// tick (shared tail of update_common and update_descriptive).
+    void cache_y_lag();
+
+public:	// test suites and the checkpoint module touch these directly
     /// Multiplies the mean mass (for this age) as a heterogeneity factor.
     double hetMassMultiplier = 1.0;
     
     /// Encapsulates drug code for each human
     PkPd::LSTMModel pkpdModel;
     
-    /** The list of all infections this human has (Common/Descriptive kinds).
+    /** The list of all infections this human has.
      *
      * Since infection models and within host models are very much intertwined,
      * the idea is that each WithinHostModel has its own list of infections. */
     std::list<Infection*> infections;
 
     bool opt_vaccine_genotype = false;
-    //@}
+};
+
+/**
+ * Common P. falciparum within-host variant: drives the Dummy/Empirical/
+ * Molineaux/Penny infection variants on a daily step (infection selection
+ * lives in the Infection hierarchy). Bodies: CommonWithinHost.cpp.
+ */
+class WHCommon final : public WHFalciparum {
+public:
+    /// Initialise Common-variant statics.
+    static void init(RunContext& ctx, const scnXml::Scenario& scenario);
+
+    WHCommon( RunContext& ctx, LocalRng& rng, double comorbidityFactor );
+
+    bool summarize(Host::Human& human) const override;
+    void importInfection(LocalRng& rng) override;
+    void treatPkPd(size_t schedule, size_t dosages, double age, double delay_d) override;
+    void update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
+        vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears) override;
+};
+
+/**
+ * Descriptive within-host variant: 5-day step, DescriptiveInfection densities.
+ * Bodies: DescriptiveWithinHost.cpp.
+ */
+class WHDescriptive final : public WHFalciparum {
+public:
+    /// Initialise Descriptive-variant statics. Must run after monitoring is set up.
+    static void init(RunContext& ctx);
+
+    WHDescriptive( RunContext& ctx, LocalRng& rng, double comorbidityFactor );
+
+    bool summarize(Host::Human& human) const override;
+    void importInfection(LocalRng& rng) override;
+    void treatPkPd(size_t schedule, size_t dosages, double age, double delay_d) override;
+    void update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
+        vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears) override;
+};
+
+/**
+ * Vivax within-host variant: hypnozoite broods, no P. falciparum immunity, no
+ * PK/PD. Bodies: WHVivax.cpp.
+ */
+class WHVivax final : public WHInterface {
+public:
+    /// Initialise vivax statics.
+    static void init( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model );
     
-    /// @brief Vivax-kind state
-    //@{
+    /** Called when health system parameters are loaded.
+     * 
+     * If no "LiverStageDrug" parameters are present, this is still called but with null pointer.
+     */
+    static void setHSParameters( const scnXml::LiverStageDrug* );
+
+    WHVivax( RunContext& ctx, LocalRng& rng, double comorbidityFactor );
+    ~WHVivax() override;
+
+    double probTransmissionToMosquito(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l)const override;
+    bool summarize(Host::Human& human) const override;
+    void importInfection(LocalRng& rng) override;
+    void optionalPqTreatment( Host::Human& human ) override;
+    bool treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBlood ) override;
+    void treatPkPd(size_t schedule, size_t dosages, double age, double delay_d) override;
+    void update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
+        vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears) override;
+    double getTotalDensity() const override;
+    bool diagnosticResult( LocalRng& rng, const Diagnostic& diagnostic ) const override;
+    Pathogenesis::StatePair determineMorbidity( Host::Human& human, double ageYears, bool ) override;
+    void clearImmunity() override;
+    double getCumulative_h() const override;
+    double getCumulative_Y() const override;
+
+public:	// run state; wire in checkpoint/humans.cpp
     list<VivaxBrood> vivaxInfections;
     
     /* Is flagged as never getting PQ: this is a heterogeneity factor. Example:
@@ -573,7 +603,7 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
     // The number of primary blood stage infections to have started since this
     // human was born: SoA column, see cum_prim_inf_ref().
     
-    // Either never or expiry time of treatment (Vivax kind)
+    // Either never or expiry time of treatment
     SimTime treatExpiryLiverVivax = sim::zero(), treatExpiryBloodVivax = sim::zero();
 
     // The probability of a clinical event from a primary infection
@@ -585,7 +615,6 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
     
     // Used for reporting; updated by update()
     double pSevere = 0.0;
-    //@}
 };
 
 }

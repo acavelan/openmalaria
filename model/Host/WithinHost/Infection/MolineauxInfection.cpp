@@ -60,7 +60,7 @@ static bool pairwise_P_star_sample = false;
 // q^(i+1) array
 // All the values of q^1... q^v are stored in this array.
 // This avoids the recalculation of those values every second time step. */
-static double qPow[Infection::v];
+static double qPow[MolineauxInfection::v];
 
 // ———  hard-coded model constants  ———
 
@@ -151,10 +151,10 @@ const double case_specific_data[] = {
 // ———  static (non-class-member) code  ———
 
 Infection* createMolineauxInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
-    return infection_new (ctx, rng, protID, origin, Infection::Kind::Molineaux);
+    return new MolineauxInfection (ctx, rng, protID, origin);
 }
 
-void infection_init_molineaux( RunContext& ctx, const Parameters& parameters ){
+void MolineauxInfection::init( RunContext& ctx, const Parameters& parameters ){
     ctx.createInfection = &createMolineauxInfection;
     
     multi_factor_gamma = util::ModelOptions::option( util::PARASITE_REPLICATION_GAMMA );
@@ -189,18 +189,20 @@ void infection_init_molineaux( RunContext& ctx, const Parameters& parameters ){
         }
     }
     
-   for( size_t i = 0; i < Infection::v; i++ ){
+   for( size_t i = 0; i < MolineauxInfection::v; i++ ){
        qPow[i] = pow(q, static_cast<double>(i+1));
    }
 }
 
 // ———  Molineaux: initialisation  ———
 
-void infection_ctor_molineaux(Infection& inf, LocalRng& rng) {
-    inf.molineaux = std::make_unique<Infection::MolineauxData>();
-    auto* molineaux = inf.molineaux.get();   // alias: body below verbatim
-    constexpr size_t v = Infection::v;
-    constexpr size_t taus = Infection::taus;
+// mi[] + Pc_star/Pm_star draws at the old infection_ctor_molineaux() slots
+MolineauxInfection::MolineauxInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin) :
+    Infection (ctx, genotype, origin, Kind::Molineaux)
+{
+    auto* molineaux = this;   // alias: body below verbatim
+    constexpr size_t v = MolineauxInfection::v;
+    constexpr size_t taus = MolineauxInfection::taus;
     for( size_t i = 0; i < v; i++ ){
         // Molineaux paper, equation 11
         if( multi_factor_gamma ){
@@ -246,7 +248,7 @@ void infection_ctor_molineaux(Infection& inf, LocalRng& rng) {
     }
 }
 
-Infection::Variant::Variant () :
+MolineauxInfection::Variant::Variant () :
         Pi1(0.0), Pi2(0.0), Si_summation(0.0)
 {
     for(size_t tau=0; tau<taus; tau++){
@@ -256,16 +258,19 @@ Infection::Variant::Variant () :
 
 // ———  Molineaux: density updates  ———
 
-bool update_density_molineaux( Infection& inf, LocalRng&, double survival_factor, SimTime age_BS, double body_mass ){
+bool MolineauxInfection::update( LocalRng&, double survival_factor, SimTime now, double body_mass ){
+    SimTime age_BS = now - m_startDate - Infection::s_latentP;	// age of post-latent-period blood stage
+    if( age_BS < sim::zero() )
+        return false;	// latent period (liver stage) — don't do anything
     // bsAge : age of blood stage; 0 implies initial density (0.1; time t=0 in
     // paper, t=1 in MP's Matlab code), age 2 days is after first update step
     // survivalFactor : probabilty of merozoites surviving drugs, inter-infection immunity and vaccines
     // aliases: the equation block below is verbatim from the member function
-    auto& m_density = inf.m_density;
-    auto& m_cumulativeExposureJ = inf.m_cumulativeExposureJ;
-    auto* molineaux = inf.molineaux.get();
-    constexpr size_t v = Infection::v;
-    constexpr size_t taus = Infection::taus;
+    // (the old inf.m_density/m_cumulativeExposureJ aliases are now plain
+    // unqualified member refs)
+    auto* molineaux = this;
+    constexpr size_t v = MolineauxInfection::v;
+    constexpr size_t taus = MolineauxInfection::taus;
     
     double blood_volume = blood_vol_per_kg * body_mass;
     double elim_dens = elim_parasites / blood_volume;   // 50 / 5e6 = 5e-5

@@ -79,46 +79,58 @@ void checkpoint (checkpoint::Archive& a, Infection& inf) {
     a.value (inf.m_cumulativeExposureJ);
     a.value (inf.m_genotype);
     a.value (inf.m_origin);
+    // Kind tag is the proof for the down-casts (the derived class was built
+    // by the per-run factory); no serialisation decls on the classes.
     switch (inf.kind) {
-    case Infection::Kind::Descriptive:
-        a.value (inf.descriptive.duration);
-        a.boolean (inf.descriptive.notPrintedMDWarning);
+    case Infection::Kind::Dummy:
+        break;   // no variant state
+    case Infection::Kind::Descriptive: {
+        auto& d = static_cast<DescriptiveInfection&> (inf);
+        a.value (d.duration);
+        a.boolean (d.notPrintedMDWarning);
         break;
-    case Infection::Kind::Empirical:
-        for (double& d : inf.empirical->_laggedLogDensities) a.value (d);
-        a.value (inf.empirical->_patentGrowthRateMultiplier);
+    }
+    case Infection::Kind::Empirical: {
+        auto& e = static_cast<EmpiricalInfection&> (inf);
+        for (double& x : e._laggedLogDensities) a.value (x);
+        a.value (e._patentGrowthRateMultiplier);
         break;
-    case Infection::Kind::Molineaux:
-        for (float& f : inf.molineaux->mi) a.value (f);   // mi: plain float array
-        a.value (inf.molineaux->Sm_summation);
-        for (float& f : inf.molineaux->lagged_Pc) a.value (f);
-        a.value (inf.molineaux->Pc_star);
-        a.value (inf.molineaux->Pm_star);
+    }
+    case Infection::Kind::Molineaux: {
+        auto& m = static_cast<MolineauxInfection&> (inf);
+        for (float& f : m.mi) a.value (f);   // mi: plain float array
+        a.value (m.Sm_summation);
+        for (float& f : m.lagged_Pc) a.value (f);
+        a.value (m.Pc_star);
+        a.value (m.Pm_star);
         {   // variants grow with infection age (clone per relapse), so the
             // count goes on the wire; Variant has a user default ctor (not
             // trivially copyable) hence field-by-field.
-            uint64_t nv = inf.molineaux->variants.size();
+            uint64_t nv = m.variants.size();
             a.value (nv);
             if (a.reading()) {
                 if (nv > uint64_t (a.remaining()) / 64u)
                     throw OM::checkpoint::checkpoint_error ("variant count too large");
-                inf.molineaux->variants.resize (size_t (nv));
+                m.variants.resize (size_t (nv));
             }
-            for (auto& v : inf.molineaux->variants) {
+            for (auto& v : m.variants) {
                 a.value (v.Pi1); a.value (v.Pi2); a.value (v.Si_summation);
                 for (float& f : v.lagged_Pi) a.value (f);
             }
         }
         break;
-    case Infection::Kind::Penny:
-        for (double& d : inf.penny->cirDensities) a.value (d);
-        for (double& d : inf.penny->seqDensities) a.value (d);
-        a.value (inf.penny->threshold_N);
-        a.value (inf.penny->threshold_V);
-        a.value (inf.penny->threshold_C);
-        a.value (inf.penny->variantSpecificSummation);
-        a.value (inf.penny->clonalSummation);
+    }
+    case Infection::Kind::Penny: {
+        auto& p = static_cast<PennyInfection&> (inf);
+        for (double& x : p.cirDensities) a.value (x);
+        for (double& x : p.seqDensities) a.value (x);
+        a.value (p.threshold_N);
+        a.value (p.threshold_V);
+        a.value (p.threshold_C);
+        a.value (p.variantSpecificSummation);
+        a.value (p.clonalSummation);
         break;
+    }
     }
 }
 
@@ -275,58 +287,59 @@ void ckWH (Archive& a, RunContext& ctx, WHInterface& wh, util::LocalRng& rng) {
             throw checkpoint_error ("pathogenesis model kind mismatch");
         if (pm) WithinHost::Pathogenesis::checkpoint (a, *wh.pathogenesisModel);
     }
-    switch (wh.m_kind) {
+    switch (wh.kind) {
     case WHInterface::Kind::Common:
     case WHInterface::Kind::Descriptive: {
-        a.value (wh.hetMassMultiplier);
-        PkPd::ckLSTM (a, ctx, wh.pkpdModel, rng);
-        uint64_t n = wh.infections.size();
+        auto& f = static_cast<WithinHost::WHFalciparum&> (wh);
+        a.value (f.hetMassMultiplier);
+        PkPd::ckLSTM (a, ctx, f.pkpdModel, rng);
+        uint64_t n = f.infections.size();
         a.value (n);
         if (a.reading()) {
             // Kind-correct creation: Descriptive builds directly (no factory
             // set); the other Common kinds use the factory from WH init.
             // Constructor draws are overwritten, like the Human ctor's.
-            const bool desc = wh.m_kind == WHInterface::Kind::Descriptive;
+            const bool desc = wh.kind == WHInterface::Kind::Descriptive;
             if (!desc && ctx.createInfection == nullptr)
                 throw checkpoint_error ("within-host infection factory unset");
             for (uint64_t i = 0; i < n; ++i) {
                 WithinHost::Infection* inf = desc ?
-                    WithinHost::infection_new (ctx, rng, 0, 0,
-                        WithinHost::Infection::Kind::Descriptive) :
+                    static_cast<WithinHost::Infection*> (new WithinHost::DescriptiveInfection (ctx, rng, 0, 0)) :
                     ctx.createInfection (ctx, rng, 0, 0);
                 WithinHost::checkpoint (a, *inf);
-                wh.infections.push_back (inf);
+                f.infections.push_back (inf);
             }
-            if (uint64_t(wh.infections.size()) != n)
+            if (uint64_t(f.infections.size()) != n)
                 throw checkpoint_error ("internal: infection restore count");
         } else {
-            for (WithinHost::Infection* inf : wh.infections) WithinHost::checkpoint (a, *inf);
+            for (WithinHost::Infection* inf : f.infections) WithinHost::checkpoint (a, *inf);
         }
         break;
     }
     case WHInterface::Kind::Vivax: {
-        a.boolean (wh.noPQ);
+        auto& v = static_cast<WithinHost::WHVivax&> (wh);
+        a.boolean (v.noPQ);
         {
-            int32_t m = wh.morbidity;
+            int32_t m = v.morbidity;
             a.value (m);
-            if (a.reading()) wh.morbidity = WithinHost::Pathogenesis::State (m);
+            if (a.reading()) v.morbidity = WithinHost::Pathogenesis::State (m);
         }
-        a.value (wh.treatExpiryLiverVivax);
-        a.value (wh.treatExpiryBloodVivax);
-        a.value (wh.pEvent);
-        a.value (wh.pFirstRelapseEvent);
-        a.value (wh.pSecondRelapseEvent);
-        a.value (wh.pSevere);
-        uint64_t n = wh.vivaxInfections.size();
+        a.value (v.treatExpiryLiverVivax);
+        a.value (v.treatExpiryBloodVivax);
+        a.value (v.pEvent);
+        a.value (v.pFirstRelapseEvent);
+        a.value (v.pSecondRelapseEvent);
+        a.value (v.pSevere);
+        uint64_t n = v.vivaxInfections.size();
         a.value (n);
         if (a.reading()) {
             for (uint64_t i = 0; i < n; ++i) {
                 // Ctor samples a fresh brood (draws overwritten below).
-                wh.vivaxInfections.emplace_back (ctx, rng, 0, &wh);
-                WithinHost::checkpoint (a, wh.vivaxInfections.back());
+                v.vivaxInfections.emplace_back (ctx, rng, 0, &wh);
+                WithinHost::checkpoint (a, v.vivaxInfections.back());
             }
         } else {
-            for (auto& brood : wh.vivaxInfections) WithinHost::checkpoint (a, brood);
+            for (auto& brood : v.vivaxInfections) WithinHost::checkpoint (a, brood);
         }
         break;
     }

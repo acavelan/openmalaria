@@ -25,72 +25,34 @@
 
 namespace OM { namespace WithinHost {
 
-using Kind = Infection::Kind;
-
-// ———  construction  ———
-
-Infection* infection_new(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin,
-        Infection::Kind kind, double growthRateMultiplier) {
-    Infection* inf = new Infection(ctx, genotype, origin, kind);
-    switch( kind ){
-        case Kind::Descriptive:
-            // Descriptive samples its duration here; RNG draw point is
-            // kind-conditional (was the ctor init list; nothing else draws
-            // between construction and this case).
-            infection_ctor_descriptive(*inf, rng);
-            assert( ctx.clock.one_TS() == 5 );
-            break;
-        case Kind::Dummy:
-            inf->m_density = 16;	// increased by DH to avoid zeros in initialKappa
-            break;
-        case Kind::Empirical:
-            infection_ctor_empirical(*inf, rng, growthRateMultiplier);
-            break;
-        case Kind::Molineaux:
-            infection_ctor_molineaux(*inf, rng);
-            break;
-        case Kind::Penny:
-            infection_ctor_penny(*inf, rng);
-            break;
-    }
-    return inf;
-}
-
-// ———  time-step update  ———
-
-bool infection_update( Infection& inf, LocalRng& rng, double survivalFactor, SimTime now, double body_mass ){
-    SimTime bsAge = now - inf.m_startDate - Infection::s_latentP;	// age of post-latent-period blood stage
-    if( bsAge < sim::zero() )
-        return false;	// latent period (liver stage) — don't do anything
-    switch( inf.kind ){
-        case Kind::Dummy: return update_density_dummy (inf, rng, survivalFactor, bsAge, body_mass);
-        case Kind::Empirical: return update_density_empirical (inf, rng, survivalFactor, bsAge, body_mass);
-        case Kind::Molineaux: return update_density_molineaux (inf, rng, survivalFactor, bsAge, body_mass);
-        case Kind::Penny: return update_density_penny (inf, rng, survivalFactor, bsAge, body_mass);
-        default:
-            assert( false );  // Descriptive is updated via determine_densities_descriptive()
-            return false;
-    }
-}
-
-// ———  Dummy kind (was DummyInfection.cpp; simplest density model)  ———
+// ———  Dummy variant (was DummyInfection.cpp; simplest density model)  ———
 
 Infection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
-    return infection_new (ctx, rng, protID, origin, Infection::Kind::Dummy);
+    return new DummyInfection (ctx, protID, origin);
 }
 
-void infection_init_dummy (RunContext& ctx) {
+void DummyInfection::init (RunContext& ctx) {
     ctx.createInfection = &createDummyInfection;
 }
 
-bool update_density_dummy( Infection& inf, LocalRng& rng, double survivalFactor, SimTime, double ){
+// no draws: the old infection_new Dummy case only set the initial density
+DummyInfection::DummyInfection (RunContext& ctx, uint32_t genotype, int origin) :
+    Infection (ctx, genotype, origin, Kind::Dummy)
+{
+    m_density = 16;	// increased by DH to avoid zeros in initialKappa
+}
+
+bool DummyInfection::update( LocalRng& rng, double survivalFactor, SimTime now, double ){
+    SimTime bsAge = now - m_startDate - Infection::s_latentP;	// age of post-latent-period blood stage
+    if( bsAge < sim::zero() )
+        return false;	// latent period (liver stage) — don't do anything
     const double GROWTH_RATE = 8.0;
     const double PARASITE_THRESHOLD = 1;
     
-    inf.m_density = (mod_nn(int(inf.m_density*GROWTH_RATE), 20000)) * survivalFactor;
-    inf.m_cumulativeExposureJ += inf.m_density;
+    m_density = (mod_nn(int(m_density*GROWTH_RATE), 20000)) * survivalFactor;
+    m_cumulativeExposureJ += m_density;
     
-    if (inf.m_density < PARASITE_THRESHOLD) {
+    if (m_density < PARASITE_THRESHOLD) {
         return true;
     } else {
         return false;
