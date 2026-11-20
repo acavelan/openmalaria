@@ -67,10 +67,6 @@ int main(int argc, char* argv[])
             std::cerr << "Parsing scenario file failed.\n\tLikely the XSD schema is named/located correctly but the scenario does not conform to the schema." << std::endl;
         }
         exitStatus = OM::util::Error::XSD;
-    } catch (const OM::util::checkpoint_error& e) {
-        std::cerr << "Checkpoint error: " << e.what() << endl;
-        std::cerr << e << flush;
-        exitStatus = e.getCode();
     } catch (const OM::util::traced_exception& e) {
         std::cerr << "Code error: " << e.what() << endl;
         std::cerr << e << flush;

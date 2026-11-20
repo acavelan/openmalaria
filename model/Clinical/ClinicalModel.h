@@ -31,7 +31,9 @@ namespace scnXml{
     class Scenario;
     class HealthSystem;
 }
-namespace OM { namespace Clinical {
+namespace OM {
+namespace checkpoint { class Archive; }
+namespace Clinical {
 
 /// Positive values of doomed (codes). (parity: old ClinicalModel members)
 enum DoomedCause {
@@ -65,6 +67,9 @@ protected:
 public:
     /// Which case-management behaviour this instance runs (XML-selected).
     enum class Kind { DecisionTree5Day, ImmediateOutcomes, EventScheduler };
+
+    /// Save/restore wire state (model/checkpoint/humans.cpp).
+    void checkpoint (checkpoint::Archive& a);
 
     /// @brief Static functions
     //@{
@@ -125,12 +130,6 @@ public:
         return latestState;
     }
     
-    /// Checkpointing
-    template<class S>
-    void operator& (S& stream) {
-        checkpoint (stream);
-    }
-
     /** Time of the last treatment (sim::never() if never treated): SoA
      * column t_last_treatment (old member; accessors keep read/write syntax). */
     SimTime& t_last_treatment() const { return cols->t_last_treatment[row]; }
@@ -144,8 +143,6 @@ public:
     ClinicalModel (RunContext& ctx, double tSF, Kind kind);
 
 protected:
-    void checkpoint (istream& stream);
-    void checkpoint (ostream& stream);
 
 public:
     /// Per-human State (public: the kind's update free function
@@ -216,11 +213,11 @@ public:
     static void init( RunContext& ctx, const Parameters& parameters );
     static void preMainSimInit();
 
-    /// Static checkpointing
-    static void staticCheckpoint(istream& stream);
-    static void staticCheckpoint(ostream& stream);
-
     static void reportRisk(size_t index, bool isDoomed);
+    
+    /// Checkpoint the run-modified death/risk summaries
+    /// (model/checkpoint/statics.cpp).
+    static void staticCheckpoint (checkpoint::Archive& a);
     
     /// Calculate infant mortality as deaths/1000 livebirths for the whole main-
     /// simulation period (not as deaths/1000 years-at-risk per survey).

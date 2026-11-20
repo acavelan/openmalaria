@@ -27,7 +27,6 @@
 // Compile-time optional
 #ifdef OM_STREAM_VALIDATOR
 #include "Clock.h"
-#include "util/checkpoint.h"
 #include <deque>
 #endif
 
@@ -97,15 +96,7 @@ namespace OM { namespace util {
 	/// Either store in reference stream or validate against reference stream.
 	void handle( SVType value );
 	
-	/// Checkpointing
-	template<class S>
-	void operator& (S& cp_str) {
-	    checkpoint( cp_str );
-	}
-	
     private:
-	void checkpoint ( istream& cp_str );
-	void checkpoint ( ostream& cp_str ) const;
 	
 	// True: read and store a reference value stream.
 	// False: validate against a reference stream.

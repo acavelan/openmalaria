@@ -20,7 +20,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "util/checkpoint.h"
 #include "mon/Monitoring.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Clinical/ClinicalModel.h"
@@ -351,28 +350,6 @@ void recordDeploy(Measure timedMeasure, Measure ctsMeasure, const Host::Human& h
     recordEvent(selected, human, val);
 }
 
-template <typename Stream>
-void checkpoint(RunContext& ctx, Stream& stream)
-{
-    auto& runtime = (*ctx.monitoring);
-    runtime.isInit & stream;
-    runtime.surveyIndex & stream;
-    runtime.survNumEvent & stream;
-    for (internal::MeasureStore& store : runtime.stores) {
-        std::visit([&stream](auto& reports) {
-            const size_t expectedSize = reports.size();
-            size_t storedSize = expectedSize;
-            storedSize & stream;
-            if (storedSize != expectedSize) {
-                throw util::checkpoint_error("Monitoring report size mismatch: checkpoint has " +
-                    std::to_string(storedSize) + ", expected " + std::to_string(expectedSize));
-            }
-            for (auto& report : reports) report & stream;
-        }, store.reports);
-    }
-}
-template void checkpoint<ostream>(RunContext&, ostream& stream);
-template void checkpoint<istream>(RunContext&, istream& stream);
 // ———  surveys  ———
 
 void initMainSim(RunContext& ctx)

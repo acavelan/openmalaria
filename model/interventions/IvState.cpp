@@ -30,7 +30,6 @@
 #include "Host/Human.h"
 #include "util/random.h"
 #include "util/errors.h"
-#include "util/checkpoint.h"
 #include <cstdlib>
 
 namespace OM { namespace interventions {

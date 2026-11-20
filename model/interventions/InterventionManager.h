@@ -42,19 +42,10 @@ public:
     /** Read XML descriptions. */
     static void init (RunContext& ctx, const scnXml::Interventions& intervElt, Transmission::TransmissionModel& transmission);
     
-    /// Checkpointing: most members are only set from XML,
-    /// nextTimed varies but is re-set by loadFromCheckpoint; only
-    /// imported infections need serialising.
-    static void checkpoint (RunContext& ctx, std::istream& stream);
-    static void checkpoint (RunContext& ctx, std::ostream& stream);
-
     /** Call after loading a checkpoint, passing the intervention-period time.
      * 
      * Serves to replace health-system and EIR where changeHS/changeEIR
      * interventions have been used. */
-    static void loadFromCheckpoint(
-                RunContext& ctx, vector<Host::Human> &population,
-                Transmission::TransmissionModel& transmission);
     
     /** @brief Deploy interventions
      *

@@ -28,8 +28,11 @@
 #include "Parameters.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "util/random.h"
+#include <list>
 
-namespace OM { namespace WithinHost {
+namespace OM {
+namespace checkpoint { class Archive; }
+namespace WithinHost {
 
 using util::LocalRng;
 
@@ -87,6 +90,9 @@ struct Infection final {
     /// the checkpointing factory function pointer carries the kind across a
     /// resume).
     Kind kind;
+
+    /// Save/restore wire state (model/checkpoint/humans.cpp).
+    void checkpoint (checkpoint::Archive& a);
 
     /// Pre-erythrocytic latent period (instantiated in WHFalciparum.cpp)
     inline static void init( SimTime latentP ){
@@ -169,12 +175,6 @@ struct Infection final {
         m_cumulativeExposureJ = 0.0;
     }
 
-    /// Checkpointing
-    template<class S>
-    void operator& (S& stream) {
-        infection_checkpoint (*this, stream);
-    }
-
     /// IC50^slope per drug type, if sampled (PkPd cache). Never serialised;
     /// lazily allocated (phase-5 perf fix — only the PkPd path touches it).
     std::map<size_t, double>& Kn() {
@@ -212,10 +212,6 @@ struct Infection final {
     struct Variant {
         // Initialise all variables to 0
         Variant ();
-
-        /// Checkpointing
-        void operator& (ostream& stream);
-        void operator& (istream& stream);
 
         float Pi1, Pi2;   // Pi(t+1), Pi(t+2): variant's i density (PRBC/μl blood)
         float Si_summation;     // sum in eqn 6
@@ -287,8 +283,6 @@ struct Infection final {
 /// Create a new infection. growthRateMultiplier is only used by Empirical.
 Infection* infection_new(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin,
                          Infection::Kind kind, double growthRateMultiplier = 1.0);
-/// For checkpointing (don't use for anything else)
-Infection* infection_new_checkpointed(RunContext& ctx, istream& stream, Infection::Kind kind);
 
 /** Update: calculate new density. Call this once per day (Dummy/Empirical/
  * Molineaux/Penny; never for Descriptive).
@@ -298,9 +292,6 @@ Infection* infection_new_checkpointed(RunContext& ctx, istream& stream, Infectio
  * @param body_mass Body mass of host in kg
  * @returns True when the infection goes extinct. */
 bool infection_update(Infection& inf, LocalRng& rng, double survivalFactor, SimTime now, double body_mass);
-
-/// Checkpoint write-out (what Infection::operator& forwards to)
-void infection_checkpoint(Infection& inf, ostream& stream);
 
 // ——— Descriptive free functions (DescriptiveInfection.cpp) ———
 /// 5-day time step check; loads densities.csv matrix + parameters (per run)
@@ -336,9 +327,6 @@ void determine_densities_descriptive(
         double innateImmSurvFact,
         double bsvFactor);
 
-void read_descriptive(Infection& inf, istream& stream);
-void checkpoint_descriptive(Infection& inf, ostream& stream);
-
 // ——— Dummy free functions (DummyInfection.cpp) ———
 void infection_init_dummy(RunContext& ctx);
 /// One update step; @returns true when the infection goes extinct.
@@ -350,24 +338,18 @@ void infection_init_empirical(RunContext& ctx);
 /// New-infection hook for Kind::Empirical: prepatent-density draws (payload first).
 void infection_ctor_empirical(Infection& inf, LocalRng& rng, double growthRateMultiplier);
 bool update_density_empirical(Infection& inf, LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
-void read_empirical(Infection& inf, istream& stream);
-void checkpoint_empirical(Infection& inf, ostream& stream);
 
 // ——— Molineaux free functions (MolineauxInfection.cpp) ———
 void infection_init_molineaux(RunContext& ctx, const OM::Parameters& parameters);
 /// New-infection hook: mi[] + Pc_star/Pm_star draws (payload first).
 void infection_ctor_molineaux(Infection& inf, LocalRng& rng);
 bool update_density_molineaux(Infection& inf, LocalRng& rng, double survival_factor, SimTime age_BS, double body_mass);
-void read_molineaux(Infection& inf, istream& stream);
-void checkpoint_molineaux(Infection& inf, ostream& stream);
 
 // ——— Penny free functions (PennyInfection.cpp) ———
 void infection_init_penny(RunContext& ctx);
 /// New-infection hook: immune-threshold draws (payload first).
 void infection_ctor_penny(Infection& inf, LocalRng& rng);
 bool update_density_penny(Infection& inf, LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
-void read_penny(Infection& inf, istream& stream);
-void checkpoint_penny(Infection& inf, ostream& stream);
 
 /// Create a dummy infection (used directly by unit test).
 Infection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin);

@@ -21,7 +21,6 @@
  */
 
 #include "Clock.h"
-#include "util/checkpoint.h"
 #include "util/CommandLine.h"
 #include "util/errors.h"
 #include "util/StreamValidator.h"
@@ -40,8 +39,10 @@ namespace OM { namespace util {
 	string CommandLine::outputName;
 	CommandLine::OutputFormat CommandLine::outputFormat = CommandLine::OutputFormat::TXT;
 	string CommandLine::ctsoutName;
-	string CommandLine::checkpointFileName;
 	int CommandLine::seedOverride = -1;
+	string CommandLine::saveName;
+	string CommandLine::saveAt;
+	string CommandLine::resumeName;
 
 	string parseNextArg (int argc, char* argv[], int& i) {
 		++i;
@@ -81,6 +82,9 @@ namespace OM { namespace util {
 		outputName = "";
 		outputFormat = OutputFormat::TXT;
 		ctsoutName = "";
+		saveName = "";
+		saveAt = "main";
+		resumeName = "";
 #	ifdef OM_STREAM_VALIDATOR
 		string sVFile;
 #	endif
@@ -130,6 +134,24 @@ namespace OM { namespace util {
 						throw cmd_exception ("--ctsout argument may only be given once");
 					}
 					ctsoutName = parseNextArg (argc, argv, i);
+				} else if (clo == "save-to") {
+					if (saveName != ""){
+						throw cmd_exception ("--save-to argument may only be given once");
+					}
+					saveName = parseNextArg (argc, argv, i);
+				} else if (clo == "save-at") {
+					saveAt = parseNextArg (argc, argv, i);
+					if (saveAt != "main") {
+						int day = -1;
+						try { day = stoi (saveAt); } catch (...) {}
+						if (day < 0)
+							throw cmd_exception ("--save-at must be a non-negative day or 'main'");
+					}
+				} else if (clo == "resume") {
+					if (resumeName != ""){
+						throw cmd_exception ("--resume argument may only be given once");
+					}
+					resumeName = parseNextArg (argc, argv, i);
 				} else if (clo == "name") {
 					if (ctsoutName != "" || outputName != "" || scenarioFile != ""){
 						throw cmd_exception ("--name may not be used along with --scenario, --output or --ctsout");
@@ -171,17 +193,6 @@ namespace OM { namespace util {
 				} else if (clo == "sample-interpolations") {
 					options.set (SAMPLE_INTERPOLATIONS);
 					options.set (SKIP_SIMULATION);
-				} else if (clo == "checkpoint") {
-					options.set (CHECKPOINT);
-				} else if (clo == "checkpoint-file") {
-					if (checkpointFileName != ""){
-						throw cmd_exception ("--checkpoint-file argument may only be given once");
-					}
-					options.set (CHECKPOINT);
-					checkpointFileName = parseNextArg (argc, argv, i);
-				} else if (clo == "checkpoint-stop") {
-					options.set (CHECKPOINT);
-					options.set (CHECKPOINT_STOP);
 				} else if (clo == "debug-vector-fitting") {
 					options.set (DEBUG_VECTOR_FITTING);
 #	ifdef OM_STREAM_VALIDATOR
@@ -229,8 +240,6 @@ namespace OM { namespace util {
 	    			(scenarioFile = "scenario").append(name).append(".xml");
 				    (outputName = "output").append(name);
 	    			(ctsoutName = "ctsout").append(name).append(".txt");
-	    		} else if (clo[j] == 'c') {
-	    			options.set (CHECKPOINT);
 	    		} else if (clo[j] == 'v') {
 	    			cloVersion = true;
 	    		} else if (clo[j] == 'z') {
@@ -276,6 +285,10 @@ namespace OM { namespace util {
 		<< "    --output-format txt|bin" << endl
 		<< "			Select main survey output format." << endl
 		<< "    --ctsout file.txt	Uses file.txt as ctsout file name. If not given, ctsout.txt is used." << endl
+		<< "    --save-to FILE	Write a checkpoint to FILE, then exit successfully." << endl
+		<< "    --save-at DAY	Checkpoint at simulation day DAY, or at the start of" << endl
+		<< "			the main phase when DAY is 'main' (default: main)." << endl
+		<< "    --resume FILE	Restore from the checkpoint FILE and continue." << endl
 		<< " -n --name NAME		Equivalent to --scenario scenarioNAME.xml --output outputNAME \\"<<endl
 		<< "			--ctsout ctsoutNAME.txt" <<endl
 		<< " -z --compress-output	Compress output with gzip and use a .gz extension." << endl
@@ -297,11 +310,6 @@ namespace OM { namespace util {
 		<< "    --sample-interpolations" <<endl
 		<< "			Output samples of all used age-group data according to active"<<endl
 		<< "			interpolation method and exit."<<endl
-		<< " -c --checkpoint	Write a checkpoint just before starting the main phase."<<endl
-		<< "			This may be used to skip redundant computation when multiple"<<endl
-		<< "			simulations differ only during the intervention phase."<<endl
-		<< "    --checkpoint-file file	Checkpoint as above. Uses file as checkpoint file name. If not given, checkpoint is used." << endl
-		<< "    --checkpoint-stop	Checkpoint as above, then stop immediately afterwards. Can be used with --checkpoint-file."<<endl
 		<< "    --debug-vector-fitting"<<endl
 		<< "			Show details of vector-parameter fitting. The fitting methods used" <<endl
 		<< "			aren't guaranteed to work. If they don't, this output should help"<<endl
@@ -335,21 +343,6 @@ namespace OM { namespace util {
 	}
 
 	return lookupResource(scenarioFile);
-}
-
-    /* These check parameters are as expected. They only really serve to make
-     * sure important command-line parameters didn't change (and only in DEBUG mode)! */
-void CommandLine::staticCheckpoint (istream& stream) {
-	string tOpt;
-	string tResPath;
-	tOpt & stream;
-	tResPath & stream;
-	assert (tOpt == options.to_string());
-	assert (tResPath == resourcePath);
-}
-void CommandLine::staticCheckpoint (ostream& stream) {
-	options.to_string() & stream;
-	resourcePath & stream;
 }
 
 } }

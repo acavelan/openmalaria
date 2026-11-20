@@ -28,8 +28,6 @@
 #include "util/errors.h"
 #include "util/ModelOptions.h"
 #include "util/StreamValidator.h"
-#include "util/checkpoint.h"
-#include "util/checkpoint_containers.h"
 #include "Host/WithinHost/Genotypes.h"
 
 #include <limits>

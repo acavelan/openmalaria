@@ -86,9 +86,6 @@ public:
      * a fresh Genotypes before any other use. */
     static void init( Genotypes& state, const scnXml::Scenario& scenario );
     
-    static void staticCheckpoint( Genotypes& state, std::ostream& stream );
-    static void staticCheckpoint( Genotypes& state, std::istream& stream );
-    
     /// Sample mode: which genotype-sampling strategy is active.
     enum SampleMode{
         SAMPLE_FIRST,      // always choose first genotype (essentially the off switch)

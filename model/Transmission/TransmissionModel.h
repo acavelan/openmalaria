@@ -24,7 +24,6 @@
 #define Hmod_TransmissionModel
 
 #include <string.h>
-#include "util/checkpoint.h"
 #include <fstream>
 
 #include "Clock.h"
@@ -55,6 +54,7 @@ using namespace std::placeholders;
 namespace OM
 {
 class Population;
+namespace checkpoint { class Archive; }
 namespace Host
 {
 class Human;
@@ -175,12 +175,6 @@ public:
         else { simulationMode = forcedEIR; } // no set-up needed; just indicate we're ready to roll
     }
 
-    /// Checkpointing
-    template <class S>
-    void operator&(S &stream)
-    {
-        checkpoint(stream);
-    }
     //@}
 
     /** Set some summary items.
@@ -474,39 +468,6 @@ protected:
         mon::recordStat(mon::measure("innoculationsPerVector"), human, EIR_l[0]);
     }
 
-    void checkpoint(istream &stream)
-    {
-        checkpoint_common(stream);
-        if (kind == Kind::Vector) checkpoint_vector(stream);
-        else { nSpore &stream; interventionEIR &stream; initialKappa &stream; }
-    }
-
-    void checkpoint(ostream &stream)
-    {
-        checkpoint_common(stream);
-        if (kind == Kind::Vector) checkpoint_vector(stream);
-        else { nSpore &stream; interventionEIR &stream; initialKappa &stream; }
-    }
-
-    template<class S> void checkpoint_common(S &stream)
-    {
-        simulationMode &stream;
-        interventionMode &stream;
-        initialisationEIR &stream;
-        laggedKappa &stream;
-        annualEIR &stream;
-        _annualAverageKappa &stream;
-        _sumAnnualKappa &stream;
-        tsAdultEIR &stream;
-        surveyInputEIR &stream;
-        surveySimulatedEIR &stream;
-        surveySimulatedEIR_i &stream;
-        surveySimulatedEIR_l &stream;
-        lastSurveyTime &stream;
-        adultAge &stream;
-        numTransmittingHumans &stream;
-    }
-
 private:
     // The times here should be for the last updated index of arrays:
     void ctsCbInputEIR(ostream &stream)
@@ -611,8 +572,6 @@ private:
     void uninfectVectors_vector();
     void summarize_vector(RunContext& ctx);
     void changeEIRIntervention_vector(const scnXml::NonVector &nonVectorData);
-    void checkpoint_vector(istream &stream);
-    void checkpoint_vector(ostream &stream);
 
     void ctsCbN_v0(ostream &stream);
     void ctsCbP_A(ostream &stream);
@@ -631,9 +590,11 @@ private:
     void ctsCbResRequirements(ostream &stream);
 
 public:
+    /// Run-state save/restore (definition in model/checkpoint/transmission.cpp)
+    void checkpoint (checkpoint::Archive& a);
+
     /// RNG used by the transmission model (vector kind)
     LocalRng m_rng;
-
     /// Number of iterations performed during initialization (vector kind).
     ///
     /// Special cases: 0 during initial one-human-lifespan warmup, <0 after

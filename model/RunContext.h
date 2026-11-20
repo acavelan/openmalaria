@@ -90,8 +90,8 @@ public:
     SimClock clock;
     /** Master RNG. // parity: order — constructed here (0, 0), matching the
      * old global's construction; the percentile-stream seed depends on it;
-     * run_simulation reseeds from --seed/Iseed after validation; checkpointed
-     * in model/checkpoint.cpp. */
+     * run_simulation reseeds from --seed/Iseed after validation; saved last
+     * by model/checkpoint/ (overwrites any draws made during restore). */
     util::MasterRng master_RNG{0, 0};
     /// Genotype registry (built by Genotypes::init during scenario load).
     WithinHost::Genotypes genotypes;
@@ -118,8 +118,6 @@ public:
     /// Within-host infection factory, set by the active model's init.
     WithinHost::Infection* (*createInfection)
         (RunContext&, util::LocalRng&, uint32_t, int) = nullptr;
-    WithinHost::Infection* (*checkpointedInfection)
-        (RunContext&, std::istream&) = nullptr;
     /// Unittest backend for WithinHost::WHInterface Kind::Mock (installed by
     /// unittest/WHMock.cpp; null in production, where Kind::Mock is never
     /// created). Same fn-pointer-table idiom as createInfection above.

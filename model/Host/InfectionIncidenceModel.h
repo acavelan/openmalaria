@@ -24,11 +24,11 @@
 #define Hmod_InfectionIncidence
 
 #include "Clock.h"
-#include "util/checkpoint.h"
 #include "Transmission/PerHost.h"
 #include "util/random.h"
 
 namespace OM {
+namespace checkpoint { class Archive; }
     class Parameters;
 namespace Host {
     class Human;
@@ -67,24 +67,19 @@ public:
   /// Create a new instance (Kind selected from the model options)
   static InfectionIncidenceModel* createModel (RunContext& ctx);
   
+  /// Checkpoint the run-modified infection counter
+  /// (model/checkpoint/statics.cpp).
+  static void staticCheckpoint (checkpoint::Archive& a);
+
+  /// Save/restore this instance's wire state
+  /// (model/checkpoint/humans.cpp).
+  void checkpoint (checkpoint::Archive& a);
+  
   /// Reset summary outputs at beginning of main simulation
   static inline void preMainSimInit() {
       ctsNewInfections = 0;
   }
   //@}
-  
-  /// Checkpointing (per-human State; wire format frozen)
-  template<class S>
-  void operator& (S& stream) {
-      m_pInfected & stream;
-      m_cumulativeEIRa & stream;
-  }
-  
-  /// Static checkpointing
-  template<class S>
-  static void staticCheckpoint (S& stream){
-      ctsNewInfections & stream;
-  }
   
 protected:
   /// Create a new model

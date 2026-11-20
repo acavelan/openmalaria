@@ -21,14 +21,12 @@
  */
 
 #include "PkPd/LSTMDrugType.h"
-#include "util/checkpoint.h"
 #include "PkPd/LSTMDrug.h"
 #include "PkPd/LSTMModel.h"
 #include "PkPd/LSTMMedicate.h"
 #include "PkPd/LSTMTreatments.h"
 #include "RunContext.h"
 #include "mon/Monitoring.h"
-#include "util/checkpoint_containers.h"
 #include "util/errors.h"
 
 #include <cassert>
@@ -38,32 +36,6 @@ namespace OM { namespace PkPd {
 // ———  static  ———
 
 // ———  non-static set up / tear down functions  ———
-
-void LSTMModel::checkpoint (RunContext& ctx, istream& stream) {
-    // We need an RNG to call createInstance, but override the values later
-    // anyway. Hacky solution: create a local RNG.
-    LocalRng rng(0, 0);
-    
-    size_t numDrugs;	// type must be same as m_drugs.size()
-    numDrugs & stream;
-    util::checkpoint::validateListSize (numDrugs);
-    for(size_t i=0; i<numDrugs; ++i) {
-        size_t index;
-        index & stream;
-        m_drugs.push_back( ctx.drugs.createInstance(rng, index) );
-        m_drugs.back() & stream;
-    }
-    medicateQueue & stream;
-}
-
-void LSTMModel::checkpoint (ostream& stream) {
-    m_drugs.size() & stream;
-    for( auto& drug : m_drugs ){
-        drug->getIndex() & stream;
-        drug & stream;
-    }
-    medicateQueue & stream;
-}
 
 
 // ———  non-static simulation time functions  ———

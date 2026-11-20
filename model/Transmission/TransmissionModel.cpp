@@ -21,7 +21,6 @@
  */
 
 #include "RunContext.h"
-#include "util/checkpoint.h"
 #include "Transmission/TransmissionModel.h"
 #include "Population.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -495,22 +494,6 @@ void TransmissionModel::summarize_vector(RunContext& ctx)
     {
         species[i]->summarize(ctx, i);
     }
-}
-
-void TransmissionModel::checkpoint_vector(istream &stream)
-{
-    m_rng.checkpoint(stream);
-    initIterations &stream;
-    // species & stream;
-    for (auto &s : species)
-        s->checkpoint(stream);
-}
-void TransmissionModel::checkpoint_vector(ostream &stream)
-{
-    m_rng.checkpoint(stream);
-    initIterations &stream;
-    for (auto &s : species)
-        s->checkpoint(stream);
 }
 
 } // namespace Transmission

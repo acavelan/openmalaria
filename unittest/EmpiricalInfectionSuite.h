@@ -24,6 +24,7 @@
 #define Hmod_EmpiricalInfectionSuite
 
 #include <cxxtest/TestSuite.h>
+#include <iomanip>
 #include "UnittestUtil.h"
 #include "ExtraAsserts.h"
 #include "Host/WithinHost/Infection/Infection.h"

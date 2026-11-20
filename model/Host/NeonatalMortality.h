@@ -31,6 +31,7 @@ namespace scnXml {
     class Clinical;
 }
 namespace OM {
+namespace checkpoint { class Archive; }
     class Population;
 namespace Host {
 
@@ -41,15 +42,16 @@ public:
   /// Initialisation
   static void init( RunContext& ctx, const scnXml::Clinical& clinical );
   
-  static void staticCheckpoint (istream& stream);
-  static void staticCheckpoint (ostream& stream);
-  
   /** Called for each birth; returns true if infant dies due to mother's
    * infection. */
   static bool eventNeonatalMortality(LocalRng& rng);
   
   /** Calculate risk of a neonatal mortality based on humans 20-25 years old. */
   static void update (RunContext& ctx, vector<Human>& population);
+  
+  /// Run state (risk + prevalence ring) to/from checkpoint wire
+  /// (model/checkpoint/statics.cpp).
+  static void staticCheckpoint (checkpoint::Archive& a);
 };
 
 } }

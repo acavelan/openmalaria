@@ -244,7 +244,8 @@ using util::xml_scenario_error;
 
         /* Initialise: enable outputs registered and requested in XML.
          * Search for Continuous::registerCallback to see outputs available. */
-        void init (RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint) {
+        void init (RunContext& ctx, const scnXml::Monitoring& monitoring,
+                bool isCheckpoint) {
             auto& ctsOStream = ctx.ctsOStream;
             auto& registered = ctx.ctsRegistered;
             auto& toReport = ctx.ctsToReport;
@@ -279,12 +280,15 @@ using util::xml_scenario_error;
 
             const string filename = util::CommandLine::getCtsoutName();
 
-            if( isCheckpoint ){
-                // When loading a check-point, we resume reporting to this file.
-                ctsOStream.open(filename, ios::binary|ios::ate|ios::in|ios::out);
-                if( ctsOStream.fail() )
-                    throw util::checkpoint_error ("Continuous: resume error (no file)");
-                return; // checkpoint() sets the saved output position later
+            if (isCheckpoint) {
+                // Keep the existing content; the checkpoint read seeks the
+                // write position to the saved offset. Anything the previous
+                // run wrote past that point is overwritten from there.
+                ctsOStream.open (filename, ios::binary|ios::in|ios::out);
+                if (!ctsOStream.is_open())
+                    throw util::cmd_exception ("can't reopen continuous output file \"" +
+                        filename + "\" for resume", util::Error::Checkpoint);
+                return;
             }
 
             ctsOStream.open(filename, ios::binary|ios::out);

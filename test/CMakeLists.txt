@@ -9,7 +9,8 @@ configure_file (
   @ONLY
 )
 
-# working tests (with checkpointing):
+# box tests: single continuous run per scenario (checkpointing was removed;
+# resume-equivalence is covered by the resume tests added in model/checkpoint/):
 set (OM_BOXTEST_NAMES
   #disabled because of IPT:
   # 2 3 IPT VT
@@ -64,8 +65,6 @@ set (OM_BOXTEST_NAMES
   ModelNameManyOverrides
   ExactNv0
 )
-# tests with broken checkpointing:
-set (OM_BOXTEST_NC_NAMES)
 # Disabled due to "in-progress" work: (none)
 
 # Use python script.
@@ -73,8 +72,17 @@ if (OM_BOXTEST_BINARY)
     set (OM_BOXTEST_ARGS --binary)
 endif ()
 foreach (TEST_NAME ${OM_BOXTEST_NAMES})
-    add_test (${TEST_NAME} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/run.py ${OM_BOXTEST_ARGS} ${TEST_NAME} -- --checkpoint-stop)
+    add_test (${TEST_NAME} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/run.py ${OM_BOXTEST_ARGS} ${TEST_NAME})
 endforeach (TEST_NAME)
-foreach (TEST_NAME ${OM_BOXTEST_NC_NAMES})
-    add_test (${TEST_NAME} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/run.py ${OM_BOXTEST_ARGS} -- ${TEST_NAME})
+
+# Checkpoint resume equivalence (model/checkpoint/): split runs must match
+# uninterrupted runs byte for byte. Keep the list where split-run coverage is
+# cheap; C2 grows it.
+configure_file (
+  ${CMAKE_CURRENT_SOURCE_DIR}/resume.py
+  ${CMAKE_CURRENT_BINARY_DIR}/resume.py
+  @ONLY
+)
+foreach (TEST_NAME NoInterv Vivax Empirical Molineaux Penny 1 VecTest Genotypes ExactNv0 SimpleMPDTest HetVecDailyEIR MolPairwise)
+    add_test (Resume_${TEST_NAME} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/resume.py ${TEST_NAME})
 endforeach (TEST_NAME)

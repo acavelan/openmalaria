@@ -35,6 +35,7 @@
 #include "xml/DocumentLoader.h"
 #include "xml/XMLChecker.h"
 
+#include "checkpoint/checkpoint.h"
 #include "mon/Continuous.h"
 #include "mon/Monitoring.h"
 
@@ -42,7 +43,7 @@
 #include "Clinical/ClinicalModel.h"
 
 #include "Host/NeonatalMortality.h"
-#include "checkpoint.h"
+#include "Transmission/transmission.h"
 // RunContext's pointer members + Treatments::select need these complete
 // (they cannot be pulled in through RunContext.h — include cycle):
 #include "Clinical/CMDecisionTree.h"
@@ -87,15 +88,43 @@ void print_errno(const RunContext& ctx)
     }
 }
 
+// --save-to FILE: write the checkpoint and exit successfully (main maps
+// cmd_exception code 0 to a clean exit; destructors close the output files).
+void save_and_exit(RunContext& ctx, Population &population, TransmissionModel &transmission,
+        checkpoint::Phase phase, SimTime &endTime, SimTime &estEndTime)
+{
+    checkpoint::writeCheckpoint (ctx, population, transmission, phase,
+        endTime, estEndTime, util::CommandLine::getSaveName());
+    throw util::cmd_exception ("checkpoint written to " +
+        util::CommandLine::getSaveName(), util::Error::None);
+}
+
+// --save-at DAY (not "main", handled at the main-phase reset): fire once at
+// the first loop boundary at or after the given simulation day.
+void maybe_save(RunContext& ctx, Population &population, TransmissionModel &transmission,
+        bool mainPhase, SimTime &endTime, SimTime &estEndTime)
+{
+    const string spec = util::CommandLine::getSaveName().empty() ?
+        string() : util::CommandLine::getSaveAt();
+    if (spec.empty() || spec == "main") return;
+    if (ctx.clock.now() >= sim::fromDays (std::stoi (spec)))
+        save_and_exit (ctx, population, transmission,
+            mainPhase ? checkpoint::Phase::Main : checkpoint::Phase::Warmup,
+            endTime, estEndTime);
+}
+
 // Internal simulation loop
 void run(RunContext& ctx, Population &population, TransmissionModel &transmission, SimTime humanWarmupLength, SimTime &endTime, SimTime &estEndTime, bool surveyOnlyNewEp, string phase)
 {
     int lastPercent = -1;
+    const bool mainPhase = phase == "Intervention period";
 
     if (util::CommandLine::option(util::CommandLine::VERBOSE)) cout << "Starting " << phase << "..." << endl;
 
     while (ctx.clock.now() < endTime)
     {
+        maybe_save (ctx, population, transmission, mainPhase, endTime, estEndTime);
+
         if (util::CommandLine::option(util::CommandLine::VERBOSE) && ctx.clock.interv_date() > 0)
             cout << "Time step: " << ctx.clock.now() / ctx.clock.one_TS() << ", internal days: " << ctx.clock.now() << " | " << estEndTime << ", Intervention Date: " << ctx.clock.interv_date() << endl;
 
@@ -193,8 +222,6 @@ const WithinHost::Treatments& WithinHost::Treatments::select(
 /// run_simulation() — loads scenario XML and runs the simulation (was main())
 void run_simulation(RunContext& ctx, const std::string& scenarioFile)
 {
-    bool startedFromCheckpoint;
-
     SimTime estEndTime, endTime;
 
     util::set_gsl_handler();
@@ -267,46 +294,44 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
     humanWarmupLength = sim::fromYearsI( static_cast<int>(ceil(sim::inYears(humanWarmupLength))) );
 
     // ———  End of static data initialisation  ———
-    string checkpointFileName = util::CommandLine::getCheckpointName();
 
-    if(checkpointFileName == "")
-        checkpointFileName = "checkpoint";
-
-    if(util::CommandLine::option(util::CommandLine::CHECKPOINT))
-    {
-        ifstream checkpointFile(checkpointFileName,ios::in);
-        startedFromCheckpoint = checkpointFile.is_open();
-        if(startedFromCheckpoint == false)
-            errno = 0; // Cleanup errno if file doesn't exist
-    }
-    else
-        startedFromCheckpoint = false;
-    
     estEndTime = humanWarmupLength + (ctx.clock.end_date - ctx.clock.start_date) + ctx.clock.one_TS();
     assert( estEndTime + sim::never() < sim::zero() );
 
-    if (startedFromCheckpoint)
-    {
-        mon::Continuous::init(ctx, scenario->getMonitoring(), true);
-        readCheckpoint(ctx, checkpointFileName, endTime, estEndTime, *population, *transmission);
+    const bool resuming = !util::CommandLine::getResumeName().empty();
+    checkpoint::Phase phase = checkpoint::Phase::Warmup;
 
-        /** Calculate ento availability percentiles **/
+    mon::Continuous::init(ctx, scenario->getMonitoring(), resuming);
+    if (resuming)
+    {
+        // Everything config-derived was just rebuilt from the scenario; only
+        // run state comes off the wire (clock, statics, monitoring,
+        // transmission, humans, all RNG streams).
+        checkpoint::readCheckpoint (ctx, *population, *transmission, phase,
+            endTime, estEndTime, util::CommandLine::getResumeName());
         Transmission::PerHostAnophParams::calcAvailabilityPercentiles(ctx);
+        if (util::CommandLine::option(util::CommandLine::VERBOSE))
+            cout << "Resumed checkpoint at day " << ctx.clock.now() / ctx.clock.one_TS()
+                 << " (" << (phase == checkpoint::Phase::Main ? "main" : "warmup")
+                 << " phase)..." << endl;
     }
     else
     {
-        mon::Continuous::init(ctx, scenario->getMonitoring(), false);
         population->createInitialHumans();
         transmission->init2(population->humans);
-        
+
         /** Calculate ento availability percentiles **/
         Transmission::PerHostAnophParams::calcAvailabilityPercentiles(ctx);
 
-        /** Warm-up phase: 
+        endTime = humanWarmupLength;
+    }
+
+    if (phase == checkpoint::Phase::Warmup)
+    {   // normal start, or a checkpoint saved during warmup/calibration
+        /** Warm-up phase:
          * Run the simulation using the equilibrium inoculation rates over one
          * complete lifespan (ctx.clock.max_human_age) to reach immunological
          * equilibrium in all age classes. Don't report any events. */
-        endTime = humanWarmupLength;
         run(ctx, *population, *transmission, humanWarmupLength, endTime, estEndTime, surveyOnlyNewEp, "Warmup");
 
         /** Transmission init phase:
@@ -322,10 +347,10 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
         }
 
         /** Main phase:
-         * This procedure starts with the current state of the simulation 
+         * This procedure starts with the current state of the simulation
          * It continues updating assuming:
          * (i)         the default (exponential) demographic model
-         * (ii)        the entomological input defined by the EIRs in intEIR()
+         * (ii)        the entomological input defined in intEIR()
          * (iii)       the intervention packages defined in Intervention()
          * (iv)        the survey times defined in Survey() */
         // reset endTime and estEndTime to their exact value after initIterate()
@@ -338,12 +363,11 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
         transmission->summarize(ctx); // Only to reset TransmissionModel::inoculationsPerAgeGroup
         mon::initMainSim(ctx);
 
-        if(util::CommandLine::option (util::CommandLine::CHECKPOINT))
-        {
-            writeCheckpoint(ctx, startedFromCheckpoint, checkpointFileName, endTime, estEndTime, *population, *transmission);
-            if( util::CommandLine::option (util::CommandLine::CHECKPOINT_STOP) )
-                throw util::cmd_exception ("Checkpoint test: checkpoint written", util::Error::None);
-        }
+        // --save-at main: checkpoint exactly at the start of the main phase.
+        if (!util::CommandLine::getSaveName().empty() &&
+            util::CommandLine::getSaveAt() == "main")
+            save_and_exit (ctx, *population, *transmission,
+                checkpoint::Phase::Main, endTime, estEndTime);
     }
 
     // Main phase loop

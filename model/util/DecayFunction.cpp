@@ -21,7 +21,6 @@
  */
 
 #include <algorithm>
-#include "util/checkpoint.h"
 #include <limits>
 #include <memory>
 
@@ -125,29 +124,6 @@ SimTime DecayFunction::sampleAgeOfDecay(LocalRng& rng) const {
         return simClock->roundToTSFromDays( f1->sampleAgeOfDecay(rng) );
     }
     return sim::never();  // unreachable: every Kind has a case
-}
-
-// -----  interface / static functions  -----
-void DecayFunction::checkpointSample(
-        const unique_ptr<DecayFunction>& sample, ostream& stream
-) const {
-    bool present = bool(sample);
-    present & stream;
-    if (present) sample->hetFactor & stream;
-}
-
-void DecayFunction::checkpointSample(
-        unique_ptr<DecayFunction>& sample, istream& stream
-) const {
-    bool present;
-    present & stream;
-    if (present) {
-        double factor;
-        factor & stream;
-        sample = hetSample(factor);
-    } else {
-        sample.reset();
-    }
 }
 
 

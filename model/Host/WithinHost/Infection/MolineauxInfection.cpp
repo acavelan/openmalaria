@@ -21,13 +21,11 @@
  */
 
 #include "Host/WithinHost/Infection/Infection.h"
-#include "util/checkpoint.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/random.h"
 #include "util/errors.h"
 #include "util/CommandLine.h"
 #include "util/ModelOptions.h"
-#include "util/checkpoint_containers.h"
 
 #include <iostream>
 #include <sstream>
@@ -156,13 +154,8 @@ Infection* createMolineauxInfection (RunContext& ctx, LocalRng& rng, uint32_t pr
     return infection_new (ctx, rng, protID, origin, Infection::Kind::Molineaux);
 }
 
-Infection* checkpointedMolineauxInfection (RunContext& ctx, istream& stream) {
-    return infection_new_checkpointed (ctx, stream, Infection::Kind::Molineaux);
-}
-
 void infection_init_molineaux( RunContext& ctx, const Parameters& parameters ){
     ctx.createInfection = &createMolineauxInfection;
-    ctx.checkpointedInfection = &checkpointedMolineauxInfection;
     
     multi_factor_gamma = util::ModelOptions::option( util::PARASITE_REPLICATION_GAMMA );
     
@@ -400,70 +393,6 @@ bool update_density_molineaux( Infection& inf, LocalRng&, double survival_factor
 }
 
 // ———  Molineaux: checkpointing  ———
-
-void read_molineaux (Infection& inf, istream& stream) {
-    inf.molineaux = std::make_unique<Infection::MolineauxData>();
-    auto* molineaux = inf.molineaux.get();
-    constexpr size_t v = Infection::v;
-    constexpr size_t taus = Infection::taus;
-    molineaux->Sm_summation & stream;
-    for(size_t i=0;i<v;i++) {
-        molineaux->mi[i] & stream;
-    }
-    molineaux->variants & stream;
-    for(size_t j=0;j<taus;j++){
-        molineaux->lagged_Pc[j] & stream;
-    }
-    molineaux->Pc_star & stream;
-    molineaux->Pm_star & stream;
-}
-
-void checkpoint_molineaux (Infection& inf, ostream& stream) {
-    auto* molineaux = inf.molineaux.get();
-    constexpr size_t v = Infection::v;
-    constexpr size_t taus = Infection::taus;
-    molineaux->Sm_summation & stream;
-    for(size_t i=0;i<v;i++) {
-        molineaux->mi[i] & stream;
-    }
-    molineaux->variants & stream;
-    for(size_t j=0;j<taus;j++){
-        molineaux->lagged_Pc[j] & stream;
-    }
-    molineaux->Pc_star & stream;
-    molineaux->Pm_star & stream;
-}
-
-void Infection::Variant::operator& (istream& stream) {
-    bool nonZero;
-    nonZero & stream;
-    if( nonZero ){
-        Pi1 & stream;
-        Pi2 & stream;
-        Si_summation & stream;
-        for(size_t i = 0; i < taus; ++i){
-            lagged_Pi[i] & stream;
-        }
-    }
-    // else: all members are zero-initialised by the constructor, so don't do anything
-}
-
-void Infection::Variant::operator& (ostream& stream) {
-    bool nonZero =
-            Pi1 != 0.0 ||
-            Pi2 != 0.0 ||
-            Si_summation != 0.0;
-
-    nonZero & stream;
-    if( nonZero ){
-        Pi1 & stream;
-        Pi2 & stream;
-        Si_summation & stream;
-        for(size_t i = 0; i < taus; ++i){
-            lagged_Pi[i] & stream;
-        }
-    }
-}
 
 }
 }

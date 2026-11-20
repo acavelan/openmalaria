@@ -21,7 +21,6 @@
  */
 
 #include "RunContext.h"
-#include "util/checkpoint.h"
 #include "Clinical/Episode.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
@@ -123,27 +122,6 @@ void Episode::report () {
         if (state & Episode::DIRECT_DEATH) {
             mon::recordEvent(*rctx, mon::measure("nNmfDeaths"), surveyPeriod, ageGroup, cohortSet);
         }
-    }
-}
-
-void Episode::operator& (istream& stream) {
-    time & stream;
-    if (time > sim::zero()) {
-        surveyPeriod & stream;
-        ageGroup & stream;
-        cohortSet & stream;
-        int s;
-        s & stream;
-        state = Episode::State(s);
-    }
-}
-void Episode::operator& (ostream& stream) {
-    time & stream;
-    if (time >= sim::zero()) {
-        surveyPeriod & stream;
-        ageGroup & stream;
-        cohortSet & stream;
-        state & stream;
     }
 }
 
