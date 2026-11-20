@@ -143,9 +143,11 @@ public:
      *  update cum_prim_inf_ref())
      */
     UpdResult update(LocalRng& rng);
-    
-    inline void setHadEvent( bool hadEvent ){ this->hadEvent = hadEvent; }
-    inline void setHadRelapse( bool hadRelapse ){ this->hadRelapse = hadRelapse; }
+
+    // Whether a clinical / relapse event has been triggered by this brood.
+    // Written by update_vivax; no in-model reader — kept for the checkpoint wire.
+    bool hadEvent;
+    bool hadRelapse;
     
     /** Equivalent to a blood stage existing. We do not model incidence of
      * gametocytes independently, thus this also tests existance of
@@ -179,11 +181,6 @@ private:
 	//Whether the later category of relapses has started
 	bool relapsebHasStarted;
 
-    // Whether any clinical event has been triggered by this brood
-    bool hadEvent;
-
-    // Whether a relapse event has been triggered by this brood
-    bool hadRelapse;
 	
 	// Infection origin
 	int origin;

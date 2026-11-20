@@ -41,7 +41,7 @@ namespace OM { namespace PkPd {
 void LSTMDrug::updateCached(double body_mass) const{
     if( last_bm == body_mass ) return;
     
-    double k = elim_sample * pow(body_mass, typeData->neg_m_exponent());
+    double k = elim_sample * pow(body_mass, typeData->neg_m_exp);
     
     const double a0 = k*k21*k31;
     const double a1 = k*k31 + k21*k31 + k21*k13 + k*k21 + k31*k12;

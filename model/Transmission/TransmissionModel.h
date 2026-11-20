@@ -165,9 +165,6 @@ protected:
 public:
     bool isVector() const { return kind == Kind::Vector; }
 
-    /// Get the map of species names to indicies (vector kind).
-    const map<string, size_t> &getSpeciesIndexMap() { return speciesIndex; }
-
     /// ~Deallocate memory for TransmissionModel parameters and clean up
     ~TransmissionModel() {}
 

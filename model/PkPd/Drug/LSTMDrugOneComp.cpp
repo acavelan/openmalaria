@@ -45,7 +45,7 @@ double LSTMDrug::drugFactor_oneComp(LocalRng& rng, WithinHost::Infection *inf, d
     // Make a copy of concetration and use that over today. Don't adjust concentration because this
     // function may be called multiple times (or not at all) in a day.
     double concentration_today = concentration; // mg / l
-    double neg_elim_rate = neg_elim_sample * pow(body_mass, typeData->neg_m_exponent());
+    double neg_elim_rate = neg_elim_sample * pow(body_mass, typeData->neg_m_exp);
     
     const LSTMDrugPD& drugPD = typeData->getPD(inf->genotype());
     const double Kn = drugPD.IC50_pow_slope(rng, typeData->getIndex(), inf);
@@ -78,7 +78,7 @@ void LSTMDrug::updateConcentration_oneComp( double body_mass ){
     // exponential decay of drug concentration (portion without new doses):
     //TODO: is it faster to pre-calculate this and either store an extra
     // parameter or adapt uses of neg_elim_rate, etc. below?
-    double neg_elim_rate = neg_elim_sample * pow(body_mass, typeData->neg_m_exponent());
+    double neg_elim_rate = neg_elim_sample * pow(body_mass, typeData->neg_m_exp);
     concentration *= exp(neg_elim_rate);
     size_t doses_taken = 0;
     typedef pair<double,double> TimeConc;

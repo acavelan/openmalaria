@@ -214,10 +214,10 @@ LSTMDrugType::LSTMDrugType (RunContext& ctx, size_t index, const scnXml::PKPDDru
                 " restrictions required when num. phenotypes > 1" );
         }else{
             // All genotypes map to phenotype 0
-            genotype_mapping.assign( ctx.genotypes.getGenotypes().size(), 0 );
+            genotype_mapping.assign( ctx.genotypes.genotypes.size(), 0 );
         }
     }else{
-        const vector<Genotypes::Genotype>& genotypes = ctx.genotypes.getGenotypes();
+        const vector<Genotypes::Genotype>& genotypes = ctx.genotypes.genotypes;
         genotype_mapping.assign( genotypes.size(), 0 );
         for( size_t j = 0; j < genotypes.size(); ++j ){
             uint32_t phenotype = numeric_limits<uint32_t>::max();

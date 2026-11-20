@@ -300,8 +300,6 @@ public:
     //@}
 
     /// Intermediatary from vector model equations used to calculate EIR
-    inline const vector<double>& getPartialEIRImported() const{ return partialEIR_i; }
-    inline const vector<double>& getPartialEIRLocal() const{ return partialEIR_l; }
     //@}
 
 

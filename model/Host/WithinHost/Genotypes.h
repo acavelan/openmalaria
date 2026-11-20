@@ -66,8 +66,6 @@ public:
      * Returns max value when no match is found. */
     uint32_t findAlleleCode( const string& locus, const string& allele ) const;
     
-    /** Get a reference to the list of all genotypes. */
-    const vector<Genotype>& getGenotypes() const { return genotypes; }
     
     /** Sample the genotype using the configured approach.
      * 

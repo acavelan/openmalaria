@@ -134,8 +134,6 @@ public:
     inline double getNegligibleConcentration() const{
         return negligible_concentration;
     }
-    inline double neg_m_exponent() const{ return neg_m_exp; }
-    inline double molecular_weight_ratio() const{ return mwr; }
     
     /// Generate IC50 sample of metabolite
     inline NormalSample IC50_correlated_sample(NormalSample parent, LocalRng& rng) const {

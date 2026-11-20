@@ -352,8 +352,8 @@ void TransmissionModel::calculateEIR_vector(Host::Human &human, double ageYears,
         const double ageFactor = host.relativeAvailabilityAge(ageYears);
         for (size_t i = 0; i < speciesIndex.size(); ++i)
         {
-            const vector<double> &partialEIR_i = species[i]->getPartialEIRImported();
-            const vector<double> &partialEIR_l = species[i]->getPartialEIRLocal();
+            const vector<double> &partialEIR_i = species[i]->partialEIR_i;
+            const vector<double> &partialEIR_l = species[i]->partialEIR_l;
 
             assert(EIR_i.size() == partialEIR_i.size());
             assert(EIR_l.size() == partialEIR_l.size());

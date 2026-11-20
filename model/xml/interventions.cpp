@@ -1121,7 +1121,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
 
     {
         Transmission::TransmissionModel *vectorModel = transmission.isVector() ? &transmission : nullptr;
-        if (vectorModel != nullptr) species_index_map = vectorModel->getSpeciesIndexMap();
+        if (vectorModel != nullptr) species_index_map = vectorModel->speciesIndex;
     }
 
     if (intervElt.getHuman().present())

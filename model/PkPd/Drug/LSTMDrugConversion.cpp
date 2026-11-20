@@ -142,15 +142,15 @@ void LSTMDrug::setConversionParameters(Params_convFactor& p,
     p.qtyG = qtyG; p.qtyP = qtyP; p.qtyM = qtyM;
     
     // decay "constants" (dependent on body mass):
-    const double nkP = nkP_sample * pow(body_mass, typeData->neg_m_exponent());      // -y
-    const double nconv = nconv_sample * pow(body_mass, typeData->neg_m_exponent());  // -z
+    const double nkP = nkP_sample * pow(body_mass, typeData->neg_m_exp);      // -y
+    const double nconv = nconv_sample * pow(body_mass, typeData->neg_m_exp);  // -z
     p.nka = nka;        // -x
-    p.nkM = nkM_sample * pow(body_mass, metaboliteData->neg_m_exponent());  // -k
+    p.nkM = nkM_sample * pow(body_mass, metaboliteData->neg_m_exp);  // -k
     p.nl = nkP + nconv;    // -(y + z)
     
     p.f = nka / (p.nl - nka);                           // -x / (x-y-z) = x / (y+z-x)
-    // Let u = typeData->molecular_weight_ratio() = M_C / M_B:
-    const double rz = typeData->molecular_weight_ratio() * nconv; // -u*z
+    // Let u = typeData->mwr = M_C / M_B:
+    const double rz = typeData->mwr * nconv; // -u*z
     p.g = rz * nka / ((nka - p.nl) * (nka - p.nkM));    // u*z*x / ((y+z-x) * (k-x))
     p.h = rz * nka / ((nka - p.nl) * (p.nkM - p.nl));   // u*z*x / ((y+z-x) * (y+z-k))
     p.i = rz / (p.nl - p.nkM);                          // -u*z / (k - y - z) = u*z / (y+z-k)

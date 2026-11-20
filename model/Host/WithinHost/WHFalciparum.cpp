@@ -241,7 +241,7 @@ bool WHInterface::diagnosticResult_falciparum( LocalRng& rng, const Diagnostic& 
 
 void WHInterface::treatment_falciparum( Host::Human& human, TreatmentId treatId ){
     const Treatments& treat = Treatments::select( ctx, treatId );
-    treatSimple( human, treat.liverEffect(), treat.bloodEffect() );
+    treatSimple( human, treat.timeLiver, treat.timeBlood );
     
     // triggered intervention deployments:
     treat.deploy( ctx, human,
