@@ -40,11 +40,11 @@ public:
 	double invCumulativeHstar = 1.0 / 71.676733;
 	double alpha_m = 1.0 - exp(- 2.411434);
 	double decayM = 2.717773;
-        WHInterface::setParams(invCumulativeYstar, invCumulativeHstar, alpha_m, decayM);
+        WHFalciparum::setParams(invCumulativeYstar, invCumulativeHstar, alpha_m, decayM);
         
         // Any falciparum kind will do:
         LocalRng rng(0, 721347520444481703);
-	wh = new WHInterface{ UnittestUtil::ctx(), rng, numeric_limits<double>::quiet_NaN(), WHInterface::Kind::Descriptive };
+	wh = new WHDescriptive{ UnittestUtil::ctx(), rng, numeric_limits<double>::quiet_NaN() };
         // immunity state lives in columns now: bind a private mini-column
         util::MasterRng master(0, 1);
         wh->bind_columns(cols, cols.append_row(sim::zero(), master));
@@ -73,7 +73,7 @@ public:
     }
     
 private:
-    WHInterface* wh;
+    WHDescriptive* wh;
     HumanColumns cols;
 };
 

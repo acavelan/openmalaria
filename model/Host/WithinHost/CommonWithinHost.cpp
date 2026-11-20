@@ -47,10 +47,9 @@ bool reportInfectedOrPatentInfected = false;
 // -----  Initialization  -----
 
 
-void WHInterface::ctorCommon( LocalRng& rng, double comorbidityFactor )
+WHCommon::WHCommon( RunContext& ctx, LocalRng& rng, double comorbidityFactor ) :
+    WHFalciparum( ctx, rng, comorbidityFactor, Kind::Common )
 {
-    ctorFalciparum( rng, comorbidityFactor );
-    
     assert( ctx.clock.one_TS() == sim::fromDays(1) || ctx.clock.one_TS() == sim::fromDays(5) );
     
     opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
@@ -69,16 +68,9 @@ void WHInterface::ctorCommon( LocalRng& rng, double comorbidityFactor )
     } while( hetMassMultiplier < minHetMassMult );
 }
 
-void WHInterface::dtorCommon() {
-    for( auto inf = infections.begin(); inf != infections.end(); ++inf ){
-        delete *inf;
-    }
-    infections.clear();
-}
-
 // -----  Simple infection adders/removers  -----
 
-void WHInterface::clearInfections( Treatments::Stages stage ){
+void WHFalciparum::clearInfections( Treatments::Stages stage ){
     for(auto inf = infections.begin(); inf != infections.end();) {
         if( stage == Treatments::BOTH ||
             (stage == Treatments::LIVER && !(*inf)->bloodStage()) ||
@@ -95,18 +87,18 @@ void WHInterface::clearInfections( Treatments::Stages stage ){
 
 // -----  interventions -----
 
-void WHInterface::treatPkPd_common(size_t schedule, size_t dosage, double age, double delay_d){
+void WHCommon::treatPkPd(size_t schedule, size_t dosage, double age, double delay_d){
     double mass = massByAge.eval( age ) * hetMassMultiplier;
     pkpdModel.prescribe( ctx, schedule, dosage, age, mass, delay_d );
 }
-void WHInterface::clearImmunity_falciparum() {
+void WHFalciparum::clearImmunity() {
     for(auto inf = infections.begin(); inf != infections.end(); ++inf) {
         (*inf)->clearImmunity();
     }
     imm_h_ref() = 0.0;
     imm_Y_lag_ref() = 0.0;
 }
-void WHInterface::importInfection_common(LocalRng& rng){
+void WHCommon::importInfection(LocalRng& rng){
     if( SlotAllocator::try_import(numInfs) ){   // mode A: at the cap, no draw at all
         imm_h_ref() += 1;
         numInfs += 1;
@@ -122,7 +114,7 @@ void WHInterface::importInfection_common(LocalRng& rng){
 
 // -----  Density calculations  -----
 
-void WHInterface::update_common(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
+void WHCommon::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
         vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears)
 {
     // Note: adding infections at the beginning of the update instead of the end
@@ -239,7 +231,7 @@ void WHInterface::update_common(Host::Human &human, LocalRng& rng, int &nNewInfs
 
 // Shared by update_common and update_descriptive (byte-identical blocks).
 // No RNG draws — pure cache bookkeeping.
-void WHInterface::cache_y_lag()
+void WHFalciparum::cache_y_lag()
 {
     int y_lag_i = ctx.clock.moduloSteps(ctx.clock.ts1(), y_lag_len);
     for( size_t g = 0; g < ctx.genotypes.N(); ++g )
@@ -262,7 +254,7 @@ void WHInterface::cache_y_lag()
 // Used in summarizeInfs.
 vector<Infection*> sortedInfs;
 
-bool WHInterface::summarize_common( Host::Human& human )const{
+bool WHCommon::summarize( Host::Human& human )const{
     pathogenesisModel->summarize( human );
     pkpdModel.summarize( ctx, human );
     

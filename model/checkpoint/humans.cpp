@@ -287,18 +287,19 @@ void ckWH (Archive& a, RunContext& ctx, WHInterface& wh, util::LocalRng& rng) {
             throw checkpoint_error ("pathogenesis model kind mismatch");
         if (pm) WithinHost::Pathogenesis::checkpoint (a, *wh.pathogenesisModel);
     }
-    switch (wh.m_kind) {
+    switch (wh.kind) {
     case WHInterface::Kind::Common:
     case WHInterface::Kind::Descriptive: {
-        a.value (wh.hetMassMultiplier);
-        PkPd::ckLSTM (a, ctx, wh.pkpdModel, rng);
-        uint64_t n = wh.infections.size();
+        auto& f = static_cast<WithinHost::WHFalciparum&> (wh);
+        a.value (f.hetMassMultiplier);
+        PkPd::ckLSTM (a, ctx, f.pkpdModel, rng);
+        uint64_t n = f.infections.size();
         a.value (n);
         if (a.reading()) {
             // Kind-correct creation: Descriptive builds directly (no factory
             // set); the other Common kinds use the factory from WH init.
             // Constructor draws are overwritten, like the Human ctor's.
-            const bool desc = wh.m_kind == WHInterface::Kind::Descriptive;
+            const bool desc = wh.kind == WHInterface::Kind::Descriptive;
             if (!desc && ctx.createInfection == nullptr)
                 throw checkpoint_error ("within-host infection factory unset");
             for (uint64_t i = 0; i < n; ++i) {
@@ -306,38 +307,39 @@ void ckWH (Archive& a, RunContext& ctx, WHInterface& wh, util::LocalRng& rng) {
                     static_cast<WithinHost::Infection*> (new WithinHost::DescriptiveInfection (ctx, rng, 0, 0)) :
                     ctx.createInfection (ctx, rng, 0, 0);
                 WithinHost::checkpoint (a, *inf);
-                wh.infections.push_back (inf);
+                f.infections.push_back (inf);
             }
-            if (uint64_t(wh.infections.size()) != n)
+            if (uint64_t(f.infections.size()) != n)
                 throw checkpoint_error ("internal: infection restore count");
         } else {
-            for (WithinHost::Infection* inf : wh.infections) WithinHost::checkpoint (a, *inf);
+            for (WithinHost::Infection* inf : f.infections) WithinHost::checkpoint (a, *inf);
         }
         break;
     }
     case WHInterface::Kind::Vivax: {
-        a.boolean (wh.noPQ);
+        auto& v = static_cast<WithinHost::WHVivax&> (wh);
+        a.boolean (v.noPQ);
         {
-            int32_t m = wh.morbidity;
+            int32_t m = v.morbidity;
             a.value (m);
-            if (a.reading()) wh.morbidity = WithinHost::Pathogenesis::State (m);
+            if (a.reading()) v.morbidity = WithinHost::Pathogenesis::State (m);
         }
-        a.value (wh.treatExpiryLiverVivax);
-        a.value (wh.treatExpiryBloodVivax);
-        a.value (wh.pEvent);
-        a.value (wh.pFirstRelapseEvent);
-        a.value (wh.pSecondRelapseEvent);
-        a.value (wh.pSevere);
-        uint64_t n = wh.vivaxInfections.size();
+        a.value (v.treatExpiryLiverVivax);
+        a.value (v.treatExpiryBloodVivax);
+        a.value (v.pEvent);
+        a.value (v.pFirstRelapseEvent);
+        a.value (v.pSecondRelapseEvent);
+        a.value (v.pSevere);
+        uint64_t n = v.vivaxInfections.size();
         a.value (n);
         if (a.reading()) {
             for (uint64_t i = 0; i < n; ++i) {
                 // Ctor samples a fresh brood (draws overwritten below).
-                wh.vivaxInfections.emplace_back (ctx, rng, 0, &wh);
-                WithinHost::checkpoint (a, wh.vivaxInfections.back());
+                v.vivaxInfections.emplace_back (ctx, rng, 0, &wh);
+                WithinHost::checkpoint (a, v.vivaxInfections.back());
             }
         } else {
-            for (auto& brood : wh.vivaxInfections) WithinHost::checkpoint (a, brood);
+            for (auto& brood : v.vivaxInfections) WithinHost::checkpoint (a, brood);
         }
         break;
     }
