@@ -23,6 +23,7 @@ to merge files that belong".
 
 | # | merge | files Δ | gates |
 |---|---|---|---|
+| G5 | Clinical/CMDecisionTree.cpp -> CMDecisionTree.h (class A: the flat node-array interpreter is the header's own API — exec_decision_tree inline; anon-namespace helpers keep internal linkage; compile_decision_tree stays in xml/healthSystem.cpp (schema boundary); ClinicalModel.h include dropped (unreferenced); all consumers already under ClinicalModel/WHInterface cone) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 + T1b 1-4 |
 | G4 | Clinical/ESCaseManagement.h -> EventScheduler.h (only consumer; same EventScheduler chain — ES trees + execute() sit after esClinicalUpdate). healthSystem.cpp/HumanInterventionComponents.h/unittest suite re-pointed (include line only; no fixture edits) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 + T1b 1-4 |
 | G1 | util/SpeciesIndexChecker.cpp -> .h (both methods inline; std:: ostringstream qualification only) | -1 | build, ctest 64/64, unittest .OK!, T1a 53/53 |
 | G3 | 5-day chain: DecisionTree5Day.{h,cpp}+ImmediateOutcomes.{h,cpp}+CM5DayCommon.{h,cpp} -> CM5DayCommon.{h,cpp} (bodies verbatim; local enum CaseType -> CM5DayCommon::CaseType, value-identical; trees statics stay extern for xml/healthSystem.cpp) | -4 | build, ctest 64/64, unittest .OK!, T1a 53/53 + T1b 1-4 |
