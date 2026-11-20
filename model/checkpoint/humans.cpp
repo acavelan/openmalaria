@@ -79,46 +79,58 @@ void checkpoint (checkpoint::Archive& a, Infection& inf) {
     a.value (inf.m_cumulativeExposureJ);
     a.value (inf.m_genotype);
     a.value (inf.m_origin);
+    // Kind tag is the proof for the down-casts (the derived class was built
+    // by the per-run factory); no serialisation decls on the classes.
     switch (inf.kind) {
-    case Infection::Kind::Descriptive:
-        a.value (inf.descriptive.duration);
-        a.boolean (inf.descriptive.notPrintedMDWarning);
+    case Infection::Kind::Dummy:
+        break;   // no variant state
+    case Infection::Kind::Descriptive: {
+        auto& d = static_cast<DescriptiveInfection&> (inf);
+        a.value (d.duration);
+        a.boolean (d.notPrintedMDWarning);
         break;
-    case Infection::Kind::Empirical:
-        for (double& d : inf.empirical->_laggedLogDensities) a.value (d);
-        a.value (inf.empirical->_patentGrowthRateMultiplier);
+    }
+    case Infection::Kind::Empirical: {
+        auto& e = static_cast<EmpiricalInfection&> (inf);
+        for (double& x : e._laggedLogDensities) a.value (x);
+        a.value (e._patentGrowthRateMultiplier);
         break;
-    case Infection::Kind::Molineaux:
-        for (float& f : inf.molineaux->mi) a.value (f);   // mi: plain float array
-        a.value (inf.molineaux->Sm_summation);
-        for (float& f : inf.molineaux->lagged_Pc) a.value (f);
-        a.value (inf.molineaux->Pc_star);
-        a.value (inf.molineaux->Pm_star);
+    }
+    case Infection::Kind::Molineaux: {
+        auto& m = static_cast<MolineauxInfection&> (inf);
+        for (float& f : m.mi) a.value (f);   // mi: plain float array
+        a.value (m.Sm_summation);
+        for (float& f : m.lagged_Pc) a.value (f);
+        a.value (m.Pc_star);
+        a.value (m.Pm_star);
         {   // variants grow with infection age (clone per relapse), so the
             // count goes on the wire; Variant has a user default ctor (not
             // trivially copyable) hence field-by-field.
-            uint64_t nv = inf.molineaux->variants.size();
+            uint64_t nv = m.variants.size();
             a.value (nv);
             if (a.reading()) {
                 if (nv > uint64_t (a.remaining()) / 64u)
                     throw OM::checkpoint::checkpoint_error ("variant count too large");
-                inf.molineaux->variants.resize (size_t (nv));
+                m.variants.resize (size_t (nv));
             }
-            for (auto& v : inf.molineaux->variants) {
+            for (auto& v : m.variants) {
                 a.value (v.Pi1); a.value (v.Pi2); a.value (v.Si_summation);
                 for (float& f : v.lagged_Pi) a.value (f);
             }
         }
         break;
-    case Infection::Kind::Penny:
-        for (double& d : inf.penny->cirDensities) a.value (d);
-        for (double& d : inf.penny->seqDensities) a.value (d);
-        a.value (inf.penny->threshold_N);
-        a.value (inf.penny->threshold_V);
-        a.value (inf.penny->threshold_C);
-        a.value (inf.penny->variantSpecificSummation);
-        a.value (inf.penny->clonalSummation);
+    }
+    case Infection::Kind::Penny: {
+        auto& p = static_cast<PennyInfection&> (inf);
+        for (double& x : p.cirDensities) a.value (x);
+        for (double& x : p.seqDensities) a.value (x);
+        a.value (p.threshold_N);
+        a.value (p.threshold_V);
+        a.value (p.threshold_C);
+        a.value (p.variantSpecificSummation);
+        a.value (p.clonalSummation);
         break;
+    }
     }
 }
 
@@ -291,8 +303,7 @@ void ckWH (Archive& a, RunContext& ctx, WHInterface& wh, util::LocalRng& rng) {
                 throw checkpoint_error ("within-host infection factory unset");
             for (uint64_t i = 0; i < n; ++i) {
                 WithinHost::Infection* inf = desc ?
-                    WithinHost::infection_new (ctx, rng, 0, 0,
-                        WithinHost::Infection::Kind::Descriptive) :
+                    static_cast<WithinHost::Infection*> (new WithinHost::DescriptiveInfection (ctx, rng, 0, 0)) :
                     ctx.createInfection (ctx, rng, 0, 0);
                 WithinHost::checkpoint (a, *inf);
                 wh.infections.push_back (inf);

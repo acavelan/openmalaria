@@ -91,18 +91,18 @@ void WHInterface::init( RunContext& ctx, const OM::Parameters& parameters, const
         
         if (util::ModelOptions::option (util::DUMMY_WITHIN_HOST_MODEL)) {
             opt_dummy_whm = true;
-            infection_init_dummy (ctx);
+            DummyInfection::init (ctx);
         } else if (util::ModelOptions::option (util::EMPIRICAL_WITHIN_HOST_MODEL)) {
             opt_empirical_whm = true;
-            infection_init_empirical(ctx);    // 1-day time step check
+            EmpiricalInfection::init(ctx);    // 1-day time step check
         } else if (util::ModelOptions::option (util::MOLINEAUX_WITHIN_HOST_MODEL)) {
             opt_molineaux_whm = true;
-            infection_init_molineaux( ctx, parameters );
+            MolineauxInfection::init( ctx, parameters );
         } else if (util::ModelOptions::option (util::PENNY_WITHIN_HOST_MODEL)) {
             opt_penny_whm = true;
-            infection_init_penny(ctx);
+            PennyInfection::init(ctx);
         } else {
-            infection_init_descriptive( ctx, parameters );      // 5-day time step check
+            DescriptiveInfection::init( ctx, parameters );      // 5-day time step check
         }
         opt_common_whm = opt_dummy_whm || opt_empirical_whm
                 || opt_molineaux_whm || opt_penny_whm;
