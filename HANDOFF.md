@@ -205,3 +205,5 @@ order of side-effecting calls all preserved explicitly.
 - pharmacology.cpp 311->301 (-10): phenotype-name if/else repeated 3x -> one
   lazy pheno_name lambda (still evaluated only at the original use points).
   Gate: 52/52, OK, 53/53.
+- HumanInterventionComponents.h 229->226 (-3): conditions ctor delegates to the
+  components ctor (identical operation order). Gate: 52/52, OK, 53/53.
