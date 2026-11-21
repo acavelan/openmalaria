@@ -48,21 +48,21 @@ using util::LocalRng;
  *
  * There are also two susceptibility models which should be compatible with all
  * of these (see susceptibility()). */
-class IncidenceModel {
+class InfectionIncidenceModel {
   public:
     enum class Kind { Default, HetWorkaround, NegBinom, LogNormal };
 
   protected:
     /// The run this model belongs to (clock accessed as ctx.clock).
-    Context& ctx;
+    RunContext& ctx;
 
   public:
     ///@brief Static initialisation & constructors
     //@{
     /// Read in/initialise parameters
-    static void init(Context& ctx, const Parameters& parameters);
+    static void init(RunContext& ctx, const Parameters& parameters);
     /// Create a new instance (Kind selected from the model options)
-    static IncidenceModel* createModel(Context& ctx);
+    static InfectionIncidenceModel* createModel(RunContext& ctx);
 
     /// Reset summary outputs at beginning of main simulation
     static inline void preMainSimInit() { ctsNewInfections = 0; }
@@ -70,12 +70,13 @@ class IncidenceModel {
 
   protected:
     /// Create a new model
-    explicit IncidenceModel(Context& ctx, Kind kind) : ctx(ctx), kind(kind), m_pInfected(0.0), m_cumulativeEIRa(0.0) {}
+    explicit InfectionIncidenceModel(RunContext& ctx, Kind kind)
+        : ctx(ctx), kind(kind), m_pInfected(0.0), m_cumulativeEIRa(0.0) {}
 
   public:
     /** Return an availability multiplier, dependant on the model (NegBinom
    * and LogNormal models use this). Ideally availability adjustments
-   * should have nothing to do with the IncidenceModel though.
+   * should have nothing to do with the InfectionIncidenceModel though.
    * 
    * @param baseAvailability This was BaselineAvailabilityMean from Constant.h,
    *	and had the value 1.0. Whether it should be anything else I don't know.

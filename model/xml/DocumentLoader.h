@@ -26,7 +26,7 @@
 #pragma once
 
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "util/errors.h"
 #include <schema/scenario.h>
 #include <fstream>
@@ -41,7 +41,7 @@ inline std::unique_ptr<scnXml::Scenario> loadScenario(std::string lXmlFile) {
     std::ifstream fileStream(lXmlFile.c_str(), ios::binary);
     if (!fileStream.good()) {
         std::string msg = "Error: unable to open " + lXmlFile;
-        throw util::xml_error(msg);
+        throw util::xml_scenario_error(msg);
     }
     std::unique_ptr<scnXml::Scenario> scenario = scnXml::parseScenario(fileStream);
     fileStream.close();
@@ -50,7 +50,7 @@ inline std::unique_ptr<scnXml::Scenario> loadScenario(std::string lXmlFile) {
         std::cerr << "Warning: " << lXmlFile << " uses an old schema version (latest is " << SCHEMA_VERSION << ")."
                   << endl;
     } else if (scenarioVersion > SCHEMA_VERSION)
-        throw util::xml_error("Error: new schema version unsupported");
+        throw util::xml_scenario_error("Error: new schema version unsupported");
     return scenario;
 }
 }
@@ -94,7 +94,7 @@ class XMLChecker {
         const bool parameters = scenario.getModel().getParameters().present();
         const bool modelOptions = scenario.getModel().getModelOptions().present();
         if (!modelName && (!parameters || !modelOptions)) {
-            throw util::xml_error(
+            throw util::xml_scenario_error(
                 "If a model name is not specified then both <ModelOptions> and <parameters> must be specified");
         }
         if (parameters) {
@@ -102,8 +102,8 @@ class XMLChecker {
             // clock is initialised (a bogus interval would divide by zero there).
             const int interval = scenario.getModel().getParameters().get().getInterval();
             if (interval != 1 && interval != 5) {
-                throw util::xml_error("Time step set to " + std::to_string(interval) +
-                                      " days but only 1 and 5 days are supported.");
+                throw util::xml_scenario_error("Time step set to " + std::to_string(interval) +
+                                               " days but only 1 and 5 days are supported.");
             }
         }
     }

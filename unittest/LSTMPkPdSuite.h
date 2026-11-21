@@ -48,7 +48,7 @@ class LSTMPkPdSuite : public CxxTest::TestSuite {
         UnittestUtil::initTime(1);
         UnittestUtil::PkPdSuiteSetup();
         proxy = new LSTMModel();
-        inf = createDummyInfection(UnittestUtil::ctx(), m_rng, 0, Origin::Indigenous);
+        inf = createDummyInfection(UnittestUtil::ctx(), m_rng, 0, InfectionOrigin::Indigenous);
         MQ_index = UnittestUtil::ctx().drugs.findDrug("MQ");
     }
     void tearDown() {

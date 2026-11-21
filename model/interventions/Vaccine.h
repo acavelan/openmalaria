@@ -52,7 +52,7 @@ using util::LocalRng;
  * All parameters (inc. non-static) are only set by initParameters(). */
 class VaccineParams {
   public:
-    VaccineParams(Context& ctx, ComponentId id, const scnXml::VaccineDescription& seq, Vaccine::Types type);
+    VaccineParams(RunContext& ctx, ComponentId id, const scnXml::VaccineDescription& seq, Vaccine::Types type);
 
     /** Get the initial efficacy of the vaccine.
      *
@@ -61,7 +61,7 @@ class VaccineParams {
 
     /** Look up a component's parameters (registry: ctx.vaccineComponents;
      * filled after all components are read). */
-    static const VaccineParams& getParams(Context& ctx, ComponentId component);
+    static const VaccineParams& getParams(RunContext& ctx, ComponentId component);
 
     /// Vaccine component type
     Vaccine::Types type;
@@ -90,17 +90,18 @@ class VaccineParams {
 /** Get one minus the (decayed) efficacy of the given vaccine type: product
  * over this human's matching dose records in insertion order (parity: c;
  * 1 for no effect, 0 for full effect). Implements Human::vaccine_factor. */
-inline double vaccine_factor(Context& ctx, const std::vector<VacRecord>& vac, Vaccine::Types type, uint32_t genotype);
+inline double vaccine_factor(RunContext& ctx, const std::vector<VacRecord>& vac, Vaccine::Types type,
+                             uint32_t genotype);
 
 /** Vaccinate unless the passed VaccineLimits specify not to (draw order:
  * first dose per component takes a decay het sample BEFORE the per-genotype
  * efficacy draws). Record list order never changes.
  * @returns true when the vaccine is administered */
-inline bool vaccinate(Context& ctx, Host::Human& human, ComponentId componentId, VaccineLimits vaccLimits);
+inline bool vaccinate(RunContext& ctx, Host::Human& human, ComponentId componentId, VaccineLimits vaccLimits);
 
 // ———  implementation (was Vaccine.cpp)  ———
 
-inline const VaccineParams& VaccineParams::getParams(Context& ctx, ComponentId component) {
+inline const VaccineParams& VaccineParams::getParams(RunContext& ctx, ComponentId component) {
     auto& params = ctx.vaccineComponents;
     assert(component.id < params.size() && params[component.id] != 0);
     return *params[component.id];
@@ -134,7 +135,8 @@ inline double VaccineParams::getInitialEfficacy(LocalRng& rng, size_t numPrevDos
 
 // ———  per-human vaccine state: VacRecord column (old PerHumanVaccine)  ———
 
-inline double vaccine_factor(Context& ctx, const std::vector<VacRecord>& vac, Vaccine::Types type, uint32_t genotype) {
+inline double vaccine_factor(RunContext& ctx, const std::vector<VacRecord>& vac, Vaccine::Types type,
+                             uint32_t genotype) {
     // parity: c — records multiply in insertion (deployment) order
     double factor = 1.0;
     for (const VacRecord& r : vac) {
@@ -147,7 +149,7 @@ inline double vaccine_factor(Context& ctx, const std::vector<VacRecord>& vac, Va
     return factor;
 }
 
-inline bool vaccinate(Context& ctx, Host::Human& human, ComponentId componentId,
+inline bool vaccinate(RunContext& ctx, Host::Human& human, ComponentId componentId,
                       interventions::VaccineLimits vaccLimits) {
     auto& vac = human.cols->vac[human.row];
     // first record with this vaccine's id (exact ComponentId equality), if any

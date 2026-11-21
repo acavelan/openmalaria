@@ -107,10 +107,10 @@ struct HumanColumns {
     std::vector<double> imm_h, imm_Y, imm_Y_lag;
     /// Primary blood-stage infection count (old WHInterface cumPrimInf, u32).
     std::vector<uint32_t> cum_prim_inf;
-    /// Clinical timestamps (old Model m_tLastTreatment + ES-kind
+    /// Clinical timestamps (old ClinicalModel m_tLastTreatment + ES-kind
     /// esCaseStartTime/esTimeOfRecovery/esTimeLastTreatment, SimTime).
     std::vector<SimTime> t_last_treatment, es_case_start, es_time_recovery, es_time_treatment;
-    /// ES total density last time step (old Model esPreviousDensity).
+    /// ES total density last time step (old ClinicalModel esPreviousDensity).
     std::vector<double> es_prev_density;
     /// Per-species transmission params (old PerHost anoph* vectors; nested:
     /// one vector<double> per row, resized by PerHost::initialise).
@@ -151,12 +151,12 @@ struct HumanColumns {
         es_case_start.push_back(sim::never());
         es_time_recovery.push_back(sim::never());
         es_time_treatment.push_back(sim::never());
-        es_prev_density.push_back(NaN);
+        es_prev_density.push_back(std::numeric_limits<double>::quiet_NaN());
         anoph_ento_raw.emplace_back();
         anoph_ento_avail.emplace_back();
         anoph_prob_biting.emplace_back();
         anoph_prob_resting.emplace_back();
-        rel_avail_het.push_back(sNaN);
+        rel_avail_het.push_back(std::numeric_limits<double>::signaling_NaN());
         outside_trans.push_back(0u);
         iv.emplace_back();
         vac.emplace_back();

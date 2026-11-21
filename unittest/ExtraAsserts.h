@@ -107,7 +107,7 @@ namespace ExtraAsserts {
   double tolerance (double x, double y, double relPrecision = 1e-7, double absPrecision = 1e-7) {
     double tol = relPrecision * std::max(fabs(x), fabs(y));
     if (tol > (std::numeric_limits<double>::max)())
-      return OM::NaN;
+      return std::numeric_limits<double>::quiet_NaN();
     if (tol < absPrecision)
       return absPrecision;
     return tol;

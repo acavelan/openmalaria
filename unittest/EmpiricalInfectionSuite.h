@@ -45,7 +45,8 @@ class EmpiricalInfectionSuite : public CxxTest::TestSuite {
         UnittestUtil::Infection_init_latentP_and_NaN();
         EmpiricalInfection::init(UnittestUtil::ctx());
         // pkpdID (1st value) isn't important since we're not using drug model here:
-        infection = UnittestUtil::ctx().createInfection(UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, Origin::Indigenous);
+        infection =
+            UnittestUtil::ctx().createInfection(UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous);
         for (SimTime d = UnittestUtil::clock().ts1(), end = UnittestUtil::clock().ts1() + sim::fromDays(15); d < end;
              d = d + sim::oneDay()) {
             // blood stage starts 15 days after creation

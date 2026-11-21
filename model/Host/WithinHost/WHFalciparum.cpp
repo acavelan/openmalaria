@@ -20,9 +20,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Context.h"
+#include "RunContext.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/Pathogenesis.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/Genotypes.h"
@@ -84,8 +84,9 @@ void WHFalciparum::setParams(double cumYStar, double cumHStar, double aM, double
 
 // -----  Non-static  -----
 
-WHFalciparum::WHFalciparum(Context& ctx, LocalRng& rng, double comorbidityFactor, Kind kind) : WHInterface(ctx, kind) {
-    pathogenesisModel.reset(Pathogenesis::Model::createPathogenesisModel(comorbidityFactor));
+WHFalciparum::WHFalciparum(RunContext& ctx, LocalRng& rng, double comorbidityFactor, Kind kind)
+    : WHInterface(ctx, kind) {
+    pathogenesisModel.reset(Pathogenesis::PathogenesisModel::createPathogenesisModel(comorbidityFactor));
 
     // NOTE: negating a Gaussian sample with mean 0 is pointless — except that
     // the individual samples change. In any case the overhead is negligible.
@@ -106,7 +107,7 @@ WHFalciparum::~WHFalciparum() {
     infections.clear();
 }
 
-Origin WHFalciparum::getInfectionOrigin() const { return get_infection_origin(infections); }
+InfectionOrigin WHFalciparum::getInfectionOrigin() const { return get_infection_origin(infections); }
 
 double WHFalciparum::immunitySurvivalFactor(double ageInYears, double cumulativeExposureJ) {
     // Row reads hoisted to locals: one cols->deref per call instead of four

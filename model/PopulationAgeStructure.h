@@ -29,10 +29,10 @@ namespace scnXml {
 class Demography;
 }
 namespace OM {
-class Context;
+class RunContext;
 
 /** Per-run demography state (was: AgeStructure statics; lives in
-     * Context::age). */
+     * RunContext::age). */
 struct AgeStructureState {
     /*! Field-data age groups: ageGroupBounds[i] is the lower bound of
         group i (bounds has ngroups+1 entries), ageGroupPercent[i] the
@@ -54,20 +54,20 @@ struct AgeStructureState {
 class AgeStructure {
   public:
     /** Set up cumAgeProp from XML data. */
-    static void init(Context& ctx, const scnXml::Demography& demography);
+    static void init(RunContext& ctx, const scnXml::Demography& demography);
 
     /** Return maximum individual lifetime in intervals that AgeStructure can handle. */
-    static size_t getMaxTStepsPerLife(const Context& ctx);
+    static size_t getMaxTStepsPerLife(const RunContext& ctx);
 
     /** Return the expected population size of individuals aged ageTSteps or
         * older, based on a total population size of targetPop. */
-    static int targetCumPop(Context& ctx, size_t ageTSteps, int targetPop);
+    static int targetCumPop(RunContext& ctx, size_t ageTSteps, int targetPop);
 
   private:
-    static void estimateRemovalRates(Context& ctx, const scnXml::Demography& demography);
+    static void estimateRemovalRates(RunContext& ctx, const scnXml::Demography& demography);
 
     /** Takes the best-fitting demography parameters estimated by
         * estimateRemovalRates and calculates the age structure (cumAgeProp). */
-    static void calcCumAgeProp(Context& ctx);
+    static void calcCumAgeProp(RunContext& ctx);
 };
 }

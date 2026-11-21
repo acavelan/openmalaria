@@ -34,19 +34,19 @@
 
 #include "Population.h"
 #include "Host/Human.h"
-#include "Host/IncidenceModel.h"
+#include "Host/InfectionIncidenceModel.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/Pathogenesis.h"
-#include "Clinical/Model.h"
+#include "Host/WithinHost/PathogenesisModel.h"
+#include "Clinical/ClinicalModel.h"
 #include "Clinical/Episode.h"
 #include "PkPd/LSTMDrug.h"
-#include "Context.h"
+#include "RunContext.h"
 
 namespace OM {
 
 namespace Host {
 
-void checkpoint(checkpoint::Archive& a, IncidenceModel& m) {
+void checkpoint(checkpoint::Archive& a, InfectionIncidenceModel& m) {
     a.value(m.m_pInfected);
     a.value(m.m_cumulativeEIRa);
 }
@@ -67,7 +67,7 @@ void checkpoint(checkpoint::Archive& a, VivaxBrood& b) {
 }
 
 namespace Pathogenesis {
-void checkpoint(checkpoint::Archive& a, Model& pm) {
+void checkpoint(checkpoint::Archive& a, PathogenesisModel& pm) {
     a.value(pm._comorbidityFactor);
     a.value(pm._pyrogenThres);
 }
@@ -217,7 +217,7 @@ void checkpoint(checkpoint::Archive& a, LSTMDrug& drug) {
 }
 
 namespace {
-void ckLSTM(checkpoint::Archive& a, Context& ctx, LSTMModel& m, util::LocalRng& hostRng) {
+void ckLSTM(checkpoint::Archive& a, RunContext& ctx, LSTMModel& m, util::LocalRng& hostRng) {
     uint64_t n = m.m_drugs.size();
     a.value(n);
     if (a.reading()) {
@@ -275,13 +275,13 @@ void ckEpisode(checkpoint::Archive& a, Episode& ep) {
         a.value(infType);
         if (a.reading()) {
             ep.state = Episode::State(state);
-            ep.infectionType = WithinHost::Origin(infType);
+            ep.infectionType = WithinHost::InfectionOrigin(infType);
         }
     }
 }
 } // namespace
 
-void checkpoint(checkpoint::Archive& a, Model& cm) {
+void checkpoint(checkpoint::Archive& a, ClinicalModel& cm) {
     a.value(cm.m_treatmentSeekingFactor);
     a.value(cm.doomed);
     ckEpisode(a, cm.latestReport);
@@ -293,7 +293,7 @@ void checkpoint(checkpoint::Archive& a, Model& cm) {
         // createClinicalModel, same run config both ends of the wire) is the
         // proof for the down-cast. Wire stays symmetric: the 5-day variants
         // carry the old always-NONE bytes in a local.
-        auto* es = cm.kind == Model::Kind::EventScheduler ? &static_cast<CMEventScheduler&>(cm) : nullptr;
+        auto* es = cm.kind == ClinicalModel::Kind::EventScheduler ? &static_cast<CMEventScheduler&>(cm) : nullptr;
         int32_t e = es ? static_cast<int32_t>(es->esPgState) : Episode::NONE;
         a.value(e);
         if (es)
@@ -309,7 +309,7 @@ namespace {
 
 using WithinHost::WHInterface;
 
-void ckWH(Archive& a, Context& ctx, WHInterface& wh, util::LocalRng& rng) {
+void ckWH(Archive& a, RunContext& ctx, WHInterface& wh, util::LocalRng& rng) {
     // Shared P. falciparum block (written for every kind; Vivax leaves most
     // at their defaults — same bytes, simplest symmetric code).
     a.value(wh.numInfs);
@@ -393,7 +393,7 @@ void ckWH(Archive& a, Context& ctx, WHInterface& wh, util::LocalRng& rng) {
     }
 }
 
-void ckHuman(Archive& a, Context& ctx, Host::Human& h) {
+void ckHuman(Archive& a, RunContext& ctx, Host::Human& h) {
     auto& c = *h.cols;
     const size_t r = h.row;
     a.value(c.dob[r]);
@@ -426,7 +426,7 @@ void ckHuman(Archive& a, Context& ctx, Host::Human& h) {
 
 } // namespace
 
-void ckHumans(Archive& a, Context& ctx, Population& population) {
+void ckHumans(Archive& a, RunContext& ctx, Population& population) {
     uint64_t n = population.humans.size();
     a.value(n);
     a.value(population.recentBirths);

@@ -22,22 +22,22 @@
 
 #pragma once
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "Host/HostColumns.h"
 #include "Transmission/PerHost.h"
-#include "IncidenceModel.h"
+#include "InfectionIncidenceModel.h"
 #include "interventions/HumanComponents.h"
 #include <map>
 
 namespace OM {
 namespace Clinical {
-class Model;
+class ClinicalModel;
 }
 namespace WithinHost {
 class WHInterface;
 }
 namespace Transmission {
-class Model;
+class TransmissionModel;
 }
 
 namespace Host {
@@ -49,7 +49,7 @@ class Human {
   public:
     /// The run this human belongs to (clock: ctx->clock). Set at
     /// construction; a pointer so Human stays move-assignable.
-    Context* ctx;
+    RunContext* ctx;
 
     /// This human's SoA columns (owned by Population; same lifetime as ctx).
     HumanColumns* cols;
@@ -62,7 +62,7 @@ class Human {
     * @param dateOfBirth date of birth (usually start of next time step)
     * @param columns persistent columns receiving this human's row (the rng
     * row is copy-seeded from the master HERE — the old member-init moment) */
-    Human(Context& ctx, SimTime dateOfBirth, HumanColumns& columns);
+    Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns);
 
     /// Allow move construction
     Human(Human&&) = default;
@@ -106,13 +106,13 @@ class Human {
     /** The WithinHostModel models parasite density and immunity */
     unique_ptr<WithinHost::WHInterface> withinHostModel;
 
-    /** The IncidenceModel translates per-host EIR into new infections */
-    unique_ptr<IncidenceModel> infIncidence;
+    /** The InfectionIncidenceModel translates per-host EIR into new infections */
+    unique_ptr<InfectionIncidenceModel> infIncidence;
 
-    /** The Model encapsulates pathogenesis (sickness status),
+    /** The ClinicalModel encapsulates pathogenesis (sickness status),
     * case management (medicating drugs)
     * and clinical outcomes (morbidity, reporting). */
-    unique_ptr<Clinical::Model> clinicalModel;
+    unique_ptr<Clinical::ClinicalModel> clinicalModel;
 
     /** Per-host RNG: SoA column row, not a member (accessor below keeps the
      * old `human.rng()` call syntax; 4×u64 Xoshiro state per row). */
@@ -139,7 +139,7 @@ class Human {
     inline uint32_t& nextCtsDist();
 };
 
-void summarize(Context& ctx, Human& human, bool surveyOnlyNewEp);
+void summarize(RunContext& ctx, Human& human, bool surveyOnlyNewEp);
 
 /** Per-sweep scratch reused across humans within a time step (owned by the
  * sweep caller — the run loop). Holds the EIR-per-genotype out-vectors that
@@ -158,9 +158,9 @@ struct HostScratch {
  * phase 7 dissolves them into columns and the view shrinks toward
  * {cols,row,rng,scratch,iv,mon}. */
 struct HostView {
-    Context& ctx;
+    RunContext& ctx;
     Human& human;
-    Transmission::Model& transmission;
+    Transmission::TransmissionModel& transmission;
     HostScratch& scratch;
 };
 
@@ -174,7 +174,7 @@ void host_within_host_update(HostView& v);
 void host_clinical_update(HostView& v);
 void host_update_infant_deaths(HostView& v);
 
-void update(Context& ctx, Human& human, Transmission::Model& transmission, HostScratch& scratch);
+void update(RunContext& ctx, Human& human, Transmission::TransmissionModel& transmission, HostScratch& scratch);
 
 inline SimTime Human::age(SimTime time) const { return time - cols->dob[row]; }
 

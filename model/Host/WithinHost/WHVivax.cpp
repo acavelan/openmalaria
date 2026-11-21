@@ -20,9 +20,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Context.h"
+#include "RunContext.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/Pathogenesis.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/Infection.h"
@@ -104,7 +104,7 @@ SimTime sampleReleaseDelay(LocalRng& rng) {
 
 // ———  per-brood code  ———
 
-VivaxBrood::VivaxBrood(Context& ctx, LocalRng& rng, int origin, WHInterface* host)
+VivaxBrood::VivaxBrood(RunContext& ctx, LocalRng& rng, int origin, WHInterface* host)
     : ctx(ctx), primaryHasStarted(false), relapseHasStarted(false), relapsebHasStarted(false), hadEvent(false),
       hadRelapse(false), origin(origin) {
     set<SimTime> releases; // used to initialise releaseDates; a set is better to use now but a vector later
@@ -219,7 +219,7 @@ void VivaxBrood::treatmentLS() {
 
 // ———  per-host code  ———
 
-WHVivax::WHVivax(Context& ctx, LocalRng& rng, double comorbidityFactor) : WHInterface(ctx, Kind::Vivax) {
+WHVivax::WHVivax(RunContext& ctx, LocalRng& rng, double comorbidityFactor) : WHInterface(ctx, Kind::Vivax) {
     if (comorbidityFactor != 1.0) {
         throw TRACED_EXCEPTION_DEFAULT("This vivax model cannot be used with comorbidity heterogeneity");
     }
@@ -275,7 +275,7 @@ bool WHVivax::summarize(Host::Human& human) const {
 
 void WHVivax::importInfection(LocalRng& rng) {
     // this means one new liver stage infection, which can result in multiple blood stages
-    vivaxInfections.push_back(VivaxBrood(ctx, rng, WithinHost::Origin::Imported, this));
+    vivaxInfections.push_back(VivaxBrood(ctx, rng, WithinHost::InfectionOrigin::Imported, this));
 }
 
 void WHVivax::update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l,
@@ -284,10 +284,10 @@ void WHVivax::update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nN
 
     // create new vivaxInfections, letting the constructor do the initialisation work:
     for (int i = 0; i < nNewInfs_i; ++i)
-        vivaxInfections.push_back(VivaxBrood(ctx, rng, Origin::Introduced, this));
+        vivaxInfections.push_back(VivaxBrood(ctx, rng, InfectionOrigin::Introduced, this));
 
     for (int i = 0; i < nNewInfs_l; ++i)
-        vivaxInfections.push_back(VivaxBrood(ctx, rng, Origin::Indigenous, this));
+        vivaxInfections.push_back(VivaxBrood(ctx, rng, InfectionOrigin::Indigenous, this));
 
     // update vivaxInfections
     // NOTE: currently no BSV model
@@ -368,7 +368,7 @@ void WHVivax::update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nN
 
     //NOTE: currently we don't model co-infection or indirect deaths
     if (morbidity == Pathogenesis::NONE) {
-        morbidity = Pathogenesis::Model::sampleNMF(rng, ageInYears);
+        morbidity = Pathogenesis::PathogenesisModel::sampleNMF(rng, ageInYears);
     }
 }
 
@@ -414,9 +414,10 @@ bool WHVivax::treatSimple(Host::Human& human, SimTime timeLiver, SimTime timeBlo
     if (timeLiver != sim::zero()) {
         if (pReceivePQ > 0.0) {
             // This is only really disallowed to prevent simultaneous treatment through both methods
-            throw util::xml_error("simple treatment for vivax liver "
-                                  "stages is incompatible with case-management pUseUncomplicated "
-                                  "(liverStageDrug) option; it is suggested to use the former over the latter");
+            throw util::xml_scenario_error(
+                "simple treatment for vivax liver "
+                "stages is incompatible with case-management pUseUncomplicated "
+                "(liverStageDrug) option; it is suggested to use the former over the latter");
         }
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
         if ((ignoreNoPQ || !noPQ) && (effectivenessPQ == 1.0 || human.rng().bernoulli(effectivenessPQ))) {

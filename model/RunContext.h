@@ -46,10 +46,10 @@ class Scenario;
 namespace OM {
 
 // Forward declarations for the registry members below: their defining headers
-// need a complete Context (they would cycle through Context.h), so this
+// need a complete RunContext (they would cycle through RunContext.h), so this
 // header only ever sees pointers to them. gcc instantiates member deleters at
 // class scope, so any member whose type is incomplete here is a raw pointer
-// created by Context's out-of-line ctor and deleted by its out-of-line
+// created by RunContext's out-of-line ctor and deleted by its out-of-line
 // dtor (model/run.cpp).
 namespace Clinical {
 struct FlatTree;
@@ -84,17 +84,17 @@ struct Infection;
 }
 
 /** The simulation clock and scenario time constants: everything the old
- * sim class stored in globals. Constructed fresh with each Context, so
+ * sim class stored in globals. Constructed fresh with each RunContext, so
  * independent runs never share clock state. Values and construction order
  * match the old sim:: statics exactly. */
 
 /** Everything one simulation run owns: clock, RNGs, registries, intervention
  * state, monitoring, continuous output. Owned by the caller of
  * run_simulation(); never a global. */
-class Context {
+class RunContext {
   public:
-    Context();  // out-of-line: news the pointer members (run.cpp)
-    ~Context(); // out-of-line: deletes them (incomplete types here)
+    RunContext();  // out-of-line: news the pointer members (run.cpp)
+    ~RunContext(); // out-of-line: deletes them (incomplete types here)
 
     SimClock clock;
     /** Master RNG. // parity: order — constructed here (0, 0), matching the
@@ -114,7 +114,7 @@ class Context {
     // ——— Per-run registries (was: struct RunExtensions, reached via an ext
     // indirection created by ensure_extensions(); dissolved into plain
     // members). // parity: declaration order below == the old RunExtensions
-    // order == creation order in Context's ctor; registries and unittest
+    // order == creation order in RunContext's ctor; registries and unittest
     // backend installers depend on it. Pointer members: see the forward
     // declarations above; created/destroyed out-of-line in run.cpp. ———
 
@@ -125,7 +125,7 @@ class Context {
     /// WithinHost::Treatments option registry (built while reading XML).
     std::vector<WithinHost::Treatments>* whTreatments;
     /// Within-host infection factory, set by the active model's init.
-    WithinHost::Infection* (*createInfection)(Context&, util::LocalRng&, uint32_t, int) = nullptr;
+    WithinHost::Infection* (*createInfection)(RunContext&, util::LocalRng&, uint32_t, int) = nullptr;
     /// Unittest backend for WithinHost::WHInterface Kind::Mock (installed by
     /// unittest/WHMock.cpp; null in production, where Kind::Mock is never
     /// created). Same fn-pointer-table idiom as createInfection above.
@@ -133,7 +133,7 @@ class Context {
         void* state = nullptr;
         void (*treatment)(void* state);
         bool (*treatSimple)(void* state, SimTime timeLiver, SimTime timeBlood);
-        void (*treatPkPd)(void* state, Context& ctx, size_t schedule, size_t dosages, double age, double delay_d);
+        void (*treatPkPd)(void* state, RunContext& ctx, size_t schedule, size_t dosages, double age, double delay_d);
         double (*getTotalDensity)(const void* state);
         bool (*diagnosticResult)(const void* state, util::LocalRng& rng, const WithinHost::Diagnostic& diagnostic);
     };
@@ -184,7 +184,7 @@ class Context {
 
     /// Monitoring runtime state (survey numbers, stores, conditions; mon/).
     /// (Pointer member: its map keys need ComponentId from the heavy
-    /// intervention headers, which need a complete Context.)
+    /// intervention headers, which need a complete RunContext.)
     mon::internal::RuntimeState* monitoring;
 };
 
@@ -196,6 +196,6 @@ class Context {
  * model any number of times independently. Exceptions are not caught:
  * main() (and TwoRunsSuite) own the error reporting. Assumes
  * util::CommandLine::parse() has already been called. */
-void run_simulation(Context& ctx, const std::string& scenarioFile);
+void run_simulation(RunContext& ctx, const std::string& scenarioFile);
 
 }

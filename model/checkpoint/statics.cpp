@@ -30,12 +30,12 @@
 #include "sections.h"
 
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "Host/NeonatalMortality.h"
-#include "Host/IncidenceModel.h"
+#include "Host/InfectionIncidenceModel.h"
 #include "Host/ImportedInfections.h"
 #include "Host/WithinHost/Genotypes.h"
-#include "Clinical/Model.h"
+#include "Clinical/ClinicalModel.h"
 #include "mon/Monitoring.h"
 
 namespace OM {
@@ -44,7 +44,7 @@ namespace OM {
 // external linkage; the checkpoint module is the only code outside those TUs
 // that touches them):
 namespace Clinical {
-extern std::vector<int> infantDeaths;          // Model.cpp
+extern std::vector<int> infantDeaths;          // ClinicalModel.cpp
 extern std::vector<int> infantIntervalsAtRisk; // ditto
 }
 namespace Host {
@@ -58,8 +58,8 @@ void neonatalStatics(checkpoint::Archive& a) {
     a.value(riskFromMaternalInfection);
     a.vector(prevByGestationalAge);
 }
-/// IncidenceModel run counter (was IncidenceModel::staticCheckpoint).
-void infectionIncidenceStatics(checkpoint::Archive& a) { a.value(IncidenceModel::ctsNewInfections); }
+/// InfectionIncidenceModel run counter (was InfectionIncidenceModel::staticCheckpoint).
+void infectionIncidenceStatics(checkpoint::Archive& a) { a.value(InfectionIncidenceModel::ctsNewInfections); }
 /// ImportedInfections rate-table cursor (was ImportedInfections::checkpoint).
 void checkpoint(checkpoint::Archive& a, ImportedInfections& ii) { a.value(ii.lastIndex); }
 } // namespace Host
@@ -74,7 +74,7 @@ void infantMortalityStatics(checkpoint::Archive& a) {
 
 namespace checkpoint {
 
-void ckStatics(Archive& a, Context& ctx) {
+void ckStatics(Archive& a, RunContext& ctx) {
     Host::neonatalStatics(a);
     Host::infectionIncidenceStatics(a);
     Clinical::infantMortalityStatics(a);
@@ -99,7 +99,7 @@ template <class T> void fixedVector(Archive& a, std::vector<T>& v) {
 }
 } // namespace
 
-void ckMonitoring(Archive& a, Context& ctx) {
+void ckMonitoring(Archive& a, RunContext& ctx) {
     // Continuous output: resume position in the cts file (header written by
     // Continuous::init; rows are flushed per record, so this is exact).
     a.value(ctx.ctsStreamOffset);

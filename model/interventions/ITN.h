@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "Context.h"
+#include "RunContext.h"
 #include "interventions/ComponentId.h"
 #include "util/DecayFunction.h"
 #include "util/sampler.h"
@@ -165,7 +165,7 @@ namespace factors {
 // deploy_component switch in model/xml/HumanInterventionComponents.h).
 struct ITNParams {
 public:
-    ITNParams( Context& ctx, ComponentId id, const scnXml::ITNDescription& elt,
+    ITNParams( RunContext& ctx, ComponentId id, const scnXml::ITNDescription& elt,
                const map< string, size_t >& species_name_map );
     
     // members are public: read by the iv_* record functions (interventions/IvState)

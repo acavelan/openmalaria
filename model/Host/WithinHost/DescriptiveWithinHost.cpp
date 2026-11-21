@@ -21,12 +21,12 @@
  */
 
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Genotypes.h"
-#include "Host/WithinHost/Pathogenesis.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "util/ModelOptions.h"
 #include "util/StreamValidator.h"
 #include "util/errors.h"
@@ -42,14 +42,14 @@ extern bool bugfix_max_dens; // DescriptiveInfection.cpp
 bool reportPatentInfected = false;
 // -----  Initialization  -----
 
-void WHDescriptive::init(Context& ctx) {
+void WHDescriptive::init(RunContext& ctx) {
     reportPatentInfected = (mon::isUsed(ctx, mon::measure("totalPatentInf")) ||
                             mon::isUsed(ctx, mon::measure("totalPatentInf_Imported")) ||
                             mon::isUsed(ctx, mon::measure("totalPatentInf_Introduced")) ||
                             mon::isUsed(ctx, mon::measure("totalPatentInf_Indigenous")));
 }
 
-WHDescriptive::WHDescriptive(Context& ctx, LocalRng& rng, double comorbidityFactor)
+WHDescriptive::WHDescriptive(RunContext& ctx, LocalRng& rng, double comorbidityFactor)
     : WHFalciparum(ctx, rng, comorbidityFactor, Kind::Descriptive) {
     assert(ctx.clock.one_TS() == sim::fromDays(5));
     opt_vaccine_genotype = util::ModelOptions::option(util::VACCINE_GENOTYPE);
@@ -68,7 +68,7 @@ void WHDescriptive::importInfection(LocalRng& rng) {
         // should use initial frequencies to select genotypes.
         vector<double> weights(0); // zero length: signal to use initial frequencies
         uint32_t genotype = ctx.genotypes.sampleGenotype(rng, weights);
-        infections.push_back(new DescriptiveInfection(ctx, rng, genotype, Origin::Imported));
+        infections.push_back(new DescriptiveInfection(ctx, rng, genotype, InfectionOrigin::Imported));
     }
     assert(numInfs == static_cast<int>(infections.size()));
 }
@@ -90,10 +90,10 @@ void WHDescriptive::update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, i
     struct Side {
         vector<double>& weights;
         int& nNewInfs;
-        Origin origin;
+        InfectionOrigin origin;
     };
-    Side sides[] = {{genotype_weights_i, nNewInfs_i, Origin::Introduced},
-                    {genotype_weights_l, nNewInfs_l, Origin::Indigenous}};
+    Side sides[] = {{genotype_weights_i, nNewInfs_i, InfectionOrigin::Introduced},
+                    {genotype_weights_l, nNewInfs_l, InfectionOrigin::Indigenous}};
     for (Side& side : sides) {
         numInfs += side.nNewInfs;
         assert(numInfs >= 0 && numInfs <= SlotAllocator::MAX_INFECTIONS);
@@ -200,23 +200,23 @@ void WHDescriptive::update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, i
 bool WHDescriptive::summarize(Host::Human& human) const {
     pathogenesisModel->summarize(human);
 
-    Origin infectionType = get_infection_origin(infections);
+    InfectionOrigin infectionType = get_infection_origin(infections);
 
     // If the number of infections is 0 and parasite density is positive we default to Indigenous
     if (infections.size() > 0) {
         mon::recordStat(mon::measure("nInfect"), human);
-        if (infectionType == Origin::Indigenous)
+        if (infectionType == InfectionOrigin::Indigenous)
             mon::recordStat(mon::measure("nInfect_Indigenous"), human);
-        else if (infectionType == Origin::Introduced)
+        else if (infectionType == InfectionOrigin::Introduced)
             mon::recordStat(mon::measure("nInfect_Introduced"), human);
         else
             mon::recordStat(mon::measure("nInfect_Imported"), human);
 
         int nImported = 0, nIntroduced = 0, nIndigenous = 0;
         for (auto inf = infections.begin(); inf != infections.end(); ++inf) {
-            if ((*inf)->origin() == Origin::Indigenous)
+            if ((*inf)->origin() == InfectionOrigin::Indigenous)
                 nIndigenous++;
-            else if ((*inf)->origin() == Origin::Introduced)
+            else if ((*inf)->origin() == InfectionOrigin::Introduced)
                 nIntroduced++;
             else
                 nImported++;
@@ -231,11 +231,12 @@ bool WHDescriptive::summarize(Host::Human& human) const {
 
         if (reportPatentInfected) {
             for (auto inf = infections.begin(); inf != infections.end(); ++inf) {
-                if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), (*inf)->getDensity(), NaN)) {
+                if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), (*inf)->getDensity(),
+                                                                      std::numeric_limits<double>::quiet_NaN())) {
                     mon::recordStat(mon::measure("totalPatentInf"), human);
-                    if ((*inf)->origin() == Origin::Indigenous)
+                    if ((*inf)->origin() == InfectionOrigin::Indigenous)
                         mon::recordStat(mon::measure("totalPatentInf_Indigenous"), human);
-                    else if ((*inf)->origin() == Origin::Introduced)
+                    else if ((*inf)->origin() == InfectionOrigin::Introduced)
                         mon::recordStat(mon::measure("totalPatentInf_Introduced"), human);
                     else
                         mon::recordStat(mon::measure("totalPatentInf_Imported"), human);
@@ -251,7 +252,8 @@ bool WHDescriptive::summarize(Host::Human& human) const {
             for (auto gtype : dens_by_gtype) {
                 // we had at least one infection of this genotype
                 mon::recordStat(mon::measure("nInfectByGenotype"), human, 1, 0, gtype.first, 0);
-                if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), gtype.second, NaN)) {
+                if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), gtype.second,
+                                                                      std::numeric_limits<double>::quiet_NaN())) {
                     mon::recordStat(mon::measure("nPatentByGenotype"), human, 1, 0, gtype.first, 0);
                     mon::recordStat(mon::measure("logDensByGenotype"), human, log(gtype.second), 0, gtype.first, 0);
                 }
@@ -262,13 +264,14 @@ bool WHDescriptive::summarize(Host::Human& human) const {
     // Some treatments (simpleTreat with steps=-1) clear infections immediately
     // (and are applied after update()), thus infections.size() may be 0 while
     // totalDensity > 0. Here we report the last calculated density.
-    if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), totalDensity, NaN)) {
+    if (diagnostics::monitoringDiagnostic(ctx).isPositive(human.rng(), totalDensity,
+                                                          std::numeric_limits<double>::quiet_NaN())) {
         mon::recordStat(mon::measure("nPatent"), human);
-        if (infectionType == Origin::Imported)
+        if (infectionType == InfectionOrigin::Imported)
             mon::recordStat(mon::measure("nPatent_Imported"), human);
-        else if (infectionType == Origin::Introduced)
+        else if (infectionType == InfectionOrigin::Introduced)
             mon::recordStat(mon::measure("nPatent_Introduced"), human);
-        else if (infectionType == Origin::Indigenous)
+        else if (infectionType == InfectionOrigin::Indigenous)
             mon::recordStat(mon::measure("nPatent_Indigenous"), human);
 
         if (totalDensity > 1e-10)

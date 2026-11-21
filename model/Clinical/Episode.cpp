@@ -22,9 +22,9 @@
 
 // p8-files: header fold rejected — this TU reads Human/WHInterface, so inlining
 // into Episode.h would drag that chain into the whole clinical cone.
-#include "Context.h"
+#include "RunContext.h"
 #include "Clinical/Episode.h"
-#include "Clinical/Model.h"
+#include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/WHInterface.h"
 
@@ -38,12 +38,12 @@ void Episode::flush() {
     time = sim::never();
 }
 
-void Episode::update(Context& ctx, const Host::Human& human, Episode::State newState) {
+void Episode::update(RunContext& ctx, const Host::Human& human, Episode::State newState) {
     bool toReport = false;
 
-    if (healthSystemMemoryFix && (time + Model::hsMemory() <= ctx.clock.ts0()))
+    if (healthSystemMemoryFix && (time + ClinicalModel::hsMemory() <= ctx.clock.ts0()))
         toReport = true;
-    else if (!healthSystemMemoryFix && (time + Model::hsMemory() < ctx.clock.ts0()))
+    else if (!healthSystemMemoryFix && (time + ClinicalModel::hsMemory() < ctx.clock.ts0()))
         toReport = true;
 
     if (toReport) {
@@ -75,9 +75,9 @@ void Episode::report() {
             }
         } else { // UC or UC2
             mon::recordEvent(*rctx, mon::measure("nUncomp"), surveyPeriod, ageGroup, cohortSet);
-            if (infectionType == WithinHost::Origin::Indigenous)
+            if (infectionType == WithinHost::InfectionOrigin::Indigenous)
                 mon::recordEvent(*rctx, mon::measure("nUncomp_Indigenous"), surveyPeriod, ageGroup, cohortSet);
-            else if (infectionType == WithinHost::Origin::Introduced)
+            else if (infectionType == WithinHost::InfectionOrigin::Introduced)
                 mon::recordEvent(*rctx, mon::measure("nUncomp_Introduced"), surveyPeriod, ageGroup, cohortSet);
             else
                 mon::recordEvent(*rctx, mon::measure("nUncomp_Imported"), surveyPeriod, ageGroup, cohortSet);

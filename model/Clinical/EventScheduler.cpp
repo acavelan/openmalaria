@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Context.h"
+#include "RunContext.h"
 #include "Clinical/EventScheduler.h"
 #include "util/random.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -43,12 +43,12 @@ vector<double> ClinicalEventScheduler::cumDailyPrImmUCTS;
 double ClinicalEventScheduler::neg_v;
 double ClinicalEventScheduler::alpha;
 
-double ClinicalEventScheduler::logOddsAbBase = sNaN;
-double ClinicalEventScheduler::logOddsAbNegTest = sNaN;
-double ClinicalEventScheduler::logOddsAbPosTest = sNaN;
-double ClinicalEventScheduler::logOddsAbNeed = sNaN;
-double ClinicalEventScheduler::logOddsAbInformal = sNaN;
-double ClinicalEventScheduler::oneMinusEfficacyAb = sNaN;
+double ClinicalEventScheduler::logOddsAbBase = std::numeric_limits<double>::signaling_NaN();
+double ClinicalEventScheduler::logOddsAbNegTest = std::numeric_limits<double>::signaling_NaN();
+double ClinicalEventScheduler::logOddsAbPosTest = std::numeric_limits<double>::signaling_NaN();
+double ClinicalEventScheduler::logOddsAbNeed = std::numeric_limits<double>::signaling_NaN();
+double ClinicalEventScheduler::logOddsAbInformal = std::numeric_limits<double>::signaling_NaN();
+double ClinicalEventScheduler::oneMinusEfficacyAb = std::numeric_limits<double>::signaling_NaN();
 AgeGroupInterpolator ClinicalEventScheduler::severeNmfMortality;
 
 bool opt_non_malaria_fevers = false;
@@ -60,7 +60,7 @@ AgeGroupInterpolator ClinicalEventScheduler::MF_need_antibiotic;
 
 // -----  construction, destruction and checkpointing  -----
 
-void esClinicalUpdate(CMEventScheduler& cm, Context& ctx, Human& human, double ageYears,
+void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, double ageYears,
                       WithinHost::Pathogenesis::StatePair& pg) {
     WHInterface& withinHostModel = *human.withinHostModel;
     Episode::State newState = static_cast<Episode::State>(pg.state);
@@ -74,7 +74,7 @@ void esClinicalUpdate(CMEventScheduler& cm, Context& ctx, Human& human, double a
             cm.latestReport.update(ctx, human, cm.esPgState);
         } else {
             if (cm.esPgState & Episode::COMPLICATED) {
-                const double pSequelae = Model::pSequelaeInpatient.eval(ageYears);
+                const double pSequelae = ClinicalModel::pSequelaeInpatient.eval(ageYears);
                 mon::recordStat(mon::measure("expectedSequelae"), human, pSequelae);
                 // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
                 if (human.rng().uniform_01() < pSequelae) {
@@ -98,7 +98,7 @@ void esClinicalUpdate(CMEventScheduler& cm, Context& ctx, Human& human, double a
 
     // The bug fixed here is that indirectMortality was not set if no event occurred
     bool indirectMortality = false;
-    if (Model::indirectMortBugfix)
+    if (ClinicalModel::indirectMortBugfix)
         indirectMortality = pg.indirectMortality;
 
     if (newState & Episode::SICK) {
@@ -147,7 +147,7 @@ void esClinicalUpdate(CMEventScheduler& cm, Context& ctx, Human& human, double a
         cm.esPgState = Episode::State(cm.esPgState & ~Episode::RUN_CM_TREE);
 
         // If last treatment prescribed was in recent memory, consider second line.
-        if (cm.es_time_treatment() + Model::healthSystemMemory > ctx.clock.ts0()) {
+        if (cm.es_time_treatment() + ClinicalModel::healthSystemMemory > ctx.clock.ts0()) {
             cm.esPgState = Episode::State(cm.esPgState | Episode::SECOND_CASE);
         }
 
@@ -179,7 +179,7 @@ void esClinicalUpdate(CMEventScheduler& cm, Context& ctx, Human& human, double a
         // Case fatality rate (first day of illness)
         // P(death) is some fixed input scaled by age-specific CFR.
         if ((cm.esPgState & Episode::COMPLICATED) && !(cm.esPgState & Episode::DIRECT_DEATH)) {
-            double pDeath = Model::caseFatalityRate.eval(ageYears);
+            double pDeath = ClinicalModel::caseFatalityRate.eval(ageYears);
             // NOTE: hospitalisation is hardwired (was: const bool inHospital = true,
             // FIXME auxOut.hospitalisation == CMAuxOutput::IMMEDIATE), so the
             // community-CFR (!inHospital) branch and the inHospital guard around
@@ -265,7 +265,7 @@ void esClinicalUpdate(CMEventScheduler& cm, Context& ctx, Human& human, double a
                 double pDeath = 1.0 - exp(ClinicalEventScheduler::neg_v * parasiteReductionEffect);
                 // community fatality rate when not in hospital
                 if (!(cm.esPgState & Episode::EVENT_IN_HOSPITAL))
-                    pDeath = Model::getCommunityCFR(pDeath);
+                    pDeath = ClinicalModel::getCommunityCFR(pDeath);
                 mon::recordStat(mon::measure("expectedDirectDeaths"), human, pDeath);
                 if (cm.esPgState & Episode::EVENT_IN_HOSPITAL)
                     mon::recordStat(mon::measure("expectedHospitalDeaths"), human, pDeath);

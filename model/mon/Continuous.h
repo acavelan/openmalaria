@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include <string>
 #include "Population.h"
 #include "Host/Human.h"
@@ -49,7 +49,7 @@ namespace Continuous {
 	 * Callbacks should be registered before init() is called.
 	 * @param isCheckpoint  Resuming: reopen the existing output file without
 	 * truncating or rewriting the header (the checkpoint read seeks it). */
-void init(Context& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint = false);
+void init(RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint = false);
 
 /** Register a callback function which produces output.
 	 *
@@ -63,25 +63,25 @@ void init(Context& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint 
 	 * @param outputCb A callback function, which when called, outputs its
 	 * data to the passed stream, with each entry preceeded by '\t'.
 	 */
-void registerCallback(Context& ctx, string optName, string titles, function<void(ostream&)> f);
+void registerCallback(RunContext& ctx, string optName, string titles, function<void(ostream&)> f);
 
-void registerCallback(Context& ctx, string optName, string titles,
+void registerCallback(RunContext& ctx, string optName, string titles,
                       function<void(const vector<Host::Human>&, ostream&)> f);
 
-void registerCallback(Context& ctx, string optName, string titles, function<void(Population&, ostream&)> f);
+void registerCallback(RunContext& ctx, string optName, string titles, function<void(Population&, ostream&)> f);
 
 /// Generate time-step's output. Called at beginning of time step.
 /// Passed population since some callbacks use this to generate output.
-void update(Context& ctx, Population& population);
+void update(RunContext& ctx, Population& population);
 
-inline void registerCallback(Context& ctx, string optName, string titles, function<void(ostream&)> f) {
+inline void registerCallback(RunContext& ctx, string optName, string titles, function<void(ostream&)> f) {
     auto& registered = ctx.ctsRegistered;
     assert(registered.count(optName) == 0); // name clash/registered twice?
     function<void(const Population&, ostream&)> _f = [f](const Population&, ostream& ostream) { f(ostream); };
     registered[optName] = {titles, _f};
 }
 
-inline void registerCallback(Context& ctx, string optName, string titles,
+inline void registerCallback(RunContext& ctx, string optName, string titles,
                              function<void(const vector<Host::Human>&, ostream&)> f) {
     auto& registered = ctx.ctsRegistered;
     assert(registered.count(optName) == 0); // name clash/registered twice?
@@ -91,13 +91,13 @@ inline void registerCallback(Context& ctx, string optName, string titles,
     registered[optName] = {titles, _f};
 }
 
-inline void registerCallback(Context& ctx, string optName, string titles, function<void(Population&, ostream&)> f) {
+inline void registerCallback(RunContext& ctx, string optName, string titles, function<void(Population&, ostream&)> f) {
     auto& registered = ctx.ctsRegistered;
     assert(registered.count(optName) == 0); // name clash/registered twice?
     registered[optName] = {titles, f};
 }
 
-inline void update(Context& ctx, Population& population) {
+inline void update(RunContext& ctx, Population& population) {
     auto& ctsOStream = ctx.ctsOStream;
     auto& toReport = ctx.ctsToReport;
     const SimTime ctsPeriod = ctx.ctsPeriod;

@@ -67,9 +67,9 @@ unique_ptr<Sampler> Sampler::fromMeanCV(Kind kind, double mean, double CV, std::
 
     if (kind == Kind::Gamma) {
         if (mean <= 0)
-            throw util::xml_error("gamma: required mean > 0");
+            throw util::xml_scenario_error("gamma: required mean > 0");
         if (CV < 0)
-            throw util::xml_error("gamma: required CV >= 0");
+            throw util::xml_scenario_error("gamma: required CV >= 0");
 
         sampler->mu = mean;
         sampler->CV = CV;
@@ -92,15 +92,15 @@ unique_ptr<Sampler> Sampler::fromMeanCV(Kind kind, double mean, double CV, std::
         else if (mean > 0)
             sampler->mu = log(mean);
         else
-            throw util::xml_error("const: required mean > 0");
+            throw util::xml_scenario_error("const: required mean > 0");
         return sampler;
     }
 
     // The distribution is not "const"
     if (mean <= 0)
-        throw util::xml_error("log-normal: required mean > 0");
+        throw util::xml_scenario_error("log-normal: required mean > 0");
     if (CV < 0)
-        throw util::xml_error("log-normal: required CV >= 0");
+        throw util::xml_scenario_error("log-normal: required CV >= 0");
 
     // The following formulae are derived from:
     // X ~ lognormal(μ, σ)
@@ -123,9 +123,9 @@ unique_ptr<Sampler> Sampler::fromMeanVariance(Kind kind, double mean, double var
 
     if (kind == Kind::Gamma) {
         if (mean <= 0)
-            throw util::xml_error("gamma: required mean > 0");
+            throw util::xml_scenario_error("gamma: required mean > 0");
         if (variance < 0)
-            throw util::xml_error("gamma: required variance >= 0");
+            throw util::xml_scenario_error("gamma: required variance >= 0");
 
         sampler->mu = mean;
         sampler->variance = variance;
@@ -145,15 +145,15 @@ unique_ptr<Sampler> Sampler::fromMeanVariance(Kind kind, double mean, double var
         if (mean > 0)
             sampler->mu = log(mean);
         else
-            throw util::xml_error("const: required mean > 0");
+            throw util::xml_scenario_error("const: required mean > 0");
         return sampler;
     }
 
     // The distribution is not "const"
     if (mean <= 0)
-        throw util::xml_error("log-normal: required mean > 0");
+        throw util::xml_scenario_error("log-normal: required mean > 0");
     if (variance < 0)
-        throw util::xml_error("log-normal: required variance >= 0");
+        throw util::xml_scenario_error("log-normal: required variance >= 0");
 
     // The following formulae are derived from:
     // X ~ lognormal(μ, σ)
@@ -235,7 +235,7 @@ void BetaSampler::setParamsMV(double mean, double variance) {
         // a = c*b;
 
         if (variance >= mean * (1.0 - mean))
-            throw util::xml_error("BetaSampler::setParamsMV: require variance < mean(1.0 - mean)");
+            throw util::xml_scenario_error("BetaSampler::setParamsMV: require variance < mean(1.0 - mean)");
 
         double c = mean * ((1.0 - mean) / variance) - 1.0;
         a = mean * c;
@@ -243,12 +243,12 @@ void BetaSampler::setParamsMV(double mean, double variance) {
     } else if (variance == 0.0) {
         // Not using the Beta distirbution, we simply return the mean when sampling
         if (variance != 0.0) {
-            throw util::xml_error("BetaSampler::setParamsMV: require variance ≥ 0");
+            throw util::xml_scenario_error("BetaSampler::setParamsMV: require variance ≥ 0");
         }
         a = mean;
         b = 0.0;
     } else
-        throw util::xml_error("BetaSampler::setParamsMV: require variance ≥ 0");
+        throw util::xml_scenario_error("BetaSampler::setParamsMV: require variance ≥ 0");
 }
 
 double BetaSampler::sample(LocalRng& rng) const {

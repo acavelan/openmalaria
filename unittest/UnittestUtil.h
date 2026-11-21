@@ -28,7 +28,7 @@
 #include "Clock.h"
 #include "util/ModelOptions.h"
 
-#include "Clinical/Model.h"
+#include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
 #include "PkPd/LSTMModel.h"
 #include "PkPd/LSTMDrugType.h"
@@ -223,8 +223,8 @@ scnXml::Scenario scenario(demography, monitoring, interventions, healthSystem, e
 class UnittestUtil {
   public:
     // Shared clock fixture for all suites (one process, many suites).
-    static Context& ctx() {
-        static Context c;
+    static RunContext& ctx() {
+        static RunContext c;
         return c;
     }
     static const SimClock& clock() { return ctx().clock; }

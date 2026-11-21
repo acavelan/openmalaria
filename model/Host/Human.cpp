@@ -20,13 +20,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Context.h"
+#include "RunContext.h"
 #include "Host/Human.h"
-#include "Host/IncidenceModel.h"
-#include "Clinical/Model.h"
+#include "Host/InfectionIncidenceModel.h"
+#include "Clinical/ClinicalModel.h"
 #include "Host/WithinHost/WHInterface.h"
 
-#include "Transmission/Model.h"
+#include "Transmission/TransmissionModel.h"
 #include "util/ModelOptions.h"
 #include "util/vectors.h"
 #include "util/StreamValidator.h"
@@ -42,7 +42,7 @@ using interventions::ComponentId;
 
 struct HumanHet {
     /* Human heterogeneity; affects:
-     * comorbidityFactor (stored in Model)
+     * comorbidityFactor (stored in PathogenesisModel)
      * treatmentSeekingFactor (stored in CaseManagementModel)
      * availabilityFactor (stored in Transmission::PerHost) */
     double comorbidityFactor;
@@ -118,8 +118,8 @@ HumanHet hetSample(util::LocalRng& rng)
     return het;
 }
 
-Human::Human(Context& ctx, SimTime dateOfBirth, HumanColumns& columns)
-    : ctx(&ctx), cols(&columns), infIncidence(IncidenceModel::createModel(ctx)) {
+Human::Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns)
+    : ctx(&ctx), cols(&columns), infIncidence(InfectionIncidenceModel::createModel(ctx)) {
     // parity: order — each Human copies+seeds its LocalRng from the master at
     // construction (append_row builds the rng column row; same ctor point as
     // the old member init): human-creation order == master consumption order;
@@ -136,7 +136,7 @@ Human::Human(Context& ctx, SimTime dateOfBirth, HumanColumns& columns)
     perHostTransmission.ctx = &ctx;
     perHostTransmission.bind_columns(columns, row);
     perHostTransmission.initialise(ctx, rng(), het.availabilityFactor * iiFactor);
-    clinicalModel = Clinical::Model::createClinicalModel(ctx, het.treatmentSeekingFactor);
+    clinicalModel = Clinical::ClinicalModel::createClinicalModel(ctx, het.treatmentSeekingFactor);
     clinicalModel->bind_columns(columns, row);
 }
 
@@ -226,7 +226,7 @@ void Human::updateCohortSet() {
 }
 
 // -----  Non-static functions: per-time-step update  -----
-void summarize(Context& ctx, Human& human, bool surveyOnlyNewEp) {
+void summarize(RunContext& ctx, Human& human, bool surveyOnlyNewEp) {
     if (surveyOnlyNewEp && human.clinicalModel->isExistingCase()) {
         // This modifies the denominator to treat the health-system-memory
         // period immediately after a bout as 'not at risk'.
@@ -309,7 +309,7 @@ void host_clinical_update(HostView& v) {
 
 void host_update_infant_deaths(HostView& v) { v.human.clinicalModel->updateInfantDeaths(v.scratch.age0); }
 
-void update(Context& ctx, Human& human, Transmission::Model& transmission, HostScratch& scratch) {
+void update(RunContext& ctx, Human& human, Transmission::TransmissionModel& transmission, HostScratch& scratch) {
     HostView v{ctx, human, transmission, scratch};
     // For integer age checks we use age0 to e.g. get 73 steps comparing less than 1 year old
     scratch.age0 = human.age(ctx.clock.ts0());

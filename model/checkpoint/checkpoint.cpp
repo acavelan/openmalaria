@@ -38,7 +38,7 @@
 #include "checkpoint.h"
 #include "sections.h"
 
-#include "Context.h"
+#include "RunContext.h"
 
 #include <fstream>
 
@@ -62,7 +62,7 @@ void ckHeader(Archive& a) {
     }
 }
 
-void ckClock(Archive& a, Context& ctx, Phase& phase, SimTime& endTime, SimTime& estEndTime) {
+void ckClock(Archive& a, RunContext& ctx, Phase& phase, SimTime& endTime, SimTime& estEndTime) {
     uint8_t p = uint8_t(phase);
     a.value(p);
     if (a.reading()) {
@@ -78,8 +78,8 @@ void ckClock(Archive& a, Context& ctx, Phase& phase, SimTime& endTime, SimTime& 
 }
 } // namespace
 
-void writeCheckpoint(Context& ctx, Population& population, Transmission::Model& transmission, Phase phase,
-                     SimTime endTime, SimTime estEndTime, const std::string& path) {
+void writeCheckpoint(RunContext& ctx, Population& population, Transmission::TransmissionModel& transmission,
+                     Phase phase, SimTime endTime, SimTime estEndTime, const std::string& path) {
     std::ofstream out(path, std::ios::binary | std::ios::trunc);
     if (!out.is_open())
         throw checkpoint_error("cannot open \"" + path + "\" for writing");
@@ -100,8 +100,8 @@ void writeCheckpoint(Context& ctx, Population& population, Transmission::Model& 
         throw checkpoint_error("error writing \"" + path + "\"");
 }
 
-void readCheckpoint(Context& ctx, Population& population, Transmission::Model& transmission, Phase& phase,
-                    SimTime& endTime, SimTime& estEndTime, const std::string& path) {
+void readCheckpoint(RunContext& ctx, Population& population, Transmission::TransmissionModel& transmission,
+                    Phase& phase, SimTime& endTime, SimTime& estEndTime, const std::string& path) {
     std::ifstream in(path, std::ios::binary);
     if (!in.is_open())
         throw checkpoint_error("cannot open checkpoint \"" + path + "\"");

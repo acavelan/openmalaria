@@ -23,7 +23,7 @@
 // p8-files: PerHost.h is read by interventions + WH + checkpoint paths; the
 // bit-vector deploy/restore bodies stay here (wide-cone rule).
 #include "Transmission/PerHost.h"
-#include "Transmission/Model.h"
+#include "Transmission/TransmissionModel.h"
 #include "Host/Human.h"
 #include "interventions/IvState.h"
 #include "util/errors.h"
@@ -44,7 +44,7 @@ PerHost::PerHost() {
     // are now the column defaults in append_row.
 }
 
-void PerHost::initialise(Context& ctx, LocalRng& rng, double availabilityFactor) {
+void PerHost::initialise(RunContext& ctx, LocalRng& rng, double availabilityFactor) {
     rel_avail_het() = availabilityFactor;
     anoph_ento_raw().resize(PerHostAnophParams::numSpecies(ctx));
     anoph_ento_avail().resize(PerHostAnophParams::numSpecies(ctx));
@@ -116,17 +116,19 @@ bool PerHost::hasActiveInterv(interventions::Component::Type type) const {
 namespace OM {
 namespace Transmission {
 
-void PerHostAnophParams::init(Context& ctx, const scnXml::Mosq& mosq) { ctx.anophParams->emplace_back(mosq); }
+void PerHostAnophParams::init(RunContext& ctx, const scnXml::Mosq& mosq) { ctx.anophParams->emplace_back(mosq); }
 
-size_t PerHostAnophParams::numSpecies(Context& ctx) { return ctx.anophParams->size(); }
+size_t PerHostAnophParams::numSpecies(RunContext& ctx) { return ctx.anophParams->size(); }
 
-const PerHostAnophParams& PerHostAnophParams::get(Context& ctx, size_t species) { return (*ctx.anophParams)[species]; }
+const PerHostAnophParams& PerHostAnophParams::get(RunContext& ctx, size_t species) {
+    return (*ctx.anophParams)[species];
+}
 
-void PerHostAnophParams::setEntoAvailabilityFactor(Context& ctx, size_t species, double entoAvailability) {
+void PerHostAnophParams::setEntoAvailabilityFactor(RunContext& ctx, size_t species, double entoAvailability) {
     (*ctx.anophParams)[species].entoAvailabilityFactor = entoAvailability;
 }
 
-void PerHostAnophParams::calcAvailabilityPercentiles(Context& ctx) {
+void PerHostAnophParams::calcAvailabilityPercentiles(RunContext& ctx) {
     auto& params = (*ctx.anophParams);
     auto& entoAvailabilityPercentiles = ctx.entoAvailabilityPercentiles;
     int nSamples = 100000;
@@ -159,14 +161,15 @@ void PerHostAnophParams::calcAvailabilityPercentiles(Context& ctx) {
     entoAvailabilityPercentiles[0] = 0.0;
 }
 
-double PerHostAnophParams::getEntoAvailabilityPercentile(Context& ctx, int p) {
+double PerHostAnophParams::getEntoAvailabilityPercentile(RunContext& ctx, int p) {
     auto& entoAvailabilityPercentiles = ctx.entoAvailabilityPercentiles;
     if (p >= 0 && p < 100)
         return entoAvailabilityPercentiles[p];
     else if (p == 100)
         return std::numeric_limits<double>::max();
     else
-        throw util::xml_error("Availability percentiles in intervention specifications can only be in [0 and 100]");
+        throw util::xml_scenario_error(
+            "Availability percentiles in intervention specifications can only be in [0 and 100]");
 }
 
 }

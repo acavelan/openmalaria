@@ -25,7 +25,7 @@
 
 #include "Clock.h"
 
-#include "Context.h"
+#include "RunContext.h"
 
 #include "util/errors.h"
 #include "util/CommandLine.h"
@@ -39,12 +39,12 @@
 #include "mon/Monitoring.h"
 
 #include "interventions/InterventionManager.h"
-#include "Clinical/Model.h"
+#include "Clinical/ClinicalModel.h"
 
 #include "Host/NeonatalMortality.h"
 #include "Transmission/transmission.h"
-// Context's pointer members + Treatments::select need these complete
-// (they cannot be pulled in through Context.h — include cycle):
+// RunContext's pointer members + Treatments::select need these complete
+// (they cannot be pulled in through RunContext.h — include cycle):
 #include "Clinical/CMDecisionTree.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/ImportedInfections.h"
@@ -57,7 +57,7 @@
 
 namespace OM {
 using interventions::InterventionManager;
-using Transmission::Model;
+using Transmission::TransmissionModel;
 }
 
 using namespace OM;
@@ -65,7 +65,7 @@ using namespace OM;
 namespace OM {
 namespace {
 
-void print_progress(const Context& ctx, int& lastPercent, SimTime& estEndTime)
+void print_progress(const RunContext& ctx, int& lastPercent, SimTime& estEndTime)
 // parity: was a by-value param + static lastPercent (latent bug: static never
 // resets in-process); now the caller owns the counter — single-run output unchanged
 {
@@ -76,7 +76,7 @@ void print_progress(const Context& ctx, int& lastPercent, SimTime& estEndTime)
     }
 }
 
-void print_errno(const Context& ctx) {
+void print_errno(const RunContext& ctx) {
     if (errno != 0) {
         char err[256];
         sprintf(err, "t = %d Please report! Error: ", int(ctx.clock.now()));
@@ -87,8 +87,8 @@ void print_errno(const Context& ctx) {
 
 // --save-to FILE: write the checkpoint and exit successfully (main maps
 // cmd_exception code 0 to a clean exit; destructors close the output files).
-void save_and_exit(Context& ctx, Population& population, Model& transmission, checkpoint::Phase phase, SimTime& endTime,
-                   SimTime& estEndTime) {
+void save_and_exit(RunContext& ctx, Population& population, TransmissionModel& transmission, checkpoint::Phase phase,
+                   SimTime& endTime, SimTime& estEndTime) {
     checkpoint::writeCheckpoint(ctx, population, transmission, phase, endTime, estEndTime,
                                 util::CommandLine::getSaveName());
     throw util::cmd_exception("checkpoint written to " + util::CommandLine::getSaveName(), util::Error::None);
@@ -96,8 +96,8 @@ void save_and_exit(Context& ctx, Population& population, Model& transmission, ch
 
 // --save-at DAY (not "main", handled at the main-phase reset): fire once at
 // the first loop boundary at or after the given simulation day.
-void maybe_save(Context& ctx, Population& population, Model& transmission, bool mainPhase, SimTime& endTime,
-                SimTime& estEndTime) {
+void maybe_save(RunContext& ctx, Population& population, TransmissionModel& transmission, bool mainPhase,
+                SimTime& endTime, SimTime& estEndTime) {
     const string spec = util::CommandLine::getSaveName().empty() ? string() : util::CommandLine::getSaveAt();
     if (spec.empty() || spec == "main")
         return;
@@ -107,8 +107,8 @@ void maybe_save(Context& ctx, Population& population, Model& transmission, bool 
 }
 
 // Internal simulation loop
-void run(Context& ctx, Population& population, Model& transmission, SimTime humanWarmupLength, SimTime& endTime,
-         SimTime& estEndTime, bool surveyOnlyNewEp, string phase) {
+void run(RunContext& ctx, Population& population, TransmissionModel& transmission, SimTime humanWarmupLength,
+         SimTime& endTime, SimTime& estEndTime, bool surveyOnlyNewEp, string phase) {
     int lastPercent = -1;
     const bool mainPhase = phase == "Intervention period";
 
@@ -174,11 +174,11 @@ void run(Context& ctx, Population& population, Model& transmission, SimTime huma
 
 } // namespace
 
-/// Context ctor/dtor: create/destroy the registry pointer members.
+/// RunContext ctor/dtor: create/destroy the registry pointer members.
 /// // parity: order — identical to the old ensure_extensions()/RunExtensions
-/// member-init order (declaration order of Context.h); registries and
+/// member-init order (declaration order of RunContext.h); registries and
 /// unittest backend installers depend on it.
-Context::Context()
+RunContext::RunContext()
     : decision_trees(new std::vector<std::unique_ptr<Clinical::FlatTree>>),
       whTreatments(new std::vector<WithinHost::Treatments>),
       humanComponents(new std::vector<interventions::ComponentConfig>),
@@ -189,7 +189,7 @@ Context::Context()
 
 // (was: delete ext; destroys the old RunExtensions members in the same
 // reverse-declaration order)
-Context::~Context() {
+RunContext::~RunContext() {
     delete monitoring;
     delete anophParams;
     delete importedInfections;
@@ -202,13 +202,13 @@ Context::~Context() {
 }
 
 // The one accessor for a TreatmentId (plain struct now; needs whTreatments).
-const WithinHost::Treatments& WithinHost::Treatments::select(Context& ctx, TreatmentId treatId) {
+const WithinHost::Treatments& WithinHost::Treatments::select(RunContext& ctx, TreatmentId treatId) {
     assert(treatId.id < ctx.whTreatments->size());
     return (*ctx.whTreatments)[treatId.id];
 }
 
 /// run_simulation() — loads scenario XML and runs the simulation (was main())
-void run_simulation(Context& ctx, const std::string& scenarioFile) {
+void run_simulation(RunContext& ctx, const std::string& scenarioFile) {
     SimTime estEndTime, endTime;
 
     util::set_gsl_handler();
@@ -244,9 +244,9 @@ void run_simulation(Context& ctx, const std::string& scenarioFile) {
 
     // Init models used by humans
     Transmission::PerHost::init(ctx, scenario->getModel().getHuman().getAvailabilityToMosquitoes());
-    Host::IncidenceModel::init(ctx, parameters);
+    Host::InfectionIncidenceModel::init(ctx, parameters);
     WithinHost::WHInterface::init(ctx, parameters, *scenario);
-    Clinical::Model::init(ctx, parameters, *scenario);
+    Clinical::ClinicalModel::init(ctx, parameters, *scenario);
     Host::NeonatalMortality::init(ctx, scenario->getModel().getClinical());
     AgeStructure::init(ctx, scenario->getDemography());
 
@@ -258,16 +258,16 @@ void run_simulation(Context& ctx, const std::string& scenarioFile) {
     size_t popSize = scenario->getDemography().getPopSize();
 
     std::unique_ptr<Population> population = std::unique_ptr<Population>(new Population(ctx, popSize));
-    std::unique_ptr<Model> transmission =
-        std::unique_ptr<Model>(Transmission::createTransmissionModel(ctx, scenario->getEntomology(), popSize));
+    std::unique_ptr<TransmissionModel> transmission = std::unique_ptr<TransmissionModel>(
+        Transmission::createTransmissionModel(ctx, scenario->getEntomology(), popSize));
 
     registerContinousPopulationCallbacks(ctx);
 
     // Depends on transmission model (for species indexes):
     // MDA1D may depend on health system (too complex to verify)
     interventions::InterventionManager::init(ctx, scenario->getInterventions(), *transmission);
-    Clinical::Model::setHS(ctx, scenario->getHealthSystem()); // Depends on interventions, PK/PD (from humanPop)
-    mon::initCohorts(ctx, scenario->getMonitoring());         // Depends on interventions
+    Clinical::ClinicalModel::setHS(ctx, scenario->getHealthSystem()); // Depends on interventions, PK/PD (from humanPop)
+    mon::initCohorts(ctx, scenario->getMonitoring());                 // Depends on interventions
 
     bool surveyOnlyNewEp = scenario->getMonitoring().getSurveyOptions().getOnlyNewEpisode();
 
@@ -341,11 +341,11 @@ void run_simulation(Context& ctx, const std::string& scenarioFile) {
         // reset endTime and estEndTime to their exact value after initIterate()
         estEndTime = endTime = endTime + (ctx.clock.end_date - ctx.clock.start_date) + ctx.clock.one_TS();
         ctx.clock.interv = sim::zero();
-        Host::IncidenceModel::preMainSimInit();
+        Host::InfectionIncidenceModel::preMainSimInit();
         Clinical::InfantMortality::preMainSimInit();
         ctx.genotypes.preMainSimInit();
         population->recentBirths = 0;
-        transmission->summarize(ctx); // Only to reset Model::inoculationsPerAgeGroup
+        transmission->summarize(ctx); // Only to reset TransmissionModel::inoculationsPerAgeGroup
         mon::initMainSim(ctx);
 
         // --save-at main: checkpoint exactly at the start of the main phase.

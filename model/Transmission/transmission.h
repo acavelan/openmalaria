@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "Transmission/Model.h"
+#include "Transmission/TransmissionModel.h"
 #include "Transmission/Anopheles/AnophelesModel.h"
 #include "Transmission/Anopheles/EmergenceRateEstimator.h"
 #include "util/ModelOptions.h"
@@ -47,16 +47,16 @@ inline SimulationMode readMode(const string& str) {
     else
         // Note: originally 3 (transientEIRknown) could be specified; now it's
         // set automatically.
-        throw util::xml_error(string("mode attribute invalid: ").append(str));
+        throw util::xml_scenario_error(string("mode attribute invalid: ").append(str));
 }
 
 // Factory functions are defined in model/xml/entomology.cpp.
-Model* createNonVectorModel(Context& ctx, const scnXml::Entomology& entoData);
+TransmissionModel* createNonVectorModel(RunContext& ctx, const scnXml::Entomology& entoData);
 bool anophelesCompare(const scnXml::AnophelesParams& a1, const scnXml::AnophelesParams& a2);
-Anopheles::AnophelesModel* createAnophelesModel(Context& ctx, size_t i, const scnXml::AnophelesParams& anoph,
+Anopheles::AnophelesModel* createAnophelesModel(RunContext& ctx, size_t i, const scnXml::AnophelesParams& anoph,
                                                 vector<double>& initialisationEIR, int populationSize,
                                                 int interventionMode);
-Model* createVectorModel(Context& ctx, const scnXml::Entomology& entoData, int populationSize);
-Model* createTransmissionModel(Context& ctx, const scnXml::Entomology& entoData, int populationSize);
+TransmissionModel* createVectorModel(RunContext& ctx, const scnXml::Entomology& entoData, int populationSize);
+TransmissionModel* createTransmissionModel(RunContext& ctx, const scnXml::Entomology& entoData, int populationSize);
 } // namespace Transmission
 } // namespace OM

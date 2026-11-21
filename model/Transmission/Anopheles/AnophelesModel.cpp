@@ -21,8 +21,8 @@
  */
 
 #include "Clock.h"
-#include "Context.h"
-#include "Transmission/Model.h"
+#include "RunContext.h"
+#include "Transmission/TransmissionModel.h"
 #include "Transmission/Anopheles/AnophelesModel.h"
 #include "Transmission/PerHost.h"
 #include "Population.h"
@@ -215,8 +215,8 @@ void AnophelesModel::initAvailability(size_t species, const vector<NhhParams>& n
         }
 
         if (!(sum_xi > 0.9999 && sum_xi < 1.0001)) {
-            throw xml_error("The sum of the relative entomological availability (ξ_i) "
-                            "across non-human hosts must be 1!");
+            throw xml_scenario_error("The sum of the relative entomological availability (ξ_i) "
+                                     "across non-human hosts must be 1!");
         }
 
         // equations (14), (15) of paper:
@@ -270,7 +270,7 @@ void AnophelesModel::initAvailability(size_t species, const vector<NhhParams>& n
     mosq.seekingDeathRate = mu1 * mu2;
 
     if (mosq.seekingDeathRate <= 0)
-        throw xml_error("Anopheles::init mosq.seekingDeathRate is <= 0. \
+        throw xml_scenario_error("Anopheles::init mosq.seekingDeathRate is <= 0. \
 The probability of a mosquito surviving the entire feeding cycle \
 should be less than the product of the probabilities of a \
 mosquito surviving biting, finding a resting site, resting and ovipositing.");
@@ -279,7 +279,7 @@ mosquito surviving biting, finding a resting site, resting and ovipositing.");
 /** Called by initialise function to init variables directly related to EIR
  *
  * @param anoph Data from XML
- * @param initialisationEIR In/out parameter: Model::initialisationEIR
+ * @param initialisationEIR In/out parameter: TransmissionModel::initialisationEIR
  * @param EIPDuration parameter from MosqTransmission (used for an estimation)
  */
 void AnophelesModel::initEIR(const vector<double>& initEIR365, vector<double> FSCoefficInit, double EIRRotateAngleInit,
@@ -290,7 +290,7 @@ void AnophelesModel::initEIR(const vector<double>& initEIR365, vector<double> FS
 
     partialInitEIR.resize(ctx.clock.steps_per_year, 0.0);
 
-    // Add to the Model's EIR, used for the initalization phase.
+    // Add to the TransmissionModel's EIR, used for the initalization phase.
     // Note: sum stays the same, units changes to per-time-step.
     for (SimTime i = sim::zero(); i < sim::oneYear(); i = i + sim::oneDay()) {
         partialInitEIR[mod_nn(ctx.clock.inSteps(i), ctx.clock.steps_per_year)] += initEIR365[i];
@@ -580,7 +580,7 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
         pDeathSeeking += pDeath.current_value(ctx.clock.ts0());
 
     if (pDeathSeeking > 1.0)
-        throw xml_error(
+        throw xml_scenario_error(
             "VectorPop: the cumulative probability of death wile seeking is greater than 1 during the simulation");
 
     if (pDeathSeeking > 0.0) {
@@ -875,7 +875,7 @@ double AnophelesModel::getLastVecStat(VecStat vs) const {
     }
 }
 
-void AnophelesModel::summarize(Context& ctx, size_t species) const {
+void AnophelesModel::summarize(RunContext& ctx, size_t species) const {
     // Last time step ended at ctx.clock.now(). Values are stored per day, and for
     // the last time step values at ctx.clock.now() and four previos were set.
     // One plus last, plus (0 mod N_v_length) to avoid negatives:

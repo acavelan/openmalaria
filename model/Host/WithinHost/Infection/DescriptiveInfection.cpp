@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Context.h"
+#include "RunContext.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/random.h"
 #include "util/CommandLine.h"
@@ -50,13 +50,13 @@ bool bugfix_max_dens = true, bugfix_innate_max_dens = true;
 
 // ———  static init/clear ———
 
-void DescriptiveInfection::init(Context& ctx, const Parameters& parameters) {
+void DescriptiveInfection::init(RunContext& ctx, const Parameters& parameters) {
     // Error checks
     if (ctx.clock.one_TS() != 5) {
         // To support non-5-day time-step models, either different data would
         // be needed or times need to be adjusted when accessing
         // meanLogParasiteCount. Probably the rest would be fine.
-        throw util::xml_error("DescriptiveInfection only supports using an interval of 5");
+        throw util::xml_scenario_error("DescriptiveInfection only supports using an interval of 5");
     }
     // Bug fixes: these are enabled by default but may be off in old parameterisations
     bugfix_innate_max_dens = util::ModelOptions::option(util::INNATE_MAX_DENS);
@@ -118,7 +118,7 @@ void DescriptiveInfection::init(Context& ctx, const Parameters& parameters) {
 
 // ———  non-static init  ———
 
-SimTime DescriptiveInfection::sample_duration(Context& ctx, LocalRng& rng) {
+SimTime DescriptiveInfection::sample_duration(RunContext& ctx, LocalRng& rng) {
     // Forgive the excess precision; it just avoids having to update all expected results
     double dur_mean = 5.1300001144409179688;
     double dur_sigma = 0.80000001192092895508;
@@ -138,7 +138,7 @@ SimTime DescriptiveInfection::sample_duration(Context& ctx, LocalRng& rng) {
 
 // The duration draw keeps the slot the old infection_new()/member ctor's init
 // list held — nothing else draws between construction and here.
-DescriptiveInfection::DescriptiveInfection(Context& ctx, LocalRng& rng, uint32_t genotype, int origin)
+DescriptiveInfection::DescriptiveInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin)
     : Infection(ctx, genotype, origin, Kind::Descriptive) {
     duration = sample_duration(this->ctx, rng);
     assert(this->ctx.clock.one_TS() == 5);

@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "Host/HostColumns.h"          // leaf: SoA columns owned by Population (IvRecord)
 #include "interventions/ComponentId.h" // leaf: Component::Type + ComponentId only
 #include "util/AgeGroupInterpolation.h"
@@ -56,13 +56,13 @@ class PerHostAnophParams {
     PerHostAnophParams& operator=(const PerHostAnophParams&) = delete;
 
     /// Register one species' parameters (registry: (*ctx.anophParams)).
-    static void init(Context& ctx, const scnXml::Mosq& mosq);
+    static void init(RunContext& ctx, const scnXml::Mosq& mosq);
 
     /// Get the number of vector species
-    static size_t numSpecies(Context& ctx);
+    static size_t numSpecies(RunContext& ctx);
 
     /// Get parameters for the given vector species
-    static const PerHostAnophParams& get(Context& ctx, size_t species);
+    static const PerHostAnophParams& get(RunContext& ctx, size_t species);
 
     /** entoAvailability is calculated externally, then set after other
      * parameters have been initialised.
@@ -71,13 +71,13 @@ class PerHostAnophParams {
      * 
      * It should be called exactly once.
       */
-    static void setEntoAvailabilityFactor(Context& ctx, size_t species, double entoAvailability);
+    static void setEntoAvailabilityFactor(RunContext& ctx, size_t species, double entoAvailability);
 
     /** Sample the population availability distribution and store its
      * percentiles in ctx.entoAvailabilityPercentiles. */
-    static void calcAvailabilityPercentiles(Context& ctx);
+    static void calcAvailabilityPercentiles(RunContext& ctx);
 
-    static double getEntoAvailabilityPercentile(Context& ctx, int p);
+    static double getEntoAvailabilityPercentile(RunContext& ctx, int p);
 
     /** @brief Probabilities of finding a host and surviving a feeding cycle
      * 
@@ -103,10 +103,10 @@ class PerHostAnophParams {
     util::BetaSampler probMosqSurvivalResting;
     //@}
 
-    // (no per-type data here: the registry lives in Context::anophParams)
+    // (no per-type data here: the registry lives in RunContext::anophParams)
 };
 
-/** Contains Model parameters which need to be stored per host.
+/** Contains TransmissionModel parameters which need to be stored per host.
  *
  * Currently many members are public and directly accessed. */
 class PerHost {
@@ -114,17 +114,17 @@ class PerHost {
     /// @brief Static member functions
     //@{
     /** Static initialisation. */
-    static void init(Context& ctx, const scnXml::AgeGroupValues& availabilityToMosquitoes);
+    static void init(RunContext& ctx, const scnXml::AgeGroupValues& availabilityToMosquitoes);
     //@}
 
     ///@brief Initialisation / checkpionting
     //@{
-    Context* ctx = nullptr; ///< set by the owning Human ctor; used on checkpoint restore
+    RunContext* ctx = nullptr; ///< set by the owning Human ctor; used on checkpoint restore
     PerHost();
     ~PerHost() = default;
     PerHost(PerHost&&) = default;
     PerHost& operator=(PerHost&&) = default;
-    void initialise(Context& ctx, LocalRng& rng, double availabilityFactor);
+    void initialise(RunContext& ctx, LocalRng& rng, double availabilityFactor);
     //@}
 
     /// Call once per time step. Updates net holes (interventions/IvState.cpp).

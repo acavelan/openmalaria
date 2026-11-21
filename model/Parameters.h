@@ -73,28 +73,28 @@ enum class Parameter {
     SIGMA0_SQ,
     X_NU_STAR,
     //@}
-    /// @b Used in Model
+    /// @b Used in PathogenesisModel
     //@{
     Y_STAR_SQ,
     ALPHA,
     //@}
     DENSITY_BIAS_NON_GARKI,       ///< Used in Diagnostic
-    BASELINE_AVAILABILITY_SHAPE,  ///< Used in IncidenceModel
+    BASELINE_AVAILABILITY_SHAPE,  ///< Used in InfectionIncidenceModel
     LOG_ODDS_RATIO_CF_COMMUNITY,  ///< Used in CaseManagementModel
-    INDIRECT_RISK_COFACTOR,       ///< Used in Model
+    INDIRECT_RISK_COFACTOR,       ///< Used in PathogenesisModel
     NON_MALARIA_INFANT_MORTALITY, ///< Used in Summary
     DENSITY_BIAS_GARKI,           ///< Used in Diagnostic
-    SEVERE_MALARIA_THRESHHOLD,    ///< Used in Model
+    SEVERE_MALARIA_THRESHHOLD,    ///< Used in PathogenesisModel
     IMMUNITY_PENALTY,             ///< Used in WHFalciparum
     IMMUNE_EFFECTOR_DECAY,        ///< Used in WHFalciparum
-    /// @b Used in Model
+    /// @b Used in PathogenesisModel
     //@{
     COMORBIDITY_INTERCEPT,
     Y_STAR_HALF_LIFE,
     Y_STAR_1,
     //@}
     ASEXUAL_IMMUNITY_DECAY, ///< Used in WHFalciparum
-    /// @b Used in Model
+    /// @b Used in PathogenesisModel
     //@{
     Y_STAR_0,
 
@@ -164,8 +164,8 @@ class Parameters {
             for (const std::pair<int, Parameter> pair : idCodeToNameMap) {
                 if (pair.second == name) {
                     const int paramCode = pair.first;
-                    throw util::xml_error("Parameter with index " + to_string(paramCode) +
-                                          " required but not described.");
+                    throw util::xml_scenario_error("Parameter with index " + to_string(paramCode) +
+                                                   " required but not described.");
                 }
             }
             throw util::base_exception(

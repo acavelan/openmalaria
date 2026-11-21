@@ -83,7 +83,7 @@ class SlotAllocatorSuite : public CxxTest::TestSuite {
             TS_ASSERT_EQUALS(n_l, T[i].e_l);
             TS_ASSERT_EQUALS(SlotAllocator::free_slots(T[i].have), T[i].e_free);
         }
-        // stand-alone count clamp (IncidenceModel::numNewInfections):
+        // stand-alone count clamp (InfectionIncidenceModel::numNewInfections):
         TS_ASSERT_EQUALS(SlotAllocator::clamp_count(25), 21);
         TS_ASSERT_EQUALS(SlotAllocator::clamp_count(21), 21);
         TS_ASSERT_EQUALS(SlotAllocator::clamp_count(0), 0);

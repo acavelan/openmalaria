@@ -29,12 +29,12 @@
 // headers (scnXml forward-declared).
 
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "Parameters.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/Infection.h"
-#include "Host/WithinHost/Pathogenesis.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "mon/Monitoring.h"
 #include "util/AgeGroupInterpolation.h"
@@ -77,7 +77,7 @@ extern bool reportInfectedOrPatentInfected;
 // State defined in Diagnostic.cpp (external linkage):
 extern map<string, Diagnostic> diagnostic_set;
 
-void WHInterface::init(Context& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario) {
+void WHInterface::init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario) {
     reportInfectionsByGenotype = mon::isUsed(ctx, mon::measure("nInfectByGenotype")) ||
                                  mon::isUsed(ctx, mon::measure("nPatentByGenotype")) ||
                                  mon::isUsed(ctx, mon::measure("logDensByGenotype"));
@@ -113,7 +113,7 @@ void WHInterface::init(Context& ctx, const OM::Parameters& parameters, const scn
     }
 }
 
-void WHFalciparum::init(Context& ctx, const OM::Parameters& parameters, const scnXml::Model& model) {
+void WHFalciparum::init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model) {
     sigma_i = sqrt(parameters[Parameter::SIGMA_I_SQ]);
     immPenalty_22 = 1 - exp(parameters[Parameter::IMMUNITY_PENALTY]);
     immEffectorRemain = exp(-parameters[Parameter::IMMUNE_EFFECTOR_DECAY]);
@@ -127,8 +127,8 @@ void WHFalciparum::init(Context& ctx, const OM::Parameters& parameters, const sc
 
     y_lag_len = ctx.clock.inSteps(sim::fromDays(20)) + 1;
 
-    //NOTE: should also call cleanup() on the Model, but it only frees memory which the OS does anyway
-    Pathogenesis::Model::init(ctx, parameters, model.getClinical(), false);
+    //NOTE: should also call cleanup() on the PathogenesisModel, but it only frees memory which the OS does anyway
+    Pathogenesis::PathogenesisModel::init(ctx, parameters, model.getClinical(), false);
 
     // Default value to use if no <parameters> element is present in XML.
     SimTime latentP = read_latentP(ctx.clock, model);
@@ -136,11 +136,11 @@ void WHFalciparum::init(Context& ctx, const OM::Parameters& parameters, const sc
     Infection::init(latentP);
 }
 
-void WHCommon::init(Context& ctx, const scnXml::Scenario& scenario) {
+void WHCommon::init(RunContext& ctx, const scnXml::Scenario& scenario) {
     const scnXml::Human human = scenario.getModel().getHuman();
     if (!human.getWeight().present()) {
         // Technically this is needed by the PK/PD and Molineaux models
-        throw util::xml_error("model->human->weight element required by certain models");
+        throw util::xml_scenario_error("model->human->weight element required by certain models");
     }
     massByAge.set(ctx.clock, human.getWeight().get(), "weight");
     hetMassMultStdDev = human.getWeight().get().getMultStdDev();
@@ -170,9 +170,9 @@ struct LocusSet {
                                                   elt_a.getHrp2_deletion()));
         }
         if (cum_p < 0.999 || cum_p > 1.001)
-            throw util::xml_error("expected sum of initial probabilities of alleles to be 1, but for the " +
-                                  to_string(alleles.size()) + " alleles under locus " + string(elt_l.getName()) +
-                                  " this is " + to_string(cum_p));
+            throw util::xml_scenario_error("expected sum of initial probabilities of alleles to be 1, but for the " +
+                                           to_string(alleles.size()) + " alleles under locus " +
+                                           string(elt_l.getName()) + " this is " + to_string(cum_p));
 
         alleles[0].init_freq += 1.0 - cum_p; // account for any small errors by adjusting the first frequency
     }
@@ -204,17 +204,17 @@ void Genotypes::init(Genotypes& state, const scnXml::Scenario& scenario) {
         } else if (genetics.getSamplingMode() == "tracking") {
             state.interv_mode = Genotypes::SAMPLE_TRACKING;
             if (!scenario.getEntomology().getVector().present()) {
-                throw util::xml_error("incompatibility; either use "
-                                      "entomology/vector (not nonVector) or set "
-                                      "parasiteGenetics/samplingMode to \"initial\" (not \"tracking\")");
+                throw util::xml_scenario_error("incompatibility; either use "
+                                               "entomology/vector (not nonVector) or set "
+                                               "parasiteGenetics/samplingMode to \"initial\" (not \"tracking\")");
             }
             if (scenario.getEntomology().getMode() != "dynamic") {
-                throw util::xml_error("incompatibility; either set "
-                                      "entomology/mode to \"dynamic\" (not \"forced\") or set "
-                                      "parasiteGenetics/samplingMode to \"initial\" (not \"tracking\")");
+                throw util::xml_scenario_error("incompatibility; either set "
+                                               "entomology/mode to \"dynamic\" (not \"forced\") or set "
+                                               "parasiteGenetics/samplingMode to \"initial\" (not \"tracking\")");
             }
         } else {
-            throw util::xml_error("parasiteGenetics/samplingMode: expected \"initial\" or \"tracking\"");
+            throw util::xml_scenario_error("parasiteGenetics/samplingMode: expected \"initial\" or \"tracking\"");
         }
 
         // Build the list of all allele combinations by iterating over loci (plural of locus):
@@ -236,8 +236,8 @@ void Genotypes::init(Genotypes& state, const scnXml::Scenario& scenario) {
 
         // Test cum_p is approx. 1.0 in case the input tree is wrong.
         if (cum_p < 0.999 || cum_p > 1.001)
-            throw util::xml_error("decision tree (random node): expected probability sum to be 1.0 but found " +
-                                  to_string(cum_p));
+            throw util::xml_scenario_error(
+                "decision tree (random node): expected probability sum to be 1.0 but found " + to_string(cum_p));
 
         // last cum_p might be slightless less than 1 due to arithmetic errors; add a failsafe:
         state.cum_initial_freqs[1.0] = state.genotypes.size() - 1;
@@ -356,9 +356,9 @@ Diagnostic::Diagnostic(const Parameters& parameters, const scnXml::Diagnostic& e
         } else {
             specificity = elt.getStochastic().get().getSpecificity();
             if (specificity < 0.0 || specificity > 1.0) {
-                throw util::xml_error(string("diagnostics/diagnostic(")
-                                          .append(elt.getName())
-                                          .append("): specificity must be in range [0,1]"));
+                throw util::xml_scenario_error(string("diagnostics/diagnostic(")
+                                                   .append(elt.getName())
+                                                   .append("): specificity must be in range [0,1]"));
             }
         }
     } else {
@@ -367,7 +367,7 @@ Diagnostic::Diagnostic(const Parameters& parameters, const scnXml::Diagnostic& e
         throw SWITCH_DEFAULT_EXCEPTION;
     }
     if (dens_lim < 0.0) {
-        throw util::xml_error(
+        throw util::xml_scenario_error(
             string("diagnostics/diagnostic(").append(elt.getName()).append("): must have density ≥ 0"));
     }
 
@@ -380,7 +380,7 @@ Diagnostic::Diagnostic(const Parameters& parameters, const scnXml::Diagnostic& e
             // User must be explicit in this case, because presumably the Garki
             // bias is to be used for some diagnostics but likely not all
             // (e.g. neonatal mortality).
-            throw util::xml_error(
+            throw util::xml_scenario_error(
                 "diagnostics/diagnostic(*)/units: must specify this attribute when GARKI_DENSITY_BIAS is set");
         }
         // otherwise we assume "Other"
@@ -397,7 +397,7 @@ Diagnostic::Diagnostic(const Parameters& parameters, const scnXml::Diagnostic& e
     uses_hrp2 = elt.getMechanism() == "HRP2";
 }
 
-void diagnostics::init(Context& ctx, const Parameters& parameters, const scnXml::Scenario& scenario) {
+void diagnostics::init(RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario) {
     auto& diagnostic_set = ctx.diagnostic_set;
     diagnostic_set.clear(); // compatibility with unit tests
 
@@ -407,7 +407,8 @@ void diagnostics::init(Context& ctx, const Parameters& parameters, const scnXml:
             bool inserted =
                 diagnostic_set.insert(make_pair(std::move(name), Diagnostic(parameters, diagnostic))).second;
             if (!inserted) {
-                throw util::xml_error(string("diagnostic with this name already set: ").append(diagnostic.getName()));
+                throw util::xml_scenario_error(
+                    string("diagnostic with this name already set: ").append(diagnostic.getName()));
             }
         }
     }
@@ -419,8 +420,8 @@ void diagnostics::init(Context& ctx, const Parameters& parameters, const scnXml:
         ctx.monitoring_diagnostic = &make_deterministic(ctx, numeric_limits<double>::quiet_NaN());
     } else if (surveys.getDetectionLimit().present()) {
         if (surveys.getDiagnostic().present()) {
-            throw util::xml_error("monitoring/surveys: do not "
-                                  "specify both detectionLimit and diagnostic");
+            throw util::xml_scenario_error("monitoring/surveys: do not "
+                                           "specify both detectionLimit and diagnostic");
         }
         if (util::CommandLine::option(util::CommandLine::DEPRECATION_WARNINGS)) {
             std::cerr << "Deprecation warning: monitoring/surveys: "
@@ -449,19 +450,19 @@ void diagnostics::init(Context& ctx, const Parameters& parameters, const scnXml:
         ctx.monitoring_diagnostic = &make_deterministic(ctx, detectionLimit);
     } else {
         if (!surveys.getDiagnostic().present()) {
-            throw util::xml_error("monitoring/surveys: require "
-                                  "either detectionLimit or diagnostic");
+            throw util::xml_scenario_error("monitoring/surveys: require "
+                                           "either detectionLimit or diagnostic");
         }
         if (util::ModelOptions::option(util::GARKI_DENSITY_BIAS)) {
-            throw util::xml_error("Use of GARKI_DENSITY_BIAS is not "
-                                  "appropriate when monitoring/surveys/diagnostic is used.");
+            throw util::xml_scenario_error("Use of GARKI_DENSITY_BIAS is not "
+                                           "appropriate when monitoring/surveys/diagnostic is used.");
         }
         ctx.monitoring_diagnostic = &get(ctx, surveys.getDiagnostic().get());
     }
 
     if (ctx.monitoring_diagnostic->uses_hrp2) {
-        throw util::xml_error("the diagnostic used for "
-                              "monitoring may not use HRP2 as its mechanism");
+        throw util::xml_scenario_error("the diagnostic used for "
+                                       "monitoring may not use HRP2 as its mechanism");
     }
 }
 }
@@ -475,7 +476,7 @@ SimTime read_latentP(const SimClock& clock, const scnXml::Model& model) {
         if (model.getParameters().present())
             latentP = UnitParse::readShortDuration(clock, model.getParameters().get().getLatentp(), UnitParse::NONE);
     } catch (const util::format_error& e) {
-        throw util::xml_error(string("model/parameters/latentP: ").append(e.message()));
+        throw util::xml_scenario_error(string("model/parameters/latentP: ").append(e.message()));
     }
     return latentP;
 }
@@ -486,7 +487,7 @@ SimTime read_latentP(const SimClock& clock, const scnXml::Model& model) {
 
 namespace OM {
 
-void SimClock::init(Context& ctx, const scnXml::Scenario& scenario, util::ModelNameProvider mnp) {
+void SimClock::init(RunContext& ctx, const scnXml::Scenario& scenario, util::ModelNameProvider mnp) {
     initInterval(scenario, mnp);
     steps_per_year = inSteps(sim::oneYear());
     years_per_step = 1.0 / steps_per_year;
@@ -502,7 +503,7 @@ void SimClock::init(Context& ctx, const scnXml::Scenario& scenario, util::ModelN
                 throw util::format_error("invalid format (expected YYYY-MM-DD)");
             }
         } catch (const util::format_error& e) {
-            throw util::xml_error(string("monitoring/startDate: ").append(e.message()));
+            throw util::xml_scenario_error(string("monitoring/startDate: ").append(e.message()));
         }
     }
 
@@ -523,7 +524,7 @@ void SimClock::initInterval(const scnXml::Scenario& scenario, util::ModelNamePro
             // for the base model.
             interval = 5;
         } else {
-            throw util::xml_error("No pre-set interval value is available for the specified model name.");
+            throw util::xml_scenario_error("No pre-set interval value is available for the specified model name.");
         }
     }
 
@@ -545,7 +546,7 @@ ModelNameProvider::ModelNameProvider(const scnXml::Model& model) {
         if (nameFromXML == "base") {
             modelInUse = ModelNames::base;
         } else {
-            throw util::xml_error("Unrecognized model name: " + nameFromXML);
+            throw util::xml_scenario_error("Unrecognized model name: " + nameFromXML);
         }
     }
 }
@@ -570,7 +571,7 @@ Parameters::Parameters(const scnXml::Model::ParametersOptional& xmlParameterValu
         if (namedModelToUse == util::ModelNames::base) {
             initializeParamsBaseModel();
         } else {
-            throw util::xml_error("No pre-set parameter values are available for the specified model name.");
+            throw util::xml_scenario_error("No pre-set parameter values are available for the specified model name.");
         }
     }
 
@@ -616,7 +617,7 @@ void Parameters::initializeParamsFromXML(const scnXml::Parameters& parameters) {
 
         const bool paramValueAlreadySet = !paramIdsSetByUser.insert(paramId).second;
         if (paramValueAlreadySet) {
-            throw util::xml_error("Parameter with index " + to_string(paramId) + " described twice in XML.");
+            throw util::xml_scenario_error("Parameter with index " + to_string(paramId) + " described twice in XML.");
         }
 
         nameToValueMap[nameOfParamToSet] = paramValueFromXML;

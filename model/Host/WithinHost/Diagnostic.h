@@ -32,7 +32,7 @@ class Diagnostic;
 
 namespace OM {
 class Parameters;
-class Context;
+class RunContext;
 namespace WithinHost {
 
 using util::LocalRng;
@@ -74,21 +74,21 @@ class Diagnostic {
 class diagnostics {
   public:
     /** Initialise from input data (registry: ctx.diagnostic_set). */
-    static void init(Context& ctx, const Parameters& parameters, const scnXml::Scenario& scenario);
+    static void init(RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario);
 
     /** Look up a diagnostic by name and get a reference to it.
      * 
-     * @throws util::xml_error on failure
+     * @throws util::xml_scenario_error on failure
      */
-    static const Diagnostic& get(Context& ctx, const std::string& name);
+    static const Diagnostic& get(RunContext& ctx, const std::string& name);
 
     /** Make a new diagnostic with deterministic density and return a reference. */
-    static const Diagnostic& make_deterministic(Context& ctx, double minDens);
+    static const Diagnostic& make_deterministic(RunContext& ctx, double minDens);
 
     /** The diagnostic used for monitoring output (ext; Diagnostic.cpp). */
-    static const Diagnostic& monitoringDiagnostic(Context& ctx);
+    static const Diagnostic& monitoringDiagnostic(RunContext& ctx);
 
-    static void clear(Context& ctx); // for unit tests (UnittestUtil)
+    static void clear(RunContext& ctx); // for unit tests (UnittestUtil)
 };
 
 }

@@ -23,7 +23,7 @@
 // p8-files (documented leaf header): IvState.h is the SoA vocabulary; the
 // iv_deploy/iv_* effect tables stay here, keyed on intervention type.
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "interventions/IvState.h"
 #include "interventions/Components.h"
 #include "interventions/ITN.h"
@@ -37,7 +37,7 @@
 namespace OM {
 namespace interventions {
 
-void iv_deploy(Context& ctx, Host::Human& human, const ComponentConfig& params) {
+void iv_deploy(RunContext& ctx, Host::Human& human, const ComponentConfig& params) {
     // This adds per-host per-intervention details to the host's data set.
     // Records are never removed: they can contain per-host het samples, and
     // the list order is the effect-product order (parity: c).
@@ -124,7 +124,7 @@ void iv_deploy(Context& ctx, Host::Human& human, const ComponentConfig& params) 
     iv.push_back(r);
 }
 
-void iv_update(Context& ctx, Host::Human& human) {
+void iv_update(RunContext& ctx, Host::Human& human) {
     // Only nets mutate per step (old HumanIRS/HumanGVI update() were no-ops).
     for (auto& r : human.cols->iv[human.row]) {
         if (r.kind != Component::ITN || r.deploy == sim::never())
@@ -153,18 +153,18 @@ void iv_update(Context& ctx, Host::Human& human) {
 
 namespace {
 /// ITN/IRS remaining insecticide content (old getInsecticideContent).
-inline double insecticide_content(Context& ctx, const IvRecord& r) {
+inline double insecticide_content(RunContext& ctx, const IvRecord& r) {
     SimTime age = ctx.clock.nowOrTs1() - r.deploy; // implies age 1 TS on first use
     return r.initial_insecticide * r.decay->eval_with(age, r.decay_factor);
 }
 /// GVI effect survival factor (old getEffectSurvival).
-inline double gvi_survival(Context& ctx, const IvRecord& r) {
+inline double gvi_survival(RunContext& ctx, const IvRecord& r) {
     SimTime age = ctx.clock.nowOrTs1() - r.deploy; // implies age 1 TS on first use
     return r.decay->eval_with(age, r.decay_factor);
 }
 }
 
-double iv_rel_attractiveness(Context& ctx, const IvRecord& r, size_t speciesIndex) {
+double iv_rel_attractiveness(RunContext& ctx, const IvRecord& r, size_t speciesIndex) {
     switch (r.kind) {
     case Component::ITN: {
         if (r.deploy == sim::never())
@@ -190,7 +190,7 @@ double iv_rel_attractiveness(Context& ctx, const IvRecord& r, size_t speciesInde
     }
 }
 
-double iv_preprandial_survival(Context& ctx, const IvRecord& r, size_t speciesIndex) {
+double iv_preprandial_survival(RunContext& ctx, const IvRecord& r, size_t speciesIndex) {
     switch (r.kind) {
     case Component::ITN: {
         if (r.deploy == sim::never())
@@ -216,7 +216,7 @@ double iv_preprandial_survival(Context& ctx, const IvRecord& r, size_t speciesIn
     }
 }
 
-double iv_postprandial_survival(Context& ctx, const IvRecord& r, size_t speciesIndex) {
+double iv_postprandial_survival(RunContext& ctx, const IvRecord& r, size_t speciesIndex) {
     switch (r.kind) {
     case Component::ITN: {
         if (r.deploy == sim::never())
@@ -242,7 +242,7 @@ double iv_postprandial_survival(Context& ctx, const IvRecord& r, size_t speciesI
     }
 }
 
-double iv_rel_fecundity(Context& ctx, const IvRecord& r, size_t speciesIndex) {
+double iv_rel_fecundity(RunContext& ctx, const IvRecord& r, size_t speciesIndex) {
     switch (r.kind) {
     case Component::ITN: {
         if (r.deploy == sim::never())

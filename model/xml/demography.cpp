@@ -24,7 +24,7 @@
 // estimation from scnXml::Demography. Moved verbatim from
 // PopulationAgeStructure.cpp; declaration stays in PopulationAgeStructure.h.
 
-#include "Context.h"
+#include "RunContext.h"
 #include "Clock.h"
 #include "PopulationAgeStructure.h"
 #include "util/errors.h"
@@ -36,9 +36,9 @@ namespace OM {
 using namespace OM::util;
 
 // Free function defined in PopulationAgeStructure.cpp (external linkage):
-void minimizeCalc_rss(Context& ctx, double param1, double param2);
+void minimizeCalc_rss(RunContext& ctx, double param1, double param2);
 
-void AgeStructure::estimateRemovalRates(Context& ctx, const scnXml::Demography& demography) {
+void AgeStructure::estimateRemovalRates(RunContext& ctx, const scnXml::Demography& demography) {
     auto& ageGroupBounds = ctx.age.ageGroupBounds;
     auto& ageGroupPercent = ctx.age.ageGroupPercent;
     // mu1, alpha1: These are estimated here

@@ -23,8 +23,8 @@
 #pragma once
 
 #include "Clock.h"
-#include "Context.h"
-#include "Clinical/Model.h"
+#include "RunContext.h"
+#include "Clinical/ClinicalModel.h"
 #include "Clinical/CMDecisionTree.h" // needed for FlatTree/CMDTOut (ESCaseManagement)
 #include "Host/WithinHost/WHInterface.h"
 #include "util/AgeGroupInterpolation.h"
@@ -50,7 +50,7 @@ using util::AgeGroupInterpolator;
  */
 class ClinicalEventScheduler {
   public:
-    static void init(Context& ctx, const OM::Parameters& parameters, const scnXml::Clinical& clinical);
+    static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Clinical& clinical);
     static void setParameters(const SimClock& clock, const scnXml::HSEventScheduler& esData);
 
     // All remaining statics are run-parameter state, read directly by
@@ -112,7 +112,7 @@ class ClinicalEventScheduler {
 /// Per-human update for the EventScheduler variant (old
 /// ClinicalEventScheduler::doClinicalUpdate); state lives on the
 /// CMEventScheduler (es* fields).
-void esClinicalUpdate(CMEventScheduler& cm, Context& ctx, Human& human, double ageYears,
+void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, double ageYears,
                       WithinHost::Pathogenesis::StatePair& pg);
 
 // ———  ESCaseManagement (was Clinical/ESCaseManagement.h; same ES chain)  ———
@@ -130,9 +130,9 @@ class ESCaseManagement {
   public:
     /** Load health system data from initial data or an intervention's data (both from XML).
     * (Re)loads all data affected by this healthSystem element. */
-    static void setHealthSystem(Context& ctx, const scnXml::HSEventScheduler& esData);
+    static void setHealthSystem(RunContext& ctx, const scnXml::HSEventScheduler& esData);
 
-    static CMDTOut execute(Context& ctx, Host::Human& human, double ageYears, Episode::State pgState) {
+    static CMDTOut execute(RunContext& ctx, Host::Human& human, double ageYears, Episode::State pgState) {
         assert(pgState & Episode::SICK);
         const FlatTree& tree = (pgState & Episode::COMPLICATED) ? *escm_complicated : *escm_uncomplicated;
         DTExecCtx ec(ctx, human, ageYears, pgState);

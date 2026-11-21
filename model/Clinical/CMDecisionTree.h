@@ -22,13 +22,13 @@
 
 #pragma once
 
-#include "Context.h"
+#include "RunContext.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "mon/Monitoring.h"
 #include "util/errors.h"
 #include <algorithm>
 #include "Host/Human.h"
-#include "Host/WithinHost/Pathogenesis.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Clinical/Episode.h"
 #include "interventions/Interfaces.h"
 #include <cstdint>
@@ -83,7 +83,7 @@ struct DTBranch {
 
 /** A decision tree compiled from XML into a flat node array plus side tables.
  * Built once per health-system load by compile_decision_tree() (xml layer);
- * owned by Context::decision_trees for the run's lifetime. Contains no
+ * owned by RunContext::decision_trees for the run's lifetime. Contains no
  * per-run host state, so it is never checkpointed (parity: was:
  * CMDecisionTree.cpp statics, likewise not checkpointed).
  *
@@ -132,9 +132,9 @@ struct FlatTree {
  * Replaces the old CMHostData parameter-passing struct; the reference fields
  * must outlive the walk (they do: all call sites run it synchronously). */
 struct DTExecCtx {
-    DTExecCtx(Context& ctx_, Host::Human& human_, double ageYears_, Episode::State pgState_)
+    DTExecCtx(RunContext& ctx_, Host::Human& human_, double ageYears_, Episode::State pgState_)
         : ctx(ctx_), human(human_), rng(human_.rng()), ageYears(ageYears_), pgState(pgState_) {}
-    Context& ctx;
+    RunContext& ctx;
     Host::Human& human;
     util::LocalRng& rng; // the host's stream; Random nodes draw from here
     double ageYears;     // human age at start of the time step
@@ -150,7 +150,7 @@ struct DTExecCtx {
  * constructors. Owned by (*ctx.decision_trees); identical content compiled
  * twice is stored twice (the old decision-library dedup only saved memory).
  * @param isUC see the old CMDecisionTree::create docs: false rejects caseType. */
-const FlatTree& compile_decision_tree(Context& ctx, const scnXml::DecisionTree& node, bool isUC);
+const FlatTree& compile_decision_tree(RunContext& ctx, const scnXml::DecisionTree& node, bool isUC);
 
 /** Execute the decision tree: one free-function interpreter over the flat
  * node array, no virtual dispatch during treatment decisions.
@@ -216,7 +216,9 @@ void walk(const FlatTree& t, DTExecCtx& e, uint32_t n) {
             continue;
         case DTK_InfectionOrigin: {
             auto o = e.human.withinHostModel->getInfectionOrigin();
-            n = o == WithinHost::Origin::Imported ? nd.c0 : o == WithinHost::Origin::Introduced ? nd.c1 : nd.c2;
+            n = o == WithinHost::InfectionOrigin::Imported     ? nd.c0
+                : o == WithinHost::InfectionOrigin::Introduced ? nd.c1
+                                                               : nd.c2;
             continue;
         }
         case DTK_Diagnostic: {

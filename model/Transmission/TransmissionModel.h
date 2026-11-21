@@ -26,7 +26,7 @@
 #include <fstream>
 
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "util/errors.h"
 
 namespace scnXml {
@@ -62,7 +62,7 @@ class Human;
 namespace Transmission {
 
 /// Shared error text: vector interventions require dynamic mode (defined in
-/// Model.cpp; also thrown by xml/interventions.cpp — one string,
+/// TransmissionModel.cpp; also thrown by xml/interventions.cpp — one string,
 /// bytes unchanged).
 extern const std::string vec_mode_err;
 
@@ -99,29 +99,29 @@ enum SimulationMode {
 };
 
 /// Abstract base class, defines behaviour of transmission models
-class Model {
+class TransmissionModel {
   public:
     /// Which behaviour this (single, final) model class implements.
     enum class Kind { Vector, NonVector };
 
     /// Vector-model constructor (was VectorModel::VectorModel).
-    Model(Context& ctx, vector<double> initEIR, int interventionMode,
-          vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
-          vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
-          map<string, size_t> speciesIndexList);
+    TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode,
+                      vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
+                      vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
+                      map<string, size_t> speciesIndexList);
 
     /// Non-vector constructor (was NonVectorModel; defined in xml/entomology.cpp).
-    Model(Context& ctx, vector<double> initEIR, int interventionMode, const scnXml::NonVector& nonVectorData,
-          int eipDuration);
+    TransmissionModel(RunContext& ctx, vector<double> initEIR, int interventionMode,
+                      const scnXml::NonVector& nonVectorData, int eipDuration);
 
   protected:
     /// The run this model belongs to (clock accessed as ctx.clock).
-    Context& ctx;
+    RunContext& ctx;
 
-    Model(Context& ctx, vector<double> initialisationEIR, int interventionMode, Kind kind,
-          vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
-          vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
-          map<string, size_t> speciesIndexList)
+    TransmissionModel(RunContext& ctx, vector<double> initialisationEIR, int interventionMode, Kind kind,
+                      vector<std::unique_ptr<Anopheles::AnophelesModel>> speciesList,
+                      vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList,
+                      map<string, size_t> speciesIndexList)
         : ctx(ctx), initialisationEIR(std::move(initialisationEIR)), simulationMode(forcedEIR),
           interventionMode(interventionMode),
           laggedKappa(ctx.clock.steps_per_year, 0.0), // if using non-vector model, it will resize this
@@ -142,20 +142,21 @@ class Model {
         // Set VACCINE_GENOTYPE option
         opt_vaccine_genotype = util::ModelOptions::option(util::VACCINE_GENOTYPE);
 
-        mon::Continuous::registerCallback(ctx, "input EIR", "\tinput EIR", std::bind(&Model::ctsCbInputEIR, this, _1));
+        mon::Continuous::registerCallback(ctx, "input EIR", "\tinput EIR",
+                                          std::bind(&TransmissionModel::ctsCbInputEIR, this, _1));
         mon::Continuous::registerCallback(ctx, "simulated EIR", "\tsimulated EIR",
-                                          std::bind(&Model::ctsCbSimulatedEIR, this, _1));
+                                          std::bind(&TransmissionModel::ctsCbSimulatedEIR, this, _1));
         mon::Continuous::registerCallback(ctx, "human infectiousness", "\thuman infectiousness",
-                                          std::bind(&Model::ctsCbKappa, this, _1));
+                                          std::bind(&TransmissionModel::ctsCbKappa, this, _1));
         mon::Continuous::registerCallback(ctx, "num transmitting humans", "\tnum transmitting humans",
-                                          std::bind(&Model::ctsCbNumTransmittingHumans, this, _1));
+                                          std::bind(&TransmissionModel::ctsCbNumTransmittingHumans, this, _1));
     }
 
   public:
     bool isVector() const { return kind == Kind::Vector; }
 
-    /// ~Deallocate memory for Model parameters and clean up
-    ~Model() {}
+    /// ~Deallocate memory for TransmissionModel parameters and clean up
+    ~TransmissionModel() {}
 
     /** Extra initialisation when not loading from a checkpoint, requiring
      * information from the human population structure. */
@@ -172,7 +173,7 @@ class Model {
     /** Set some summary items.
      *
      * Overriding functions should call this base version too. */
-    void summarize(Context& ctx) {
+    void summarize(RunContext& ctx) {
         mon::recordStat(ctx, mon::measure("nTransmit"),
                         laggedKappa[ctx.clock.moduloSteps(ctx.clock.now(), laggedKappa.size())]);
         mon::recordStat(ctx, mon::measure("annAvgK"), _annualAverageKappa);
@@ -326,7 +327,7 @@ class Model {
 
         for (const Host::Human& human : population) {
             // NOTE: calculate availability relative to age at end of time step;
-            // not my preference but consistent with Model::getEIR().
+            // not my preference but consistent with TransmissionModel::getEIR().
             const double avail =
                 human.perHostTransmission.relativeAvailabilityHetAge(sim::inYears(human.age(ctx.clock.ts1())));
             sumWeight += avail;
@@ -441,7 +442,7 @@ class Model {
                     laggedKappa[mod_nn(t, laggedKappa.size())] / initialKappa[mod_nn(t, ctx.clock.steps_per_year)];
             }
         } else {
-            throw util::xml_error("Invalid simulation mode");
+            throw util::xml_scenario_error("Invalid simulation mode");
         }
 #ifndef NDEBUG
         if (!(std::isfinite)(EIR_l[0])) {
@@ -560,7 +561,7 @@ class Model {
     void vectorUpdate_vector(const vector<Host::Human>& population);
     void calculateEIR_vector(Host::Human& human, double ageYears, vector<double>& EIR_i, vector<double>& EIR_l) const;
     void uninfectVectors_vector();
-    void summarize_vector(Context& ctx);
+    void summarize_vector(RunContext& ctx);
     void changeEIRIntervention_vector(const scnXml::NonVector& nonVectorData);
 
     void ctsCbN_v0(ostream& stream);
@@ -606,7 +607,7 @@ class Model {
     const double min_EIR_mult = 0.01;
 
     //! Variance of Infection Rate according to fielddata == 1.0 (totalInfectionrateVariance
-    //! member removed by audit sweep; the formula using it is documented in IncidenceModel.cpp)
+    //! member removed by audit sweep; the formula using it is documented in InfectionIncidenceModel.cpp)
 
     //! The duration of sporogony in time steps (doesn't need checkpointing)
     SimTime nSpore = sim::never();

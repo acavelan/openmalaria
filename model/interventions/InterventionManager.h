@@ -29,7 +29,7 @@
 #include "Host/ImportedInfections.h"
 #include "interventions/Deployments.h"
 #include "interventions/Interfaces.h"
-#include "Transmission/Model.h"
+#include "Transmission/TransmissionModel.h"
 namespace scnXml {
 class Interventions;
 }
@@ -46,7 +46,8 @@ namespace interventions {
 class InterventionManager {
   public:
     /** Read XML descriptions. */
-    static void init(Context& ctx, const scnXml::Interventions& intervElt, Transmission::Model& transmission);
+    static void init(RunContext& ctx, const scnXml::Interventions& intervElt,
+                     Transmission::TransmissionModel& transmission);
 
     /** Call after loading a checkpoint, passing the intervention-period time.
      * 
@@ -59,12 +60,12 @@ class InterventionManager {
      * 
      * Continuous interventions are deployed as humans reach the target ages.
      * Unlike with vaccines, missing one schedule doesn't preclude the next. */
-    static void deploy(Context& ctx, vector<Host::Human>& population, Transmission::Model& transmission);
+    static void deploy(RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission);
 
     /** Get a numeric ComponentId from the textual identifier used in the XML.
      * 
-     * If textId is unknown, an xml_error is thrown. */
-    static ComponentId getComponentId(Context& ctx, const std::string textId);
+     * If textId is unknown, an xml_scenario_error is thrown. */
+    static ComponentId getComponentId(RunContext& ctx, const std::string textId);
 };
 
 // ———  implementation (was InterventionManager.cpp)  ———
@@ -73,19 +74,19 @@ class InterventionManager {
 
 // static functions:
 
-inline ComponentId InterventionManager::getComponentId(Context& ctx, const string textId) {
+inline ComponentId InterventionManager::getComponentId(RunContext& ctx, const string textId) {
     auto it = ctx.identifierMap.find(textId);
     if (it == ctx.identifierMap.end()) {
         ostringstream msg;
         msg << "unable to find an intervention component with id \"" << textId
             << "\" (wrong name, no definition or used before definition?)";
-        throw util::xml_error(msg.str());
+        throw util::xml_scenario_error(msg.str());
     }
     return it->second;
 }
 
-inline void InterventionManager::deploy(Context& ctx, vector<Host::Human>& population,
-                                        Transmission::Model& transmission) {
+inline void InterventionManager::deploy(RunContext& ctx, vector<Host::Human>& population,
+                                        Transmission::TransmissionModel& transmission) {
     if (ctx.clock.interv < sim::zero())
         return;
 

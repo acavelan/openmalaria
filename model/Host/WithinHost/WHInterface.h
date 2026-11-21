@@ -23,14 +23,14 @@
 #pragma once
 
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "Host/HostColumns.h"
 #include "util/random.h"
 #include "util/sampler.h"
 #include "util/errors.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
-#include "Host/WithinHost/Pathogenesis.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Infection/Infection.h"
 
 #include "Parameters.h"
@@ -58,7 +58,7 @@ class Human;
 }
 namespace WithinHost {
 namespace Pathogenesis {
-class Model;
+class PathogenesisModel;
 }
 
 /** Sole owner of the per-host infection-slot cap (plan §5: "MAX_INFECTIONS=21
@@ -92,7 +92,7 @@ struct SlotAllocator {
     }
 
     /// Clamp a stand-alone drawn count (post-draw; no rng effect).
-    /// parity: IncidenceModel.cpp:257-258
+    /// parity: InfectionIncidenceModel.cpp:257-258
     static constexpr int clamp_count(int want) { return want > MAX_INFECTIONS ? MAX_INFECTIONS : want; }
 };
 
@@ -105,9 +105,9 @@ extern bool reportInfectionsByGenotype;
 
 struct HypnozoiteReleaseDistribution {
     /// The run this sampler serves (clock accessed as ctx.clock).
-    Context& ctx;
+    RunContext& ctx;
 
-    HypnozoiteReleaseDistribution(Context& ctx, std::unique_ptr<util::Sampler> sampler, double latentRelapse)
+    HypnozoiteReleaseDistribution(RunContext& ctx, std::unique_ptr<util::Sampler> sampler, double latentRelapse)
         : ctx(ctx), sampler(std::move(sampler)), latentRelapse(latentRelapse) {}
 
     /// Sample the time until next release
@@ -122,7 +122,7 @@ struct HypnozoiteReleaseDistribution {
             count += 1;
 
             if (count >= maxcount) {
-                throw util::xml_error(
+                throw util::xml_scenario_error(
                     "<vivax><hypnozoiteRelease>  [random delay calculation causes probably an indefinite loop]:\n The hypnozoite release distribution seems off, sigma of secondRelease could be too high. We except the hypnozoite to reside a maximum of 16 months in the liver stage. Sigma choose well, dear padawan.");
             }
         } while (delay > liverStageMaximumDays || delay < 0.0);
@@ -153,9 +153,9 @@ class VivaxBrood {
      * prevent VivaxBrood being default-constructed by its container.
      */
     /// The run this brood belongs to (clock accessed as ctx.clock).
-    Context& ctx;
+    RunContext& ctx;
 
-    VivaxBrood(Context& ctx, LocalRng& rng, int origin, WHInterface* host);
+    VivaxBrood(RunContext& ctx, LocalRng& rng, int origin, WHInterface* host);
     ~VivaxBrood();
     struct UpdResult {
         UpdResult() : newPrimaryBS(false), newRelapseBS(false), newRelapsebBS(false), newBS(false) {}
@@ -225,7 +225,7 @@ class VivaxBrood {
  *                                        infection variants
  *   WHDescriptive  DescriptiveWithinHost.cpp  the original descriptive model
  *   WHMock         unittest/WHMock.h    unit-test backend (installs the hook
- *                                        table on Context::WHMockHooks)
+ *                                        table on RunContext::WHMockHooks)
  * WHCommon and WHDescriptive share the P. falciparum immunity machinery in
  * the intermediate WHFalciparum layer (WHFalciparum.cpp).
  *
@@ -246,25 +246,25 @@ class WHInterface {
     }
 
     /// The run this model belongs to (clock accessed as ctx.clock).
-    Context& ctx;
+    RunContext& ctx;
 
     /// @brief Static methods
     //@{
     /// Initialise static parameters (all model variants; selects the variant
     /// via ModelOptions, xml/scenario.cpp).
-    static void init(Context& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario);
+    static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario);
 
     /** Configure a new treatment option, and return the code used to select
      * that option later. */
-    static TreatmentId addTreatment(Context& ctx, const scnXml::TreatmentOption& desc);
+    static TreatmentId addTreatment(RunContext& ctx, const scnXml::TreatmentOption& desc);
 
     /// Create an instance using the appropriate model (one line per variant).
-    static unique_ptr<WHInterface> createWithinHostModel(Context& ctx, LocalRng& rng, double comorbidityFactor);
+    static unique_ptr<WHInterface> createWithinHostModel(RunContext& ctx, LocalRng& rng, double comorbidityFactor);
     //@}
 
     /// Base ctor: no state beyond the tag, no draws — every variant's draws
     /// live in its own ctor at the old ctor* fragment stream positions.
-    WHInterface(Context& ctx, Kind kind) : ctx(ctx), kind(kind) {}
+    WHInterface(RunContext& ctx, Kind kind) : ctx(ctx), kind(kind) {}
 
     virtual ~WHInterface() {}
 
@@ -371,7 +371,7 @@ class WHInterface {
 
     /// Vivax/Mock have no per-infection origins (Indigenous); Falciparum
     /// layer derives from its infection list.
-    virtual Origin getInfectionOrigin() const { return Origin::Indigenous; }
+    virtual InfectionOrigin getInfectionOrigin() const { return InfectionOrigin::Indigenous; }
 
     /// Which model this instance is (never serialised; the checkpoint module
     /// switches on it and static_casts to the derived class — the tag is the
@@ -419,8 +419,8 @@ class WHInterface {
     * from the previous time step (once updateInfection has been called). */
     std::vector<double> m_y_lag_i, m_y_lag_l;
 
-    /// The Model introduces illness dependant on parasite density
-    unique_ptr<Pathogenesis::Model> pathogenesisModel;
+    /// The PathogenesisModel introduces illness dependant on parasite density
+    unique_ptr<Pathogenesis::PathogenesisModel> pathogenesisModel;
 
     /// End of step on which treatment expires = start of first step after expiry
     SimTime treatExpiryLiver = sim::zero(), treatExpiryBlood = sim::zero();
@@ -440,13 +440,13 @@ class WHInterface {
 class WHFalciparum : public WHInterface {
   public:
     /// Initialise P. falciparum immunity statics (Common/Descriptive variants).
-    static void init(Context& ctx, const OM::Parameters& parameters, const scnXml::Model& model);
+    static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model);
     static void setParams(double cumYStar, double cumHStar, double aM, double dM); // for unit test only
 
     /// Shared P. falciparum immunity ctor fragment (pathogenesis model +
     /// innate draw + y_lag buffers); draws stream position = old
     /// ctorFalciparum(). Kind comes from the concrete variant.
-    WHFalciparum(Context& ctx, LocalRng& rng, double comorbidityFactor, Kind kind);
+    WHFalciparum(RunContext& ctx, LocalRng& rng, double comorbidityFactor, Kind kind);
     ~WHFalciparum() override;
 
     double probTransmissionToMosquito(vector<double>& probTransGenotype_i,
@@ -455,7 +455,7 @@ class WHFalciparum : public WHInterface {
     bool treatSimple(Host::Human& human, SimTime timeLiver, SimTime timeBlood) override;
     Pathogenesis::StatePair determineMorbidity(Host::Human& human, double ageYears, bool isDoomed) override;
     void clearImmunity() override;
-    Origin getInfectionOrigin() const override;
+    InfectionOrigin getInfectionOrigin() const override;
 
     /** Clear infections of the appropriate stages.
      * 
@@ -523,9 +523,9 @@ class WHFalciparum : public WHInterface {
 class WHCommon final : public WHFalciparum {
   public:
     /// Initialise Common-variant statics.
-    static void init(Context& ctx, const scnXml::Scenario& scenario);
+    static void init(RunContext& ctx, const scnXml::Scenario& scenario);
 
-    WHCommon(Context& ctx, LocalRng& rng, double comorbidityFactor);
+    WHCommon(RunContext& ctx, LocalRng& rng, double comorbidityFactor);
 
     bool summarize(Host::Human& human) const override;
     void importInfection(LocalRng& rng) override;
@@ -541,9 +541,9 @@ class WHCommon final : public WHFalciparum {
 class WHDescriptive final : public WHFalciparum {
   public:
     /// Initialise Descriptive-variant statics. Must run after monitoring is set up.
-    static void init(Context& ctx);
+    static void init(RunContext& ctx);
 
-    WHDescriptive(Context& ctx, LocalRng& rng, double comorbidityFactor);
+    WHDescriptive(RunContext& ctx, LocalRng& rng, double comorbidityFactor);
 
     bool summarize(Host::Human& human) const override;
     void importInfection(LocalRng& rng) override;
@@ -559,7 +559,7 @@ class WHDescriptive final : public WHFalciparum {
 class WHVivax final : public WHInterface {
   public:
     /// Initialise vivax statics.
-    static void init(Context& ctx, const OM::Parameters& parameters, const scnXml::Model& model);
+    static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model);
 
     /** Called when health system parameters are loaded.
      * 
@@ -567,7 +567,7 @@ class WHVivax final : public WHInterface {
      */
     static void setHSParameters(const scnXml::LiverStageDrug*);
 
-    WHVivax(Context& ctx, LocalRng& rng, double comorbidityFactor);
+    WHVivax(RunContext& ctx, LocalRng& rng, double comorbidityFactor);
     ~WHVivax() override;
 
     double probTransmissionToMosquito(vector<double>& probTransGenotype_i,

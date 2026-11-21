@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Context.h"
+#include "RunContext.h"
 #include "Host/WithinHost/Infection/Infection.h"
 
 namespace OM {
@@ -28,14 +28,14 @@ namespace WithinHost {
 
 // ———  Dummy variant (was DummyInfection.cpp; simplest density model)  ———
 
-Infection* createDummyInfection(Context& ctx, LocalRng& rng, uint32_t protID, int origin) {
+Infection* createDummyInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
     return new DummyInfection(ctx, protID, origin);
 }
 
-void DummyInfection::init(Context& ctx) { ctx.createInfection = &createDummyInfection; }
+void DummyInfection::init(RunContext& ctx) { ctx.createInfection = &createDummyInfection; }
 
 // no draws: the old infection_new Dummy case only set the initial density
-DummyInfection::DummyInfection(Context& ctx, uint32_t genotype, int origin)
+DummyInfection::DummyInfection(RunContext& ctx, uint32_t genotype, int origin)
     : Infection(ctx, genotype, origin, Kind::Dummy) {
     m_density = 16; // increased by DH to avoid zeros in initialKappa
 }

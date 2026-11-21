@@ -111,7 +111,7 @@ class NormalSampler {
      * point mass (μ = ln(mean), or −∞ if mean == 0). Gamma kind: k = 1/CV²,
      * θ = mean/k; CV == 0 is a point mass at the mean. fromMeanVariance:
      * lognormal uses CV = variance/mean; gamma uses k = mean²/variance.
-     * Both throw util::xml_error on invalid mean/CV/variance
+     * Both throw util::xml_scenario_error on invalid mean/CV/variance
      * (lognormal allows mean == 0 iff CV == 0; gamma requires mean > 0). */
 class Sampler final {
   public:
@@ -151,12 +151,12 @@ class Sampler final {
     Kind kind = Kind::Lognormal;
     // Lognormal kind: log-space mu, sigma. Gamma kind: mean mu, k, theta.
     // CV / variance are the configuring inputs; truncate caps samples.
-    double mu = sNaN;
-    double sigma = sNaN;
-    double k = sNaN;
-    double theta = sNaN;
-    double variance = sNaN;
-    double CV = sNaN;
+    double mu = std::numeric_limits<double>::signaling_NaN();
+    double sigma = std::numeric_limits<double>::signaling_NaN();
+    double k = std::numeric_limits<double>::signaling_NaN();
+    double theta = std::numeric_limits<double>::signaling_NaN();
+    double variance = std::numeric_limits<double>::signaling_NaN();
+    double CV = std::numeric_limits<double>::signaling_NaN();
     std::optional<double> truncate = std::nullopt;
 };
 

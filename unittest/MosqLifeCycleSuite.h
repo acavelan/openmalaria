@@ -431,7 +431,7 @@ class MosqLifeCycleSuite : public CxxTest::TestSuite {
             cerr << "Exception: " << e.what() << endl;
             cerr << e << flush;
             TS_ASSERT(false);
-        } catch (const OM::util::xml_error& e) {
+        } catch (const OM::util::xml_scenario_error& e) {
             cerr << "Error in scenario XML file: " << e.what() << endl;
             TS_ASSERT(false);
         }
