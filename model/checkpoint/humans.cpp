@@ -34,28 +34,22 @@
 
 #include "Population.h"
 #include "Host/Human.h"
-#include "Host/IncidenceModel.h"
+#include "Host/InfectionIncidenceModel.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/Pathogenesis.h"
-#include "Clinical/Model.h"
+#include "Host/WithinHost/PathogenesisModel.h"
+#include "Clinical/ClinicalModel.h"
 #include "Clinical/Episode.h"
 #include "PkPd/LSTMDrug.h"
-#include "Context.h"
+#include "RunContext.h"
 
-namespace OM {
+namespace OpenMalaria {
 
-namespace Host {
-
-void checkpoint(checkpoint::Archive& a, IncidenceModel& m) {
+void checkpoint(Archive& a, InfectionIncidenceModel& m) {
     a.value(m.m_pInfected);
     a.value(m.m_cumulativeEIRa);
 }
 
-} // namespace Host
-
-namespace WithinHost {
-
-void checkpoint(checkpoint::Archive& a, VivaxBrood& b) {
+void checkpoint(Archive& a, VivaxBrood& b) {
     a.vector(b.releaseDates);
     a.value(b.bloodStageClearDate);
     a.boolean(b.primaryHasStarted);
@@ -66,14 +60,12 @@ void checkpoint(checkpoint::Archive& a, VivaxBrood& b) {
     a.value(b.origin);
 }
 
-namespace Pathogenesis {
-void checkpoint(checkpoint::Archive& a, Model& pm) {
+void checkpoint(Archive& a, PathogenesisModel& pm) {
     a.value(pm._comorbidityFactor);
     a.value(pm._pyrogenThres);
 }
-} // namespace Pathogenesis
 
-void checkpoint(checkpoint::Archive& a, Infection& inf) {
+void checkpoint(Archive& a, Infection& inf) {
     a.value(inf.m_startDate);
     a.value(inf.m_density);
     a.value(inf.m_cumulativeExposureJ);
@@ -113,7 +105,7 @@ void checkpoint(checkpoint::Archive& a, Infection& inf) {
             a.value(nv);
             if (a.reading()) {
                 if (nv > uint64_t(a.remaining()) / 64u)
-                    throw OM::checkpoint::checkpoint_error("variant count too large");
+                    throw checkpoint_error("variant count too large");
                 m.variants.resize(size_t(nv));
             }
             for (auto& v : m.variants) {
@@ -142,11 +134,7 @@ void checkpoint(checkpoint::Archive& a, Infection& inf) {
     }
 }
 
-} // namespace WithinHost
-
-namespace PkPd {
-
-void checkpoint(checkpoint::Archive& a, LSTMDrug& drug) {
+void checkpoint(Archive& a, LSTMDrug& drug) {
     // Wire tag = class built by DrugRegistry::createInstance (kind comes from
     // the same non-checkpointed drug-type config); the tag is the proof for
     // the per-kind down-casts (p8-poly rule; no serialisation decls on the
@@ -217,7 +205,7 @@ void checkpoint(checkpoint::Archive& a, LSTMDrug& drug) {
 }
 
 namespace {
-void ckLSTM(checkpoint::Archive& a, Context& ctx, LSTMModel& m, util::LocalRng& hostRng) {
+void ckLSTM(Archive& a, RunContext& ctx, LSTMModel& m, LocalRng& hostRng) {
     uint64_t n = m.m_drugs.size();
     a.value(n);
     if (a.reading()) {
@@ -258,14 +246,10 @@ void ckLSTM(checkpoint::Archive& a, Context& ctx, LSTMModel& m, util::LocalRng& 
 }
 } // namespace
 
-} // namespace PkPd
-
-namespace Clinical {
-
 namespace {
-void ckEpisode(checkpoint::Archive& a, Episode& ep) {
+void ckEpisode(Archive& a, Episode& ep) {
     a.value(ep.time);
-    if (ep.time != sim::never()) {
+    if (ep.time != never()) {
         a.value(ep.surveyPeriod);
         a.value(ep.ageGroup);
         a.value(ep.cohortSet);
@@ -275,13 +259,13 @@ void ckEpisode(checkpoint::Archive& a, Episode& ep) {
         a.value(infType);
         if (a.reading()) {
             ep.state = Episode::State(state);
-            ep.infectionType = WithinHost::Origin(infType);
+            ep.infectionType = InfectionOrigin(infType);
         }
     }
 }
 } // namespace
 
-void checkpoint(checkpoint::Archive& a, Model& cm) {
+void checkpoint(Archive& a, ClinicalModel& cm) {
     a.value(cm.m_treatmentSeekingFactor);
     a.value(cm.doomed);
     ckEpisode(a, cm.latestReport);
@@ -293,23 +277,17 @@ void checkpoint(checkpoint::Archive& a, Model& cm) {
         // createClinicalModel, same run config both ends of the wire) is the
         // proof for the down-cast. Wire stays symmetric: the 5-day variants
         // carry the old always-NONE bytes in a local.
-        auto* es = cm.kind == Model::Kind::EventScheduler ? &static_cast<CMEventScheduler&>(cm) : nullptr;
-        int32_t e = es ? static_cast<int32_t>(es->esPgState) : Episode::NONE;
+        auto* es = cm.kind == ClinicalModel::Kind::EventScheduler ? &static_cast<CMEventScheduler&>(cm) : nullptr;
+        int32_t e = es ? static_cast<int32_t>(es->esPgState) : NONE;
         a.value(e);
         if (es)
             es->esPgState = Episode::State(e);
     }
 }
 
-} // namespace Clinical
-
-namespace checkpoint {
-
 namespace {
 
-using WithinHost::WHInterface;
-
-void ckWH(Archive& a, Context& ctx, WHInterface& wh, util::LocalRng& rng) {
+void ckWH(Archive& a, RunContext& ctx, WHInterface& wh, LocalRng& rng) {
     // Shared P. falciparum block (written for every kind; Vivax leaves most
     // at their defaults — same bytes, simplest symmetric code).
     a.value(wh.numInfs);
@@ -327,14 +305,14 @@ void ckWH(Archive& a, Context& ctx, WHInterface& wh, util::LocalRng& rng) {
         if (a.reading() && pm && !wh.pathogenesisModel)
             throw checkpoint_error("pathogenesis model kind mismatch");
         if (pm)
-            WithinHost::Pathogenesis::checkpoint(a, *wh.pathogenesisModel);
+            checkpoint(a, *wh.pathogenesisModel);
     }
     switch (wh.kind) {
     case WHInterface::Kind::Common:
     case WHInterface::Kind::Descriptive: {
-        auto& f = static_cast<WithinHost::WHFalciparum&>(wh);
+        auto& f = static_cast<WHFalciparum&>(wh);
         a.value(f.hetMassMultiplier);
-        PkPd::ckLSTM(a, ctx, f.pkpdModel, rng);
+        ckLSTM(a, ctx, f.pkpdModel, rng);
         uint64_t n = f.infections.size();
         a.value(n);
         if (a.reading()) {
@@ -345,28 +323,27 @@ void ckWH(Archive& a, Context& ctx, WHInterface& wh, util::LocalRng& rng) {
             if (!desc && ctx.createInfection == nullptr)
                 throw checkpoint_error("within-host infection factory unset");
             for (uint64_t i = 0; i < n; ++i) {
-                WithinHost::Infection* inf =
-                    desc ? static_cast<WithinHost::Infection*>(new WithinHost::DescriptiveInfection(ctx, rng, 0, 0))
-                         : ctx.createInfection(ctx, rng, 0, 0);
-                WithinHost::checkpoint(a, *inf);
+                Infection* inf = desc ? static_cast<Infection*>(new DescriptiveInfection(ctx, rng, 0, 0))
+                                      : ctx.createInfection(ctx, rng, 0, 0);
+                checkpoint(a, *inf);
                 f.infections.push_back(inf);
             }
             if (uint64_t(f.infections.size()) != n)
                 throw checkpoint_error("internal: infection restore count");
         } else {
-            for (WithinHost::Infection* inf : f.infections)
-                WithinHost::checkpoint(a, *inf);
+            for (Infection* inf : f.infections)
+                checkpoint(a, *inf);
         }
         break;
     }
     case WHInterface::Kind::Vivax: {
-        auto& v = static_cast<WithinHost::WHVivax&>(wh);
+        auto& v = static_cast<WHVivax&>(wh);
         a.boolean(v.noPQ);
         {
             int32_t m = v.morbidity;
             a.value(m);
             if (a.reading())
-                v.morbidity = WithinHost::Pathogenesis::State(m);
+                v.morbidity = State(m);
         }
         a.value(v.treatExpiryLiverVivax);
         a.value(v.treatExpiryBloodVivax);
@@ -380,11 +357,11 @@ void ckWH(Archive& a, Context& ctx, WHInterface& wh, util::LocalRng& rng) {
             for (uint64_t i = 0; i < n; ++i) {
                 // Ctor samples a fresh brood (draws overwritten below).
                 v.vivaxInfections.emplace_back(ctx, rng, 0, &wh);
-                WithinHost::checkpoint(a, v.vivaxInfections.back());
+                checkpoint(a, v.vivaxInfections.back());
             }
         } else {
             for (auto& brood : v.vivaxInfections)
-                WithinHost::checkpoint(a, brood);
+                checkpoint(a, brood);
         }
         break;
     }
@@ -393,7 +370,7 @@ void ckWH(Archive& a, Context& ctx, WHInterface& wh, util::LocalRng& rng) {
     }
 }
 
-void ckHuman(Archive& a, Context& ctx, Host::Human& h) {
+void ckHuman(Archive& a, RunContext& ctx, Human& h) {
     auto& c = *h.cols;
     const size_t r = h.row;
     a.value(c.dob[r]);
@@ -415,9 +392,9 @@ void ckHuman(Archive& a, Context& ctx, Host::Human& h) {
     a.vector(c.anoph_prob_resting[r]);
     a.value(c.rel_avail_het[r]);
     a.value(c.outside_trans[r]);
-    Host::checkpoint(a, *h.infIncidence);
+    checkpoint(a, *h.infIncidence);
     ckWH(a, ctx, *h.withinHostModel, h.rng());
-    Clinical::checkpoint(a, *h.clinicalModel);
+    checkpoint(a, *h.clinicalModel);
     // parity: order — this human's RNG last: everything above may create
     // objects drawing from the fresh copy-seeded stream; the wire restores
     // the real state after those draws.
@@ -426,7 +403,7 @@ void ckHuman(Archive& a, Context& ctx, Host::Human& h) {
 
 } // namespace
 
-void ckHumans(Archive& a, Context& ctx, Population& population) {
+void ckHumans(Archive& a, RunContext& ctx, Population& population) {
     uint64_t n = population.humans.size();
     a.value(n);
     a.value(population.recentBirths);
@@ -445,5 +422,4 @@ void ckHumans(Archive& a, Context& ctx, Population& population) {
     }
 }
 
-} // namespace checkpoint
-} // namespace OM
+} // namespace OpenMalaria

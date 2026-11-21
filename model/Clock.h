@@ -24,11 +24,11 @@
  *
  * Everything time-related lives here:
  *  - SimTime: a number of days (integer), global typedef.
- *  - OM::sim: stateless constants/conversions (never/future/inYears/...) —
- *    plain namespace, no clock dependency (formerly the sim:: static-only
+ *  - sim: stateless constants/conversions (never/future/inYears/...) —
+ *    plain namespace, no clock dependency (formerly the static-only
  *    class of model/sim.h).
- *  - OM::SimClock: the simulation clock (time-step interval, dates, t0/t1,
- *    update markers). Owned by OM::Context; init/initInterval defined in
+ *  - SimClock: the simulation clock (time-step interval, dates, t0/t1,
+ *    update markers). Owned by RunContext; init/initInterval defined in
  *    run.cpp.
  **/
 #pragma once
@@ -36,7 +36,6 @@
 #include <cassert>
 #include <cmath>
 #include <cstddef>
-#include <limits>
 
 #include "util/mod.h"
 
@@ -49,23 +48,15 @@ class Scenario;
 /// SimTime is a number of days (integer).
 typedef int SimTime;
 
-namespace OM {
+namespace OpenMalaria {
 
-/// Short numeric constants (~110 sites spelled out std::numeric_limits before).
-inline constexpr double sNaN = std::numeric_limits<double>::signaling_NaN();
-inline constexpr double NaN = std::numeric_limits<double>::quiet_NaN();
-inline constexpr double INF = std::numeric_limits<double>::infinity();
+class RunContext; // SimClock::init takes a reference (defined in RunContext.h)
 
-class Context; // SimClock::init takes a reference (defined in Context.h)
-
-namespace util {
 class ModelNameProvider;
-}
 
 inline int floorToInt(double x) { return static_cast<int>(std::floor(x)); }
 
 /** Stateless simulation-time constants and conversions. */
-namespace sim {
 /// Number of days in a year; defined as 365 (leap years are not simulated).
 constexpr int DAYS_IN_YEAR = 365;
 
@@ -98,7 +89,6 @@ inline SimTime fromDays(int days) { return SimTime(days); }
 
 /// Convert from a whole number of years.
 inline SimTime fromYearsI(int years) { return SimTime(DAYS_IN_YEAR * years); }
-}
 
 class SimClock {
   public:
@@ -110,16 +100,16 @@ class SimClock {
     double years_per_step = 0.0;
 
     /// Maximum possible age of a human.
-    SimTime max_human_age = sim::never();
+    SimTime max_human_age = never();
     /// The starting date of the simulation.
-    SimTime start_date = sim::never();
+    SimTime start_date = never();
     /// The ending date of the simulation.
-    SimTime end_date = sim::never();
+    SimTime end_date = never();
 
-    SimTime t0 = sim::never();
-    SimTime t1 = sim::never();
+    SimTime t0 = never();
+    SimTime t1 = never();
     /// Time relative to the start of the intervention period.
-    SimTime interv = sim::never();
+    SimTime interv = never();
 
 #ifndef NDEBUG
     bool in_update = false; // only true during human/population/transmission update
@@ -131,10 +121,10 @@ class SimClock {
     int inSteps(SimTime d) const { return d / interval; }
 
     /// Return this time in time steps modulo some positive integer.
-    int moduloSteps(SimTime d, int denominator) const { return util::mod_nn(d / interval, denominator); }
+    int moduloSteps(SimTime d, int denominator) const { return mod_nn(d / interval, denominator); }
 
     /// Return this time in time steps modulo some positive integer.
-    int moduloYearSteps(SimTime d) const { return util::mod_nn(d / interval, steps_per_year); }
+    int moduloYearSteps(SimTime d) const { return mod_nn(d / interval, steps_per_year); }
 
     /// One time step (currently either one or five days).
     SimTime one_TS() const { return SimTime(interval); }
@@ -143,7 +133,7 @@ class SimClock {
     SimTime fromTS(int ts) const { return SimTime(int(one_TS()) * ts); }
 
     /** Convert from years to nearest time step. */
-    SimTime from_years_n(double years) const { return roundToTSFromDays(sim::DAYS_IN_YEAR * years); }
+    SimTime from_years_n(double years) const { return roundToTSFromDays(DAYS_IN_YEAR * years); }
 
     /** Convert from years, rounding down to the next time step. */
     SimTime from_years_d(double years) const { return fromTS(floorToInt(steps_per_year * years)); }
@@ -198,12 +188,12 @@ class SimClock {
     //@}
 
     /// Initial set-up: called by run_simulation via Scenario::load.
-    void init(Context& ctx, const scnXml::Scenario& scenario, util::ModelNameProvider mnp);
+    void init(RunContext& ctx, const scnXml::Scenario& scenario, ModelNameProvider mnp);
 
     /** Sets up time step duration: either a named model's interval or the
      * scenario's explicit interval. Must be 1 or 5 days (checked by
      * XMLChecker::PerformPostValidationChecks before seeding). */
-    void initInterval(const scnXml::Scenario& scenario, util::ModelNameProvider mnp);
+    void initInterval(const scnXml::Scenario& scenario, ModelNameProvider mnp);
 
     /// Start of update: called by the update loop.
     void start_update() {

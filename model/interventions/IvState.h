@@ -32,28 +32,24 @@
 #include "Clock.h"
 #include "Host/HostColumns.h" // IvRecord
 
-namespace OM {
-class Context;
-namespace Host {
+namespace OpenMalaria {
+class RunContext;
 class Human;
-}
-namespace interventions {
 struct ComponentConfig; // interventions/Components.h
 
 /** Deploy a vector intervention on a human: the component's existing record
  * is reset in place (redeploy draws), else a record is appended (first-use
  * draws). Draw order pinned (§9); list order is load-bearing (parity: c). */
-void iv_deploy(Context& ctx, Host::Human& human, const ComponentConfig& params);
+void iv_deploy(RunContext& ctx, Human& human, const ComponentConfig& params);
 
 /// Call once per time step (old PerHost::update loop; only ITNs mutate).
-void iv_update(Context& ctx, Host::Human& human);
+void iv_update(RunContext& ctx, Human& human);
 
 /// Per-record vector effects, 1.0 if not active (the history-ordered
 /// products of these are the PerHost accessors — parity: c).
-double iv_rel_attractiveness(Context& ctx, const IvRecord& r, size_t species);
-double iv_preprandial_survival(Context& ctx, const IvRecord& r, size_t species);
-double iv_postprandial_survival(Context& ctx, const IvRecord& r, size_t species);
-double iv_rel_fecundity(Context& ctx, const IvRecord& r, size_t species);
+double iv_rel_attractiveness(RunContext& ctx, const IvRecord& r, size_t species);
+double iv_preprandial_survival(RunContext& ctx, const IvRecord& r, size_t species);
+double iv_postprandial_survival(RunContext& ctx, const IvRecord& r, size_t species);
+double iv_rel_fecundity(RunContext& ctx, const IvRecord& r, size_t species);
 
-}
 }

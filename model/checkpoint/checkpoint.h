@@ -48,15 +48,11 @@
 #include <cstdint>
 #include <string>
 
-namespace OM {
+namespace OpenMalaria {
 
-class Context;
+class RunContext;
 class Population;
-namespace Transmission {
-class Model;
-}
-
-namespace checkpoint {
+class TransmissionModel;
 
 /// Which simulation phase the snapshot was taken in; drives what run.cpp
 /// skips on resume (WARMUP: continue warmup/calibration; MAIN: skip the
@@ -65,7 +61,7 @@ enum class Phase : uint8_t { Warmup = 1, Main = 2 };
 
 /// Write the checkpoint (phase + loop-end times included). Throws
 /// checkpoint_error on I/O trouble.
-void writeCheckpoint(Context& ctx, Population& population, Transmission::Model& transmission, Phase phase,
+void writeCheckpoint(RunContext& ctx, Population& population, TransmissionModel& transmission, Phase phase,
                      SimTime endTime, SimTime estEndTime, const std::string& path);
 
 /// Restore into the current (XML-initialised) run. On return: clock, all
@@ -74,8 +70,7 @@ void writeCheckpoint(Context& ctx, Population& population, Transmission::Model& 
 /// continues the warmup loop (Phase::Warmup) or goes straight to the main
 /// loop (Phase::Main). Throws checkpoint_error on a bad file.
 /// Outputs: save-time phase and loop-end times.
-void readCheckpoint(Context& ctx, Population& population, Transmission::Model& transmission, Phase& phase,
+void readCheckpoint(RunContext& ctx, Population& population, TransmissionModel& transmission, Phase& phase,
                     SimTime& endTime, SimTime& estEndTime, const std::string& path);
 
-} // namespace checkpoint
-} // namespace OM
+} // namespace OpenMalaria

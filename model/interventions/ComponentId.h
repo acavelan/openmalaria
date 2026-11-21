@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-// Leaf vocabulary header: no OM includes beyond Clock.h. Transmission/PerHost.h
+// Leaf vocabulary header: no OpenMalaria includes beyond Clock.h. Transmission/PerHost.h
 // may include this without pulling in the interventions module (phase-5 cycle
 // break); everything else should keep using interventions/Interfaces.h.
 #pragma once
@@ -28,8 +28,7 @@
 #include "Clock.h"
 #include <limits>
 
-namespace OM {
-namespace interventions {
+namespace OpenMalaria {
 
 /** Enumeration of all available components, in the order that these should be
  * deployed in within a single intervention. */
@@ -66,5 +65,4 @@ struct ComponentId {
     size_t id;
 };
 
-}
 }

@@ -31,8 +31,7 @@
 #include "ExtraAsserts.h"
 #include <limits>
 
-using namespace OM;
-using namespace OM::PkPd;
+using namespace OpenMalaria;
 
 /// There is probably little value in this unit-test now that PkPdComplianceSuite exists
 class LSTMPkPdSuite : public CxxTest::TestSuite {
@@ -48,7 +47,7 @@ class LSTMPkPdSuite : public CxxTest::TestSuite {
         UnittestUtil::initTime(1);
         UnittestUtil::PkPdSuiteSetup();
         proxy = new LSTMModel();
-        inf = createDummyInfection(UnittestUtil::ctx(), m_rng, 0, Origin::Indigenous);
+        inf = createDummyInfection(UnittestUtil::ctx(), m_rng, 0, InfectionOrigin::Indigenous);
         MQ_index = UnittestUtil::ctx().drugs.findDrug("MQ");
     }
     void tearDown() {

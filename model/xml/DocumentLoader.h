@@ -26,22 +26,21 @@
 #pragma once
 
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "util/errors.h"
 #include <schema/scenario.h>
 #include <fstream>
 #include <string>
 #include <memory>
 
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 static const int SCHEMA_VERSION = 50;
 
 inline std::unique_ptr<scnXml::Scenario> loadScenario(std::string lXmlFile) {
     std::ifstream fileStream(lXmlFile.c_str(), ios::binary);
     if (!fileStream.good()) {
         std::string msg = "Error: unable to open " + lXmlFile;
-        throw util::xml_error(msg);
+        throw xml_scenario_error(msg);
     }
     std::unique_ptr<scnXml::Scenario> scenario = scnXml::parseScenario(fileStream);
     fileStream.close();
@@ -50,16 +49,14 @@ inline std::unique_ptr<scnXml::Scenario> loadScenario(std::string lXmlFile) {
         std::cerr << "Warning: " << lXmlFile << " uses an old schema version (latest is " << SCHEMA_VERSION << ")."
                   << endl;
     } else if (scenarioVersion > SCHEMA_VERSION)
-        throw util::xml_error("Error: new schema version unsupported");
+        throw xml_scenario_error("Error: new schema version unsupported");
     return scenario;
-}
 }
 }
 
 // ———  post-load checks (was xml/XMLChecker.h)  ———
 
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 class XMLChecker {
   public:
     XMLChecker() {}
@@ -94,7 +91,7 @@ class XMLChecker {
         const bool parameters = scenario.getModel().getParameters().present();
         const bool modelOptions = scenario.getModel().getModelOptions().present();
         if (!modelName && (!parameters || !modelOptions)) {
-            throw util::xml_error(
+            throw xml_scenario_error(
                 "If a model name is not specified then both <ModelOptions> and <parameters> must be specified");
         }
         if (parameters) {
@@ -102,21 +99,20 @@ class XMLChecker {
             // clock is initialised (a bogus interval would divide by zero there).
             const int interval = scenario.getModel().getParameters().get().getInterval();
             if (interval != 1 && interval != 5) {
-                throw util::xml_error("Time step set to " + std::to_string(interval) +
-                                      " days but only 1 and 5 days are supported.");
+                throw xml_scenario_error("Time step set to " + std::to_string(interval) +
+                                         " days but only 1 and 5 days are supported.");
             }
         }
     }
 };
 }
-}
 
 // ———  shared latentP read (was xml/latentP.h; defined in xml/scenario.cpp)  ———
 
-namespace OM {
+namespace OpenMalaria {
 
 /// Default 15d, else model/parameters/latentP; wraps parse errors as
 /// "model/parameters/latentP: <msg>" exactly as both callers did.
 SimTime read_latentP(const SimClock& clock, const scnXml::Model& model);
 
-} // namespace OM
+} // namespace OpenMalaria

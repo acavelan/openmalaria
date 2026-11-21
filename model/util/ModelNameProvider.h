@@ -27,8 +27,7 @@ class Model;
 }
 #include "util/errors.h"
 
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 /*
         * It is intended that this holds the entire collection of named models.
         */
@@ -50,5 +49,4 @@ struct ModelNameProvider {
     ModelNameProvider(const scnXml::Model& model);
     ModelNames modelInUse = ModelNames::none;
 };
-}
 }

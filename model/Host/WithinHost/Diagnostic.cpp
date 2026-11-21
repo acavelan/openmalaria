@@ -20,10 +20,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-// p8-files: Diagnostic.h rides the Context.h cone (modelwide); RDT/PCR
+// p8-files: Diagnostic.h rides the RunContext.h cone (modelwide); RDT/PCR
 // drawing bodies stay here (wide-cone rule).
 #include "Host/WithinHost/Diagnostic.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "Parameters.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -31,8 +31,7 @@
 #include "util/CommandLine.h"
 #include <limits>
 
-namespace OM {
-namespace WithinHost {
+namespace OpenMalaria {
 
 // ———  Diagnostic (non-static)  ———
 
@@ -67,18 +66,18 @@ bool Diagnostic::allowsFalsePositives() const {
 
 // ———  diagnostics (static)  ———
 
-void diagnostics::clear(Context& ctx) { ctx.diagnostic_set.clear(); }
+void diagnostics::clear(RunContext& ctx) { ctx.diagnostic_set.clear(); }
 
-const Diagnostic& diagnostics::get(Context& ctx, const string& name) {
+const Diagnostic& diagnostics::get(RunContext& ctx, const string& name) {
     auto& diagnostic_set = ctx.diagnostic_set;
     auto it = diagnostic_set.find(name);
     if (it == diagnostic_set.end()) {
-        throw util::xml_error(string("diagnostic not found: ").append(name));
+        throw xml_scenario_error(string("diagnostic not found: ").append(name));
     }
     return it->second;
 }
 
-const Diagnostic& diagnostics::make_deterministic(Context& ctx, double minDens) {
+const Diagnostic& diagnostics::make_deterministic(RunContext& ctx, double minDens) {
     auto& diagnostic_set = ctx.diagnostic_set;
     string name = ""; // anything not matching an existing name is fine
     assert(diagnostic_set.count(name) ==
@@ -88,9 +87,8 @@ const Diagnostic& diagnostics::make_deterministic(Context& ctx, double minDens) 
     return ret.first->second;
 }
 
-const Diagnostic& diagnostics::monitoringDiagnostic(Context& ctx) {
+const Diagnostic& diagnostics::monitoringDiagnostic(RunContext& ctx) {
     assert(ctx.monitoring_diagnostic != 0);
     return *ctx.monitoring_diagnostic;
-}
 }
 }

@@ -33,8 +33,7 @@
 #include <iostream>
 #include <cassert>
 
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 bitset<CommandLine::NUM_OPTIONS> CommandLine::options;
 string CommandLine::resourcePath;
 string CommandLine::outputName;
@@ -268,7 +267,7 @@ string CommandLine::parse(int argc, char* argv[]) {
              << "For more information, see https://github.com/OpenMalaria-Org/openmalaria/wiki" << endl
              << endl
              << "\tschema version: \t" << SCHEMA_VERSION << endl
-             << "\tprogram version:\t" << util::semantic_version << endl
+             << "\tprogram version:\t" << semantic_version << endl
              << endl
              << "\tCopyright © 2005-2026 Swiss Tropical and Public Health Institute" << endl
              << "\tCopyright © 2005-2015 Liverpool School Of Tropical Medicine" << endl
@@ -361,5 +360,4 @@ string CommandLine::parse(int argc, char* argv[]) {
     return lookupResource(scenarioFile);
 }
 
-}
 }

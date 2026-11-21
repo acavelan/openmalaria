@@ -25,13 +25,8 @@
 #include "Clock.h"
 #include "util/random.h"
 
-namespace OM {
-namespace WithinHost {
+namespace OpenMalaria {
 class Infection;
-}
-namespace PkPd {
-
-using util::LocalRng;
 
 class LSTMDrugType;
 struct Params_convFactor;
@@ -88,7 +83,7 @@ class LSTMDrug {
      * @param inf A pointer to the infection of interest
      * @param body_mass Weight of patient in kg
      */
-    virtual double calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const = 0;
+    virtual double calculateDrugFactor(LocalRng& rng, Infection* inf, double body_mass) const = 0;
 
     /** Updates concentration variable and clears day's doses.
      * 
@@ -119,7 +114,7 @@ class LSTMDrugOneComp final : public LSTMDrug {
     LSTMDrugOneComp(const LSTMDrugType& type, LocalRng& rng);
 
     double getConcentration(size_t index) const override;
-    double calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const override;
+    double calculateDrugFactor(LocalRng& rng, Infection* inf, double body_mass) const override;
     void updateConcentration(double body_mass) override;
 
   public: // run state; wire in checkpoint/humans.cpp
@@ -136,7 +131,7 @@ class LSTMDrugThreeComp final : public LSTMDrug {
     LSTMDrugThreeComp(const LSTMDrugType& type, LocalRng& rng);
 
     double getConcentration(size_t index) const override;
-    double calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const override;
+    double calculateDrugFactor(LocalRng& rng, Infection* inf, double body_mass) const override;
     void updateConcentration(double body_mass) override;
 
   private:
@@ -169,7 +164,7 @@ class LSTMDrugConversion final : public LSTMDrug {
     LSTMDrugConversion(const LSTMDrugType& type, const LSTMDrugType* metabolite, LocalRng& rng);
 
     double getConcentration(size_t index) const override;
-    double calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const override;
+    double calculateDrugFactor(LocalRng& rng, Infection* inf, double body_mass) const override;
     void updateConcentration(double body_mass) override;
 
   private:
@@ -177,7 +172,7 @@ class LSTMDrugConversion final : public LSTMDrug {
     double getMetaboliteConcentration() const;
     double calculateFactor_conv(const Params_convFactor& p, double duration) const;
     void setConversionParameters(Params_convFactor& p, double body_mass) const;
-    void setKillingParameters(LocalRng& rng, Params_convFactor& p, WithinHost::Infection* inf) const;
+    void setKillingParameters(LocalRng& rng, Params_convFactor& p, Infection* inf) const;
 
   public: // run state; wire in checkpoint/humans.cpp
     /// Metabolite's drug-type data (typeData = parent)
@@ -196,5 +191,4 @@ class LSTMDrugConversion final : public LSTMDrug {
     double last_bm;
 };
 
-}
 }

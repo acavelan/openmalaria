@@ -31,8 +31,6 @@
 #include "WHMock.h"
 #include <limits>
 
-using namespace OM::Clinical;
-using namespace OM::WithinHost;
 using UnitTest::WHMockState;
 
 class CMDecisionTreeSuite : public CxxTest::TestSuite {
@@ -56,7 +54,7 @@ class CMDecisionTreeSuite : public CxxTest::TestSuite {
         ETS_ASSERT(whm != 0);
 
         ageYears = 21; // any real age will do for most tests
-        pgState = Episode::NONE;
+        pgState = NONE;
 
         // could seed random-number-generator, but shouldn't affect outcomes
         UnittestUtil::PkPdSuiteSetup();
@@ -133,12 +131,11 @@ class CMDecisionTreeSuite : public CxxTest::TestSuite {
         scnXml::DecisionTree dt;
         dt.setCaseType(ct);
 
-        using Underlying = std::underlying_type_t<Pathogenesis::State>;
-        pgState = static_cast<Episode::State>(static_cast<Underlying>(Pathogenesis::STATE_MALARIA));
+        using Underlying = std::underlying_type_t<State>;
+        pgState = static_cast<Episode::State>(static_cast<Underlying>(STATE_MALARIA));
         TS_ASSERT_EQUALS(propTreatmentsNReps(1, dt), 1);
 
-        pgState =
-            static_cast<Episode::State>(static_cast<Underlying>(Pathogenesis::STATE_MALARIA) | Episode::SECOND_CASE);
+        pgState = static_cast<Episode::State>(static_cast<Underlying>(STATE_MALARIA) | SECOND_CASE);
 
         TS_ASSERT_EQUALS(propTreatmentsNReps(1, dt), 0);
     }
@@ -162,7 +159,7 @@ class CMDecisionTreeSuite : public CxxTest::TestSuite {
         scnXml::DecisionTree dt_rdt;
         dt_rdt.setDiagnostic(rdt);
 
-        pgState = static_cast<Episode::State>(Pathogenesis::STATE_MALARIA);
+        pgState = static_cast<Episode::State>(STATE_MALARIA);
         const int N = 20000;
         const double LIM = .02;
 
@@ -209,8 +206,8 @@ class CMDecisionTreeSuite : public CxxTest::TestSuite {
     }
 
     void testSimpleTreat() {
-        TS_ASSERT_EQUALS(whm->lastTimeLiver, sim::never());
-        TS_ASSERT_EQUALS(whm->lastTimeBlood, sim::never());
+        TS_ASSERT_EQUALS(whm->lastTimeLiver, never());
+        TS_ASSERT_EQUALS(whm->lastTimeBlood, never());
 
         scnXml::DTTreatSimple treat1("0t", "1t"); // 0 time steps liver, 1 blood (using 1 day TS)
         scnXml::DecisionTree dt1;
@@ -248,7 +245,7 @@ class CMDecisionTreeSuite : public CxxTest::TestSuite {
      * observation via WHMock simple-treat timestamps. */
     CMDTOut execOnce(const scnXml::DecisionTree& dt) {
         const FlatTree& cmdt = compile_decision_tree(UnittestUtil::ctx(), dt, true);
-        whm->lastTimeLiver = whm->lastTimeBlood = sim::never();
+        whm->lastTimeLiver = whm->lastTimeBlood = never();
         DTExecCtx ec(UnittestUtil::ctx(), *human, ageYears, pgState);
         return exec_decision_tree(cmdt, ec);
     }
@@ -373,7 +370,7 @@ class CMDecisionTreeSuite : public CxxTest::TestSuite {
         scnXml::DecisionTree multi;
         multi.setMultiple(m);
 
-        pgState = static_cast<Episode::State>(Pathogenesis::STATE_MALARIA);
+        pgState = static_cast<Episode::State>(STATE_MALARIA);
         // Diagnostic alone: screened visible.
         CMDTOut out = execOnce(diagTree);
         TS_ASSERT_EQUALS(out.treated, true);
@@ -406,7 +403,7 @@ class CMDecisionTreeSuite : public CxxTest::TestSuite {
     }
 
   private:
-    unique_ptr<Host::Human> human;
+    unique_ptr<Human> human;
     WHMockState* whm;
     double ageYears;
     Episode::State pgState;

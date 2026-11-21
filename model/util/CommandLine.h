@@ -29,8 +29,7 @@
 #include <limits>
 using namespace std;
 
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 /// Command line options and processing
 class CommandLine {
   public:
@@ -120,5 +119,4 @@ class CommandLine {
     static string saveAt;
     static string resumeName;
 };
-}
 }

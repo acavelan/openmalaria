@@ -23,17 +23,14 @@
 #pragma once
 
 #include "Clock.h"
-#include "Host/WithinHost/Pathogenesis.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "mon/Monitoring.h"
 #include "util/ModelOptions.h"
 #include <ostream>
 
-namespace OM {
-namespace Host {
+namespace OpenMalaria {
 class Human;
-}
-namespace Clinical {
 
 /** Summary of clinical events during a caseManagementMemory period, in one individual.
  *
@@ -47,41 +44,13 @@ class Episode {
   public:
     /**
      * State description flags. Note that values are carefully engineered to
-     * work with Pathogenesis::State values.
+     * work with State values.
      */
-    enum State {
-        /* Values here are written in hexadecimal: http://en.wikipedia.org/wiki/Hexadecimal
-        * Many are designed to be "flags", so the value corresponds to a single bit:
-        * http://en.wikipedia.org/wiki/Flag_byte
-        * Max: 0x80000000
-        * (note & | ^ are C++'s binary AND, OR and XOR operators). */
-        NONE = WithinHost::Pathogenesis::NONE, ///< Not sick
+    using State = OpenMalaria::State;
 
-        // Flags for current state/worst state to report:
-        SICK = WithinHost::Pathogenesis::SICK,       ///< Sick (may or may not be from malaria)
-        MALARIA = WithinHost::Pathogenesis::MALARIA, ///< Malaria sickness
-        /// Used by ClinicalEventScheduler to indicate a second bout of malarial sickness within the same episode (roughly)
-        SECOND_CASE = 0x10,
-        SEVERE = 0x8,                                        ///< Severe malaria case
-        COINFECTION = 0x4,                                   ///< Malaria with a coinfection
-        COMPLICATED = WithinHost::Pathogenesis::COMPLICATED, ///< Flag used to indicate SEVERE and/or COINFECTION
-
-        //NEED_ANTIBIOTIC     = 0x40,         ///< Flag indicates a non-malaria fever requires (antibiotic) treatment
-
-        // Flags for outcome reporting:
-        EVENT_IN_HOSPITAL =
-            0x400, ///< Indicates recovery/sequelae/death event occurred in hospital − only set on one of these events (ImmediateOutcomes only)
-        DIRECT_DEATH = 0x1000, ///< Used for reporting death (from COMPLICATED sickness)
-        SEQUELAE = 0x2000,     ///< Reporting recovered with sequelae (from COMPLICATED sickness)
-        RECOVERY = 0x4000,     ///< Report that individual fully recovered
-        EVENT_FIRST_DAY =
-            0x8000, ///< Used in combination with DIRECT_DEATH to report death happens on first day (before treatment has effect)
-        RUN_CM_TREE = 0x10000, ///< Flag to indicate that CM tree should be run now or after a delay
-    };
-
-    explicit Episode(Context& ctx)
-        : time(sim::never()), surveyPeriod(mon::NOT_USED), ageGroup(0), cohortSet(0), state(NONE), rctx(&ctx) {
-        healthSystemMemoryFix = util::ModelOptions::option(util::HEALTH_SYSTEM_MEMORY_FIX);
+    explicit Episode(RunContext& ctx)
+        : time(never()), surveyPeriod(NOT_USED), ageGroup(0), cohortSet(0), state(NONE), rctx(&ctx) {
+        healthSystemMemoryFix = ModelOptions::option(HEALTH_SYSTEM_MEMORY_FIX);
     };
 
     ~Episode();
@@ -94,10 +63,10 @@ class Episode {
      * @param human The human whose info is being reported
      * @param newState The severity (diagnosis) and outcome.
      */
-    void update(Context& ctx, const Host::Human& human, Episode::State newState);
+    void update(RunContext& ctx, const Human& human, Episode::State newState);
 
     /// Time of event, potentially never
-    SimTime time = sim::never();
+    SimTime time = never();
     /// Survey during which the event occured
     size_t surveyPeriod;
     /// Age group of the individual when the episode's first bout occurred
@@ -108,7 +77,7 @@ class Episode {
     /// be reported (e.g. indirect deaths are reported independantly).
     Episode::State state;
 
-    WithinHost::Origin infectionType = WithinHost::Origin::Indigenous;
+    InfectionOrigin infectionType = InfectionOrigin::Indigenous;
 
   private:
     /** Report a clinical episode.
@@ -121,8 +90,7 @@ class Episode {
 
     bool healthSystemMemoryFix = false;
     /// The run this episode reports to (set at construction).
-    Context* rctx;
+    RunContext* rctx;
 };
 
-}
 }

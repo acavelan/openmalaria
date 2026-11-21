@@ -31,15 +31,13 @@
 
 #include <string>
 
-namespace OM {
-namespace Transmission {
-class Model;
+namespace OpenMalaria {
+class TransmissionModel;
 
 /// Loop over per-species vector population interventions, deploying to
 /// the species indicated by each element's mosquito attribute.
-void initVectorInterv(Model& vm, const scnXml::Description::AnophelesSequence& list, size_t instance,
+void initVectorInterv(TransmissionModel& vm, const scnXml::Description::AnophelesSequence& list, size_t instance,
                       const std::string& name);
-void initVectorTrap(Model& vm, const scnXml::VectorTrap::DescriptionSequence list, size_t instance,
+void initVectorTrap(TransmissionModel& vm, const scnXml::VectorTrap::DescriptionSequence list, size_t instance,
                     const scnXml::VectorTrap::NameOptional name_opt);
-}
 }

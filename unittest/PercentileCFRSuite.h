@@ -31,26 +31,24 @@
  *    (PerHost.h:82-111; main.cpp calls it before the sim, and interventions
  *    interpolate on it). Pinned bit-exactly for one species with
  *    availability distr=gamma CV=0.3, factor 1.0.
- * 2. Model::getCommunityCFR() (Model.cpp:115-118) — the
+ * 2. ClinicalModel::getCommunityCFR() (ClinicalModel.cpp:115-118) — the
  *    community-vs-hospital CFR map x·θ/(1−cfr+x). It reads the file-global
- *    OM::Clinical::oddsRatioThreshold (Model.cpp:45, external
+ *    oddsRatioThreshold (ClinicalModel.cpp:45, external
  *    linkage), set directly here instead of via Parameters → no model
  *    changes needed. Goldens evaluated in IEEE-754 double, same op order.
  */
 
 #include <cxxtest/TestSuite.h>
 #include "Transmission/PerHost.h"
-#include "Clinical/Model.h"
+#include "Clinical/ClinicalModel.h"
 #include "UnittestUtil.h"
 #include "util/ModelOptions.h"
 #include <cstring>
 #include <limits>
 
-// file-global defined by Model.cpp:45; no header declares it
-namespace OM {
-namespace Clinical {
+// file-global defined by ClinicalModel.cpp:45; no header declares it
+namespace OpenMalaria {
 extern double oddsRatioThreshold;
-}
 }
 
 // getCommunityCFR is a public static member since the hierarchy collapse
@@ -61,7 +59,7 @@ class PercentileCFRSuite : public CxxTest::TestSuite {
     void testEntoAvailabilityPercentiles() {
         UnittestUtil::initTime(5);
         UnittestUtil::DescriptiveInfection_init(); // = ModelOptions::reset()
-        if (Transmission::PerHostAnophParams::numSpecies(UnittestUtil::ctx()) == 0) {
+        if (PerHostAnophParams::numSpecies(UnittestUtil::ctx()) == 0) {
             // minimal in-memory scnXml::Mosq (schema classes are constructible
             // programmatically — pattern used by UnittestUtil for PKPD types)
             scnXml::IntValue rest(3), eip(10);
@@ -73,10 +71,10 @@ class PercentileCFRSuite : public CxxTest::TestSuite {
             scnXml::DoubleValue oviposit(0.0), bloodIndex(0.9);
             scnXml::Mosq mosq(rest, eip, laidEggs, seeking, survFeed, avail, biting, restSite, resting, oviposit,
                               bloodIndex);
-            Transmission::PerHostAnophParams::init(UnittestUtil::ctx(), mosq);
-            Transmission::PerHostAnophParams::setEntoAvailabilityFactor(UnittestUtil::ctx(), 0, 1.0);
+            PerHostAnophParams::init(UnittestUtil::ctx(), mosq);
+            PerHostAnophParams::setEntoAvailabilityFactor(UnittestUtil::ctx(), 0, 1.0);
         }
-        Transmission::PerHostAnophParams::calcAvailabilityPercentiles(UnittestUtil::ctx());
+        PerHostAnophParams::calcAvailabilityPercentiles(UnittestUtil::ctx());
 
         // blessed 2026-11-19: MasterRng(0,0) seed, gamma CV=0.3, factor 1.0,
         // 100k samples (GCC 16.2.1, GSL 2.8, -O3 -ffp-contract=off)
@@ -183,22 +181,20 @@ class PercentileCFRSuite : public CxxTest::TestSuite {
             1.8280769186712187,
         };
         for (int p = 0; p < 100; ++p) {
-            double v = Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(UnittestUtil::ctx(), p);
+            double v = PerHostAnophParams::getEntoAvailabilityPercentile(UnittestUtil::ctx(), p);
             if (!(std::memcmp(&v, &GOLDEN[p], sizeof(double)) == 0))
                 TS_FAIL("percentile mismatch");
         }
-        TS_ASSERT_EQUALS(Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(UnittestUtil::ctx(), 100),
+        TS_ASSERT_EQUALS(PerHostAnophParams::getEntoAvailabilityPercentile(UnittestUtil::ctx(), 100),
                          std::numeric_limits<double>::max());
-        TS_ASSERT_THROWS_ANYTHING(
-            Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(UnittestUtil::ctx(), -1));
-        TS_ASSERT_THROWS_ANYTHING(
-            Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(UnittestUtil::ctx(), 101));
+        TS_ASSERT_THROWS_ANYTHING(PerHostAnophParams::getEntoAvailabilityPercentile(UnittestUtil::ctx(), -1));
+        TS_ASSERT_THROWS_ANYTHING(PerHostAnophParams::getEntoAvailabilityPercentile(UnittestUtil::ctx(), 101));
     }
 
     void testCommunityCFR() {
-        Clinical::oddsRatioThreshold = 1.5;
+        oddsRatioThreshold = 1.5;
         // golden[cfr] = x/((1-cfr)+x), x=cfr*1.5 — evaluated 2026-11-19 in
-        // IEEE-754 double with the op order of Model.cpp:116-117
+        // IEEE-754 double with the op order of ClinicalModel.cpp:116-117
         static const double TAB[][2] = {
             {0.0, 0.0},
             {0.01, 0.014925373134328359},
@@ -209,7 +205,7 @@ class PercentileCFRSuite : public CxxTest::TestSuite {
             {1.0, 1.0},
         };
         for (const auto& row : TAB) {
-            double got = OM::Clinical::Model::getCommunityCFR(row[0]);
+            double got = ClinicalModel::getCommunityCFR(row[0]);
             if (!(std::memcmp(&got, &row[1], sizeof(double)) == 0))
                 TS_FAIL("CFR mismatch");
         }

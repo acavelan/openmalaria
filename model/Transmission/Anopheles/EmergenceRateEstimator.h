@@ -34,11 +34,8 @@
 #include <vector>
 #include <limits>
 
-namespace OM {
-namespace Transmission {
-namespace Anopheles {
+namespace OpenMalaria {
 using std::numeric_limits;
-using namespace OM::util;
 
 inline int argmax(const std::vector<double>& vec) {
     int imax = 0;
@@ -59,14 +56,14 @@ inline double findAngle(const double EIRRotageAngle, const std::vector<double>& 
 
     double delta = 2.0 * M_PI / 365.0;
 
-    double min = INF;
+    double min = std::numeric_limits<double>::infinity();
     double minAngle = 0.0;
     for (double angle = -M_PI; angle < M_PI; angle += delta) {
         vectors::expIDFT(temp, FSCoeffic, EIRRotageAngle + angle);
 
         // Minimize l1-norm
         double sum = 0.0;
-        for (int i = 0; i < sim::oneYear(); i++) {
+        for (int i = 0; i < oneYear(); i++) {
             double v = fabs(temp[i] - sim[i]);
             sum += v * v;
         }
@@ -112,9 +109,9 @@ class EmergenceRateEstimator final {
     bool estimate(AnophelesModel& m, const std::vector<double>& laggedKappa, double meanAvail) {
         if (kind == Kind::Solver)
             return estimateSolver(m, laggedKappa, meanAvail);
-        std::vector<double> avgAnnualS_v(sim::oneYear(), 0.0);
-        for (SimTime i = sim::fromYearsI(4); i < sim::fromYearsI(5); i = i + sim::oneDay()) {
-            avgAnnualS_v[mod_nn(i, sim::oneYear())] = m.quinquennialS_v[i];
+        std::vector<double> avgAnnualS_v(oneYear(), 0.0);
+        for (SimTime i = fromYearsI(4); i < fromYearsI(5); i = i + oneDay()) {
+            avgAnnualS_v[mod_nn(i, oneYear())] = m.quinquennialS_v[i];
         }
 
         double factor = vectors::sum(m.forcedS_v) / vectors::sum(avgAnnualS_v);
@@ -123,17 +120,17 @@ class EmergenceRateEstimator final {
         // cout << "Pre-calced Sv, dynamic Sv:\t"<<sumAnnualForcedS_v<<'\t'<<vectors::sum(annualS_v)<<endl;
         if (!(factor > 1e-6 && factor < 1e6)) {
             if (factor > 1e6 && vectors::sum(m.quinquennialS_v) < 1e-3) {
-                throw util::base_exception("Simulated S_v is approx 0 (i.e.\
+                throw base_exception("Simulated S_v is approx 0 (i.e.\
      mosquitoes are not infectious, before interventions). Simulator cannot handle this; perhaps\
      increase EIR or change the entomology model.",
-                                           util::Error::VectorFitting);
+                                     Error::VectorFitting);
             }
             if (vectors::sum(m.forcedS_v) == 0.0) {
                 return false; // no EIR desired: nothing to do
             }
             cerr << "Input S_v for this vector:\t" << vectors::sum(m.forcedS_v) << endl;
             cerr << "Simulated S_v:\t\t\t" << vectors::sum(m.quinquennialS_v) / 5.0 << endl;
-            throw TRACED_EXCEPTION("factor out of bounds", util::Error::VectorFitting);
+            throw TRACED_EXCEPTION("factor out of bounds", Error::VectorFitting);
         }
 
         const double LIMIT = 0.1;
@@ -168,7 +165,7 @@ class EmergenceRateEstimator final {
   private:
     bool estimateSolver(AnophelesModel& m, const std::vector<double>& laggedKappa, double meanAvail) {
         std::vector<double>& mosqEmergeRateVector = m.mosqEmergeRate;
-        int thetap = sim::DAYS_IN_YEAR;
+        int thetap = DAYS_IN_YEAR;
         int tau = m.mosq.restDuration;
         int thetas = m.mosq.EIPDuration;
         std::vector<double> Ni{static_cast<double>(populationSize)};
@@ -252,6 +249,4 @@ class EmergenceRateEstimator final {
     int populationSize;
 };
 
-}
-}
 }

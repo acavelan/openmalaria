@@ -24,8 +24,7 @@
 
 #include <cassert>
 
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 
 // We want a real modular arithmatic operator (one supporting
 // "a + n mod n = a mod n" even where a is negative).
@@ -48,9 +47,5 @@ inline int mod_nn(int a, int b) {
 }
 
 }
-}
 
-namespace OM {
-using util::mod;
-using util::mod_nn;
-}
+namespace OpenMalaria {}

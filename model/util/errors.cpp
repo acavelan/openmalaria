@@ -35,8 +35,7 @@
 #endif
 
 /** Standard exception classes for OpenMalaria. */
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 
 const char* Messages::SwitchDefault = "no valid option selected in a switch statement or if/else tree";
 
@@ -142,9 +141,9 @@ const char* unimplemented_exception::message() const {
     return &msg_buf[0];
 }
 
-xml_error::xml_error(const string& msg) : base_exception(msg, Error::XmlScenario) {}
+xml_scenario_error::xml_scenario_error(const string& msg) : base_exception(msg, Error::XmlScenario) {}
 
-format_error::format_error(const string& msg) : xml_error(msg) {}
+format_error::format_error(const string& msg) : xml_scenario_error(msg) {}
 
 cmd_exception::cmd_exception(const string& msg, int code) : base_exception(msg, code) {}
 
@@ -154,5 +153,4 @@ void gsl_handler(const char* reason, const char* file, int line, int gsl_errno) 
 
 void set_gsl_handler() { gsl_set_error_handler(&gsl_handler); }
 
-}
 }

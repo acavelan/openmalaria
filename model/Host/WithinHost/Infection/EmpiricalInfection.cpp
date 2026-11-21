@@ -32,9 +32,7 @@
 #include <string>
 #include <cmath>
 
-namespace OM {
-namespace WithinHost {
-using namespace ::OM::util;
+namespace OpenMalaria {
 
 // -----  Empirical model statics  -----
 // File scope: this TU is the only reader/writer; re-initialised per run by
@@ -66,11 +64,11 @@ static double getInflatedDensity(LocalRng& rng, double nonInflatedDensity);
 static double sigma_noise(int ageDays);
 static double sampleSubPatentValue(LocalRng& rng, double mu, double sigma, double upperBound);
 
-Infection* createEmpiricalInfection(Context& ctx, LocalRng& rng, uint32_t protID, int origin) {
+Infection* createEmpiricalInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
     return new EmpiricalInfection(ctx, rng, protID, origin);
 }
 
-void EmpiricalInfection::init(Context& ctx) {
+void EmpiricalInfection::init(RunContext& ctx) {
     ctx.createInfection = &createEmpiricalInfection;
 
     // alpha1 corresponds to 1 day before first patent, alpha2 2 days before first patent etc.
@@ -90,10 +88,10 @@ void EmpiricalInfection::init(Context& ctx) {
     _overallMultiplier = 0.697581;
     _subPatentLimit = 10.0 / _overallMultiplier;
     _maximumPermittedAmplificationPerCycle = 1000.0;
-    string fname = util::CommandLine::lookupResource("autoRegressionParameters.csv");
+    string fname = CommandLine::lookupResource("autoRegressionParameters.csv");
     fstream f_autoRegressionParameters(fname.c_str(), ios::in);
     if (!f_autoRegressionParameters.is_open())
-        throw base_exception(string("file not found: ").append(fname), util::Error::FileIO);
+        throw base_exception(string("file not found: ").append(fname), Error::FileIO);
 
     //read header of file (unused)
     string csvLine;
@@ -132,7 +130,7 @@ void EmpiricalInfection::init(Context& ctx) {
 
 /* Initialises a new infection by assigning the densities for the last 3 prepatent days
 */
-EmpiricalInfection::EmpiricalInfection(Context& ctx, LocalRng& rng, uint32_t genotype, int origin,
+EmpiricalInfection::EmpiricalInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin,
                                        double growthRateMultiplier)
     : Infection(ctx, genotype, origin, Kind::Empirical) {
     //sample the parasite densities for the last 3 prepatent days
@@ -151,7 +149,7 @@ EmpiricalInfection::EmpiricalInfection(Context& ctx, LocalRng& rng, uint32_t gen
 const int EI_MAX_SAMPLES = 10;
 bool EmpiricalInfection::update(LocalRng& rng, double survivalFactor, SimTime now, double) {
     SimTime bsAge = now - m_startDate - Infection::s_latentP; // age of post-latent-period blood stage
-    if (bsAge < sim::zero())
+    if (bsAge < zero())
         return false; // latent period (liver stage) — don't do anything
     // aliases: the equation block below is verbatim from the free function
     // (inf.empirical-> payload refs became inf. member refs)
@@ -245,5 +243,4 @@ static double getInflatedDensity(LocalRng& rng, double nonInflatedDensity) {
 
 // -----  checkpointing  -----
 
-}
 }

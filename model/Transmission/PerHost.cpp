@@ -23,14 +23,12 @@
 // p8-files: PerHost.h is read by interventions + WH + checkpoint paths; the
 // bit-vector deploy/restore bodies stay here (wide-cone rule).
 #include "Transmission/PerHost.h"
-#include "Transmission/Model.h"
+#include "Transmission/TransmissionModel.h"
 #include "Host/Human.h"
 #include "interventions/IvState.h"
 #include "util/errors.h"
 
-namespace OM {
-namespace Transmission {
-using namespace OM::util;
+namespace OpenMalaria {
 
 // -----  PerHost static  -----
 
@@ -44,7 +42,7 @@ PerHost::PerHost() {
     // are now the column defaults in append_row.
 }
 
-void PerHost::initialise(Context& ctx, LocalRng& rng, double availabilityFactor) {
+void PerHost::initialise(RunContext& ctx, LocalRng& rng, double availabilityFactor) {
     rel_avail_het() = availabilityFactor;
     anoph_ento_raw().resize(PerHostAnophParams::numSpecies(ctx));
     anoph_ento_avail().resize(PerHostAnophParams::numSpecies(ctx));
@@ -62,14 +60,14 @@ void PerHost::initialise(Context& ctx, LocalRng& rng, double availabilityFactor)
     }
 }
 
-void PerHost::update(Host::Human& human) { interventions::iv_update(*ctx, human); }
+void PerHost::update(Human& human) { iv_update(*ctx, human); }
 
-// Note: deployment goes straight to interventions::iv_deploy (record list on
+// Note: deployment goes straight to iv_deploy (record list on
 // HumanColumns.iv); update and the effect accessors below multiply over
 // those records in list order.
 
 // Note: in the case an intervention is not present, we can use the approximation
-// of Weibull decay over the time span now - sim::never()
+// of Weibull decay over the time span now - never()
 // (easily large enough for conceivable Weibull params that the value is 0.0 when
 // rounded to a double. Performance-wise it's perhaps slightly slower than using
 // an if() when interventions aren't present.
@@ -77,56 +75,56 @@ void PerHost::update(Host::Human& human) { interventions::iv_update(*ctx, human)
 double PerHost::entoAvailabilityHetVecItv(size_t species) const {
     double alpha_i = anoph_ento_avail()[species];
     for (const IvRecord& r : cols->iv[row])
-        alpha_i *= interventions::iv_rel_attractiveness(*ctx, r, species);
+        alpha_i *= iv_rel_attractiveness(*ctx, r, species);
     return alpha_i;
 }
 double PerHost::probMosqBiting(size_t species) const {
     double P_B_i = anoph_prob_biting()[species];
     for (const IvRecord& r : cols->iv[row])
-        P_B_i *= interventions::iv_preprandial_survival(*ctx, r, species);
+        P_B_i *= iv_preprandial_survival(*ctx, r, species);
     return P_B_i;
 }
 double PerHost::probMosqResting(size_t species) const {
     double pRest = anoph_prob_resting()[species];
     for (const IvRecord& r : cols->iv[row])
-        pRest *= interventions::iv_postprandial_survival(*ctx, r, species);
+        pRest *= iv_postprandial_survival(*ctx, r, species);
     return pRest;
 }
 
 double PerHost::relMosqFecundity(size_t species) const {
     double relFecundity = 1.0;
     for (const IvRecord& r : cols->iv[row])
-        relFecundity *= interventions::iv_rel_fecundity(*ctx, r, species);
+        relFecundity *= iv_rel_fecundity(*ctx, r, species);
     return relFecundity;
 }
 
-bool PerHost::hasActiveInterv(interventions::Component::Type type) const {
+bool PerHost::hasActiveInterv(Component::Type type) const {
     // kind is recorded on the record: no component-registry lookup needed
     for (const IvRecord& r : cols->iv[row])
-        if (r.kind == type && r.deploy != sim::never())
+        if (r.kind == type && r.deploy != never())
             return true;
     return false;
 }
 
 }
-}
 
 // ———  PerHostAnophParams registry ((*ctx.anophParams))  ———
 
-namespace OM {
-namespace Transmission {
+namespace OpenMalaria {
 
-void PerHostAnophParams::init(Context& ctx, const scnXml::Mosq& mosq) { ctx.anophParams->emplace_back(mosq); }
+void PerHostAnophParams::init(RunContext& ctx, const scnXml::Mosq& mosq) { ctx.anophParams->emplace_back(mosq); }
 
-size_t PerHostAnophParams::numSpecies(Context& ctx) { return ctx.anophParams->size(); }
+size_t PerHostAnophParams::numSpecies(RunContext& ctx) { return ctx.anophParams->size(); }
 
-const PerHostAnophParams& PerHostAnophParams::get(Context& ctx, size_t species) { return (*ctx.anophParams)[species]; }
+const PerHostAnophParams& PerHostAnophParams::get(RunContext& ctx, size_t species) {
+    return (*ctx.anophParams)[species];
+}
 
-void PerHostAnophParams::setEntoAvailabilityFactor(Context& ctx, size_t species, double entoAvailability) {
+void PerHostAnophParams::setEntoAvailabilityFactor(RunContext& ctx, size_t species, double entoAvailability) {
     (*ctx.anophParams)[species].entoAvailabilityFactor = entoAvailability;
 }
 
-void PerHostAnophParams::calcAvailabilityPercentiles(Context& ctx) {
+void PerHostAnophParams::calcAvailabilityPercentiles(RunContext& ctx) {
     auto& params = (*ctx.anophParams);
     auto& entoAvailabilityPercentiles = ctx.entoAvailabilityPercentiles;
     int nSamples = 100000;
@@ -135,10 +133,10 @@ void PerHostAnophParams::calcAvailabilityPercentiles(Context& ctx) {
     // Using a different seed to make sure old results will not change
     // Does it really matter?
     // parity: order — MasterRng(0,0) availability-percentile seed is load-bearing for goldens — do not “clean up”
-    util::MasterRng seed(0, 0);
+    MasterRng seed(0, 0);
     seed.seed(0, 0);
 
-    util::LocalRng rng(seed);
+    LocalRng rng(seed);
 
     // Sample
     for (int i = 0; i < nSamples; i++) {
@@ -159,15 +157,14 @@ void PerHostAnophParams::calcAvailabilityPercentiles(Context& ctx) {
     entoAvailabilityPercentiles[0] = 0.0;
 }
 
-double PerHostAnophParams::getEntoAvailabilityPercentile(Context& ctx, int p) {
+double PerHostAnophParams::getEntoAvailabilityPercentile(RunContext& ctx, int p) {
     auto& entoAvailabilityPercentiles = ctx.entoAvailabilityPercentiles;
     if (p >= 0 && p < 100)
         return entoAvailabilityPercentiles[p];
     else if (p == 100)
         return std::numeric_limits<double>::max();
     else
-        throw util::xml_error("Availability percentiles in intervention specifications can only be in [0 and 100]");
+        throw xml_scenario_error("Availability percentiles in intervention specifications can only be in [0 and 100]");
 }
 
-}
 }

@@ -38,12 +38,11 @@
 #include "checkpoint.h"
 #include "sections.h"
 
-#include "Context.h"
+#include "RunContext.h"
 
 #include <fstream>
 
-namespace OM {
-namespace checkpoint {
+namespace OpenMalaria {
 
 namespace {
 constexpr uint32_t MAGIC = 0x4B634D4F; // "OMCk" little-endian bytes
@@ -62,7 +61,7 @@ void ckHeader(Archive& a) {
     }
 }
 
-void ckClock(Archive& a, Context& ctx, Phase& phase, SimTime& endTime, SimTime& estEndTime) {
+void ckClock(Archive& a, RunContext& ctx, Phase& phase, SimTime& endTime, SimTime& estEndTime) {
     uint8_t p = uint8_t(phase);
     a.value(p);
     if (a.reading()) {
@@ -78,7 +77,7 @@ void ckClock(Archive& a, Context& ctx, Phase& phase, SimTime& endTime, SimTime& 
 }
 } // namespace
 
-void writeCheckpoint(Context& ctx, Population& population, Transmission::Model& transmission, Phase phase,
+void writeCheckpoint(RunContext& ctx, Population& population, TransmissionModel& transmission, Phase phase,
                      SimTime endTime, SimTime estEndTime, const std::string& path) {
     std::ofstream out(path, std::ios::binary | std::ios::trunc);
     if (!out.is_open())
@@ -100,7 +99,7 @@ void writeCheckpoint(Context& ctx, Population& population, Transmission::Model& 
         throw checkpoint_error("error writing \"" + path + "\"");
 }
 
-void readCheckpoint(Context& ctx, Population& population, Transmission::Model& transmission, Phase& phase,
+void readCheckpoint(RunContext& ctx, Population& population, TransmissionModel& transmission, Phase& phase,
                     SimTime& endTime, SimTime& estEndTime, const std::string& path) {
     std::ifstream in(path, std::ios::binary);
     if (!in.is_open())
@@ -116,5 +115,4 @@ void readCheckpoint(Context& ctx, Population& population, Transmission::Model& t
     a.checkExhausted();
 }
 
-} // namespace checkpoint
-} // namespace OM
+} // namespace OpenMalaria

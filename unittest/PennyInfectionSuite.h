@@ -31,8 +31,6 @@
 #include <fstream>
 #include <iomanip>
 
-using namespace OM::WithinHost;
-
 class PennyInfectionSuite : public CxxTest::TestSuite {
   public:
     PennyInfectionSuite() : m_rng(0, 0) {}
@@ -44,7 +42,7 @@ class PennyInfectionSuite : public CxxTest::TestSuite {
         PennyInfection::init(UnittestUtil::ctx());
         infection = new PennyInfection(
             UnittestUtil::ctx(), m_rng, 0xFFFFFFFF,
-            Origin::Indigenous); // pkpdID (value) isn't important since we're not using drug model here
+            InfectionOrigin::Indigenous); // pkpdID (value) isn't important since we're not using drug model here
     }
     void tearDown() { delete infection; }
 
@@ -90,7 +88,7 @@ class PennyInfectionSuite : public CxxTest::TestSuite {
             TS_ASSERT_APPROX(infection->seqDensity(ageDays), seqDens[iterations]);
             //             outCir << infection->getDensity() << endl;
             //             outSeq << infection->seqDensity(ageDays) << endl;
-            now = now + sim::oneDay();
+            now = now + oneDay();
             iterations += 1;
         } while (!extinct);
         TS_ASSERT_EQUALS(iterations, cirDens.size());

@@ -27,18 +27,17 @@
 #include <map>
 
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "util/CommandLine.h"
 #include "util/errors.h"
 
 namespace scnXml {
 class AgeGroupValues;
 }
-namespace OM {
+namespace OpenMalaria {
 class SimClock;
 }
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 
 /** Deterministic interpolation of data collected by age groups: one
  * enum-tagged value type (Kind switch picks the formula — the old
@@ -130,11 +129,11 @@ struct AgeGroupInterpolator {
     /** Sample interpolator between 0 and max age, outputting to a csv file
      * called name.csv. */
     void outputSamples(const SimClock& clock, const string name) {
-        if (!util::CommandLine::option(util::CommandLine::SAMPLE_INTERPOLATIONS)) {
+        if (!CommandLine::option(CommandLine::SAMPLE_INTERPOLATIONS)) {
             return;
         }
         ofstream fstream((name + ".csv").c_str());
-        double max = sim::inYears(clock.max_human_age);
+        double max = inYears(clock.max_human_age);
         for (double age = 0.0; age < max; age += 0.1) {
             fstream << age << "," << this->eval(age) << endl;
         }
@@ -145,5 +144,4 @@ struct AgeGroupInterpolator {
     map<double, double> data;
 };
 
-}
 }

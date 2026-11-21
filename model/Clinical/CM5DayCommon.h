@@ -28,9 +28,9 @@
 
 #pragma once
 
-#include "Context.h"
-#include "Host/WithinHost/Pathogenesis.h"
-#include "Clinical/Model.h"
+#include "RunContext.h"
+#include "Host/WithinHost/PathogenesisModel.h"
+#include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "mon/Monitoring.h"
@@ -39,14 +39,12 @@ namespace scnXml {
 class HSDT5Day;
 class HSImmediateOutcomes;
 }
-namespace OM {
-namespace Clinical {
-using Host::Human;
+namespace OpenMalaria {
 
 /**
  * Case-management CONFIG shared by the 5-day case management models
  * (DecisionTree5Day and ImmediateOutcomes kinds). Non-polymorphic: static
- * config only; per-human state lives on Model, behaviour is the
+ * config only; per-human state lives on ClinicalModel, behaviour is the
  * clinicalUpdate5Day free function below.
  */
 class CM5DayCommon {
@@ -54,24 +52,24 @@ class CM5DayCommon {
     static void init();
 
     enum CaseType { FirstLine, SecondLine, NumCaseTypes };
-    static mon::Measure measures[NumCaseTypes];
+    static Measure measures[NumCaseTypes];
     static double accessUCAny[NumCaseTypes];
     static double accessUCSelfTreat[NumCaseTypes];
     static double accessSevere;
     static double cureRateSevere;
-    static WithinHost::TreatmentId treatmentSevere;
+    static TreatmentId treatmentSevere;
 };
 
 /** Common 5-day clinical update (old CM5DayCommon::doClinicalUpdate; the
  * variant selects the uncomplicatedEvent implementation via the virtual —
  * parity: the old virtual call). */
-void clinicalUpdate5Day(Model& cm, Context& ctx, Human& human, double ageYears,
-                        WithinHost::Pathogenesis::StatePair& pg);
+void clinicalUpdate5Day(ClinicalModel& cm, RunContext& ctx, Human& human, double ageYears, StatePair& pg);
 
 /** Called when a severe/complicated (with co-infection) malaria sickness occurs.
  *
  * Note: sets doomed = 4 if patient dies. */
-void severeMalaria(Model& cm, Context& ctx, Human& human, Episode::State pgState, double ageYears, int& doomed);
+void severeMalaria(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState, double ageYears,
+                   int& doomed);
 
 /**
  * This models case management with 5-day time steps, optionally including
@@ -91,12 +89,12 @@ class DecisionTree5Day {
   public:
     /** Load health system data from initial data or an intervention's data (both from XML).
      * (Re)loads all data affected by this healthSystem element. */
-    static void setHealthSystem(Context& ctx, const scnXml::HSDT5Day& hsDescription);
+    static void setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& hsDescription);
 };
 
 /// Uncomplicated-case handling for the DecisionTree5Day kind (old
 /// DecisionTree5Day::uncomplicatedEvent).
-void treeUncomplicatedEvent(Model& cm, Context& ctx, Human& human, Episode::State pgState);
+void treeUncomplicatedEvent(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState);
 
 /**
  * This models case management at a 5-day time step with all-or-nothing
@@ -117,17 +115,16 @@ class ImmediateOutcomes {
   public:
     /** Load health system data from initial data or an intervention's data (both from XML).
      * (Re)loads all data affected by this healthSystem element. */
-    static void setHealthSystem(Context& ctx, const scnXml::HSImmediateOutcomes& hsioData);
+    static void setHealthSystem(RunContext& ctx, const scnXml::HSImmediateOutcomes& hsioData);
 
     static double cureRateUCOfficial[CM5DayCommon::NumCaseTypes];
     static double cureRateUCSelfTreat[CM5DayCommon::NumCaseTypes];
-    static WithinHost::TreatmentId treatmentUC[CM5DayCommon::NumCaseTypes];
+    static TreatmentId treatmentUC[CM5DayCommon::NumCaseTypes];
     static bool useDiagnosticUC;
 };
 
 /// Uncomplicated-case handling for the ImmediateOutcomes kind (old
 /// ImmediateOutcomes::uncomplicatedEvent).
-void immOutUncomplicatedEvent(Model& cm, Context& ctx, Human& human, Episode::State pgState);
+void immOutUncomplicatedEvent(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState);
 
-}
 }

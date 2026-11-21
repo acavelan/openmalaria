@@ -30,15 +30,10 @@ class UnittestUtil;
 namespace scnXml {
 class PKPDMedication;
 }
-namespace OM {
-class Context;
-namespace Host {
+namespace OpenMalaria {
+class RunContext;
 class Human;
-}
-namespace WithinHost {
 class Infection;
-}
-namespace PkPd {
 
 struct DrugRegistry;
 
@@ -76,7 +71,7 @@ struct MedicateData {
 class LSTMModel {
   public:
     /// Static initialisation
-    static void init(Context& ctx, const scnXml::Scenario& scenario);
+    static void init(RunContext& ctx, const scnXml::Scenario& scenario);
 
     /** Prescribe a patient a course of drugs, via the Pk/Pd model
      * 
@@ -89,7 +84,7 @@ class LSTMModel {
      * @param body_mass Mass of human in kg
      * @param delay_d Delay of treatment in days
      */
-    void prescribe(Context& ctx, size_t schedule, size_t dosages, double age, double body_mass, double delay_d);
+    void prescribe(RunContext& ctx, size_t schedule, size_t dosages, double age, double body_mass, double delay_d);
 
     /** Medicate drugs: human takes prescribed drugs which are to be taken this
      * day.
@@ -97,7 +92,7 @@ class LSTMModel {
      * Note: poor adherence on the part of the patient is not modeled here; to
      * model, prescribe with a "poor adherence" schedule.
      */
-    void medicate(Context& ctx, LocalRng& rng);
+    void medicate(RunContext& ctx, LocalRng& rng);
 
     /** Get concentration of the drug at the beginning of the day.
      * 
@@ -109,7 +104,7 @@ class LSTMModel {
      * Each time step, on each infection, the parasite density is multiplied by
      * the return value of this infection. The WithinHostModels are responsible
      * for clearing infections once the parasite density is negligible. */
-    double getDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const;
+    double getDrugFactor(LocalRng& rng, Infection* inf, double body_mass) const;
 
     /** After any resident infections have been reduced by getDrugFactor(),
      * this function is called to update drug levels to their effective level
@@ -118,7 +113,7 @@ class LSTMModel {
     void decayDrugs(double body_mass);
 
     /** Make summaries of drug concentration data. */
-    void summarize(Context& ctx, const Host::Human& human) const;
+    void summarize(RunContext& ctx, const Human& human) const;
 
   public: // simple state record; test util reads the queue directly
     /** Medicate drugs to an individual, which act on infections the following
@@ -135,7 +130,7 @@ class LSTMModel {
      * new infection densities) happens first; hence medicate() will always be
      * called after getDrugFactor in a time step, and a time of zero means the
      * dose has effect from the start of the following time step. */
-    void medicateDrug(Context& ctx, LocalRng& rng, size_t typeIndex, double qty, double time);
+    void medicateDrug(RunContext& ctx, LocalRng& rng, size_t typeIndex, double qty, double time);
 
     /// Drugs with non-zero blood concentrations:
     vector<unique_ptr<LSTMDrug>> m_drugs;
@@ -144,5 +139,4 @@ class LSTMModel {
     list<MedicateData> medicateQueue;
 };
 
-}
 }

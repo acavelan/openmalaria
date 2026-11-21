@@ -29,8 +29,7 @@
 #include <deque>
 #endif
 
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 typedef uint32_t SVType;
 
 // ———  Our cross-platform consistent-result hasing functions  ——
@@ -119,5 +118,4 @@ template <class T> inline T streamValidate(T x) {
     return std::move(x);
 }
 
-}
 }

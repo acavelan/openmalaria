@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "Context.h"
+#include "RunContext.h"
 #include "interventions/ComponentId.h"
 #include "util/DecayFunction.h"
 #include "util/sampler.h"
@@ -31,10 +31,7 @@ class GVIDescription;
 class AnophelesParams11;
 }
 
-namespace OM {
-namespace interventions {
-using util::DecayFunction;
-using util::LocalRng;
+namespace OpenMalaria {
 
 /** Constant parameters for generic vector intervention model (phase 7.2b:
  * plain Component payload struct — cf. ITNParams; members public: read by
@@ -46,7 +43,7 @@ struct GVIParams {
      * @param elt Component description from XML
      * @param species_name_map Map of species names to indices.
      */
-    GVIParams(Context& ctx, ComponentId, const scnXml::GVIDescription& elt,
+    GVIParams(RunContext& ctx, ComponentId, const scnXml::GVIDescription& elt,
               const map<string, size_t>& species_name_map);
 
     /** Per mosquito-species parameters for generic vector intervention model. */
@@ -79,5 +76,4 @@ struct GVIParams {
     // No memory management
 };
 
-}
 }

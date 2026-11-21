@@ -23,20 +23,20 @@
 #pragma once
 
 // Phase-3 acceptance test (plan §7 row 3): run the full engine twice, in one
-// process, through the same code path main() uses (OM::run_simulation).
+// process, through the same code path main() uses (run_simulation).
 // Run 2 must be bit-identical to run 1 — any per-run state that survives run
-// 1 (i.e. any static that should live in Context) makes this red.
+// 1 (i.e. any static that should live in RunContext) makes this red.
 //
 // Capture: the monitoring MeasureStore report values (exact IEEE-754 bit
 // comparison, NaN included) plus the survey-output bytes written by
-// mon::writeSurveyData(). scenario1.xml: pop 100, timed interventions,
+// writeSurveyData(). scenario1.xml: pop 100, timed interventions,
 // dynamic EIR — full run ≈ 0.3 s.
 
 #include <cxxtest/TestSuite.h>
 
 #include "configured/TestPaths.h"
 
-#include "Context.h"
+#include "RunContext.h"
 #include "util/CommandLine.h"
 #include "mon/Monitoring.h"
 
@@ -52,8 +52,8 @@ namespace {
 
 /// Raw IEEE-754 bit pattern of every monitoring report value, in store order
 /// (contract (g): store order is deterministic). NaN-safe: compares bits.
-void captureMonStores(OM::Context& ctx, std::vector<uint64_t>& out) {
-    for (const OM::mon::internal::MeasureStore& store : (*ctx.monitoring).stores) {
+void captureMonStores(RunContext& ctx, std::vector<uint64_t>& out) {
+    for (const MeasureStore& store : (*ctx.monitoring).stores) {
         out.push_back(uint64_t(INT64_MAX) + 1 + static_cast<uint64_t>(store.output.measure));
         out.push_back(store.size());
         std::visit(
@@ -74,7 +74,7 @@ struct RunCapture {
     std::vector<char> surveyBytes;
 };
 
-RunCapture captureRun(Context& ctx, const std::string& surveyFile) {
+RunCapture captureRun(RunContext& ctx, const std::string& surveyFile) {
     RunCapture c;
     captureMonStores(ctx, c.monValues);
     std::ifstream in(surveyFile, std::ios::in | std::ios::binary);
@@ -107,7 +107,7 @@ class TwoRunsSuite : public CxxTest::TestSuite {
                               "--output-format", "bin",        "--output",       "tworuns.bin"};
         std::string scenarioFile;
         try {
-            scenarioFile = OM::util::CommandLine::parse(5, const_cast<char**>(argv));
+            scenarioFile = CommandLine::parse(5, const_cast<char**>(argv));
         } catch (const std::exception& e) {
             std::filesystem::current_path(oldCwd);
             TS_FAIL(std::string("CommandLine::parse: ") + e.what());
@@ -119,8 +119,8 @@ class TwoRunsSuite : public CxxTest::TestSuite {
         std::string err;
         for (int run = 1; run <= 2 && ok; ++run) {
             try {
-                Context ctx; // each run gets a fresh context: runs must not share state
-                OM::run_simulation(ctx, scenarioFile);
+                RunContext ctx; // each run gets a fresh context: runs must not share state
+                run_simulation(ctx, scenarioFile);
                 (run == 1 ? run1 : run2) = captureRun(ctx, "tworuns.bin");
             } catch (const std::exception& e) {
                 ok = false;

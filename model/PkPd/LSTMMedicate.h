@@ -39,7 +39,7 @@ using std::map;
 
 class UnittestUtil;
 namespace scnXml { class Treatments; }
-namespace OM { namespace PkPd {
+namespace OpenMalaria {
 
 struct Schedule {
     vector<MedicateData> medications;
@@ -55,7 +55,7 @@ struct DosageTable {
         else{
             auto iter = table.upper_bound( key );
             if( iter == table.end() )
-                throw TRACED_EXCEPTION( "bad age/dosage table", util::Error::PkPd );
+                throw TRACED_EXCEPTION( "bad age/dosage table", Error::PkPd );
             return iter->second;
         }
     }
@@ -67,7 +67,7 @@ struct DosageTable {
 
 /** Treatment courses of the current run (was: LSTMTreatments statics). */
 inline void invalidModel(){
-    throw util::xml_error( "use of PK/PD treatment requires use of a compatible infection model and specification of pharmacology/treatments" );
+    throw xml_scenario_error( "use of PK/PD treatment requires use of a compatible infection model and specification of pharmacology/treatments" );
 }
 
 struct TreatmentRegistry {
@@ -83,7 +83,7 @@ struct TreatmentRegistry {
         if( scheduleNames.size() == 0 ) invalidModel();
         auto iter = scheduleNames.find( name );
         if( iter == scheduleNames.end() ){
-            throw util::xml_error(string("no treatment schedule with this name: ")
+            throw xml_scenario_error(string("no treatment schedule with this name: ")
                 .append(name));
         }
         return iter->second;
@@ -93,7 +93,7 @@ struct TreatmentRegistry {
         if( dosagesNames.size() == 0 ) invalidModel();
         auto iter = dosagesNames.find( name );
         if( iter == dosagesNames.end() ){
-            throw util::xml_error(string("no dosage table with this name: ")
+            throw xml_scenario_error(string("no dosage table with this name: ")
                 .append(name));
         }
         return iter->second;
@@ -115,10 +115,10 @@ public:
     /** Load treatment data from XML into ctx.treatments.
      * 
      * Load drug data (LSTMDrugType::init()) first. */
-    static void init (Context& ctx, const scnXml::Treatments& data);
+    static void init (RunContext& ctx, const scnXml::Treatments& data);
     
 private:
     LSTMTreatments();  // not constructible
 };
 
-} }
+}

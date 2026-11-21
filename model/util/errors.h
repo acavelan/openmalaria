@@ -32,9 +32,9 @@ using namespace std;
 /* Macros to ease use of traced_exception.
  * msg should be obvious, and code is the program exit code.
  */
-#define TRACED_EXCEPTION( msg, code ) ::OM::util::traced_exception( (msg), __FILE__, __LINE__, (code) )
-#define TRACED_EXCEPTION_DEFAULT( msg ) ::OM::util::traced_exception( (msg), __FILE__, __LINE__ )
-#define SWITCH_DEFAULT_EXCEPTION ::OM::util::traced_exception( OM::util::Messages::SwitchDefault, __FILE__, __LINE__, ::OM::util::Error::SwitchDefault )
+#define TRACED_EXCEPTION( msg, code ) OpenMalaria::traced_exception( (msg), __FILE__, __LINE__, (code) )
+#define TRACED_EXCEPTION_DEFAULT( msg ) OpenMalaria::traced_exception( (msg), __FILE__, __LINE__ )
+#define SWITCH_DEFAULT_EXCEPTION  OpenMalaria::traced_exception( OpenMalaria::Messages::SwitchDefault, __FILE__, __LINE__, OpenMalaria::Error::SwitchDefault )
 
 // #define OM_NO_STACK_TRACE
 
@@ -45,7 +45,7 @@ using namespace std;
 #endif
 
 /** Standard exception classes for OpenMalaria. */
-namespace OM { namespace util {
+namespace OpenMalaria {
     
     /** Different exit codes which may be used.
      * 
@@ -174,13 +174,13 @@ namespace OM { namespace util {
      * 
      * Since such errors are always user-input errors, collecting a stack
      * trace doesn't help. Just provide a useful message! */
-    class xml_error : public base_exception {
+    class xml_scenario_error : public base_exception {
     public:
-        explicit xml_error(const string& msg);
+        explicit xml_scenario_error(const string& msg);
     };
     
     /** Thrown to indicate a badly formatted parameter. */
-    class format_error : public xml_error {
+    class format_error : public xml_scenario_error {
     public:
         explicit format_error (const string& what_arg);
     };
@@ -194,4 +194,4 @@ namespace OM { namespace util {
     
     /** Set up a GSL handler to throw a traced exception. */
     void set_gsl_handler();
-} }
+}

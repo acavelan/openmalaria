@@ -417,8 +417,8 @@ CalcInitMosqEmergeRate(std::vector<double>& mosqEmergeRateVector, // output vect
     // For this model, all the eigenvalues should be in the unit circle. However,
     // as we cannot show that analytically, we need to check it numerically.
     if (srXtp >= 1.0) {
-        throw ::OM::util::base_exception("Spectral radius of Xtp >= 1.0: no stable periodic orbit exists",
-                                         ::OM::util::Error::VectorFitting);
+        throw OpenMalaria::base_exception("Spectral radius of Xtp >= 1.0: no stable periodic orbit exists",
+                                          OpenMalaria::Error::VectorFitting);
     }
 
     // Calculate the inverse of (I-Xtp).
@@ -453,7 +453,7 @@ CalcInitMosqEmergeRate(std::vector<double>& mosqEmergeRateVector, // output vect
     free(xp);
 
     if (hasNegativeNv0) {
-        throw ::OM::util::base_exception(
+        throw OpenMalaria::base_exception(
             "The exact emergence solver produced negative emergence rates. "
             "With the current mosquito mortality/survival parameters, the requested EIR likely "
             "falls faster than the infectious mosquito population can decline biologically; "
@@ -462,7 +462,7 @@ CalcInitMosqEmergeRate(std::vector<double>& mosqEmergeRateVector, // output vect
             "Alternatively, remove <option name=\"USE_EXACT_NV0_SOLVER\" value=\"true\"/> "
             "to use the legacy adaptive fitter. This may allow the simulation to run, "
             "but be aware that the simulated EIR may deviate more from the input EIR.",
-            ::OM::util::Error::VectorFitting);
+            OpenMalaria::Error::VectorFitting);
     }
 
     return 0.0;

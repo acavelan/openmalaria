@@ -38,29 +38,22 @@ class Scenario;
 class Monitoring;
 }
 
-namespace OM {
-class Context;
-namespace Host {
+namespace OpenMalaria {
+class RunContext;
 class Human;
-}
-namespace interventions {
 struct ComponentId;
-}
-namespace mon {
 
 // ----- scenario-load API (definitions: model/xml/monitoring.cpp) -----
 
-SimTime readSurveyDates(Context& ctx, const scnXml::Monitoring& monitoring);
-void initReporting(Context& ctx, const scnXml::Scenario& scenario);
-void initCohorts(Context& ctx, const scnXml::Monitoring& monitoring);
+SimTime readSurveyDates(RunContext& ctx, const scnXml::Monitoring& monitoring);
+void initReporting(RunContext& ctx, const scnXml::Scenario& scenario);
+void initCohorts(RunContext& ctx, const scnXml::Monitoring& monitoring);
 
 inline constexpr size_t NOT_USED = std::numeric_limits<size_t>::max();
 
 namespace Deploy {
 enum Method { TIMED, CTS, TREAT };
 }
-
-namespace internal {
 
 struct Condition {
     bool value;
@@ -69,7 +62,7 @@ struct Condition {
 };
 
 struct SurveyDate {
-    SimTime date = sim::never();
+    SimTime date = never();
     size_t num = NOT_USED;
 
     bool isReported() const { return num != NOT_USED; }
@@ -95,44 +88,41 @@ struct RuntimeState {
     std::vector<SurveyDate> surveyDates;
     std::vector<SimTime> ageGroupUpperBound;
     std::vector<uint32_t> cohortSubPopNumbers;
-    std::map<interventions::ComponentId, uint32_t> cohortSubPopIds;
+    std::map<ComponentId, uint32_t> cohortSubPopIds;
     std::vector<MeasureStore> stores;
     std::vector<std::vector<size_t>> storesByMeasure;
 };
 
-void initStores(Context& ctx, const std::vector<OutMeasure>& enabledMeasures, size_t nSpecies, size_t nDrugs);
-
-} // namespace internal
+void initStores(RunContext& ctx, const std::vector<OutMeasure>& enabledMeasures, size_t nSpecies, size_t nDrugs);
 
 // ----- info API (per-run state: (*ctx.monitoring)) -----
 
-size_t eventSurveyNumber(Context& ctx);
-size_t statSurveyNumber(Context& ctx);
-bool isReported(Context& ctx);
-SimTime nextSurveyDate(Context& ctx);
-size_t setupCondition(Context& ctx, const std::string& measureName, double minValue, double maxValue,
+size_t eventSurveyNumber(RunContext& ctx);
+size_t statSurveyNumber(RunContext& ctx);
+bool isReported(RunContext& ctx);
+SimTime nextSurveyDate(RunContext& ctx);
+size_t setupCondition(RunContext& ctx, const std::string& measureName, double minValue, double maxValue,
                       bool initialState);
-bool checkCondition(Context& ctx, size_t conditionKey);
-uint32_t updateCohortSet(Context& ctx, uint32_t old, interventions::ComponentId subPop, bool isMember);
+bool checkCondition(RunContext& ctx, size_t conditionKey);
+uint32_t updateCohortSet(RunContext& ctx, uint32_t old, ComponentId subPop, bool isMember);
 
 // ----- management API -----
 
-void updateAgeGroup(Context& ctx, uint16_t& index, SimTime age);
-void initMainSim(Context& ctx);
-void concludeSurvey(Context& ctx);
-void writeSurveyData(Context& ctx);
+void updateAgeGroup(RunContext& ctx, uint16_t& index, SimTime age);
+void initMainSim(RunContext& ctx);
+void concludeSurvey(RunContext& ctx);
+void writeSurveyData(RunContext& ctx);
 
 // ----- direct recording API -----
 
-void recordStat(Context& ctx, Measure measure, double val, size_t species = 0, size_t genotype = 0);
+void recordStat(RunContext& ctx, Measure measure, double val, size_t species = 0, size_t genotype = 0);
 /// The human overloads find the run through human.ctx.
-void recordStat(Measure measure, const Host::Human& human, double val = 1.0, size_t species = 0, size_t genotype = 0,
+void recordStat(Measure measure, const Human& human, double val = 1.0, size_t species = 0, size_t genotype = 0,
                 size_t drug = 0);
-void recordEvent(Context& ctx, Measure measure, size_t survey, size_t age, uint32_t cohort);
-void recordEvent(Measure measure, const Host::Human& human, double val = 1.0, int outId = 0);
-void recordDeploy(Measure timedMeasure, Measure ctsMeasure, const Host::Human& human, Deploy::Method method,
+void recordEvent(RunContext& ctx, Measure measure, size_t survey, size_t age, uint32_t cohort);
+void recordEvent(Measure measure, const Human& human, double val = 1.0, int outId = 0);
+void recordDeploy(Measure timedMeasure, Measure ctsMeasure, const Human& human, Deploy::Method method,
                   double val = 1.0);
-bool isUsed(Context& ctx, Measure measure);
+bool isUsed(RunContext& ctx, Measure measure);
 
-} // namespace mon
-} // namespace OM
+} // namespace OpenMalaria

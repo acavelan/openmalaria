@@ -31,13 +31,12 @@
 #include <sstream>
 #include <string>
 
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 using std::map;
 using std::set;
 using std::string;
 
-/** Checks keys exist and that all are used. Fails with an xml_error
+/** Checks keys exist and that all are used. Fails with an xml_scenario_error
  * and a suitable error message. */
 class SpeciesIndexChecker {
   public:
@@ -61,14 +60,14 @@ inline size_t SpeciesIndexChecker::getIndex(string species) {
         std::ostringstream msg;
         msg << "Intervention \"" << _intervName << "\" has multiple descriptions for vector species \"" << species
             << "\"";
-        throw util::xml_error(msg.str());
+        throw xml_scenario_error(msg.str());
     }
     auto sIndex = _indices.find(species);
     if (sIndex == _indices.end()) {
         std::ostringstream msg;
         msg << "Intervention \"" << _intervName << "\" has a description for vector species \"" << species
             << "\", but this species is not mentioned in the entomology section";
-        throw util::xml_error(msg.str());
+        throw xml_scenario_error(msg.str());
     }
     return sIndex->second;
 }
@@ -79,10 +78,9 @@ inline void SpeciesIndexChecker::checkNoneMissed() const {
             std::ostringstream msg;
             msg << "Intervention \"" << _intervName << "\" has a no description for vector species \"" << it->first
                 << "\"";
-            throw util::xml_error(msg.str());
+            throw xml_scenario_error(msg.str());
         }
     }
 }
 
-}
 }

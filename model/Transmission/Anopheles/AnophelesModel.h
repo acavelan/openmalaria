@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "Transmission/PerHost.h"
 #include "util/SimpleDecayingValue.h"
 #include "util/vectors.h"
@@ -39,11 +39,8 @@ class Description1;
 class NonVector;
 }
 
-namespace OM {
-namespace Transmission {
-namespace Anopheles {
+namespace OpenMalaria {
 using std::numeric_limits;
-using namespace OM::util;
 
 enum VecStat { PA, PAmu, PA1, PAh, PDF, PDIF, NV, OV, SV };
 
@@ -132,14 +129,14 @@ struct MosquitoParams {
      * Set in initialise function from XML data; no need to checkpoint.
      * Duration of feeding cycle (equals duration of resting period) for mosquito (τ).
      * Units: days. */
-    SimTime restDuration = sim::never();
+    SimTime restDuration = never();
 
     /** Duration of the extrinsic incubation period (sporozoite development time)
     * (θ_s).
     * Units: Days.
     *
     * Doesn't need checkpointing. */
-    SimTime EIPDuration = sim::never();
+    SimTime EIPDuration = never();
 
     string name;
 };
@@ -159,33 +156,33 @@ struct Nhh {
     double P_C_I;
     double P_D_I;
     double rel_fecundity;
-    SimTime expiry = sim::never();
+    SimTime expiry = never();
 };
 
 struct TrapParams {
     TrapParams() : relAvail(numeric_limits<double>::signaling_NaN()) {}
     TrapParams(TrapParams&& o) : relAvail(o.relAvail), availDecay(std::move(o.availDecay)) {}
 
-    double relAvail;                            // Initial availability of a trap relative to an adult
-    unique_ptr<util::DecayFunction> availDecay; // Decay of availability
+    double relAvail;                      // Initial availability of a trap relative to an adult
+    unique_ptr<DecayFunction> availDecay; // Decay of availability
 };
 
 struct TrapData {
     size_t instance;                    // index in trapParams
     double initialAvail;                // initial availability (avail per trap * num traps)
     unique_ptr<DecayFunction> availHet; // parameter for decay of availability
-    SimTime deployTime = sim::never();  // deploy time (for decay function)
-    SimTime expiry = sim::never();      // date at which this intervention should be deleted
+    SimTime deployTime = never();       // deploy time (for decay function)
+    SimTime expiry = never();           // date at which this intervention should be deleted
 };
 
 class AnophelesModel {
   public:
     /// The run this model belongs to (clock accessed as ctx.clock).
-    Context& ctx;
+    RunContext& ctx;
 
     ///@brief Initialisation and destruction
     //@{
-    AnophelesModel(Context& ctx)
+    AnophelesModel(RunContext& ctx)
         : ctx(ctx), nhh_avail(numeric_limits<double>::signaling_NaN()),
           nhh_sigma_df(numeric_limits<double>::signaling_NaN()), nhh_sigma_dff(numeric_limits<double>::signaling_NaN()),
           // EmergenceModel
@@ -193,9 +190,9 @@ class AnophelesModel {
           initOvFromSv(numeric_limits<double>::quiet_NaN()), initNv0FromSv(numeric_limits<double>::quiet_NaN()),
           // MosqTransmission
           N_v_length(0), timeStep_N_v0(0.0) {
-        forcedS_v.resize(sim::oneYear());
-        quinquennialS_v.resize(sim::fromYearsI(5), 0.0);
-        mosqEmergeRate.resize(sim::oneYear(), 0.0);
+        forcedS_v.resize(oneYear());
+        quinquennialS_v.resize(fromYearsI(5), 0.0);
+        mosqEmergeRate.resize(oneYear(), 0.0);
     }
 
     AnophelesModel(const AnophelesModel&) = delete;            //disable copy-constructor
@@ -354,10 +351,10 @@ class AnophelesModel {
         // TODO: why offset by one time step? This is effectively getting the resources available on the last time step
         // TODO: only have to add one year because of offset
         const SimpleMPDState& sm = *simpleMPD;
-        SimTime start = ctx.clock.now() - ctx.clock.one_TS() + sim::oneYear();
+        SimTime start = ctx.clock.now() - ctx.clock.one_TS() + oneYear();
         double total = 0;
-        for (SimTime i = start, end = start + ctx.clock.one_TS(); i < end; i = i + sim::oneDay()) {
-            SimTime dYear1 = mod_nn(i, sim::oneYear());
+        for (SimTime i = start, end = start + ctx.clock.one_TS(); i < end; i = i + oneDay()) {
+            SimTime dYear1 = mod_nn(i, oneYear());
             total += 1.0 / sm.invLarvalResources[dYear1];
         }
         return total / ctx.clock.one_TS();
@@ -365,7 +362,7 @@ class AnophelesModel {
     double getResRequirements() const { return numeric_limits<double>::quiet_NaN(); }
 
     /// Write some per-species summary information.
-    void summarize(Context& ctx, size_t species) const;
+    void summarize(RunContext& ctx, size_t species) const;
     //@}
 
     MosquitoParams mosq;
@@ -564,13 +561,13 @@ class AnophelesModel {
     vector<TrapParams> trapParams;
 
     /** Interventions affecting death rate while seeking (parameters + state) based on a given probability */
-    vector<util::SimpleDecayingValue> probAdditionalDeathSugarFeedingIntervs;
+    vector<SimpleDecayingValue> probAdditionalDeathSugarFeedingIntervs;
 
     /** Interventions affecting death rate while seeking (parameters + state) */
-    vector<util::SimpleDecayingValue> seekingDeathRateIntervs;
+    vector<SimpleDecayingValue> seekingDeathRateIntervs;
 
     /** Interventions affecting probability of dying while ovipositing (pre laying of eggs) (parameters + state) */
-    vector<util::SimpleDecayingValue> probDeathOvipositingIntervs;
+    vector<SimpleDecayingValue> probDeathOvipositingIntervs;
 
     /** Baited trap interventions.
      * 
@@ -579,11 +576,11 @@ class AnophelesModel {
      * date; total availability is the sum. */
     list<TrapData> baitedTraps;
 
-    map<string, vector<util::SimpleDecayingValue>> reduceNhhAvailability, reduceP_B_I, reduceP_C_I, reduceP_D_I,
+    map<string, vector<SimpleDecayingValue>> reduceNhhAvailability, reduceP_B_I, reduceP_C_I, reduceP_D_I,
         reduceFecundity;
 
     /** Description of intervention killing effects on emerging pupae */
-    vector<util::SimpleDecayingValue> emergenceReduction;
+    vector<SimpleDecayingValue> emergenceReduction;
 
     ///@brief Simple Mosquito Population Dynamics model (VECTOR_SIMPLE_MPD_MODEL)
     //@{
@@ -591,7 +588,7 @@ class AnophelesModel {
      * null unless initSimpleMPD() was called. Hooks guarded on simpleMPD. */
     struct SimpleMPDState {
         /** Duration of development (egg laying to emergence) in days. */
-        SimTime developmentDuration = sim::never();
+        SimTime developmentDuration = never();
         /** Survival probability egg→emergence w/o density-dependent mortality. */
         double probPreadultSurvival;
         /** Mean number of female eggs laid when a mosquito oviposites. */
@@ -612,14 +609,12 @@ class AnophelesModel {
         simpleMPD->developmentDuration = developmentDuration;
         simpleMPD->probPreadultSurvival = probPreadultSurvival;
         simpleMPD->fEggsLaidByOviposit = fEggsLaidByOviposit;
-        simpleMPD->quinquennialOvipositing.resize(sim::fromYearsI(5), 0.0);
-        simpleMPD->invLarvalResources.resize(sim::oneYear(), 0.0);
+        simpleMPD->quinquennialOvipositing.resize(fromYearsI(5), 0.0);
+        simpleMPD->invLarvalResources.resize(oneYear(), 0.0);
         simpleMPD->nOvipositingDelayed.resize(developmentDuration, 0.0);
     }
     std::unique_ptr<SimpleMPDState> simpleMPD;
     //@}
 };
 
-}
-}
 }

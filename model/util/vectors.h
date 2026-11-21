@@ -31,8 +31,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 
 /** Various utilities acting on vectors. */
 namespace vectors {
@@ -175,5 +174,4 @@ template <class T> ostream& operator<<(ostream& out, vector<T> vec) {
     return out;
 }
 
-}
 }

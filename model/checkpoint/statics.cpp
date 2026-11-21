@@ -30,59 +30,49 @@
 #include "sections.h"
 
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "Host/NeonatalMortality.h"
-#include "Host/IncidenceModel.h"
+#include "Host/InfectionIncidenceModel.h"
 #include "Host/ImportedInfections.h"
 #include "Host/WithinHost/Genotypes.h"
-#include "Clinical/Model.h"
+#include "Clinical/ClinicalModel.h"
 #include "mon/Monitoring.h"
 
-namespace OM {
+namespace OpenMalaria {
 
 // Run-modified globals, defined in their subsystems' TUs (namespace-scope,
 // external linkage; the checkpoint module is the only code outside those TUs
 // that touches them):
-namespace Clinical {
-extern std::vector<int> infantDeaths;          // Model.cpp
-extern std::vector<int> infantIntervalsAtRisk; // ditto
-}
-namespace Host {
+extern std::vector<int> infantDeaths;            // ClinicalModel.cpp
+extern std::vector<int> infantIntervalsAtRisk;   // ditto
 extern double riskFromMaternalInfection;         // NeonatalMortality.cpp
 extern std::vector<double> prevByGestationalAge; // ditto
-}
 
-namespace Host {
 /// NeonatalMortality run state (was NeonatalMortality::staticCheckpoint).
-void neonatalStatics(checkpoint::Archive& a) {
+void neonatalStatics(Archive& a) {
     a.value(riskFromMaternalInfection);
     a.vector(prevByGestationalAge);
 }
-/// IncidenceModel run counter (was IncidenceModel::staticCheckpoint).
-void infectionIncidenceStatics(checkpoint::Archive& a) { a.value(IncidenceModel::ctsNewInfections); }
+/// InfectionIncidenceModel run counter (was InfectionIncidenceModel::staticCheckpoint).
+void infectionIncidenceStatics(Archive& a) { a.value(InfectionIncidenceModel::ctsNewInfections); }
 /// ImportedInfections rate-table cursor (was ImportedInfections::checkpoint).
-void checkpoint(checkpoint::Archive& a, ImportedInfections& ii) { a.value(ii.lastIndex); }
-} // namespace Host
+void checkpoint(Archive& a, ImportedInfections& ii) { a.value(ii.lastIndex); }
 
-namespace Clinical {
 /// InfantMortality death/risk summaries (was InfantMortality::staticCheckpoint).
-void infantMortalityStatics(checkpoint::Archive& a) {
+void infantMortalityStatics(Archive& a) {
     a.vector(infantDeaths);
     a.vector(infantIntervalsAtRisk);
 }
-} // namespace Clinical
 
-namespace checkpoint {
-
-void ckStatics(Archive& a, Context& ctx) {
-    Host::neonatalStatics(a);
-    Host::infectionIncidenceStatics(a);
-    Clinical::infantMortalityStatics(a);
+void ckStatics(Archive& a, RunContext& ctx) {
+    neonatalStatics(a);
+    infectionIncidenceStatics(a);
+    infantMortalityStatics(a);
     int32_t mode = ctx.genotypes.current_mode; // int on wire (enum domain)
     a.value(mode);
     if (a.reading())
-        ctx.genotypes.current_mode = WithinHost::Genotypes::SampleMode(mode);
-    Host::checkpoint(a, *ctx.importedInfections);
+        ctx.genotypes.current_mode = Genotypes::SampleMode(mode);
+    checkpoint(a, *ctx.importedInfections);
 }
 
 namespace {
@@ -99,11 +89,11 @@ template <class T> void fixedVector(Archive& a, std::vector<T>& v) {
 }
 } // namespace
 
-void ckMonitoring(Archive& a, Context& ctx) {
+void ckMonitoring(Archive& a, RunContext& ctx) {
     // Continuous output: resume position in the cts file (header written by
     // Continuous::init; rows are flushed per record, so this is exact).
     a.value(ctx.ctsStreamOffset);
-    if (a.reading() && ctx.ctsPeriod != sim::zero()) {
+    if (a.reading() && ctx.ctsPeriod != zero()) {
         ctx.ctsOStream.seekp(ctx.ctsStreamOffset, std::ios::beg);
         if (ctx.ctsOStream.fail())
             throw checkpoint_error("continuous output: can't seek to saved position");
@@ -156,5 +146,4 @@ void ckMonitoring(Archive& a, Context& ctx) {
     }
 }
 
-} // namespace checkpoint
-} // namespace OM
+} // namespace OpenMalaria

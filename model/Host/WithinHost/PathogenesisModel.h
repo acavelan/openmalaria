@@ -30,18 +30,12 @@ namespace scnXml {
 class HSESNMF;
 class Clinical;
 }
-namespace OM {
-class Context;
+namespace OpenMalaria {
+class RunContext;
 }
 
-namespace OM {
-namespace Host {
+namespace OpenMalaria {
 class Human;
-}
-namespace WithinHost {
-namespace Pathogenesis {
-
-using util::LocalRng;
 
 /** Types of sickness; used by case management.
    *
@@ -58,9 +52,17 @@ enum State {
     // Flags for current state/worst state to report:
     SICK = 0x1,         ///< Sick (may or may not be from malaria)
     MALARIA = 0x2,      ///< Malaria sickness
+    SECOND_CASE = 0x10, ///< Used by ClinicalEventScheduler to indicate a second bout of malarial sickness
     SEVERE = 0x8,       ///< Severe malaria case
     COINFECTION = 0x4,  ///< Malaria with a coinfection
     COMPLICATED = 0x20, ///< Flag used to indicate SEVERE and/or COINFECTION
+    // Flags for clinical event reporting (formerly Episode::State):
+    EVENT_IN_HOSPITAL = 0x400, ///< Recovery/sequelae/death event occurred in hospital (set on one event only)
+    DIRECT_DEATH = 0x1000,     ///< Reporting death (from COMPLICATED sickness)
+    SEQUELAE = 0x2000,         ///< Reporting recovered with sequelae (from COMPLICATED sickness)
+    RECOVERY = 0x4000,         ///< Report that individual fully recovered
+    EVENT_FIRST_DAY = 0x8000,  ///< With DIRECT_DEATH: death on first day (before treatment effect)
+    RUN_CM_TREE = 0x10000,     ///< Flag to indicate that CM tree should be run now or after a delay
 
     // Flags for outcome reporting:
     STATE_NMF = SICK, ///< Alias: SICK
@@ -81,44 +83,44 @@ struct StatePair {
  * differed only in getPEpisode + one extra state field + checkpoint bytes).
  *
  * Previously named MorbidityModel and PresentationModel. */
-class Model {
+class PathogenesisModel {
   public:
     enum class Kind { Mueller, Pyrogen, Predet };
 
-    /// Calls static init on correct Model.
-    static void init(Context& ctx, const Parameters& parameters, const scnXml::Clinical& clinical, bool nmfOnly);
+    /// Calls static init on correct PathogenesisModel.
+    static void init(RunContext& ctx, const Parameters& parameters, const scnXml::Clinical& clinical, bool nmfOnly);
 
     /** Create an instance, Kind dependant on global options.
      *
      * @param cF = Comorbidity factor (currently set in Human). */
-    static Model* createPathogenesisModel(double cF);
+    static PathogenesisModel* createPathogenesisModel(double cF);
 
     /** Determines the health of the individual based on his/her parasitemia.
      *
      * May introduce severe or uncomplicated cases of malaria, as well as non-
      * malaria fevers. */
-    StatePair determineState(Host::Human& human, double ageYears, double timeStepMaxDensity, double endDensity,
+    StatePair determineState(Human& human, double ageYears, double timeStepMaxDensity, double endDensity,
                              bool isDoomed);
 
     /** For Vivax: determine the chance of a NMF and sample, returning either
      * NONE or STATE_NMF. */
-    static Pathogenesis::State sampleNMF(LocalRng& rng, double ageYears);
+    static State sampleNMF(LocalRng& rng, double ageYears);
 
-    /** Summarize Model details
+    /** Summarize PathogenesisModel details
      *
      * Only the pyrogen-threshold kinds (Pyrogen, Predet) have anything to add
      * to the summary (parity: old PyrogenPathogenesis::summarize). */
-    void summarize(const Host::Human& human);
+    void summarize(const Human& human);
 
     /// Read parameters (parity: old MuellerPathogenesis::init /
-    /// PyrogenPathogenesis::init; called from Model::init in xml).
-    static void initMueller(Context& ctx, const Parameters& parameters);
-    static void initPyrogen(Context& ctx, const Parameters& parameters);
+    /// PyrogenPathogenesis::init; called from PathogenesisModel::init in xml).
+    static void initMueller(RunContext& ctx, const Parameters& parameters);
+    static void initPyrogen(RunContext& ctx, const Parameters& parameters);
 
   protected:
-    /** Create a Model (_pyrogenThres = initPyroThres for the
+    /** Create a PathogenesisModel (_pyrogenThres = initPyroThres for the
      * pyrogenic kinds, per old PyrogenPathogenesis ctor). */
-    Model(double cF, Kind kind);
+    PathogenesisModel(double cF, Kind kind);
 
     /// Episode probability: one case per Kind (were three virtual overrides).
     double getPEpisode(double timeStepMaxDensity, double totalDensity);
@@ -138,6 +140,4 @@ class Model {
     double _pyrogenThres;
 };
 
-}
-}
 }

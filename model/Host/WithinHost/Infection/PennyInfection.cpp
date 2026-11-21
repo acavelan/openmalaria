@@ -32,10 +32,7 @@
 #include <fstream>
 #include <cmath>
 
-namespace OM {
-namespace WithinHost {
-
-using namespace OM::util;
+namespace OpenMalaria {
 
 /** @brief The static variables (double)
 
@@ -144,20 +141,20 @@ const double Omega = 0.00025;
 
 //@}
 
-Infection* createPennyInfection(Context& ctx, LocalRng& rng, uint32_t protID, int origin) {
+Infection* createPennyInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
     return new PennyInfection(ctx, rng, protID, origin);
 }
 
-void PennyInfection::init(Context& ctx) {
+void PennyInfection::init(RunContext& ctx) {
     ctx.createInfection = &createPennyInfection;
 
-    if (util::ModelOptions::option(util::IMMUNE_THRESHOLD_GAMMA)) {
+    if (ModelOptions::option(IMMUNE_THRESHOLD_GAMMA)) {
         immune_threshold_gamma = true;
     } else {
         immune_threshold_gamma = false;
     }
 
-    if (util::ModelOptions::option(util::UPDATE_DENSITY_GAMMA)) {
+    if (ModelOptions::option(UPDATE_DENSITY_GAMMA)) {
         update_density_gamma = true;
     } else {
         update_density_gamma = false;
@@ -165,7 +162,7 @@ void PennyInfection::init(Context& ctx) {
 }
 
 // immune-threshold draws at the old infection_ctor_penny() slots
-PennyInfection::PennyInfection(Context& ctx, LocalRng& rng, uint32_t genotype, int origin)
+PennyInfection::PennyInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin)
     : Infection(ctx, genotype, origin, Kind::Penny) {
     auto* penny = this; // alias: body below verbatim
     constexpr int delta_C = PennyInfection::delta_C;
@@ -198,7 +195,7 @@ PennyInfection::PennyInfection(Context& ctx, LocalRng& rng, uint32_t genotype, i
 
 bool PennyInfection::update(LocalRng& rng, double survivalFactor, SimTime now, double) {
     SimTime bsAge = now - m_startDate - Infection::s_latentP; // age of post-latent-period blood stage
-    if (bsAge < sim::zero())
+    if (bsAge < zero())
         return false; // latent period (liver stage) — don't do anything
     // aliases: the equation block below is verbatim from the member function
     // (the old inf.m_density alias is now a plain unqualified member ref)
@@ -207,7 +204,7 @@ bool PennyInfection::update(LocalRng& rng, double survivalFactor, SimTime now, d
     constexpr int delta_C = PennyInfection::delta_C;
     constexpr int delta_V = PennyInfection::delta_V;
     int ageDays = bsAge; // lazy
-    if (bsAge == sim::zero()) {
+    if (bsAge == zero()) {
         // assign initial densities (Y circulating, X sequestered)
         size_t today = mod_nn(ageDays, delta_C);
 
@@ -338,5 +335,4 @@ static double getClonalSummation(PennyInfection& inf, int ageDays) {
     return penny->clonalSummation;
 }
 
-}
 }

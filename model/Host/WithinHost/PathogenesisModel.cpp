@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Host/WithinHost/Pathogenesis.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/Human.h"
 #include "mon/Monitoring.h"
 #include "util/random.h"
@@ -32,12 +32,7 @@
 #include <cmath>
 using namespace std;
 
-namespace OM {
-namespace WithinHost {
-namespace Pathogenesis {
-
-using namespace OM::util;
-using util::AgeGroupInterpolator;
+namespace OpenMalaria {
 
 //BEGIN static
 /// Comorbidity prevalence at birth as a risk factor for indirect mortality
@@ -70,25 +65,25 @@ const size_t n = 11;
 double a = numeric_limits<double>::signaling_NaN(), b = numeric_limits<double>::signaling_NaN();
 //END static
 
-Model* Model::createPathogenesisModel(double cF) {
+PathogenesisModel* PathogenesisModel::createPathogenesisModel(double cF) {
     // Kind from model options (same dispatch chain as the old subclass factory)
     if (opt_predetermined_episodes)
-        return new Model(cF, Kind::Predet);
+        return new PathogenesisModel(cF, Kind::Predet);
     if (opt_mueller_pres_model)
-        return new Model(cF, Kind::Mueller);
-    return new Model(cF, Kind::Pyrogen);
+        return new PathogenesisModel(cF, Kind::Mueller);
+    return new PathogenesisModel(cF, Kind::Pyrogen);
 }
 
-Model::Model(double cF, Kind kind)
+PathogenesisModel::PathogenesisModel(double cF, Kind kind)
     : _comorbidityFactor(cF), kind(kind), _pyrogenThres(kind == Kind::Mueller ? 0.0 : initPyroThres) {}
 
-void Model::initMueller(Context& ctx, const Parameters& parameters) {
+void PathogenesisModel::initMueller(RunContext& ctx, const Parameters& parameters) {
     // parity: old MuellerPathogenesis::init (Submodels.cpp:41)
     rateMultiplier_31 = parameters[Parameter::MUELLER_RATE_MULTIPLIER] * ctx.clock.years_per_step;
     densityExponent_32 = parameters[Parameter::MUELLER_DENSITY_EXPONENT];
 }
 
-void Model::initPyrogen(Context& ctx, const Parameters& parameters) {
+void PathogenesisModel::initPyrogen(RunContext& ctx, const Parameters& parameters) {
     // parity: old PyrogenPathogenesis::init (Submodels.cpp:68)
     initPyroThres = parameters[Parameter::Y_STAR_0];
 
@@ -106,7 +101,7 @@ void Model::initPyrogen(Context& ctx, const Parameters& parameters) {
     Ystar1_26 = parameters[Parameter::Y_STAR_1];
 }
 
-double Model::getPEpisode(double timeStepMaxDensity, double totalDensity) {
+double PathogenesisModel::getPEpisode(double timeStepMaxDensity, double totalDensity) {
     switch (kind) {
     case Kind::Mueller: {
         // parity: old MuellerPathogenesis::getPEpisode (Submodels.cpp:47)
@@ -125,7 +120,7 @@ double Model::getPEpisode(double timeStepMaxDensity, double totalDensity) {
     return 0.0; // unreachable: every Kind has a case
 }
 
-void Model::updatePyrogenThres(double totalDensity) {
+void PathogenesisModel::updatePyrogenThres(double totalDensity) {
     // Note: this calculation is slow (something like 5% of runtime)
 
     //Numerical approximation to equation 2, AJTMH p.57
@@ -135,15 +130,15 @@ void Model::updatePyrogenThres(double totalDensity) {
     }
 }
 
-void Model::summarize(const Host::Human& human) {
+void PathogenesisModel::summarize(const Human& human) {
     if (kind == Kind::Mueller)
         return; // old base summarize was empty
-    mon::recordStat(mon::measure("sumPyrogenThresh"), human, _pyrogenThres);
-    mon::recordStat(mon::measure("sumLogPyrogenThres"), human, log(_pyrogenThres + 1.0));
+    recordStat(measure("sumPyrogenThresh"), human, _pyrogenThres);
+    recordStat(measure("sumLogPyrogenThres"), human, log(_pyrogenThres + 1.0));
 }
 
-Pathogenesis::StatePair Model::determineState(Host::Human& human, double ageYears, double timeStepMaxDensity,
-                                              double endDensity, bool isDoomed) {
+StatePair PathogenesisModel::determineState(Human& human, double ageYears, double timeStepMaxDensity, double endDensity,
+                                            bool isDoomed) {
     double pMalariaFever = getPEpisode(timeStepMaxDensity, endDensity);
     StatePair result;
     //TODO(performance): would using a single RNG sample and manipulating probabilities be faster?
@@ -156,8 +151,8 @@ Pathogenesis::StatePair Model::determineState(Host::Human& human, double ageYear
 
         // Expectation of a severe bout:
         const double exSevere = prSevereEpisode + (1.0 - prSevereEpisode) * pCoinfection;
-        mon::recordStat(mon::measure("expectedSevere"), human, exSevere);
-        mon::recordStat(mon::measure("expectedSevereWithoutComorbidities"), human, prSevereEpisode);
+        recordStat(measure("expectedSevere"), human, exSevere);
+        recordStat(measure("expectedSevereWithoutComorbidities"), human, prSevereEpisode);
 
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
         if (human.rng().bernoulli(prSevereEpisode))
@@ -175,7 +170,7 @@ Pathogenesis::StatePair Model::determineState(Host::Human& human, double ageYear
         // of malaria conditional on not having an acute attack of malaria
         double indirectRisk = pg_indirRiskCoFactor * comorb_factor;
         if (!isDoomed) {
-            mon::recordStat(mon::measure("expectedIndirectDeaths"), human, indirectRisk);
+            recordStat(measure("expectedIndirectDeaths"), human, indirectRisk);
         }
         //NOTE: we could only evaluate indirectMortality if not already doomed,
         // except that (a) it affects random numbers, and (b) it affects
@@ -190,16 +185,14 @@ Pathogenesis::StatePair Model::determineState(Host::Human& human, double ageYear
     return result;
 }
 
-Pathogenesis::State Model::sampleNMF(LocalRng& rng, double ageYears) {
+State PathogenesisModel::sampleNMF(LocalRng& rng, double ageYears) {
     if (pg_NMF_incidence.isSet()) {
         double pNMF = pg_NMF_incidence.eval(ageYears);
         // parity: order — local RNG stream: draw call order fixes stream state
         if (rng.bernoulli(pNMF))
-            return Pathogenesis::STATE_NMF;
+            return STATE_NMF;
     }
-    return Pathogenesis::NONE;
+    return NONE;
 }
 
-}
-}
 }

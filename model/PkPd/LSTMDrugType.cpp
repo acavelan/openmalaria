@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-// p8-files: LSTMDrugType.h rides the Context.h cone; the type-registry XML
+// p8-files: LSTMDrugType.h rides the RunContext.h cone; the type-registry XML
 // init + parameter sampling stay here (wide-cone rule).
 #include "PkPd/LSTMDrugType.h"
 #include "Host/WithinHost/Genotypes.h"
@@ -34,10 +34,7 @@
 
 using namespace std;
 
-namespace OM {
-namespace PkPd {
-using namespace OM::util;
-using WithinHost::Genotypes;
+namespace OpenMalaria {
 
 // -----  Static variables and functions  -----
 
@@ -56,7 +53,7 @@ double LSTMDrugPD::calcFactor(double Kn, double neg_elim_rate, double* conc, dou
     return pow(numerator / denominator, power); // unitless
 }
 
-double LSTMDrugPD::IC50_pow_slope(LocalRng& rng, size_t index, WithinHost::Infection* inf) const {
+double LSTMDrugPD::IC50_pow_slope(LocalRng& rng, size_t index, Infection* inf) const {
     double Kn; // gets sampled once per infection
     if (inf->Kn().count(index) != 0) {
         Kn = inf->Kn().at(index);
@@ -83,7 +80,7 @@ static void drugIsUsed(vector<size_t>& drugsInUse, size_t index) {
 size_t DrugRegistry::findDrug(string _abbreviation) {
     auto iter = drugTypeNames.find(_abbreviation);
     if (iter == drugTypeNames.end())
-        throw util::xml_error(string("attempt to use drug without description: ").append(_abbreviation));
+        throw xml_scenario_error(string("attempt to use drug without description: ").append(_abbreviation));
     size_t index = iter->second;
 
     // We assume that drugs are used when and only when findDrug returns their
@@ -121,5 +118,4 @@ LSTMDrugType::~LSTMDrugType() {}
 
 const LSTMDrugPD& LSTMDrugType::getPD(uint32_t genotype) const { return PD[genotype_mapping[genotype]]; }
 
-}
 }

@@ -28,19 +28,14 @@
 
 #include "Stream.h"
 
-namespace OM {
-class Context;
+namespace OpenMalaria {
+class RunContext;
 class Population;
-namespace Transmission {
-class Model;
-}
+class TransmissionModel;
 
-namespace checkpoint {
+void ckStatics(Archive&, RunContext&);
+void ckMonitoring(Archive&, RunContext&);
+void ckTransmission(Archive&, RunContext&, TransmissionModel&);
+void ckHumans(Archive&, RunContext&, Population&);
 
-void ckStatics(Archive&, Context&);
-void ckMonitoring(Archive&, Context&);
-void ckTransmission(Archive&, Context&, Transmission::Model&);
-void ckHumans(Archive&, Context&, Population&);
-
-} // namespace checkpoint
-} // namespace OM
+} // namespace OpenMalaria

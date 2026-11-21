@@ -20,9 +20,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Context.h"
+#include "RunContext.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/Pathogenesis.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/Infection.h"
@@ -37,15 +37,12 @@
 #include <limits>
 #include <cmath>
 
-namespace OM {
-namespace WithinHost {
-
-using namespace OM::util;
+namespace OpenMalaria {
 
 // ———  parameters  ———
 
 // Set from the parameters block, or a default value is assumed.
-SimTime latentP = sim::never(); // attribute on <parameters> element.
+SimTime latentP = never(); // attribute on <parameters> element.
 
 // Set from <vivax .../> element:
 double probBloodStageInfectiousToMosq = numeric_limits<double>::signaling_NaN();
@@ -53,7 +50,7 @@ int maxNumberHypnozoites = -1;
 double baseNumberHypnozoites = numeric_limits<double>::signaling_NaN();
 std::unique_ptr<HypnozoiteReleaseDistribution> latentRelapse1st, latentRelapse2nd;
 double pSecondRelease = numeric_limits<double>::signaling_NaN();
-SimTime bloodStageProtectionLatency = sim::never();
+SimTime bloodStageProtectionLatency = never();
 WeibullSampler bloodStageLength; // units: days
 double pPrimaryA = numeric_limits<double>::signaling_NaN(), pPrimaryB = numeric_limits<double>::signaling_NaN();
 double pRelapseOneA = numeric_limits<double>::signaling_NaN(), pRelapseOneB = numeric_limits<double>::signaling_NaN();
@@ -104,7 +101,7 @@ SimTime sampleReleaseDelay(LocalRng& rng) {
 
 // ———  per-brood code  ———
 
-VivaxBrood::VivaxBrood(Context& ctx, LocalRng& rng, int origin, WHInterface* host)
+VivaxBrood::VivaxBrood(RunContext& ctx, LocalRng& rng, int origin, WHInterface* host)
     : ctx(ctx), primaryHasStarted(false), relapseHasStarted(false), relapsebHasStarted(false), hadEvent(false),
       hadRelapse(false), origin(origin) {
     set<SimTime> releases; // used to initialise releaseDates; a set is better to use now but a vector later
@@ -198,7 +195,7 @@ void VivaxBrood::treatmentBS() {
     // Blood stage treatment: clear both asexual and sexual parasites from the
     // blood. NOTE: we assume vivaxInfections removed via treatment do not leave
     // protective immunity since the patient was unable to self-clear.
-    bloodStageClearDate = sim::never();
+    bloodStageClearDate = never();
 }
 
 void VivaxBrood::treatmentLS() {
@@ -219,7 +216,7 @@ void VivaxBrood::treatmentLS() {
 
 // ———  per-host code  ———
 
-WHVivax::WHVivax(Context& ctx, LocalRng& rng, double comorbidityFactor) : WHInterface(ctx, Kind::Vivax) {
+WHVivax::WHVivax(RunContext& ctx, LocalRng& rng, double comorbidityFactor) : WHInterface(ctx, Kind::Vivax) {
     if (comorbidityFactor != 1.0) {
         throw TRACED_EXCEPTION_DEFAULT("This vivax model cannot be used with comorbidity heterogeneity");
     }
@@ -254,44 +251,44 @@ double WHVivax::probTransmissionToMosquito(vector<double>& probTransGenotype_i,
     return 0; // no gametocytes
 }
 
-bool WHVivax::summarize(Host::Human& human) const {
+bool WHVivax::summarize(Human& human) const {
     if (vivaxInfections.size() == 0)
         return false; // no vivaxInfections: not patent, nothing to report
-    mon::recordStat(mon::measure("nInfect"), human);
+    recordStat(measure("nInfect"), human);
     bool patentHost = false;
     // (patent) vivaxInfections are reported by genotype, even though we don't have
     // genotype in this model
-    mon::recordStat(mon::measure("totalInfs"), human, static_cast<int>(vivaxInfections.size()));
+    recordStat(measure("totalInfs"), human, static_cast<int>(vivaxInfections.size()));
     for (auto inf = vivaxInfections.begin(); inf != vivaxInfections.end(); ++inf) {
         if (inf->isPatent()) {
-            mon::recordStat(mon::measure("totalPatentInf"), human);
+            recordStat(measure("totalPatentInf"), human);
             patentHost = true;
         }
     }
     if (patentHost)
-        mon::recordStat(mon::measure("nPatent"), human);
+        recordStat(measure("nPatent"), human);
     return patentHost;
 }
 
 void WHVivax::importInfection(LocalRng& rng) {
     // this means one new liver stage infection, which can result in multiple blood stages
-    vivaxInfections.push_back(VivaxBrood(ctx, rng, WithinHost::Origin::Imported, this));
+    vivaxInfections.push_back(VivaxBrood(ctx, rng, InfectionOrigin::Imported, this));
 }
 
-void WHVivax::update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l,
-                     vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears) {
+void WHVivax::update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l, vector<double>& genotype_weights_i,
+                     vector<double>& genotype_weights_l, double ageInYears) {
     pSevere = 0.0;
 
     // create new vivaxInfections, letting the constructor do the initialisation work:
     for (int i = 0; i < nNewInfs_i; ++i)
-        vivaxInfections.push_back(VivaxBrood(ctx, rng, Origin::Introduced, this));
+        vivaxInfections.push_back(VivaxBrood(ctx, rng, InfectionOrigin::Introduced, this));
 
     for (int i = 0; i < nNewInfs_l; ++i)
-        vivaxInfections.push_back(VivaxBrood(ctx, rng, Origin::Indigenous, this));
+        vivaxInfections.push_back(VivaxBrood(ctx, rng, InfectionOrigin::Indigenous, this));
 
     // update vivaxInfections
     // NOTE: currently no BSV model
-    morbidity = Pathogenesis::NONE;
+    morbidity = NONE;
     uint32_t oldCumInf = cum_prim_inf_ref();
     bool treatmentLiver = treatExpiryLiverVivax > ctx.clock.ts0();
     bool treatmentBlood = treatExpiryBloodVivax > ctx.clock.ts0();
@@ -354,9 +351,9 @@ void WHVivax::update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nN
                 pSevere = pSevere + (1.0 - pSevere) * pEventIsSevere;
                 // parity: order — local RNG stream: draw call order fixes stream state
                 if (rng.bernoulli(pEventIsSevere))
-                    morbidity = static_cast<Pathogenesis::State>(morbidity | Pathogenesis::STATE_SEVERE);
+                    morbidity = static_cast<State>(morbidity | STATE_SEVERE);
                 else
-                    morbidity = static_cast<Pathogenesis::State>(morbidity | Pathogenesis::STATE_MALARIA);
+                    morbidity = static_cast<State>(morbidity | STATE_MALARIA);
             }
         }
 
@@ -367,8 +364,8 @@ void WHVivax::update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nN
     }
 
     //NOTE: currently we don't model co-infection or indirect deaths
-    if (morbidity == Pathogenesis::NONE) {
-        morbidity = Pathogenesis::Model::sampleNMF(rng, ageInYears);
+    if (morbidity == NONE) {
+        morbidity = PathogenesisModel::sampleNMF(rng, ageInYears);
     }
 }
 
@@ -382,16 +379,16 @@ bool WHVivax::diagnosticResult(LocalRng& rng, const Diagnostic& diagnostic) cons
     return false;
 }
 
-Pathogenesis::StatePair WHVivax::determineMorbidity(Host::Human& human, double ageYears, bool) {
-    mon::recordStat(mon::measure("expectedSevere"), human, pSevere);
-    Pathogenesis::StatePair result; // no indirect mortality in the vivax model
+StatePair WHVivax::determineMorbidity(Human& human, double ageYears, bool) {
+    recordStat(measure("expectedSevere"), human, pSevere);
+    StatePair result; // no indirect mortality in the vivax model
     result.state = morbidity;
     return result;
 }
 
 void WHVivax::clearImmunity() { throw TRACED_EXCEPTION_DEFAULT("vivax model does not include immune suppression"); }
 
-void WHVivax::optionalPqTreatment(Host::Human& human) {
+void WHVivax::optionalPqTreatment(Human& human) {
     // PQ clears liver stages. We don't worry about the effect of PQ on
     // gametocytes, because these are always cleared by blood-stage drugs with
     // Vivax, and PQ is not given without BS drugs. NOTE: this ignores drug failure.
@@ -403,24 +400,24 @@ void WHVivax::optionalPqTreatment(Host::Human& human) {
                 it->treatmentLS();
             }
         }
-        mon::recordEvent(mon::measure("nLiverStageTreatments"), human);
+        recordEvent(measure("nLiverStageTreatments"), human);
     }
 }
-bool WHVivax::treatSimple(Host::Human& human, SimTime timeLiver, SimTime timeBlood) {
+bool WHVivax::treatSimple(Human& human, SimTime timeLiver, SimTime timeBlood) {
     //TODO: this should be implemented properly (allowing effects on next
     // update instead of now)
 
     // liver-stage treatment is only via "LiverStageDrug" option, if at all
-    if (timeLiver != sim::zero()) {
+    if (timeLiver != zero()) {
         if (pReceivePQ > 0.0) {
             // This is only really disallowed to prevent simultaneous treatment through both methods
-            throw util::xml_error("simple treatment for vivax liver "
-                                  "stages is incompatible with case-management pUseUncomplicated "
-                                  "(liverStageDrug) option; it is suggested to use the former over the latter");
+            throw xml_scenario_error("simple treatment for vivax liver "
+                                     "stages is incompatible with case-management pUseUncomplicated "
+                                     "(liverStageDrug) option; it is suggested to use the former over the latter");
         }
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
         if ((ignoreNoPQ || !noPQ) && (effectivenessPQ == 1.0 || human.rng().bernoulli(effectivenessPQ))) {
-            if (timeLiver >= sim::zero()) {
+            if (timeLiver >= zero()) {
                 treatExpiryLiverVivax = max(int(treatExpiryLiverVivax), ctx.clock.nowOrTs1() + timeLiver);
             } else {
                 for (auto it = vivaxInfections.begin(); it != vivaxInfections.end(); ++it) {
@@ -428,12 +425,12 @@ bool WHVivax::treatSimple(Host::Human& human, SimTime timeLiver, SimTime timeBlo
                 }
             }
         }
-        mon::recordEvent(mon::measure("nLiverStageTreatments"), human);
+        recordEvent(measure("nLiverStageTreatments"), human);
     }
 
     // there probably will be blood-stage treatment
-    if (timeBlood != sim::zero()) {
-        if (timeBlood < sim::zero()) {
+    if (timeBlood != zero()) {
+        if (timeBlood < zero()) {
             // legacy mode: retroactive clearance
             for (auto it = vivaxInfections.begin(); it != vivaxInfections.end(); ++it) {
                 it->treatmentBS();
@@ -450,11 +447,10 @@ bool WHVivax::treatSimple(Host::Human& human, SimTime timeLiver, SimTime timeBlo
 
 char const* const not_impl = "feature not available in Vivax model";
 void WHVivax::treatPkPd(size_t schedule, size_t dosages, double age, double delay_d) {
-    throw TRACED_EXCEPTION(not_impl, util::Error::WHFeatures);
+    throw TRACED_EXCEPTION(not_impl, Error::WHFeatures);
 }
-double WHVivax::getTotalDensity() const { throw TRACED_EXCEPTION(not_impl, util::Error::WHFeatures); }
-double WHVivax::getCumulative_h() const { throw TRACED_EXCEPTION(not_impl, util::Error::WHFeatures); }
-double WHVivax::getCumulative_Y() const { throw TRACED_EXCEPTION(not_impl, util::Error::WHFeatures); }
+double WHVivax::getTotalDensity() const { throw TRACED_EXCEPTION(not_impl, Error::WHFeatures); }
+double WHVivax::getCumulative_h() const { throw TRACED_EXCEPTION(not_impl, Error::WHFeatures); }
+double WHVivax::getCumulative_Y() const { throw TRACED_EXCEPTION(not_impl, Error::WHFeatures); }
 
-}
 }

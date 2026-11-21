@@ -45,32 +45,29 @@
 #include <set>
 #include <vector>
 
-namespace OM {
-namespace mon {
-
-using internal::SurveyDate;
+namespace OpenMalaria {
 
 namespace {
 
 constexpr uint32_t maxCohortNumber = uint32_t{1} << 21;
 
-static void initAgeGroups(Context& ctx, const scnXml::Monitoring& monitoring) {
+static void initAgeGroups(RunContext& ctx, const scnXml::Monitoring& monitoring) {
     auto& runtime = (*ctx.monitoring);
     const scnXml::MonAgeGroup::GroupSequence& groups = monitoring.getAgeGroup().getGroup();
     if (!(monitoring.getAgeGroup().getLowerbound() <= 0.0)) {
-        throw util::xml_error("Expected survey age-group lowerbound of 0");
+        throw xml_scenario_error("Expected survey age-group lowerbound of 0");
     }
 
     runtime.ageGroupUpperBound.resize(groups.size() + 1);
     for (size_t i = 0; i < groups.size(); ++i) {
         runtime.ageGroupUpperBound[i] = ctx.clock.from_years_d(groups[i].getUpperbound());
     }
-    runtime.ageGroupUpperBound[groups.size()] = sim::future();
+    runtime.ageGroupUpperBound[groups.size()] = future();
 }
 
 } // namespace
 
-void initReporting(Context& ctx, const scnXml::Scenario& scenario) {
+void initReporting(RunContext& ctx, const scnXml::Scenario& scenario) {
     auto& runtime = (*ctx.monitoring);
     runtime.reportIMR = -1;
     const scnXml::MonitoringOptions& optsElt = scenario.getMonitoring().getSurveyOptions();
@@ -85,22 +82,22 @@ void initReporting(Context& ctx, const scnXml::Scenario& scenario) {
         OutMeasure om = findOutMeasure(optElt.getName());
         if (om.measure == invalidMeasure) {
             if (isObsoleteMeasure(optElt.getName())) {
-                throw util::xml_error("obsolete survey option: " + std::string(optElt.getName()));
+                throw xml_scenario_error("obsolete survey option: " + std::string(optElt.getName()));
             }
-            throw util::xml_error("unrecognised survey option: " + std::string(optElt.getName()));
+            throw xml_scenario_error("unrecognised survey option: " + std::string(optElt.getName()));
         }
         if ((om.measure == measure("sumlogDens") || om.measure == measure("logDensByGenotype")) &&
-            WithinHost::diagnostics::monitoringDiagnostic(ctx).allowsFalsePositives()) {
-            throw util::xml_error("measure " + std::string(optElt.getName()) +
-                                  " may not be used when monitoring diagnostic sensitivity < 1");
+            diagnostics::monitoringDiagnostic(ctx).allowsFalsePositives()) {
+            throw xml_scenario_error("measure " + std::string(optElt.getName()) +
+                                     " may not be used when monitoring diagnostic sensitivity < 1");
         }
 
         auto applyCategory = [&](Dim flag, const auto& option, const char* label) {
             if (!option.present())
                 return;
             if (option.get() && !(om.dims & flag)) {
-                throw util::xml_error("measure " + std::string(optElt.getName()) +
-                                      " does not support categorisation by " + label);
+                throw xml_scenario_error("measure " + std::string(optElt.getName()) +
+                                         " does not support categorisation by " + label);
             }
             if (!option.get())
                 om.dims &= ~flag;
@@ -114,10 +111,10 @@ void initReporting(Context& ctx, const scnXml::Scenario& scenario) {
         if (optElt.getOutputNumber().present())
             om.outId = optElt.getOutputNumber().get();
         if (om.outId < 0) {
-            throw util::xml_error("monitoring output number must not be negative");
+            throw xml_scenario_error("monitoring output number must not be negative");
         }
         if (!outIds.insert(om.outId).second) {
-            throw util::xml_error("monitoring output number " + std::to_string(om.outId) + " used more than once");
+            throw xml_scenario_error("monitoring output number " + std::to_string(om.outId) + " used more than once");
         }
         if (om.measure == allCauseIMR) {
             runtime.reportIMR = om.outId;
@@ -132,10 +129,10 @@ void initReporting(Context& ctx, const scnXml::Scenario& scenario) {
                                 : 1;
     const size_t nDrugs =
         scenario.getPharmacology().present() ? scenario.getPharmacology().get().getDrugs().getDrug().size() : 1;
-    internal::initStores(ctx, reportedMeasures, nSpecies, nDrugs);
+    initStores(ctx, reportedMeasures, nSpecies, nDrugs);
 }
 
-SimTime readSurveyDates(Context& ctx, const scnXml::Monitoring& monitoring) {
+SimTime readSurveyDates(RunContext& ctx, const scnXml::Monitoring& monitoring) {
     const SimClock& clock = ctx.clock;
     auto& runtime = (*ctx.monitoring);
     const scnXml::Surveys::SurveyTimeSequence& survs = monitoring.getSurveys().getSurveyTime();
@@ -158,12 +155,12 @@ SimTime readSurveyDates(Context& ctx, const scnXml::Monitoring& monitoring) {
             SimTime cur = UnitParse::readDate(clock, s, UnitParse::STEPS);
             const bool reporting = surv.getReported();
             if (surv.getRepeatStep().present() != surv.getRepeatEnd().present()) {
-                throw util::xml_error("surveyTime: use of repeatStep or repeatEnd without other");
+                throw xml_scenario_error("surveyTime: use of repeatStep or repeatEnd without other");
             }
             if (surv.getRepeatStep().present()) {
                 const SimTime step = UnitParse::readDuration(clock, surv.getRepeatStep().get(), UnitParse::NONE);
                 if (step < clock.one_TS()) {
-                    throw util::xml_error("surveyTime: repeatStep must be >= 1");
+                    throw xml_scenario_error("surveyTime: repeatStep must be >= 1");
                 }
                 const SimTime end = UnitParse::readDate(clock, surv.getRepeatEnd().get(), UnitParse::NONE);
                 while (cur < end) {
@@ -173,8 +170,8 @@ SimTime readSurveyDates(Context& ctx, const scnXml::Monitoring& monitoring) {
             } else {
                 addSurvey(cur, reporting);
             }
-        } catch (const util::format_error& e) {
-            throw util::xml_error(std::string("surveyTime: ").append(e.message()));
+        } catch (const format_error& e) {
+            throw xml_scenario_error(std::string("surveyTime: ").append(e.message()));
         }
     }
 
@@ -186,7 +183,7 @@ SimTime readSurveyDates(Context& ctx, const scnXml::Monitoring& monitoring) {
         runtime.surveyDates.push_back({date, num});
     }
     if (runtime.surveyDates.empty()) {
-        throw util::xml_error("Scenario defines no surveys; at least one is required.");
+        throw xml_scenario_error("Scenario defines no surveys; at least one is required.");
     }
     if (!runtime.surveyDates.back().isReported()) {
         std::cerr
@@ -194,7 +191,7 @@ SimTime readSurveyDates(Context& ctx, const scnXml::Monitoring& monitoring) {
             << std::endl;
     }
 
-    if (util::CommandLine::option(util::CommandLine::PRINT_SURVEY_TIMES)) {
+    if (CommandLine::option(CommandLine::PRINT_SURVEY_TIMES)) {
         std::cout << "Survey\tsteps\tdate\n";
         for (const SurveyDate& surveyDate : runtime.surveyDates) {
             if (!surveyDate.isReported())
@@ -212,7 +209,7 @@ SimTime readSurveyDates(Context& ctx, const scnXml::Monitoring& monitoring) {
     return runtime.surveyDates.back().date;
 }
 
-void initCohorts(Context& ctx, const scnXml::Monitoring& monitoring) {
+void initCohorts(RunContext& ctx, const scnXml::Monitoring& monitoring) {
     auto& runtime = (*ctx.monitoring);
     runtime.cohortSubPopNumbers.clear();
     runtime.cohortSubPopIds.clear();
@@ -222,19 +219,19 @@ void initCohorts(Context& ctx, const scnXml::Monitoring& monitoring) {
     const scnXml::Cohorts monCohorts = monitoring.getCohorts().get();
     uint32_t nextId = 0;
     for (auto it = monCohorts.getSubPop().begin(), end = monCohorts.getSubPop().end(); it != end; ++it) {
-        const interventions::ComponentId compId = interventions::InterventionManager::getComponentId(ctx, it->getId());
+        const ComponentId compId = InterventionManager::getComponentId(ctx, it->getId());
         const bool inserted = runtime.cohortSubPopIds.insert(std::make_pair(compId, nextId)).second;
         if (!inserted) {
-            throw util::xml_error(std::string("cohort specification uses sub-population \"")
-                                      .append(it->getId())
-                                      .append("\" more than once"));
+            throw xml_scenario_error(std::string("cohort specification uses sub-population \"")
+                                         .append(it->getId())
+                                         .append("\" more than once"));
         }
         const auto number = it->getNumber();
         if (number < 1 || number > maxCohortNumber || !std::has_single_bit(static_cast<uint32_t>(number))) {
-            throw util::xml_error(std::string("cohort specification assigns sub-population \"")
-                                      .append(it->getId())
-                                      .append("\" a number which is not a power of 2 between 1 and ")
-                                      .append(std::to_string(maxCohortNumber)));
+            throw xml_scenario_error(std::string("cohort specification assigns sub-population \"")
+                                         .append(it->getId())
+                                         .append("\" a number which is not a power of 2 between 1 and ")
+                                         .append(std::to_string(maxCohortNumber)));
         }
         runtime.cohortSubPopNumbers.push_back(number);
         nextId += 1;
@@ -243,11 +240,9 @@ void initCohorts(Context& ctx, const scnXml::Monitoring& monitoring) {
 
 namespace Continuous {
 
-using util::xml_error;
-
 /* Initialise: enable outputs registered and requested in XML.
          * Search for Continuous::registerCallback to see outputs available. */
-void init(Context& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint) {
+void init(RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint) {
     auto& ctsOStream = ctx.ctsOStream;
     auto& registered = ctx.ctsRegistered;
     auto& toReport = ctx.ctsToReport;
@@ -256,7 +251,7 @@ void init(Context& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint)
     auto& streamOffset = ctx.ctsStreamOffset;
     const scnXml::Monitoring::ContinuousOptional& ctsOpt = monitoring.getContinuous();
     if (!ctsOpt.present()) {
-        ctsPeriod = sim::zero();
+        ctsPeriod = zero();
         return;
     }
     const auto& options = ctsOpt.get();
@@ -264,9 +259,9 @@ void init(Context& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint)
         //NOTE: if changing XSD, this should not have a default unit:
         ctsPeriod = UnitParse::readShortDuration(ctx.clock, options.getPeriod(), UnitParse::STEPS);
         if (ctsPeriod < ctx.clock.one_TS())
-            throw util::format_error("must be >= 1 time step");
-    } catch (const util::format_error& e) {
-        throw xml_error(string("monitoring/continuous/period: ").append(e.message()));
+            throw format_error("must be >= 1 time step");
+    } catch (const format_error& e) {
+        throw xml_scenario_error(string("monitoring/continuous/period: ").append(e.message()));
     }
 
     if (options.getDuringInit().present())
@@ -275,13 +270,13 @@ void init(Context& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint)
     for (const auto& option : options.getOption()) {
         auto registeredOutput = registered.find(option.getName());
         if (registeredOutput == registered.end()) {
-            throw xml_error("monitoring.continuous: no output " + string(option.getName()));
+            throw xml_scenario_error("monitoring.continuous: no output " + string(option.getName()));
         }
         if (option.getValue())
             toReport.push_back(registeredOutput->second);
     }
 
-    const string filename = util::CommandLine::getCtsoutName();
+    const string filename = CommandLine::getCtsoutName();
 
     if (isCheckpoint) {
         // Keep the existing content; the checkpoint read seeks the
@@ -289,8 +284,8 @@ void init(Context& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint)
         // run wrote past that point is overwritten from there.
         ctsOStream.open(filename, ios::binary | ios::in | ios::out);
         if (!ctsOStream.is_open())
-            throw util::cmd_exception("can't reopen continuous output file \"" + filename + "\" for resume",
-                                      util::Error::Checkpoint);
+            throw cmd_exception("can't reopen continuous output file \"" + filename + "\" for resume",
+                                Error::Checkpoint);
         return;
     }
 
@@ -307,5 +302,4 @@ void init(Context& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint)
 
 } // namespace Continuous
 
-} // namespace mon
-} // namespace OM
+} // namespace OpenMalaria

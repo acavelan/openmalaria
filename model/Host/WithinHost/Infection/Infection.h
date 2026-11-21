@@ -23,18 +23,15 @@
 #pragma once
 
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 #include "Parameters.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "util/random.h"
 #include <list>
 
-namespace OM {
-namespace WithinHost {
+namespace OpenMalaria {
 
-using util::LocalRng;
-
-enum Origin {
+enum InfectionOrigin {
     /** Imported infections are directly added to the human population dependent on the importation rate. **/
     Imported,
 
@@ -58,7 +55,7 @@ enum Origin {
  *   MolineauxInfection    MolineauxInfection.cpp     1-day step, variant clones
  *   PennyInfection        PennyInfection.cpp         1-day step, circulating/sequestered
  * ModelOptions selects the variant once per run: each variant's init()
- * installs its one-line factory on Context::createInfection (Descriptive
+ * installs its one-line factory on RunContext::createInfection (Descriptive
  * is created directly by the Descriptive within-host model).
  *
  * Common variants (Dummy/Empirical/Molineaux/Penny) use a 1-day time step,
@@ -79,10 +76,10 @@ struct Infection {
     enum class Kind { Descriptive, Dummy, Empirical, Molineaux, Penny };
 
     /// The run this infection belongs to (clock accessed as ctx.clock).
-    Context& ctx;
+    RunContext& ctx;
 
     /// Which variant this infection is (scenario-derived; never checkpointed —
-    /// the checkpointing factory Context::createInfection carries the kind
+    /// the checkpointing factory RunContext::createInfection carries the kind
     /// across a resume).
     const Kind kind;
 
@@ -95,7 +92,7 @@ struct Infection {
     /// Pass placeholder genotype/origin when reading a checkpoint:
     /// date/densities/genotype/origin are overwritten from the stream
     /// immediately after.
-    Infection(Context& ctx, uint32_t genotype, int origin, Kind kind)
+    Infection(RunContext& ctx, uint32_t genotype, int origin, Kind kind)
         : ctx(ctx), kind(kind), m_startDate(this->ctx.clock.nowOrTs0()), m_density(0.0), m_cumulativeExposureJ(0.0),
           m_genotype(genotype), m_origin(origin) {}
 
@@ -141,7 +138,7 @@ struct Infection {
      * effect), clearance of blood stage infections can only happen after their
      * first update (though due to the latent period densities will still be
      * low). */
-    inline bool bloodStage() const { return ctx.clock.latestTs0() - m_startDate > sim::fromDays(5); }
+    inline bool bloodStage() const { return ctx.clock.latestTs0() - m_startDate > fromDays(5); }
 
     /// Get the density of the infection as of the last update
     inline double getDensity() const { return m_density; }
@@ -172,7 +169,7 @@ struct Infection {
 
     /// Date of inoculation of infection (start of liver stage)
     /// This is the step of inoculation (ts0()).
-    SimTime m_startDate = sim::never();
+    SimTime m_startDate = never();
 
     /// Current density of the infection (Pc in the Molineaux/Penny papers)
     double m_density;
@@ -199,11 +196,11 @@ struct Infection {
  * variant has no daily update(). */
 struct DescriptiveInfection final : Infection {
     /// 5-day time step check; loads densities.csv matrix + parameters (per run)
-    static void init(Context& ctx, const OM::Parameters& parameters);
+    static void init(RunContext& ctx, const Parameters& parameters);
 
     /// Draws the duration — this variant's only RNG draw at construction time,
     /// at the slot the old infection_ctor_descriptive() held.
-    DescriptiveInfection(Context& ctx, LocalRng& rng, uint32_t genotype, int origin);
+    DescriptiveInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin);
 
     bool expired() override;
 
@@ -225,10 +222,10 @@ struct DescriptiveInfection final : Infection {
      * distribution using parameters for 53 patients from Georgia. Mean log
      * duration of an infection values from AJTM p.9 eq.5. Parameters for this
      * model are hard-coded. */
-    static SimTime sample_duration(Context& ctx, LocalRng& rng);
+    static SimTime sample_duration(RunContext& ctx, LocalRng& rng);
 
     // Arbitrary predetermined maximum duration of the infection
-    SimTime duration = sim::never();
+    SimTime duration = never();
     bool notPrintedMDWarning = true;
 
     // Max duration of sample data for an infection in intervals. Simulated
@@ -248,9 +245,9 @@ struct DescriptiveInfection final : Infection {
  * survival factor. The simplest within-host infection model. */
 struct DummyInfection final : Infection {
     /// Installs the Dummy factory on ctx.createInfection (per run).
-    static void init(Context& ctx);
+    static void init(RunContext& ctx);
 
-    DummyInfection(Context& ctx, uint32_t genotype, int origin); // no draws
+    DummyInfection(RunContext& ctx, uint32_t genotype, int origin); // no draws
 
     bool update(LocalRng& rng, double survivalFactor, SimTime now, double body_mass) override;
 };
@@ -261,11 +258,12 @@ struct DummyInfection final : Infection {
  * (autoRegressionParameters.csv), fitted to the Malaria Therapy data. */
 struct EmpiricalInfection final : Infection {
     /// 1-day time step check; loads autoRegressionParameters.csv (per run)
-    static void init(Context& ctx);
+    static void init(RunContext& ctx);
 
     /// Prepatent-density draws at the old infection_ctor_empirical() slots;
     /// growthRateMultiplier is only used by this variant.
-    EmpiricalInfection(Context& ctx, LocalRng& rng, uint32_t genotype, int origin, double growthRateMultiplier = 1.0);
+    EmpiricalInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin,
+                       double growthRateMultiplier = 1.0);
 
     bool update(LocalRng& rng, double survivalFactor, SimTime now, double body_mass) override;
 
@@ -279,10 +277,10 @@ struct EmpiricalInfection final : Infection {
  * 1-day step with 50 antigenic variants per clone, two-day density cycles
  * under innate/transcending/variant-specific immune functions. */
 struct MolineauxInfection final : Infection {
-    static void init(Context& ctx, const OM::Parameters& parameters);
+    static void init(RunContext& ctx, const Parameters& parameters);
 
     /// mi[] + Pc_star/Pm_star draws at the old infection_ctor_molineaux() slots.
-    MolineauxInfection(Context& ctx, LocalRng& rng, uint32_t genotype, int origin);
+    MolineauxInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin);
 
     bool update(LocalRng& rng, double survivalFactor, SimTime now, double body_mass) override;
 
@@ -325,10 +323,10 @@ struct MolineauxInfection final : Infection {
  * vaccines): 1-day step, circulating/sequestered densities with innate,
  * clonal and variant-specific sigmoidal immune responses. */
 struct PennyInfection final : Infection {
-    static void init(Context& ctx);
+    static void init(RunContext& ctx);
 
     /// Immune-threshold draws at the old infection_ctor_penny() slots.
-    PennyInfection(Context& ctx, LocalRng& rng, uint32_t genotype, int origin);
+    PennyInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin);
 
     bool update(LocalRng& rng, double survivalFactor, SimTime now, double body_mass) override;
 
@@ -359,18 +357,18 @@ struct PennyInfection final : Infection {
 };
 
 /// Create a dummy infection (used directly by unit tests).
-Infection* createDummyInfection(Context& ctx, LocalRng& rng, uint32_t protID, int origin);
+Infection* createDummyInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin);
 
-template <typename T> Origin get_infection_origin(const std::list<T*>& infections) {
+template <typename T> InfectionOrigin get_infection_origin(const std::list<T*>& infections) {
     if (infections.empty())
-        return Origin::Indigenous;
+        return InfectionOrigin::Indigenous;
 
     // only >0 tests below matter (all-Imported = neither counter set)
     int nIntroduced = 0, nIndigenous = 0;
     for (auto inf = infections.begin(); inf != infections.end(); ++inf) {
-        if ((*inf)->origin() == Origin::Indigenous)
+        if ((*inf)->origin() == InfectionOrigin::Indigenous)
             nIndigenous++;
-        else if ((*inf)->origin() == Origin::Introduced)
+        else if ((*inf)->origin() == InfectionOrigin::Introduced)
             nIntroduced++;
     }
 
@@ -379,12 +377,11 @@ template <typename T> Origin get_infection_origin(const std::list<T*>& infection
     - Introduced if at least one Introduced
     - Indigenous otherwise (Imported + Indigenous or just Indigenous infections) */
     if (nIntroduced > 0)
-        return Origin::Introduced;
+        return InfectionOrigin::Introduced;
     else if (nIndigenous > 0)
-        return Origin::Indigenous;
+        return InfectionOrigin::Indigenous;
     else
-        return Origin::Imported;
+        return InfectionOrigin::Imported;
 }
 
-}
 }

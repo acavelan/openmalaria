@@ -27,8 +27,8 @@
 // WHVivax.cpp (extern re-declared below).
 
 #include "Clock.h"
-#include "Context.h"
-#include "Host/WithinHost/Pathogenesis.h"
+#include "RunContext.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/CommandLine.h"
 #include "util/UnitParse.h"
@@ -45,9 +45,7 @@
 
 using namespace std;
 
-namespace OM {
-namespace WithinHost {
-using namespace OM::util;
+namespace OpenMalaria {
 
 // State defined in WHVivax.cpp (external linkage):
 extern SimTime latentP, bloodStageProtectionLatency;
@@ -64,7 +62,7 @@ extern bool ignoreNoPQ;
 extern double pHetNoPQ, pReceivePQ, effectivenessPQ;
 
 std::unique_ptr<HypnozoiteReleaseDistribution>
-createHypnozoiteReleaseDistribution(Context& ctx, const scnXml::HypnozoiteReleaseDistribution& elt) {
+createHypnozoiteReleaseDistribution(RunContext& ctx, const scnXml::HypnozoiteReleaseDistribution& elt) {
     return std::make_unique<HypnozoiteReleaseDistribution>(ctx, createSampler(elt), elt.getLatentRelapse());
 }
 
@@ -82,13 +80,13 @@ void initNHypnozoites() {
     }
 }
 
-void WHVivax::init(Context& ctx, const OM::Parameters& parameters, const scnXml::Model& model) {
+void WHVivax::init(RunContext& ctx, const Parameters& parameters, const scnXml::Model& model) {
 
     // Default value to use if no <parameters> element is present in XML.
     latentP = read_latentP(ctx.clock, model);
 
     if (!model.getVivax().present())
-        throw util::xml_error("no vivax model description in scenario XML");
+        throw xml_scenario_error("no vivax model description in scenario XML");
     const scnXml::Vivax& elt = model.getVivax().get();
     probBloodStageInfectiousToMosq = elt.getProbBloodStageInfectiousToMosq().getValue();
     maxNumberHypnozoites = elt.getHypnozoiteRelease().getNumberHypnozoites().getMax();
@@ -118,12 +116,12 @@ void WHVivax::init(Context& ctx, const OM::Parameters& parameters, const scnXml:
 
     // Check if vivaxClinOption is valid
     if (acceptedOptions.find(vivaxClinOption) == acceptedOptions.end()) {
-        throw util::xml_error("Invalid vivaxClinOption: " + vivaxClinOption +
-                              ". Accepted values are: A1j, A2j, B1j, B2j.");
+        throw xml_scenario_error("Invalid vivaxClinOption: " + vivaxClinOption +
+                                 ". Accepted values are: A1j, A2j, B1j, B2j.");
     }
 
     initNHypnozoites();
-    Pathogenesis::Model::init(ctx, parameters, model.getClinical(), true);
+    PathogenesisModel::init(ctx, parameters, model.getClinical(), true);
 }
 
 void WHVivax::setHSParameters(const scnXml::LiverStageDrug* elt) {
@@ -138,7 +136,7 @@ void WHVivax::setHSParameters(const scnXml::LiverStageDrug* elt) {
         pHetNoPQ = elt->getPHumanCannotReceive().getValue();
         pReceivePQ = elt->getPUseUncomplicated().present() ? elt->getPUseUncomplicated().get().getValue() : 0.0;
         if (pReceivePQ > 0.0) {
-            if (util::CommandLine::option(util::CommandLine::DEPRECATION_WARNINGS)) {
+            if (CommandLine::option(CommandLine::DEPRECATION_WARNINGS)) {
                 cerr << "Deprecation warning: pUseUncomplicated is deprecated; it is "
                         "suggested to use the liver stage simple treatment option instead."
                      << endl;
@@ -148,8 +146,7 @@ void WHVivax::setHSParameters(const scnXml::LiverStageDrug* elt) {
     }
 
     if (!std::isnan(oldPHetNoPQ) && oldPHetNoPQ != pHetNoPQ) {
-        throw util::xml_error("changeHS cannot change pHumanCannotReceive value");
+        throw xml_scenario_error("changeHS cannot change pHumanCannotReceive value");
     }
-}
 }
 }

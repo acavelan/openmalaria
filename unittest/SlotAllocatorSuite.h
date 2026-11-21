@@ -46,9 +46,7 @@
 #include <sstream>
 #include <string>
 
-using namespace OM;
-using namespace OM::WithinHost;
-using util::LocalRng;
+using namespace OpenMalaria;
 
 class SlotAllocatorSuite : public CxxTest::TestSuite {
   public:
@@ -83,7 +81,7 @@ class SlotAllocatorSuite : public CxxTest::TestSuite {
             TS_ASSERT_EQUALS(n_l, T[i].e_l);
             TS_ASSERT_EQUALS(SlotAllocator::free_slots(T[i].have), T[i].e_free);
         }
-        // stand-alone count clamp (IncidenceModel::numNewInfections):
+        // stand-alone count clamp (InfectionIncidenceModel::numNewInfections):
         TS_ASSERT_EQUALS(SlotAllocator::clamp_count(25), 21);
         TS_ASSERT_EQUALS(SlotAllocator::clamp_count(21), 21);
         TS_ASSERT_EQUALS(SlotAllocator::clamp_count(0), 0);
@@ -110,8 +108,8 @@ class SlotAllocatorSuite : public CxxTest::TestSuite {
         LocalRng rng(3, 4);
         WHDescriptive wh(UnittestUtil::ctx(), rng, 1.0);
         HumanColumns cols;
-        util::MasterRng master(0, 1);
-        wh.bind_columns(cols, cols.append_row(sim::zero(), master));
+        MasterRng master(0, 1);
+        wh.bind_columns(cols, cols.append_row(zero(), master));
 
         // ctor consumption pinned too (any change here shifts every word below)
         static const uint64_t GOLD_CTOR[4] = {0x0000626c286e5305ULL, 0x01c42b2629420000ULL, 0x0e7989b244225680ULL,

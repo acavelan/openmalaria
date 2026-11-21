@@ -20,9 +20,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Context.h"
+#include "RunContext.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/Pathogenesis.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/Genotypes.h"
@@ -36,10 +36,7 @@
 #include <cmath>
 #include <gsl/gsl_cdf.h>
 
-namespace OM {
-namespace WithinHost {
-
-using namespace OM::util;
+namespace OpenMalaria {
 
 // -----  private model parameters  -----
 
@@ -70,7 +67,7 @@ double alpha_m;
 /// decay rate of maternal protection in years^(-1).
 double decayM;
 
-SimTime Infection::s_latentP = sim::never();
+SimTime Infection::s_latentP = never();
 int WHInterface::y_lag_len = 0;
 
 // -----  static functions  -----
@@ -84,8 +81,9 @@ void WHFalciparum::setParams(double cumYStar, double cumHStar, double aM, double
 
 // -----  Non-static  -----
 
-WHFalciparum::WHFalciparum(Context& ctx, LocalRng& rng, double comorbidityFactor, Kind kind) : WHInterface(ctx, kind) {
-    pathogenesisModel.reset(Pathogenesis::Model::createPathogenesisModel(comorbidityFactor));
+WHFalciparum::WHFalciparum(RunContext& ctx, LocalRng& rng, double comorbidityFactor, Kind kind)
+    : WHInterface(ctx, kind) {
+    pathogenesisModel.reset(PathogenesisModel::createPathogenesisModel(comorbidityFactor));
 
     // NOTE: negating a Gaussian sample with mean 0 is pointless — except that
     // the individual samples change. In any case the overhead is negligible.
@@ -106,7 +104,7 @@ WHFalciparum::~WHFalciparum() {
     infections.clear();
 }
 
-Origin WHFalciparum::getInfectionOrigin() const { return get_infection_origin(infections); }
+InfectionOrigin WHFalciparum::getInfectionOrigin() const { return get_infection_origin(infections); }
 
 double WHFalciparum::immunitySurvivalFactor(double ageInYears, double cumulativeExposureJ) {
     // Row reads hoisted to locals: one cols->deref per call instead of four
@@ -130,7 +128,7 @@ double WHFalciparum::immunitySurvivalFactor(double ageInYears, double cumulative
     // Effect of age-dependent maternal immunity (named Dm in AJTM)
     double dA = 1.0 - alpha_m * exp(-decayM * ageInYears);
 
-    return util::streamValidate(std::min(dY * dH * dA, 1.0));
+    return streamValidate(std::min(dY * dH * dA, 1.0));
 }
 
 WHFalciparum::ImmSurvTick WHFalciparum::immSurvivalTick(double ageInYears) {
@@ -154,7 +152,7 @@ double WHFalciparum::immunitySurvivalFactor(const ImmSurvTick& t, double cumulat
     double dY = 1.0;
     if (t.active)
         dY = 1.0 / (1.0 + (t.immY - cumulativeExposureJ) * t.invY);
-    return util::streamValidate(std::min(dY * t.dH * t.dA, 1.0));
+    return streamValidate(std::min(dY * t.dH * t.dA, 1.0));
 }
 
 // Infectiousness parameters: see AJTMH p.33; tau=1/sigmag**2
@@ -171,9 +169,9 @@ inline double compute_y_lag(const SimClock& clock, const Genotypes& genotypes, c
 
     // Take weighted sum of total asexual blood stage density 10, 15 and 20 days
     // before. Add y_lag_len to index to ensure positive.
-    size_t d10 = mod_nn(y_lag_len + clock.inSteps(clock.ts1() - sim::fromDays(10)), y_lag_len);
-    size_t d15 = mod_nn(y_lag_len + clock.inSteps(clock.ts1() - sim::fromDays(15)), y_lag_len);
-    size_t d20 = mod_nn(y_lag_len + clock.inSteps(clock.ts1() - sim::fromDays(20)), y_lag_len);
+    size_t d10 = mod_nn(y_lag_len + clock.inSteps(clock.ts1() - fromDays(10)), y_lag_len);
+    size_t d15 = mod_nn(y_lag_len + clock.inSteps(clock.ts1() - fromDays(15)), y_lag_len);
+    size_t d20 = mod_nn(y_lag_len + clock.inSteps(clock.ts1() - fromDays(20)), y_lag_len);
 
     double y10_sum = 0.0, y15_sum = 0.0, y20_sum = 0.0;
     for (size_t g = 0; g < n; ++g) {
@@ -233,7 +231,7 @@ double WHFalciparum::probTransmissionToMosquito(vector<double>& probTransGenotyp
     }
 
     // Include here the effect of transmission-blocking vaccination:
-    util::streamValidate(pTransmit);
+    streamValidate(pTransmit);
     return pTransmit;
 }
 
@@ -241,16 +239,16 @@ bool WHFalciparum::diagnosticResult(LocalRng& rng, const Diagnostic& diagnostic)
     return diagnostic.isPositive(rng, totalDensity, hrp2Density);
 }
 
-bool WHFalciparum::treatSimple(Host::Human& human, SimTime timeLiver, SimTime timeBlood) {
-    if (timeLiver != sim::zero()) {
-        if (timeLiver < sim::zero())
+bool WHFalciparum::treatSimple(Human& human, SimTime timeLiver, SimTime timeBlood) {
+    if (timeLiver != zero()) {
+        if (timeLiver < zero())
             clearInfections(Treatments::LIVER);
         else
             treatExpiryLiver = max(int(treatExpiryLiver), int(ctx.clock.nowOrTs1()) + timeLiver);
-        mon::recordEvent(mon::measure("nLiverStageTreatments"), human);
+        recordEvent(measure("nLiverStageTreatments"), human);
     }
-    if (timeBlood != sim::zero()) {
-        if (timeBlood < sim::zero())
+    if (timeBlood != zero()) {
+        if (timeBlood < zero())
             clearInfections(Treatments::BLOOD);
         else
             treatExpiryBlood = max(int(treatExpiryBlood), int(ctx.clock.nowOrTs1()) + timeBlood);
@@ -259,12 +257,11 @@ bool WHFalciparum::treatSimple(Host::Human& human, SimTime timeLiver, SimTime ti
     return false; // no blood stage treatment
 }
 
-Pathogenesis::StatePair WHFalciparum::determineMorbidity(Host::Human& human, double ageYears, bool isDoomed) {
-    Pathogenesis::StatePair result =
-        pathogenesisModel->determineState(human, ageYears, timeStepMaxDensity, totalDensity, isDoomed);
+StatePair WHFalciparum::determineMorbidity(Human& human, double ageYears, bool isDoomed) {
+    StatePair result = pathogenesisModel->determineState(human, ageYears, timeStepMaxDensity, totalDensity, isDoomed);
 
     /* Note: this model can easily be re-enabled, but is not used and not considered to be a good model.
-    if( (result.state & Pathogenesis::MALARIA) && util::ModelOptions::option( util::PENALISATION_EPISODES ) ){
+    if( (result.state & MALARIA) && ModelOptions::option( PENALISATION_EPISODES ) ){
         // This does immunity penalisation:
         imm_Y_ref() = imm_Y_lag_ref() - immPenalty_22*(imm_Y_ref()-imm_Y_lag_ref());
         if (imm_Y_ref() < 0) {
@@ -295,5 +292,4 @@ void WHFalciparum::updateImmuneStatus() {
 
 // -----  Checkpointing  -----
 
-}
 }

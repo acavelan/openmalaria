@@ -34,8 +34,7 @@
 
 using std::pair;
 using std::multimap;
-using namespace OM;
-using namespace OM::PkPd;
+using namespace OpenMalaria;
 
 // Use one of these to switch verbosity on/off:
 #define PCS_VERBOSE( x )
@@ -70,7 +69,7 @@ public:
         UnittestUtil::initTime(1);
         UnittestUtil::PkPdSuiteSetup();
         proxy = new LSTMModel ();
-        inf = createDummyInfection(UnittestUtil::ctx(), m_rng, 0, Origin::Indigenous);
+        inf = createDummyInfection(UnittestUtil::ctx(), m_rng, 0, InfectionOrigin::Indigenous);
         schedule.clear();
     }
     
@@ -181,7 +180,7 @@ public:
             PCS_VERBOSE(res_Fac[i] = totalFac;)
             
             // update (two parts):
-            UnittestUtil::incrTime(sim::oneDay());
+            UnittestUtil::incrTime(oneDay());
             proxy->decayDrugs(bodymass);
             
             // after update:

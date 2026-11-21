@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Clock.h"
-#include "Context.h"
+#include "RunContext.h"
 namespace scnXml {
 class ImportedInfections;
 }
@@ -33,21 +33,19 @@ class ImportedInfections;
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Infection/Infection.h"
 
-namespace OM {
+namespace OpenMalaria {
 class Population;
-
-namespace Host {
 
 class ImportedInfections {
   public:
-    ImportedInfections() : period(sim::zero()), lastIndex(0) {}
+    ImportedInfections() : period(zero()), lastIndex(0) {}
 
     /** Initialise, passing intervention description
          * 
          * @param iiElt The scenario element with description of rates
          * @returns True if any infections are imported
          */
-    void init(Context& ctx, const scnXml::ImportedInfections& iiElt);
+    void init(RunContext& ctx, const scnXml::ImportedInfections& iiElt);
 
     /** Import this time-step's imported infections, according to initialised rates
          * 
@@ -58,12 +56,12 @@ class ImportedInfections {
          *  person.
          * 
          * @param pop The Population class encapsulating all humans */
-    void import(Context& ctx, vector<Human>& population) {
+    void import(RunContext& ctx, vector<Human>& population) {
         if (rate.size() == 0)
             return; // no imported infections
         SimTime now = ctx.clock.interv;
-        assert(now >= sim::zero());
-        if (period > sim::zero()) {
+        assert(now >= zero());
+        if (period > zero()) {
             now = mod_nn(now, period);
         }
         if (rate[lastIndex].time > now) {
@@ -82,25 +80,24 @@ class ImportedInfections {
                 // parity: e — bernoulli import draw per human-day; rate->draw->importInfection(order) frozen (plan §3e)
                 if (human.rng().bernoulli(rateNow)) {
                     human.withinHostModel->importInfection(human.rng());
-                    mon::recordEvent(mon::measure("nNewInfections"), human);
-                    mon::recordEvent(mon::measure("nNewInfections_Imported"), human);
+                    recordEvent(measure("nNewInfections"), human);
+                    recordEvent(measure("nNewInfections_Imported"), human);
                 }
             }
         }
     }
 
   public: // run state; wire in checkpoint/statics.cpp
-    SimTime period = sim::never();
+    SimTime period = never();
     uint32_t lastIndex;
 
   private:
     struct Rate {
         Rate(SimTime t, double v) : time(t), value(v) {}
-        SimTime time = sim::never();
+        SimTime time = never();
         double value;
         inline bool operator<(const Rate& that) const { return time < that.time; }
     };
     vector<Rate> rate;
 };
-}
 }

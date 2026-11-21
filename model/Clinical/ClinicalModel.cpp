@@ -20,10 +20,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-// p8-files: header fold rejected — Model.cpp resolves the
-// Model<->EventScheduler/CM5DayCommon include cycle; bodies stay here.
-#include "Context.h"
-#include "Clinical/Model.h"
+// p8-files: header fold rejected — ClinicalModel.cpp resolves the
+// ClinicalModel<->EventScheduler/CM5DayCommon include cycle; bodies stay here.
+#include "RunContext.h"
+#include "Clinical/ClinicalModel.h"
 #include "Clinical/CM5DayCommon.h"
 
 #include "Clinical/EventScheduler.h"
@@ -35,58 +35,57 @@
 #include "util/errors.h"
 #include "util/UnitParse.h"
 
-namespace OM {
-namespace Clinical {
+namespace OpenMalaria {
 
 bool opt_event_scheduler = false;
 bool opt_imm_outcomes = false;
 
-bool Model::indirectMortBugfix;
-SimTime Model::healthSystemMemory{sim::never()};
+bool ClinicalModel::indirectMortBugfix;
+SimTime ClinicalModel::healthSystemMemory{never()};
 
 //log odds ratio of case-fatality in community compared to hospital
 double oddsRatioThreshold;
 
-util::AgeGroupInterpolator Model::caseFatalityRate;
-util::AgeGroupInterpolator Model::pSequelaeInpatient;
+AgeGroupInterpolator ClinicalModel::caseFatalityRate;
+AgeGroupInterpolator ClinicalModel::pSequelaeInpatient;
 
 // -----  static methods  -----
 
-unique_ptr<Model> Model::createClinicalModel(Context& ctx, double tSF) {
+unique_ptr<ClinicalModel> ClinicalModel::createClinicalModel(RunContext& ctx, double tSF) {
     // One create-line per variant; the kind flags are set at scenario load
-    // (Model::init, xml/healthSystem.cpp).
+    // (ClinicalModel::init, xml/healthSystem.cpp).
     if (opt_event_scheduler)
-        return unique_ptr<Model>(new CMEventScheduler(ctx, tSF));
+        return unique_ptr<ClinicalModel>(new CMEventScheduler(ctx, tSF));
     else if (opt_imm_outcomes)
-        return unique_ptr<Model>(new CMImmediateOutcomes(ctx, tSF));
+        return unique_ptr<ClinicalModel>(new CMImmediateOutcomes(ctx, tSF));
     else
-        return unique_ptr<Model>(new CMDecisionTree5Day(ctx, tSF));
+        return unique_ptr<ClinicalModel>(new CMDecisionTree5Day(ctx, tSF));
 }
 
-double Model::getCommunityCFR(double caseFatalityRatio) {
+double ClinicalModel::getCommunityCFR(double caseFatalityRatio) {
     double x = caseFatalityRatio * oddsRatioThreshold;
     return x / (1 - caseFatalityRatio + x);
 }
 
 // -----  non-static construction, destruction and checkpointing  -----
 
-Model::Model(Context& ctx, double tSF, const Kind kind)
+ClinicalModel::ClinicalModel(RunContext& ctx, double tSF, const Kind kind)
     : kind(kind), ctx(ctx), m_treatmentSeekingFactor(tSF), latestReport(ctx), doomed(NOT_DOOMED) {}
 
-// parity: guard = old Model ctor's Kind::EventScheduler check, verbatim
+// parity: guard = old ClinicalModel ctor's Kind::EventScheduler check, verbatim
 // (no RNG draws in any ctor; ctor layering cannot shift the stream).
-CMEventScheduler::CMEventScheduler(Context& ctx, double tSF) : Model(ctx, tSF, Kind::EventScheduler) {
+CMEventScheduler::CMEventScheduler(RunContext& ctx, double tSF) : ClinicalModel(ctx, tSF, Kind::EventScheduler) {
     if (tSF != 1.0) {
         // p(treatment seeking) is part of tree & handled generically, so we
         // don't have a way of modifying it. (parity: old ES ctor)
-        throw util::xml_error("treatment seeking heterogeneity not supported");
+        throw xml_scenario_error("treatment seeking heterogeneity not supported");
     }
 }
 
 // Variant dispatch: each override calls its variant's free-function body
-// (this TU is the one that resolves the Model<->EventScheduler/
+// (this TU is the one that resolves the ClinicalModel<->EventScheduler/
 // CM5DayCommon include cycle, so the hooks live here). Bodies unchanged.
-void CMDecisionTree5Day::doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) {
+void CMDecisionTree5Day::doClinicalUpdate(Human& human, double ageYears, StatePair& pg) {
     clinicalUpdate5Day(*this, ctx, human, ageYears, pg);
 }
 
@@ -94,7 +93,7 @@ void CMDecisionTree5Day::uncomplicatedEvent(Human& human, Episode::State pgState
     treeUncomplicatedEvent(*this, ctx, human, pgState);
 }
 
-void CMImmediateOutcomes::doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) {
+void CMImmediateOutcomes::doClinicalUpdate(Human& human, double ageYears, StatePair& pg) {
     clinicalUpdate5Day(*this, ctx, human, ageYears, pg);
 }
 
@@ -102,13 +101,13 @@ void CMImmediateOutcomes::uncomplicatedEvent(Human& human, Episode::State pgStat
     immOutUncomplicatedEvent(*this, ctx, human, pgState);
 }
 
-void CMEventScheduler::doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) {
+void CMEventScheduler::doClinicalUpdate(Human& human, double ageYears, StatePair& pg) {
     esClinicalUpdate(*this, ctx, human, ageYears, pg);
 }
 
 SimTime CMEventScheduler::timeOfLastTreatment() const { return es_time_treatment(); }
 
-bool Model::isExistingCase() {
+bool ClinicalModel::isExistingCase() {
     // If treated in the recent past:
     const SimTime t = timeOfLastTreatment();
     return ctx.clock.now() > t && ctx.clock.now() <= t + healthSystemMemory;
@@ -116,41 +115,41 @@ bool Model::isExistingCase() {
 
 // -----  other non-static methods  -----
 
-bool Model::isDead(SimTime age) {
+bool ClinicalModel::isDead(SimTime age) {
     if (age >= ctx.clock.max_human_age) // too old (reached age limit)
         doomed = DOOMED_TOO_OLD;
     return doomed > NOT_DOOMED; // killed by some means
 }
 
-void Model::update(Human& human, double ageYears, bool newBorn) {
+void ClinicalModel::update(Human& human, double ageYears, bool newBorn) {
     if (doomed < NOT_DOOMED) // Countdown to indirect mortality
         doomed -= ctx.clock.one_TS();
 
     //indirect death: if this human's about to die, don't worry about further episodes:
     if (doomed <= DOOMED_EXPIRED) { //clinical bout 6 intervals before
-        mon::recordEvent(mon::measure("nIndDeaths"), human);
+        recordEvent(measure("nIndDeaths"), human);
         doomed = DOOMED_INDIRECT;
         return;
     }
     if (newBorn /* i.e. first update since birth */) {
         // Chance of neonatal mortality:
-        if (Host::NeonatalMortality::eventNeonatalMortality(human.rng())) {
-            mon::recordEvent(mon::measure("nIndDeaths"), human);
+        if (NeonatalMortality::eventNeonatalMortality(human.rng())) {
+            recordEvent(measure("nIndDeaths"), human);
             doomed = DOOMED_NEONATAL;
             return;
         }
     }
 
     const bool isDoomed = doomed != NOT_DOOMED;
-    WithinHost::Pathogenesis::StatePair pg = human.withinHostModel->determineMorbidity(human, ageYears, isDoomed);
+    StatePair pg = human.withinHostModel->determineMorbidity(human, ageYears, isDoomed);
     latestState = static_cast<Episode::State>(pg.state);
 
     doClinicalUpdate(human, ageYears, pg);
 }
 
-void Model::updateInfantDeaths(SimTime age) {
+void ClinicalModel::updateInfantDeaths(SimTime age) {
     // update array for the infant death rates
-    if (age < sim::oneYear()) {
+    if (age < oneYear()) {
         size_t index = age / ctx.clock.one_TS();
 
         // Testing doomed == DOOMED_NEXT_TS gives very slightly different results than
@@ -170,7 +169,7 @@ vector<int> infantIntervalsAtRisk;
 /// Set by init ()
 double nonMalariaMortality;
 
-void InfantMortality::init(Context& ctx, const OM::Parameters& parameters) {
+void InfantMortality::init(RunContext& ctx, const Parameters& parameters) {
     infantDeaths.resize(ctx.clock.steps_per_year);
     infantIntervalsAtRisk.resize(ctx.clock.steps_per_year);
     nonMalariaMortality = parameters[Parameter::NON_MALARIA_INFANT_MORTALITY];
@@ -197,5 +196,4 @@ double InfantMortality::allCause() {
     return (1.0 - infantPropSurviving) * 1000.0 + nonMalariaMortality;
 }
 
-}
 }

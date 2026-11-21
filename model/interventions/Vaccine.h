@@ -33,12 +33,8 @@ namespace scnXml {
 class VaccineDescription;
 }
 
-namespace OM {
-namespace Host {
+namespace OpenMalaria {
 class Human;
-}
-namespace interventions {
-using util::LocalRng;
 
 /** Vaccine intervention parameters.
  *
@@ -52,7 +48,7 @@ using util::LocalRng;
  * All parameters (inc. non-static) are only set by initParameters(). */
 class VaccineParams {
   public:
-    VaccineParams(Context& ctx, ComponentId id, const scnXml::VaccineDescription& seq, Vaccine::Types type);
+    VaccineParams(RunContext& ctx, ComponentId id, const scnXml::VaccineDescription& seq, Vaccine::Types type);
 
     /** Get the initial efficacy of the vaccine.
      *
@@ -61,13 +57,13 @@ class VaccineParams {
 
     /** Look up a component's parameters (registry: ctx.vaccineComponents;
      * filled after all components are read). */
-    static const VaccineParams& getParams(Context& ctx, ComponentId component);
+    static const VaccineParams& getParams(RunContext& ctx, ComponentId component);
 
     /// Vaccine component type
     Vaccine::Types type;
 
     /// Function representing decay of effect
-    unique_ptr<util::DecayFunction> decayFunc;
+    unique_ptr<DecayFunction> decayFunc;
 
     /* Vaccine type specific parameters
      * Initial mean efficacy, definition depends on vaccine type */
@@ -90,17 +86,18 @@ class VaccineParams {
 /** Get one minus the (decayed) efficacy of the given vaccine type: product
  * over this human's matching dose records in insertion order (parity: c;
  * 1 for no effect, 0 for full effect). Implements Human::vaccine_factor. */
-inline double vaccine_factor(Context& ctx, const std::vector<VacRecord>& vac, Vaccine::Types type, uint32_t genotype);
+inline double vaccine_factor(RunContext& ctx, const std::vector<VacRecord>& vac, Vaccine::Types type,
+                             uint32_t genotype);
 
 /** Vaccinate unless the passed VaccineLimits specify not to (draw order:
  * first dose per component takes a decay het sample BEFORE the per-genotype
  * efficacy draws). Record list order never changes.
  * @returns true when the vaccine is administered */
-inline bool vaccinate(Context& ctx, Host::Human& human, ComponentId componentId, VaccineLimits vaccLimits);
+inline bool vaccinate(RunContext& ctx, Human& human, ComponentId componentId, VaccineLimits vaccLimits);
 
 // ———  implementation (was Vaccine.cpp)  ———
 
-inline const VaccineParams& VaccineParams::getParams(Context& ctx, ComponentId component) {
+inline const VaccineParams& VaccineParams::getParams(RunContext& ctx, ComponentId component) {
     auto& params = ctx.vaccineComponents;
     assert(component.id < params.size() && params[component.id] != 0);
     return *params[component.id];
@@ -113,15 +110,15 @@ inline double VaccineParams::getInitialEfficacy(LocalRng& rng, size_t numPrevDos
         numPrevDoses = perGenotypeInitialMeanEfficacy[genotype].size() - 1;
     double ime = perGenotypeInitialMeanEfficacy[genotype][numPrevDoses];
     //NOTE(validation): With extra valiadation in random, the first difference is noticed here:
-    util::streamValidate(ime);
-    util::streamValidate(efficacyB);
+    streamValidate(ime);
+    streamValidate(efficacyB);
     if (ime == 0.0) {
         return 0.0;
     } else if (ime < 1.0) {
         // parity: order — local RNG stream: draw call order fixes stream state
         double result = rng.betaWithMean(ime, efficacyB);
         //NOTE(validation):: Without extra validation in random, the first difference is noticed here:
-        util::streamValidate(result);
+        streamValidate(result);
         //TODO(validation):: Why the difference? Bug in/limitation of StreamValidatior?
         // Extra memory allocation due to the extra logging causes some bad
         // memory usage to manifest differently? Am I forgetting to initialise
@@ -134,7 +131,8 @@ inline double VaccineParams::getInitialEfficacy(LocalRng& rng, size_t numPrevDos
 
 // ———  per-human vaccine state: VacRecord column (old PerHumanVaccine)  ———
 
-inline double vaccine_factor(Context& ctx, const std::vector<VacRecord>& vac, Vaccine::Types type, uint32_t genotype) {
+inline double vaccine_factor(RunContext& ctx, const std::vector<VacRecord>& vac, Vaccine::Types type,
+                             uint32_t genotype) {
     // parity: c — records multiply in insertion (deployment) order
     double factor = 1.0;
     for (const VacRecord& r : vac) {
@@ -147,8 +145,7 @@ inline double vaccine_factor(Context& ctx, const std::vector<VacRecord>& vac, Va
     return factor;
 }
 
-inline bool vaccinate(Context& ctx, Host::Human& human, ComponentId componentId,
-                      interventions::VaccineLimits vaccLimits) {
+inline bool vaccinate(RunContext& ctx, Human& human, ComponentId componentId, VaccineLimits vaccLimits) {
     auto& vac = human.cols->vac[human.row];
     // first record with this vaccine's id (exact ComponentId equality), if any
     auto rec = std::ranges::find_if(vac, [componentId](const VacRecord& r) { return r.id == componentId; });
@@ -176,7 +173,7 @@ inline bool vaccinate(Context& ctx, Host::Human& human, ComponentId componentId,
     for (size_t g = 0; g < params.perGenotypeInitialMeanEfficacy.size(); g++)
         record->per_genotype_eff[g] = params.getInitialEfficacy(human.rng(), numDosesAdministered, g);
 
-    util::streamValidate(record->per_genotype_eff);
+    streamValidate(record->per_genotype_eff);
 
     record->num_doses = numDosesAdministered + 1;
     record->time_last = ctx.clock.nowOrTs1();
@@ -184,5 +181,4 @@ inline bool vaccinate(Context& ctx, Host::Human& human, ComponentId componentId,
     return true;
 }
 
-}
 }

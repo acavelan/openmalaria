@@ -29,8 +29,6 @@
 #include "Host/WithinHost/WHInterface.h"
 #include <limits>
 
-using namespace OM::WithinHost;
-
 class DummyInfectionSuite : public CxxTest::TestSuite {
   public:
     DummyInfectionSuite() : m_rng(0, 0) {}
@@ -41,11 +39,12 @@ class DummyInfectionSuite : public CxxTest::TestSuite {
         UnittestUtil::Infection_init_latentP_and_NaN();
         DummyInfection::init(UnittestUtil::ctx());
         // pkpdID (1st value) isn't important since we're not using drug model here:
-        infection = UnittestUtil::ctx().createInfection(UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, Origin::Indigenous);
-        for (SimTime d = UnittestUtil::clock().ts1(), end = UnittestUtil::clock().ts1() + sim::fromDays(15); d < end;
-             d = d + sim::oneDay()) {
+        infection =
+            UnittestUtil::ctx().createInfection(UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous);
+        for (SimTime d = UnittestUtil::clock().ts1(), end = UnittestUtil::clock().ts1() + fromDays(15); d < end;
+             d = d + oneDay()) {
             // blood stage starts 15 days after creation
-            UnittestUtil::incrTime(sim::oneDay());
+            UnittestUtil::incrTime(oneDay());
             infection->update(m_rng, 1.0, d, numeric_limits<double>::quiet_NaN());
         }
     }

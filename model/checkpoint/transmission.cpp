@@ -26,17 +26,14 @@
 
 #include "sections.h"
 
-#include "Transmission/Model.h"
+#include "Transmission/TransmissionModel.h"
 #include "Transmission/Anopheles/AnophelesModel.h"
 #include "Transmission/Anopheles/EmergenceRateEstimator.h"
 #include "util/SimpleDecayingValue.h"
 
-namespace OM {
+namespace OpenMalaria {
 
-using checkpoint::Archive;
-
-namespace util {
-void checkpoint(checkpoint::Archive& a, SimpleDecayingValue& sdv) {
+void checkpoint(Archive& a, SimpleDecayingValue& sdv) {
     a.value(sdv.deploy_t);
     // het = per-deployment RNG sample of the decay curve. Deployments are
     // replayed by interventions at restore; sampled clones aren't on the
@@ -45,22 +42,18 @@ void checkpoint(checkpoint::Archive& a, SimpleDecayingValue& sdv) {
     bool hasSample = sdv.het != nullptr;
     a.boolean(hasSample);
     if (a.reading() && hasSample && sdv.het == nullptr)
-        throw checkpoint::checkpoint_error("checkpoint: sampled decay deployment not yet supported");
+        throw checkpoint_error("checkpoint: sampled decay deployment not yet supported");
 }
-} // namespace util
-
-namespace Transmission {
-namespace Anopheles {
 
 namespace {
 /// Count must match the config-built size (species/interventions lists).
-void ckSdvVector(Archive& a, std::vector<util::SimpleDecayingValue>& v) {
+void ckSdvVector(Archive& a, std::vector<SimpleDecayingValue>& v) {
     uint64_t n = v.size();
     a.value(n);
     if (a.reading() && n != v.size())
-        throw checkpoint::checkpoint_error("species intervention count mismatch");
+        throw checkpoint_error("species intervention count mismatch");
     for (auto& sdv : v)
-        util::checkpoint(a, sdv);
+        checkpoint(a, sdv);
 }
 } // namespace
 
@@ -106,7 +99,7 @@ void checkpoint(Archive& a, AnophelesModel& m) {
     bool mpd = m.simpleMPD != nullptr;
     a.boolean(mpd);
     if (a.reading() && mpd && !m.simpleMPD)
-        throw checkpoint::checkpoint_error("checkpoint has MPD state; scenario doesn't enable MPD");
+        throw checkpoint_error("checkpoint has MPD state; scenario doesn't enable MPD");
     if (mpd) {
         a.vector(m.simpleMPD->quinquennialOvipositing);
         a.value(m.simpleMPD->developmentDuration);
@@ -124,9 +117,7 @@ void checkpoint(Archive& a, EmergenceRateEstimator& e) {
     a.boolean(e.scaled);
 }
 
-} // namespace Anopheles
-
-void checkpoint(Archive& a, Model& tm) {
+void checkpoint(Archive& a, TransmissionModel& tm) {
     a.rng(tm.m_rng);
     a.value(tm.initIterations);
     a.value(tm.meanAvail);
@@ -150,17 +141,17 @@ void checkpoint(Archive& a, Model& tm) {
     a.value(tm.lastSurveyTime);
     a.value(tm.adultAge);
     a.value(tm.numTransmittingHumans);
-    if (tm.kind == Model::Kind::Vector) {
+    if (tm.kind == TransmissionModel::Kind::Vector) {
         uint64_t n = tm.species.size();
         a.value(n);
         if (a.reading() && n != tm.species.size())
-            throw checkpoint::checkpoint_error("tm.species count mismatch");
+            throw checkpoint_error("tm.species count mismatch");
         for (auto& s : tm.species)
-            Anopheles::checkpoint(a, *s);
+            checkpoint(a, *s);
         if (a.reading() && n != tm.emergenceRateEstimators.size())
-            throw checkpoint::checkpoint_error("estimator count mismatch");
+            throw checkpoint_error("estimator count mismatch");
         for (auto& e : tm.emergenceRateEstimators)
-            Anopheles::checkpoint(a, *e);
+            checkpoint(a, *e);
     } else {
         a.value(tm.nSpore);
         a.vector(tm.interventionEIR);
@@ -168,13 +159,6 @@ void checkpoint(Archive& a, Model& tm) {
     }
 }
 
-} // namespace Transmission
+void ckTransmission(Archive& a, RunContext&, TransmissionModel& transmission) { checkpoint(a, transmission); }
 
-namespace checkpoint {
-
-void ckTransmission(Archive& a, Context&, Transmission::Model& transmission) {
-    Transmission::checkpoint(a, transmission);
-}
-
-} // namespace checkpoint
-} // namespace OM
+} // namespace OpenMalaria

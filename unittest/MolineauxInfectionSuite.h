@@ -33,7 +33,6 @@
 #include <gsl/gsl_fit.h>
 #include <gsl/gsl_statistics_double.h>
 
-using namespace OM::WithinHost;
 
 class MolineauxInfectionSuite : public CxxTest::TestSuite
 {
@@ -69,20 +68,20 @@ public:
 //         out << setprecision(8);
         
         // pkpdID (value) isn't important since we're not using drug model here:
-        Infection* infection = new MolineauxInfection (UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, Origin::Indigenous);
+        Infection* infection = new MolineauxInfection (UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous);
         bool extinct = false;
         size_t day=0;
         SimTime now = UnittestUtil::clock().ts0();
         do{
             extinct = infection->update(m_rng, 1.0 /*no external immunity*/, now, 71.43 /*adult body mass in kg to get 5l blood volume*/);
             SimTime age = now - infection->m_startDate - infection->s_latentP;
-            if( age >= sim::zero() ){
+            if( age >= zero() ){
                 ETS_ASSERT_LESS_THAN( day, dens.size() );
                 TS_ASSERT_APPROX( infection->getDensity(), dens[day] );
 //                 out << infection->getDensity() << endl;
                 day += 1;
             }
-            now = now + sim::oneDay();
+            now = now + oneDay();
         }while(!extinct);
         TS_ASSERT_EQUALS( day, dens.size() );
         delete infection;
@@ -289,12 +288,12 @@ private:
             vector<double> dens;    // time series of density
             for( size_t run = 0; run < N; ++run ){
                 dens.resize( 0 );
-                Infection* infection = new MolineauxInfection (UnittestUtil::ctx(), rng, 0xFFFFFFFF, Origin::Indigenous);
+                Infection* infection = new MolineauxInfection (UnittestUtil::ctx(), rng, 0xFFFFFFFF, InfectionOrigin::Indigenous);
                 SimTime now = UnittestUtil::clock().ts0();
                 
                 while( !infection->update(rng, 1.0 /*no external immunity*/, now, 71.43 /*adult body mass in kg to get 5l blood volume*/) ){
                     dens.push_back( infection->getDensity() );
-                    now = now + sim::oneDay();
+                    now = now + oneDay();
                 }
                 delete infection;
                 calc( run, dens );

@@ -166,7 +166,7 @@ class AnophelesModelSuite : public CxxTest::TestSuite {
         // just test vtm->eirPerDayOfYear and species parameters.
         vtm->timeStepNumEntoInnocs = 0;
         vtm->advancePeriod(*population, simulationTime);
-        for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
+        for (list<Human>::iterator it = population->begin(); it != population->end(); ++it)
             vtm->getEIR(simulationTime, it->perHostTransmission, it->getAgeInYears());
         TS_ASSERT_SPECIES_APPROX(doc["calculateEIR"]["output"]);
     }
@@ -174,11 +174,11 @@ class AnophelesModelSuite : public CxxTest::TestSuite {
     void testCalculateEirDeterrency() {
         const YAML::Node& node = doc["calculateEirDeterrency"];
         species->humanBase.ITNDeterrency = yaml2WeibullDecayedValue(node["Deterrency"]);
-        for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
+        for (list<Human>::iterator it = population->begin(); it != population->end(); ++it)
             it->setupITN();
         vtm->timeStepNumEntoInnocs = 0;
         vtm->advancePeriod(*population, simulationTime);
-        for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
+        for (list<Human>::iterator it = population->begin(); it != population->end(); ++it)
             vtm->getEIR(simulationTime, it->perHostTransmission, it->getAgeInYears());
         TS_ASSERT_SPECIES_APPROX(node["output"]);
     }
@@ -186,11 +186,11 @@ class AnophelesModelSuite : public CxxTest::TestSuite {
     void testCalculateEirPreprandialKilling() {
         const YAML::Node& node = doc["calculateEirPreprandialKilling"];
         species->humanBase.ITNPreprandialKillingEffect = yaml2WeibullDecayedValue(node["PreprandialKilling"]);
-        for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
+        for (list<Human>::iterator it = population->begin(); it != population->end(); ++it)
             it->setupITN();
         vtm->timeStepNumEntoInnocs = 0;
         vtm->advancePeriod(*population, simulationTime);
-        for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
+        for (list<Human>::iterator it = population->begin(); it != population->end(); ++it)
             vtm->getEIR(simulationTime, it->perHostTransmission, it->getAgeInYears());
         TS_ASSERT_SPECIES_APPROX(node["output"]);
     }
@@ -198,11 +198,11 @@ class AnophelesModelSuite : public CxxTest::TestSuite {
     void testCalculateEirPostprandialKilling() {
         const YAML::Node& node = doc["calculateEirPostprandialKilling"];
         species->humanBase.ITNPostprandialKillingEffect = yaml2WeibullDecayedValue(node["PostprandialKilling"]);
-        for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
+        for (list<Human>::iterator it = population->begin(); it != population->end(); ++it)
             it->setupITN();
         vtm->timeStepNumEntoInnocs = 0;
         vtm->advancePeriod(*population, simulationTime);
-        for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
+        for (list<Human>::iterator it = population->begin(); it != population->end(); ++it)
             vtm->getEIR(simulationTime, it->perHostTransmission, it->getAgeInYears());
         TS_ASSERT_SPECIES_APPROX(node["output"]);
     }
@@ -210,11 +210,11 @@ class AnophelesModelSuite : public CxxTest::TestSuite {
     void testCalculateEirRestKilling() {
         const YAML::Node& node = doc["calculateEirRestKilling"];
         species->humanBase.IRSKillingEffect = yaml2WeibullDecayedValue(node["RestKilling"]);
-        for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
+        for (list<Human>::iterator it = population->begin(); it != population->end(); ++it)
             it->setupIRS();
         vtm->timeStepNumEntoInnocs = 0;
         vtm->advancePeriod(*population, simulationTime);
-        for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
+        for (list<Human>::iterator it = population->begin(); it != population->end(); ++it)
             vtm->getEIR(simulationTime, it->perHostTransmission, it->getAgeInYears());
         TS_ASSERT_SPECIES_APPROX(node["output"]);
     }
@@ -226,7 +226,7 @@ class AnophelesModelSuite : public CxxTest::TestSuite {
         species->larvicidingEndStep = 1000;
         vtm->timeStepNumEntoInnocs = 0;
         vtm->advancePeriod(*population, simulationTime);
-        for (list<Host::Human>::iterator it = population->begin(); it != population->end(); ++it)
+        for (list<Human>::iterator it = population->begin(); it != population->end(); ++it)
             vtm->getEIR(simulationTime, it->perHostTransmission, it->getAgeInYears());
         TS_ASSERT_SPECIES_APPROX(node["output"]);
     }
@@ -270,5 +270,5 @@ class AnophelesModelSuite : public CxxTest::TestSuite {
     Simulation* simulation;
     VectorModel* vtm;
     AnophelesModel* species;
-    list<Host::Human>* population;
+    list<Human>* population;
 };
