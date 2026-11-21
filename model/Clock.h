@@ -25,7 +25,7 @@
  * Everything time-related lives here:
  *  - SimTime: a number of days (integer), global typedef.
  *  - sim: stateless constants/conversions (never/future/inYears/...) —
- *    plain namespace, no clock dependency (formerly the  static-only
+ *    plain namespace, no clock dependency (formerly the static-only
  *    class of model/sim.h).
  *  - SimClock: the simulation clock (time-step interval, dates, t0/t1,
  *    update markers). Owned by RunContext; init/initInterval defined in

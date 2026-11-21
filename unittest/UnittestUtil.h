@@ -48,7 +48,6 @@ namespace OpenMalaria {
 extern bool opt_common_whm;
 }
 
-namespace xml_helpers {
 /// Construct a helper for setting PK parameters (1-compartment model)
 ///@param Vd Volume of distribution (l/kg)
 ///@param negl_conc Negligible concentration of drug (mg/l)
@@ -187,7 +186,6 @@ scnXml::PKPDDrug drug(const char* abbrev, PK3C pk, PD pd) {
     xPD.getPhenotype().push_back(scnXml::Phenotype(pd.vmax, pd.ic50, pd.slope));
     return scnXml::PKPDDrug(xPD, xPK, abbrev);
 }
-}
 
 namespace dummyXML {
 scnXml::DemogAgeGroup demAgeGroup(numeric_limits<double>::quiet_NaN() /* lower bound */);
@@ -293,7 +291,6 @@ class UnittestUtil {
 
         //Note: we fudge this call since it's not so easy to falsely initialize scenario element.
         //PkPdModel::init ();
-        using namespace xml_helpers;
 
         // Drugs:
         scnXml::Drugs drugs;

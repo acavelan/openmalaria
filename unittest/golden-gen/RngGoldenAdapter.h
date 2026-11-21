@@ -52,10 +52,9 @@ using std::runtime_error;
 
 #include "util/random.h" // for the Xoshiro256P engine only
 #include "util/errors.h"
-// random.h opens namespace util, so its bare Error:: resolves there;
-// alias the same namespace here so the mirrored poisson wrapper
-// stays character-identical:
-namespace Error = ::Error;
+// This header is compiled standalone (no model library): alias the model's Error
+// namespace here so the mirrored wrappers keep their original Error:: spellings:
+namespace Error = OpenMalaria::Error;
 
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
