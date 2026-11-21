@@ -1,7 +1,7 @@
 # MAIN-SESSION STATUS (2026-11-20, authoritative — everything below is per-agent history)
 `rewrite` HEAD = p8-collapse merged onto p8-poly (merge 488ec0ea + PERF rows). ALL phase-8
 waves 1–2 merged & verified: structure, checkpoint-redo, files, Q2-polymorphism, collapse+reflow.
-**model 16,721 code LOC / 115 files (baseline 18,813 → −2,092).** Names: RunContext→Context, xml_error, Transmission::Model, Clinical::Model, Pathogenesis::Model, IncidenceModel (later waves; old names in rows below are historical). Gates on merged tree: build 0 err,
+**model 16,233 code LOC / 115 files (baseline 18,813 → −2,580).** One namespace: single `namespace OpenMalaria` (p8-ns merged; naming waves 1–2 REVERTED — RunContext/xml_scenario_error/TransmissionModel/ClinicalModel names are back and current; Context/xml_error/Model spellings in rows above that line are historical). Kept nested: scnXml/xsd, Continuous, Deploy, GT, Error/Messages, UnitTest. Gates on merged tree: build 0 err,
 ctest 64/64 (incl Resume_*), unittest .OK!, T1 a+b seeds 1-10 = 63/63 vs A0. Verify build =
 `build-mrg/`; repo-root `build/schema/*.xsd` must exist (parity harness resolves XSDs there —
 restored from build-mrg; a missing one = harness red, not code red). No p8 worktrees/branches remain.
