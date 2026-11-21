@@ -30,18 +30,12 @@ namespace scnXml {
 class HSESNMF;
 class Clinical;
 }
-namespace OM {
+namespace OpenMalaria {
 class RunContext;
 }
 
-namespace OM {
-namespace Host {
+namespace OpenMalaria {
 class Human;
-}
-namespace WithinHost {
-namespace Pathogenesis {
-
-using util::LocalRng;
 
 /** Types of sickness; used by case management.
    *
@@ -58,9 +52,17 @@ enum State {
     // Flags for current state/worst state to report:
     SICK = 0x1,         ///< Sick (may or may not be from malaria)
     MALARIA = 0x2,      ///< Malaria sickness
+    SECOND_CASE = 0x10, ///< Used by ClinicalEventScheduler to indicate a second bout of malarial sickness
     SEVERE = 0x8,       ///< Severe malaria case
     COINFECTION = 0x4,  ///< Malaria with a coinfection
     COMPLICATED = 0x20, ///< Flag used to indicate SEVERE and/or COINFECTION
+    // Flags for clinical event reporting (formerly Episode::State):
+    EVENT_IN_HOSPITAL = 0x400, ///< Recovery/sequelae/death event occurred in hospital (set on one event only)
+    DIRECT_DEATH = 0x1000,     ///< Reporting death (from COMPLICATED sickness)
+    SEQUELAE = 0x2000,         ///< Reporting recovered with sequelae (from COMPLICATED sickness)
+    RECOVERY = 0x4000,         ///< Report that individual fully recovered
+    EVENT_FIRST_DAY = 0x8000,  ///< With DIRECT_DEATH: death on first day (before treatment effect)
+    RUN_CM_TREE = 0x10000,     ///< Flag to indicate that CM tree should be run now or after a delay
 
     // Flags for outcome reporting:
     STATE_NMF = SICK, ///< Alias: SICK
@@ -97,18 +99,18 @@ class PathogenesisModel {
      *
      * May introduce severe or uncomplicated cases of malaria, as well as non-
      * malaria fevers. */
-    StatePair determineState(Host::Human& human, double ageYears, double timeStepMaxDensity, double endDensity,
+    StatePair determineState(Human& human, double ageYears, double timeStepMaxDensity, double endDensity,
                              bool isDoomed);
 
     /** For Vivax: determine the chance of a NMF and sample, returning either
      * NONE or STATE_NMF. */
-    static Pathogenesis::State sampleNMF(LocalRng& rng, double ageYears);
+    static State sampleNMF(LocalRng& rng, double ageYears);
 
     /** Summarize PathogenesisModel details
      *
      * Only the pyrogen-threshold kinds (Pyrogen, Predet) have anything to add
      * to the summary (parity: old PyrogenPathogenesis::summarize). */
-    void summarize(const Host::Human& human);
+    void summarize(const Human& human);
 
     /// Read parameters (parity: old MuellerPathogenesis::init /
     /// PyrogenPathogenesis::init; called from PathogenesisModel::init in xml).
@@ -138,6 +140,4 @@ class PathogenesisModel {
     double _pyrogenThres;
 };
 
-}
-}
 }

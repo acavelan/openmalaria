@@ -47,8 +47,7 @@
 #include <cstdio>
 #include <vector>
 
-using namespace OM;
-using util::LocalRng;
+using namespace OpenMalaria;
 
 namespace {
 

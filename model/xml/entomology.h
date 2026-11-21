@@ -31,8 +31,7 @@
 
 #include <string>
 
-namespace OM {
-namespace Transmission {
+namespace OpenMalaria {
 class TransmissionModel;
 
 /// Loop over per-species vector population interventions, deploying to
@@ -41,5 +40,4 @@ void initVectorInterv(TransmissionModel& vm, const scnXml::Description::Anophele
                       const std::string& name);
 void initVectorTrap(TransmissionModel& vm, const scnXml::VectorTrap::DescriptionSequence list, size_t instance,
                     const scnXml::VectorTrap::NameOptional name_opt);
-}
 }

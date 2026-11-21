@@ -30,8 +30,7 @@
 
 #include <iomanip>
 
-namespace OM {
-namespace WithinHost {
+namespace OpenMalaria {
 
 Genotypes::Genotype Genotypes::Genotype::cross(const Genotype& that) const {
     Genotype result(*that.alleles.begin(), init_freq * that.init_freq, fitness * that.fitness,
@@ -72,7 +71,7 @@ uint32_t Genotypes::sampleGenotype(LocalRng& rng, vector<double>& genotype_weigh
     } else {
         assert(current_mode == SAMPLE_TRACKING);
         assert(genotype_weights.size() == N_genotypes);
-        double weight_sum = util::vectors::sum(genotype_weights);
+        double weight_sum = vectors::sum(genotype_weights);
         assert(weight_sum >= 0.0 && weight_sum < 1e5); // possible loss of precision or other error
         double sample = rng.uniform_01() * weight_sum;
         double cum = 0.0;
@@ -97,5 +96,4 @@ double Genotypes::initialFreq(size_t genotype) const {
 
 // ———  checkpointing  ———
 
-}
 }

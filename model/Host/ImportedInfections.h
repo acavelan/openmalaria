@@ -33,14 +33,12 @@ class ImportedInfections;
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Infection/Infection.h"
 
-namespace OM {
+namespace OpenMalaria {
 class Population;
-
-namespace Host {
 
 class ImportedInfections {
   public:
-    ImportedInfections() : period(sim::zero()), lastIndex(0) {}
+    ImportedInfections() : period(zero()), lastIndex(0) {}
 
     /** Initialise, passing intervention description
          * 
@@ -62,8 +60,8 @@ class ImportedInfections {
         if (rate.size() == 0)
             return; // no imported infections
         SimTime now = ctx.clock.interv;
-        assert(now >= sim::zero());
-        if (period > sim::zero()) {
+        assert(now >= zero());
+        if (period > zero()) {
             now = mod_nn(now, period);
         }
         if (rate[lastIndex].time > now) {
@@ -82,25 +80,24 @@ class ImportedInfections {
                 // parity: e — bernoulli import draw per human-day; rate->draw->importInfection(order) frozen (plan §3e)
                 if (human.rng().bernoulli(rateNow)) {
                     human.withinHostModel->importInfection(human.rng());
-                    mon::recordEvent(mon::measure("nNewInfections"), human);
-                    mon::recordEvent(mon::measure("nNewInfections_Imported"), human);
+                    recordEvent(measure("nNewInfections"), human);
+                    recordEvent(measure("nNewInfections_Imported"), human);
                 }
             }
         }
     }
 
   public: // run state; wire in checkpoint/statics.cpp
-    SimTime period = sim::never();
+    SimTime period = never();
     uint32_t lastIndex;
 
   private:
     struct Rate {
         Rate(SimTime t, double v) : time(t), value(v) {}
-        SimTime time = sim::never();
+        SimTime time = never();
         double value;
         inline bool operator<(const Rate& that) const { return time < that.time; }
     };
     vector<Rate> rate;
 };
-}
 }

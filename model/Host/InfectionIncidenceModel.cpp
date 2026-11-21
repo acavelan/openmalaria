@@ -36,9 +36,7 @@
 #include <stdexcept>
 #include <cmath>
 
-namespace OM {
-namespace Host {
-using namespace OM::util;
+namespace OpenMalaria {
 
 // ———  model constants set by init()  ———
 
@@ -96,14 +94,14 @@ void InfectionIncidenceModel::init(RunContext& ctx, const Parameters& parameters
     */
     r_square_Gamma = 0.649; //such that r_square_LogNormal =0.5
 
-    opt_no_pre_erythrocytic = util::ModelOptions::option(util::NO_PRE_ERYTHROCYTIC);
-    opt_neg_bin_mass_action = util::ModelOptions::option(util::NEGATIVE_BINOMIAL_MASS_ACTION);
-    opt_vaccine_genotype = util::ModelOptions::option(util::VACCINE_GENOTYPE);
+    opt_no_pre_erythrocytic = ModelOptions::option(NO_PRE_ERYTHROCYTIC);
+    opt_neg_bin_mass_action = ModelOptions::option(NEGATIVE_BINOMIAL_MASS_ACTION);
+    opt_vaccine_genotype = ModelOptions::option(VACCINE_GENOTYPE);
 
     if (opt_neg_bin_mass_action) {
         inf_rate_shape_param = (baseline_avail_shape_param + 1.0) / (r_square_Gamma * baseline_avail_shape_param - 1.0);
         inf_rate_shape_param = std::max(inf_rate_shape_param, 0.0);
-    } else if (util::ModelOptions::option(util::LOGNORMAL_MASS_ACTION)) {
+    } else if (ModelOptions::option(LOGNORMAL_MASS_ACTION)) {
         opt_lognormal_mass_action = true;
 
         //! constant defining the constraint for the log Normal variance
@@ -114,23 +112,23 @@ void InfectionIncidenceModel::init(RunContext& ctx, const Parameters& parameters
         inf_rate_shape_param = std::max(inf_rate_shape_param, 0.0);
         inf_rate_offset = 0.5 * pow(inf_rate_shape_param, 2);
         if ((std::isnan)(inf_rate_shape_param)) {
-            throw util::xml_scenario_error("bad parameter 16 (BASELINE_AVAILABILITY_SHAPE)");
+            throw xml_scenario_error("bad parameter 16 (BASELINE_AVAILABILITY_SHAPE)");
         }
     } else {
-        if (util::ModelOptions::option(util::TRANS_HET) || util::ModelOptions::option(util::COMORB_TRANS_HET) ||
-            util::ModelOptions::option(util::TRANS_TREAT_HET) || util::ModelOptions::option(util::TRIPLE_HET)) {
+        if (ModelOptions::option(TRANS_HET) || ModelOptions::option(COMORB_TRANS_HET) ||
+            ModelOptions::option(TRANS_TREAT_HET) || ModelOptions::option(TRIPLE_HET)) {
             opt_any_het = true;
             cerr << "Warning: will use heterogeneity workaround." << endl;
         }
     }
 
-    mon::Continuous::registerCallback(ctx, "new infections", "\tnew infections",
-                                      &InfectionIncidenceModel::ctsReportNewInfections);
+    Continuous::registerCallback(ctx, "new infections", "\tnew infections",
+                                 &InfectionIncidenceModel::ctsReportNewInfections);
 }
 
 // -----  other static methods  -----
 
-void InfectionIncidenceModel::ctsReportNewInfections(const vector<Host::Human>&, ostream& stream) {
+void InfectionIncidenceModel::ctsReportNewInfections(const vector<Human>&, ostream& stream) {
     stream << '\t' << ctsNewInfections;
     ctsNewInfections = 0;
 }
@@ -169,12 +167,9 @@ double InfectionIncidenceModel::getAvailabilityFactor(LocalRng& rng, double base
     }
 }
 
-void InfectionIncidenceModel::summarize(const Host::Human& human) {
-    mon::recordStat(mon::measure("nExpectd"), human, m_pInfected);
-}
+void InfectionIncidenceModel::summarize(const Human& human) { recordStat(measure("nExpectd"), human, m_pInfected); }
 
-double InfectionIncidenceModel::getModelExpectedInfections(LocalRng& rng, double effectiveEIR,
-                                                           const Transmission::PerHost& phTrans) {
+double InfectionIncidenceModel::getModelExpectedInfections(LocalRng& rng, double effectiveEIR, const PerHost& phTrans) {
     switch (kind) {
     case Kind::HetWorkaround: // parity: old HeterogeneityWorkaroundII formula
         return (Sinf + (1 - Sinf) / (1 + effectiveEIR / (ctx.clock.one_TS() * phTrans.rel_avail_het()) * EstarInv)) *
@@ -214,12 +209,12 @@ double InfectionIncidenceModel::susceptibility() {
     }
 }
 
-double InfectionIncidenceModel::expectedNumNewInfections(OM::Host::Human& human, double effectiveEIR) {
+double InfectionIncidenceModel::expectedNumNewInfections(Human& human, double effectiveEIR) {
     // error check (should be OK if kappa is checked, for nonVector model):
     if (!(std::isfinite)(effectiveEIR)) {
         ostringstream out;
         out << "effectiveEIR is not finite: " << effectiveEIR << endl;
-        throw TRACED_EXCEPTION(out.str(), util::Error::EffectiveEIR);
+        throw TRACED_EXCEPTION(out.str(), Error::EffectiveEIR);
     }
 
     double expectedNumInfections = getModelExpectedInfections(human.rng(), effectiveEIR, human.perHostTransmission);
@@ -228,7 +223,7 @@ double InfectionIncidenceModel::expectedNumNewInfections(OM::Host::Human& human,
     // Setting this option to true will only affect reporting
     if (opt_vaccine_genotype == false)
         //Introduce the effect of vaccination. Note that this does not affect cumEIR.
-        expectedNumInfections *= human.vaccine_factor(interventions::Vaccine::PEV);
+        expectedNumInfections *= human.vaccine_factor(Vaccine::PEV);
 
     //Update pre-erythrocytic immunity
     m_cumulativeEIRa += effectiveEIR;
@@ -247,23 +242,22 @@ int InfectionIncidenceModel::numNewInfections(Human& human, double expectedNumIn
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
         int n = human.rng().poisson(expectedNumInfections);
 
-        n = WithinHost::SlotAllocator::clamp_count(n); // post-draw clamp
+        n = SlotAllocator::clamp_count(n); // post-draw clamp
         return n;
     }
 
     if ((std::isnan)(expectedNumInfections)) { // check for not-a-number
         // bad Params::BASELINE_AVAILABILITY_SHAPE ?
-        throw TRACED_EXCEPTION("numNewInfections: NaN", util::Error::NumNewInfections);
+        throw TRACED_EXCEPTION("numNewInfections: NaN", Error::NumNewInfections);
     }
     return 0;
 }
 
 void InfectionIncidenceModel::reportNumNewInfections(Human& human, int newNumInfections_i, int newNumInfections_l) {
-    mon::recordEvent(mon::measure("nNewInfections"), human, newNumInfections_i + newNumInfections_l);
-    mon::recordEvent(mon::measure("nNewInfections_Introduced"), human, newNumInfections_i);
-    mon::recordEvent(mon::measure("nNewInfections_Indigenous"), human, newNumInfections_l);
+    recordEvent(measure("nNewInfections"), human, newNumInfections_i + newNumInfections_l);
+    recordEvent(measure("nNewInfections_Introduced"), human, newNumInfections_i);
+    recordEvent(measure("nNewInfections_Indigenous"), human, newNumInfections_l);
     ctsNewInfections += newNumInfections_i + newNumInfections_l;
 }
 
-}
 }

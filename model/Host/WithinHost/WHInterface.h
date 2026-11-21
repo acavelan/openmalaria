@@ -52,14 +52,9 @@ class LiverStageDrug;
 class UnittestUtil;
 class InfectionImmunitySuite;
 
-namespace OM {
-namespace Host {
+namespace OpenMalaria {
 class Human;
-}
-namespace WithinHost {
-namespace Pathogenesis {
 class PathogenesisModel;
-}
 
 /** Sole owner of the per-host infection-slot cap (plan §5: "MAX_INFECTIONS=21
  * lives in one place"). The only real reason for the limit is to prevent
@@ -98,8 +93,6 @@ struct SlotAllocator {
 
 class WHInterface;
 
-using util::LocalRng;
-
 /// True if any by-genotype reporting is enabled (read-only)
 extern bool reportInfectionsByGenotype;
 
@@ -107,7 +100,7 @@ struct HypnozoiteReleaseDistribution {
     /// The run this sampler serves (clock accessed as ctx.clock).
     RunContext& ctx;
 
-    HypnozoiteReleaseDistribution(RunContext& ctx, std::unique_ptr<util::Sampler> sampler, double latentRelapse)
+    HypnozoiteReleaseDistribution(RunContext& ctx, std::unique_ptr<Sampler> sampler, double latentRelapse)
         : ctx(ctx), sampler(std::move(sampler)), latentRelapse(latentRelapse) {}
 
     /// Sample the time until next release
@@ -122,7 +115,7 @@ struct HypnozoiteReleaseDistribution {
             count += 1;
 
             if (count >= maxcount) {
-                throw util::xml_scenario_error(
+                throw xml_scenario_error(
                     "<vivax><hypnozoiteRelease>  [random delay calculation causes probably an indefinite loop]:\n The hypnozoite release distribution seems off, sigma of secondRelease could be too high. We except the hypnozoite to reside a maximum of 16 months in the liver stage. Sigma choose well, dear padawan.");
             }
         } while (delay > liverStageMaximumDays || delay < 0.0);
@@ -132,7 +125,7 @@ struct HypnozoiteReleaseDistribution {
     }
 
   private:
-    std::unique_ptr<util::Sampler> sampler;
+    std::unique_ptr<Sampler> sampler;
     double latentRelapse; // days
 };
 
@@ -192,9 +185,9 @@ class VivaxBrood {
     // time of release, soonest last (i.e. last element is next one to release)
     vector<SimTime> releaseDates;
 
-    // Either sim::never() (no blood stage) or the start of the time step on
+    // Either never() (no blood stage) or the start of the time step on
     // which the blood stage will clear.
-    SimTime bloodStageClearDate = sim::never();
+    SimTime bloodStageClearDate = never();
 
     // Whether the primary blood stage infection has started
     bool primaryHasStarted;
@@ -252,7 +245,7 @@ class WHInterface {
     //@{
     /// Initialise static parameters (all model variants; selects the variant
     /// via ModelOptions, xml/scenario.cpp).
-    static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario);
+    static void init(RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario);
 
     /** Configure a new treatment option, and return the code used to select
      * that option later. */
@@ -287,7 +280,7 @@ class WHInterface {
                                               vector<double>& probTransGenotype_l) const = 0;
 
     /// @returns true if host has patent parasites
-    virtual bool summarize(Host::Human& human) const = 0;
+    virtual bool summarize(Human& human) const = 0;
 
     /// Create a new infection within this human
     virtual void importInfection(LocalRng& rng) = 0;
@@ -302,15 +295,15 @@ class WHInterface {
      * Shared by all production variants (treatSimple dispatches virtually;
      * the Vivax variant uses the same code here; the unittest Mock
      * overrides). */
-    virtual void treatment(Host::Human& human, TreatmentId treatId);
+    virtual void treatment(Human& human, TreatmentId treatId);
 
     /// Conditionally gives Primaquine as a treatment. Reports as appropriate.
     /// (No PQ treatment for falciparum in current models; Vivax overrides.)
-    virtual void optionalPqTreatment(Host::Human& human) {}
+    virtual void optionalPqTreatment(Human& human) {}
 
     /** Treat a patient via the simple treatment model. Return true if any
      * blood-stage treatment is administered. Report any liver-stage treatments. */
-    virtual bool treatSimple(Host::Human& human, SimTime timeLiver, SimTime timeBlood) = 0;
+    virtual bool treatSimple(Human& human, SimTime timeLiver, SimTime timeBlood) = 0;
 
     /** Give a patient a course of drugs, via the Pk/Pd model
      * 
@@ -332,7 +325,7 @@ class WHInterface {
      * @param ageInYears Age of human
      * @param bsvFactor Parasite survival factor for blood-stage vaccines
      */
-    virtual void update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l,
+    virtual void update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l,
                         vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears) = 0;
 
     /** TODO: this should not be exposed. It is currently used by a
@@ -360,7 +353,7 @@ class WHInterface {
      * @param ageYears Age of human host in years
      * @param isDoomed True if the human is already doomed to die, used for reporting
      */
-    virtual Pathogenesis::StatePair determineMorbidity(Host::Human& human, double ageYears, bool isDoomed) = 0;
+    virtual StatePair determineMorbidity(Human& human, double ageYears, bool isDoomed) = 0;
 
     /// Special intervention: clears all immunity.
     virtual void clearImmunity() = 0;
@@ -420,10 +413,10 @@ class WHInterface {
     std::vector<double> m_y_lag_i, m_y_lag_l;
 
     /// The PathogenesisModel introduces illness dependant on parasite density
-    unique_ptr<Pathogenesis::PathogenesisModel> pathogenesisModel;
+    unique_ptr<PathogenesisModel> pathogenesisModel;
 
     /// End of step on which treatment expires = start of first step after expiry
-    SimTime treatExpiryLiver = sim::zero(), treatExpiryBlood = sim::zero();
+    SimTime treatExpiryLiver = zero(), treatExpiryBlood = zero();
 
     /// Length of m_y_lag array. Wouldn't have to be dynamic if Global::interval was known at compile-time.
     /// set by initHumanParameters
@@ -440,7 +433,7 @@ class WHInterface {
 class WHFalciparum : public WHInterface {
   public:
     /// Initialise P. falciparum immunity statics (Common/Descriptive variants).
-    static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model);
+    static void init(RunContext& ctx, const Parameters& parameters, const scnXml::Model& model);
     static void setParams(double cumYStar, double cumHStar, double aM, double dM); // for unit test only
 
     /// Shared P. falciparum immunity ctor fragment (pathogenesis model +
@@ -452,8 +445,8 @@ class WHFalciparum : public WHInterface {
     double probTransmissionToMosquito(vector<double>& probTransGenotype_i,
                                       vector<double>& probTransGenotype_l) const override;
     bool diagnosticResult(LocalRng& rng, const Diagnostic& diagnostic) const override;
-    bool treatSimple(Host::Human& human, SimTime timeLiver, SimTime timeBlood) override;
-    Pathogenesis::StatePair determineMorbidity(Host::Human& human, double ageYears, bool isDoomed) override;
+    bool treatSimple(Human& human, SimTime timeLiver, SimTime timeBlood) override;
+    StatePair determineMorbidity(Human& human, double ageYears, bool isDoomed) override;
     void clearImmunity() override;
     InfectionOrigin getInfectionOrigin() const override;
 
@@ -504,7 +497,7 @@ class WHFalciparum : public WHInterface {
     double hetMassMultiplier = 1.0;
 
     /// Encapsulates drug code for each human
-    PkPd::LSTMModel pkpdModel;
+    LSTMModel pkpdModel;
 
     /** The list of all infections this human has.
      *
@@ -527,10 +520,10 @@ class WHCommon final : public WHFalciparum {
 
     WHCommon(RunContext& ctx, LocalRng& rng, double comorbidityFactor);
 
-    bool summarize(Host::Human& human) const override;
+    bool summarize(Human& human) const override;
     void importInfection(LocalRng& rng) override;
     void treatPkPd(size_t schedule, size_t dosages, double age, double delay_d) override;
-    void update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l, vector<double>& genotype_weights_i,
+    void update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l, vector<double>& genotype_weights_i,
                 vector<double>& genotype_weights_l, double ageInYears) override;
 };
 
@@ -545,10 +538,10 @@ class WHDescriptive final : public WHFalciparum {
 
     WHDescriptive(RunContext& ctx, LocalRng& rng, double comorbidityFactor);
 
-    bool summarize(Host::Human& human) const override;
+    bool summarize(Human& human) const override;
     void importInfection(LocalRng& rng) override;
     void treatPkPd(size_t schedule, size_t dosages, double age, double delay_d) override;
-    void update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l, vector<double>& genotype_weights_i,
+    void update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l, vector<double>& genotype_weights_i,
                 vector<double>& genotype_weights_l, double ageInYears) override;
 };
 
@@ -559,7 +552,7 @@ class WHDescriptive final : public WHFalciparum {
 class WHVivax final : public WHInterface {
   public:
     /// Initialise vivax statics.
-    static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model);
+    static void init(RunContext& ctx, const Parameters& parameters, const scnXml::Model& model);
 
     /** Called when health system parameters are loaded.
      * 
@@ -572,16 +565,16 @@ class WHVivax final : public WHInterface {
 
     double probTransmissionToMosquito(vector<double>& probTransGenotype_i,
                                       vector<double>& probTransGenotype_l) const override;
-    bool summarize(Host::Human& human) const override;
+    bool summarize(Human& human) const override;
     void importInfection(LocalRng& rng) override;
-    void optionalPqTreatment(Host::Human& human) override;
-    bool treatSimple(Host::Human& human, SimTime timeLiver, SimTime timeBlood) override;
+    void optionalPqTreatment(Human& human) override;
+    bool treatSimple(Human& human, SimTime timeLiver, SimTime timeBlood) override;
     void treatPkPd(size_t schedule, size_t dosages, double age, double delay_d) override;
-    void update(Host::Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l, vector<double>& genotype_weights_i,
+    void update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs_l, vector<double>& genotype_weights_i,
                 vector<double>& genotype_weights_l, double ageInYears) override;
     double getTotalDensity() const override;
     bool diagnosticResult(LocalRng& rng, const Diagnostic& diagnostic) const override;
-    Pathogenesis::StatePair determineMorbidity(Host::Human& human, double ageYears, bool) override;
+    StatePair determineMorbidity(Human& human, double ageYears, bool) override;
     void clearImmunity() override;
     double getCumulative_h() const override;
     double getCumulative_Y() const override;
@@ -595,13 +588,13 @@ class WHVivax final : public WHInterface {
      * chance a male being tested and found to be G6PD deficient. */
     bool noPQ = false;
 
-    Pathogenesis::State morbidity = Pathogenesis::NONE;
+    State morbidity = NONE;
 
     // The number of primary blood stage infections to have started since this
     // human was born: SoA column, see cum_prim_inf_ref().
 
     // Either never or expiry time of treatment
-    SimTime treatExpiryLiverVivax = sim::zero(), treatExpiryBloodVivax = sim::zero();
+    SimTime treatExpiryLiverVivax = zero(), treatExpiryBloodVivax = zero();
 
     // The probability of a clinical event from a primary infection
     double pEvent = numeric_limits<double>::quiet_NaN();
@@ -614,5 +607,4 @@ class WHVivax final : public WHInterface {
     double pSevere = 0.0;
 };
 
-}
 }

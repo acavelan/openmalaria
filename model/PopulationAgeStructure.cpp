@@ -32,8 +32,7 @@
 #include <gsl/gsl_multimin.h>
 #include <fstream>
 
-namespace OM {
-using namespace OM::util;
+namespace OpenMalaria {
 
 size_t AgeStructure::getMaxTStepsPerLife(const RunContext& ctx) { return ctx.age.cumAgeProp.size(); }
 
@@ -137,7 +136,7 @@ void minimizeCalc_rss(RunContext& ctx, double param1, double param2) {
 
     for (size_t iter = 0; iter < 100; ++iter) {
         if (gsl_multimin_fminimizer_iterate(minimizer))
-            throw TRACED_EXCEPTION("gsl_multimin_fminimizer_iterate failed", util::Error::GSL);
+            throw TRACED_EXCEPTION("gsl_multimin_fminimizer_iterate failed", Error::GSL);
 
         double size = gsl_multimin_fminimizer_size(minimizer);
         int status = gsl_multimin_test_size(size, 1e-2);
@@ -160,7 +159,7 @@ void AgeStructure::calcCumAgeProp(RunContext& ctx) {
     cumAgeProp[0] = 0.0;
     for (size_t j = 1; j < cumAgeProp.size(); ++j) {
         SimTime age = ctx.clock.fromTS(cumAgeProp.size() - j - 1);
-        double ageYears = sim::inYears(age);
+        double ageYears = inYears(age);
         double M1s = (mu0 * (1.0 - exp(-alpha0 * ageYears)) / alpha0);
         double M2s = (mu1 * (exp(alpha1 * ageYears) - 1.0) / alpha1);
         double Ms = M1s + M2s;

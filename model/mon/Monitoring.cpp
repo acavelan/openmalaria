@@ -36,10 +36,7 @@
 #include <numeric>
 #include <type_traits>
 
-namespace OM {
-namespace mon {
-
-using internal::Condition;
+namespace OpenMalaria {
 
 namespace {
 
@@ -60,8 +57,6 @@ template <typename T> void writeBinaryValue(ostream& stream, const T& value) {
 }
 
 } // namespace
-
-namespace internal {
 
 size_t MeasureStore::index(size_t a, size_t c, size_t sp, size_t g, size_t d) const {
     assert(nAges == 1 || a < nAges);
@@ -131,8 +126,6 @@ double surveySum(RunContext& ctx, Measure measure, size_t survey) {
         store.reports);
 }
 
-} // namespace internal
-
 namespace {
 
 void updateConditions(RunContext& ctx) {
@@ -141,7 +134,7 @@ void updateConditions(RunContext& ctx) {
     if (survey == NOT_USED)
         return;
     for (Condition& cond : runtime.conditions) {
-        const double val = internal::surveySum(ctx, cond.measure, survey);
+        const double val = surveySum(ctx, cond.measure, survey);
         cond.value = (val >= cond.min && val <= cond.max);
     }
 }
@@ -157,11 +150,10 @@ void writeTextRow(ostream& stream, int survey, int column, int measure, double v
     stream << '\n';
 }
 
-size_t outputAgeGroups(const internal::MeasureStore& store) { return store.nAges == 1 ? 1 : store.nAges - 1; }
+size_t outputAgeGroups(const MeasureStore& store) { return store.nAges == 1 ? 1 : store.nAges - 1; }
 
 template <class Writer>
-void writeMeasure(RunContext& ctx, ostream& stream, Writer writeRow, size_t survey,
-                  const internal::MeasureStore& store) {
+void writeMeasure(RunContext& ctx, ostream& stream, Writer writeRow, size_t survey, const MeasureStore& store) {
     const OutMeasure& om = store.output;
     const size_t surveyStart = survey * store.size();
     assert(std::visit([](const auto& reports) { return reports.size(); }, store.reports) >= surveyStart + store.size());
@@ -199,7 +191,7 @@ template <class Writer>
 void writeRows(RunContext& ctx, ostream& stream, Writer writeRow, ValueType type = ValueType::All) {
     auto& runtime = (*ctx.monitoring);
     for (size_t survey = 0; survey < runtime.nSurveys; ++survey) {
-        for (const internal::MeasureStore& store : runtime.stores) {
+        for (const MeasureStore& store : runtime.stores) {
             if (store.output.outId < 0 || (type == ValueType::Integer && store.output.isDouble) ||
                 (type == ValueType::Double && !store.output.isDouble))
                 continue;
@@ -207,14 +199,14 @@ void writeRows(RunContext& ctx, ostream& stream, Writer writeRow, ValueType type
         }
     }
     if (runtime.reportIMR >= 0 && type != ValueType::Integer) {
-        writeRow(stream, 1, 1, runtime.reportIMR, Clinical::InfantMortality::allCause(), true);
+        writeRow(stream, 1, 1, runtime.reportIMR, InfantMortality::allCause(), true);
     }
 }
 
 uint64_t countRows(RunContext& ctx, bool isDouble) {
     auto& runtime = (*ctx.monitoring);
     uint64_t count = isDouble && runtime.reportIMR >= 0 ? 1 : 0;
-    for (const internal::MeasureStore& store : runtime.stores) {
+    for (const MeasureStore& store : runtime.stores) {
         if (store.output.outId < 0 || store.output.isDouble != isDouble)
             continue;
         count += static_cast<uint64_t>(runtime.nSurveys) * outputAgeGroups(store) * store.nCohorts * store.nSpecies *
@@ -269,12 +261,12 @@ template <class Stream, class Writer>
 void writeOutput(RunContext& ctx, const string& filename, ios::openmode mode, Writer writer) {
     Stream stream(filename.c_str(), mode);
     if (!stream.rdbuf()->is_open()) {
-        throw util::base_exception("Unable to open monitoring output file \"" + filename + "\"", util::Error::FileIO);
+        throw base_exception("Unable to open monitoring output file \"" + filename + "\"", Error::FileIO);
     }
     writer(ctx, stream);
     stream.close();
     if (!stream) {
-        throw util::base_exception("Unable to write monitoring output file \"" + filename + "\"", util::Error::FileIO);
+        throw base_exception("Unable to write monitoring output file \"" + filename + "\"", Error::FileIO);
     }
 }
 
@@ -292,13 +284,13 @@ size_t setupCondition(RunContext& ctx, const string& measureName, double minValu
     auto& runtime = (*ctx.monitoring);
     const OutMeasure om = findOutMeasure(measureName);
     if (om.measure == invalidMeasure) {
-        throw util::xml_scenario_error("unrecognised measure: " + measureName);
+        throw xml_scenario_error("unrecognised measure: " + measureName);
     }
 
     if (!isValidCondition(om.measure)) {
-        throw util::xml_scenario_error("cannot use measure " + measureName + " as condition of deployment");
+        throw xml_scenario_error("cannot use measure " + measureName + " as condition of deployment");
     }
-    internal::ensureConditionStore(ctx, om);
+    ensureConditionStore(ctx, om);
 
     runtime.conditions.push_back({initialState, om.measure, minValue, maxValue});
     return runtime.conditions.size() - 1;
@@ -317,7 +309,7 @@ static void recordValue(RunContext& ctx, Measure measure, size_t survey, size_t 
         return;
     assert(measure < runtime.storesByMeasure.size());
     for (size_t idx : runtime.storesByMeasure[measure]) {
-        internal::MeasureStore& store = runtime.stores[idx];
+        MeasureStore& store = runtime.stores[idx];
         if (outId != 0 && store.output.outId != outId)
             continue;
         const size_t index = survey * store.size() + store.index(age, cohort, species, genotype, drug);
@@ -337,7 +329,7 @@ void recordStat(RunContext& ctx, Measure measure, double val, size_t species, si
     recordValue(ctx, measure, statSurveyNumber(ctx), 0, 0, species, genotype, 0, val);
 }
 
-void recordStat(Measure measure, const Host::Human& human, double val, size_t species, size_t genotype, size_t drug) {
+void recordStat(Measure measure, const Human& human, double val, size_t species, size_t genotype, size_t drug) {
     recordValue(*human.ctx, measure, statSurveyNumber(*human.ctx), human.monitoringAgeGroup(), human.getCohortSet(),
                 species, genotype, drug, val);
 }
@@ -346,17 +338,16 @@ void recordEvent(RunContext& ctx, Measure measure, size_t survey, size_t age, ui
     recordValue(ctx, measure, survey, age, cohort, 0, 0, 0, 1.0);
 }
 
-void recordEvent(Measure measure, const Host::Human& human, double val, int outId) {
+void recordEvent(Measure measure, const Human& human, double val, int outId) {
     recordValue(*human.ctx, measure, eventSurveyNumber(*human.ctx), human.monitoringAgeGroup(), human.getCohortSet(), 0,
                 0, 0, val, outId);
 }
 
-void recordDeploy(Measure timedMeasure, Measure ctsMeasure, const Host::Human& human, Deploy::Method method,
-                  double val) {
+void recordDeploy(Measure timedMeasure, Measure ctsMeasure, const Human& human, Deploy::Method method, double val) {
     assert(method == Deploy::TIMED || method == Deploy::CTS || method == Deploy::TREAT);
     const Measure selected = method == Deploy::TIMED ? timedMeasure
                              : method == Deploy::CTS ? ctsMeasure
-                                                     : ::OM::mon::measure("nTreatDeployments");
+                                                     : OpenMalaria::measure("nTreatDeployments");
     recordEvent(selected, human, val);
 }
 
@@ -377,12 +368,12 @@ void concludeSurvey(RunContext& ctx) {
 }
 
 void writeSurveyData(RunContext& ctx) {
-    string filename = util::CommandLine::getOutputName();
-    const bool binary = util::CommandLine::getOutputFormat() == util::CommandLine::OutputFormat::BIN;
+    string filename = CommandLine::getOutputName();
+    const bool binary = CommandLine::getOutputFormat() == CommandLine::OutputFormat::BIN;
     const auto writer = binary ? writeBinary : writeText;
     const ios::openmode mode = ios::out | ios::binary;
 
-    if (util::CommandLine::option(util::CommandLine::COMPRESS_OUTPUT)) {
+    if (CommandLine::option(CommandLine::COMPRESS_OUTPUT)) {
         writeOutput<ogzstream>(ctx, filename, mode, writer);
     } else {
         writeOutput<ofstream>(ctx, filename, mode, writer);
@@ -396,7 +387,7 @@ void updateAgeGroup(RunContext& ctx, uint16_t& index, SimTime age) {
     }
 }
 
-uint32_t updateCohortSet(RunContext& ctx, uint32_t old, interventions::ComponentId subPop, bool isMember) {
+uint32_t updateCohortSet(RunContext& ctx, uint32_t old, ComponentId subPop, bool isMember) {
     auto& runtime = (*ctx.monitoring);
     auto it = runtime.cohortSubPopIds.find(subPop);
     if (it == runtime.cohortSubPopIds.end())
@@ -418,7 +409,7 @@ bool isReported(RunContext& ctx) { return !ctx.monitoring->isInit || statSurveyN
 
 SimTime nextSurveyDate(RunContext& ctx) {
     const auto& r = (*ctx.monitoring);
-    return r.isInit && r.surveyIndex < r.surveyDates.size() ? r.surveyDates[r.surveyIndex].date : sim::future();
+    return r.isInit && r.surveyIndex < r.surveyDates.size() ? r.surveyDates[r.surveyIndex].date : future();
 }
 
 bool isUsed(RunContext& ctx, Measure measure) {
@@ -426,5 +417,4 @@ bool isUsed(RunContext& ctx, Measure measure) {
     return !ctx.monitoring->storesByMeasure[measure].empty();
 }
 
-} // namespace mon
-} // namespace OM
+} // namespace OpenMalaria

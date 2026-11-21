@@ -32,10 +32,7 @@ namespace scnXml {
 class Scenario;
 }
 
-namespace OM {
-namespace WithinHost {
-
-using util::LocalRng;
+namespace OpenMalaria {
 
 /** Represents infection genotypes. */
 class Genotypes {
@@ -104,5 +101,4 @@ class Genotypes {
     size_t N_genotypes = 1;
 };
 
-}
 }

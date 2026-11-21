@@ -28,7 +28,7 @@
 #include "util/CommandLine.h"
 #include "xml/DocumentLoader.h" // facade: xsd tree exception types for the catch chain below
 
-using namespace OM;
+using namespace OpenMalaria;
 
 /// main() — parses the command line, runs the simulation (run.cpp),
 /// reports errors (error texts and order unchanged from the old main()).
@@ -39,9 +39,9 @@ int main(int argc, char* argv[]) {
     RunContext ctx; // everything this run owns (plan §5)
 
     try {
-        scenarioFile = util::CommandLine::parse(argc, argv);
+        scenarioFile = CommandLine::parse(argc, argv);
         run_simulation(ctx, scenarioFile);
-    } catch (const OM::util::cmd_exception& e) {
+    } catch (const cmd_exception& e) {
         if (e.getCode() == 0) {
             // this is not an error, but exiting due to command line
             std::cerr << e.what() << "; exiting..." << endl;
@@ -67,17 +67,17 @@ int main(int argc, char* argv[]) {
                 << "Parsing scenario file failed.\n\tLikely the XSD schema is named/located correctly but the scenario does not conform to the schema."
                 << std::endl;
         }
-        exitStatus = OM::util::Error::XSD;
-    } catch (const OM::util::traced_exception& e) {
+        exitStatus = Error::XSD;
+    } catch (const traced_exception& e) {
         std::cerr << "Code error: " << e.what() << endl;
         std::cerr << e << flush;
         std::cerr << "This is likely an error in the C++ code. Please report!" << endl;
         exitStatus = e.getCode();
-    } catch (const OM::util::xml_scenario_error& e) {
+    } catch (const xml_scenario_error& e) {
         std::cerr << "Error: " << e.what() << endl;
         std::cerr << "In: " << scenarioFile << endl;
         exitStatus = e.getCode();
-    } catch (const OM::util::base_exception& e) {
+    } catch (const base_exception& e) {
         std::cerr << "Error: " << e.message() << endl;
         exitStatus = e.getCode();
     } catch (const exception& e) {

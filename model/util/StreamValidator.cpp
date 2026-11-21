@@ -30,8 +30,7 @@
 
 // Compile-time optional
 #ifdef OM_STREAM_VALIDATOR
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 
 #define OM_SV_FILE "StreamValidator"
 const char OM_SV_HEAD[5] = "OMSV";
@@ -40,7 +39,7 @@ void StreamValidatorType::saveStream() {
     if (storeMode) {
         ofstream f_str(OM_SV_FILE, ios::out | ios::binary);
         if (!f_str.is_open())
-            throw util::base_exception("unable to write " OM_SV_FILE, Error::FileIO);
+            throw base_exception("unable to write " OM_SV_FILE, Error::FileIO);
         f_str.write(reinterpret_cast<const char*>(&OM_SV_HEAD), sizeof(char) * 4);
 
         stream & f_str;
@@ -57,11 +56,11 @@ void StreamValidatorType::loadStream(const string& path) {
     storeMode = false;
     ifstream f_str(file.c_str(), ios::in | ios::binary);
     if (!f_str.is_open())
-        throw util::base_exception("unable to read " + string(file), Error::FileIO);
+        throw base_exception("unable to read " + string(file), Error::FileIO);
     char head[4];
     f_str.read(reinterpret_cast<char*>(&head), sizeof(char) * 4);
     if (memcmp(&OM_SV_HEAD, &head, sizeof(char) * 4) != 0)
-        throw util::base_exception(string(file) + " is not a valid StreamValidator file", Error::FileIO);
+        throw base_exception(string(file) + " is not a valid StreamValidator file", Error::FileIO);
 
     stream & f_str;
 
@@ -69,9 +68,9 @@ void StreamValidatorType::loadStream(const string& path) {
     if (f_str.gcount() != 0) {
         ostringstream msg;
         msg << file << " has " << f_str.gcount() << " bytes remaining." << endl;
-        throw util::base_exception(msg.str(), Error::FileIO);
+        throw base_exception(msg.str(), Error::FileIO);
     } else if (f_str.fail())
-        throw util::base_exception("StreamValidator load error", Error::FileIO);
+        throw base_exception("StreamValidator load error", Error::FileIO);
 
     f_str.close();
     readIt = stream.begin();
@@ -149,6 +148,5 @@ SVType toSVType(double x) {
 }
 }
 
-}
 }
 #endif

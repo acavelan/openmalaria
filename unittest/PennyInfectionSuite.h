@@ -31,8 +31,6 @@
 #include <fstream>
 #include <iomanip>
 
-using namespace OM::WithinHost;
-
 class PennyInfectionSuite : public CxxTest::TestSuite {
   public:
     PennyInfectionSuite() : m_rng(0, 0) {}
@@ -90,7 +88,7 @@ class PennyInfectionSuite : public CxxTest::TestSuite {
             TS_ASSERT_APPROX(infection->seqDensity(ageDays), seqDens[iterations]);
             //             outCir << infection->getDensity() << endl;
             //             outSeq << infection->seqDensity(ageDays) << endl;
-            now = now + sim::oneDay();
+            now = now + oneDay();
             iterations += 1;
         } while (!extinct);
         TS_ASSERT_EQUALS(iterations, cirDens.size());

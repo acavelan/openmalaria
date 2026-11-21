@@ -36,10 +36,7 @@ class HSEventScheduler;
 
 #include <list>
 
-namespace OM {
-namespace Clinical {
-
-using util::AgeGroupInterpolator;
+namespace OpenMalaria {
 
 /** Tracks clinical status (sickness), triggers case management for new events,
  * medicates treatment, determines patient recovery, death and sequelae.
@@ -50,7 +47,7 @@ using util::AgeGroupInterpolator;
  */
 class ClinicalEventScheduler {
   public:
-    static void init(RunContext& ctx, const OM::Parameters& parameters, const scnXml::Clinical& clinical);
+    static void init(RunContext& ctx, const Parameters& parameters, const scnXml::Clinical& clinical);
     static void setParameters(const SimClock& clock, const scnXml::HSEventScheduler& esData);
 
     // All remaining statics are run-parameter state, read directly by
@@ -87,7 +84,7 @@ class ClinicalEventScheduler {
      * parasites. Symbol in model: β₂. */
     static double logOddsAbPosTest;
     /** Added to log odds treatment when NMF is categorized as an illness
-     * potentially leading to death (Pathogenesis::NEED_ANTIBIOTIC).
+     * potentially leading to death (NEED_ANTIBIOTIC).
      * Symbol in model: β₃. */
     static double logOddsAbNeed;
     /** Added to log odds treatment when given by an informal provider.
@@ -112,12 +109,9 @@ class ClinicalEventScheduler {
 /// Per-human update for the EventScheduler variant (old
 /// ClinicalEventScheduler::doClinicalUpdate); state lives on the
 /// CMEventScheduler (es* fields).
-void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, double ageYears,
-                      WithinHost::Pathogenesis::StatePair& pg);
+void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, double ageYears, StatePair& pg);
 
 // ———  ESCaseManagement (was Clinical/ESCaseManagement.h; same ES chain)  ———
-
-using WithinHost::WHInterface;
 
 // Compiled case-management decision trees; set by the health-system reader
 // (xml/healthSystem.cpp) at scenario load. inline ⇒ one entity across TUs.
@@ -132,13 +126,12 @@ class ESCaseManagement {
     * (Re)loads all data affected by this healthSystem element. */
     static void setHealthSystem(RunContext& ctx, const scnXml::HSEventScheduler& esData);
 
-    static CMDTOut execute(RunContext& ctx, Host::Human& human, double ageYears, Episode::State pgState) {
-        assert(pgState & Episode::SICK);
-        const FlatTree& tree = (pgState & Episode::COMPLICATED) ? *escm_complicated : *escm_uncomplicated;
+    static CMDTOut execute(RunContext& ctx, Human& human, double ageYears, Episode::State pgState) {
+        assert(pgState & SICK);
+        const FlatTree& tree = (pgState & COMPLICATED) ? *escm_complicated : *escm_uncomplicated;
         DTExecCtx ec(ctx, human, ageYears, pgState);
         return exec_decision_tree(tree, ec);
     }
 };
 
-}
 }

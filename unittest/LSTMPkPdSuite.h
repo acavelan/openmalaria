@@ -31,8 +31,7 @@
 #include "ExtraAsserts.h"
 #include <limits>
 
-using namespace OM;
-using namespace OM::PkPd;
+using namespace OpenMalaria;
 
 /// There is probably little value in this unit-test now that PkPdComplianceSuite exists
 class LSTMPkPdSuite : public CxxTest::TestSuite {

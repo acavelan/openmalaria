@@ -36,16 +36,11 @@
 #include <fstream>
 #include <limits>
 
-namespace OM {
-namespace Transmission {
-namespace Anopheles {
+namespace OpenMalaria {
 // this is a private function of the ResourceFitter module not declared in
 // the header — but we can still test it
 void vector_scale_length(const gsl_vector* source, gsl_vector* target);
 }
-}
-}
-using namespace OM::Transmission::Anopheles;
 
 // just some different constants
 const double MLCS_a = 5.23e-5, MLCS_b = 9.4e12, MLCS_c = 9.32, MLCS_d = 9.34243e-2, MLCS_e = 141.23;
@@ -427,11 +422,11 @@ class MosqLifeCycleSuite : public CxxTest::TestSuite {
             clm.fit();
             gsl_vector_free(x);
             cout << "done fitting" << endl;
-        } catch (const OM::util::traced_exception& e) {
+        } catch (const traced_exception& e) {
             cerr << "Exception: " << e.what() << endl;
             cerr << e << flush;
             TS_ASSERT(false);
-        } catch (const OM::util::xml_scenario_error& e) {
+        } catch (const xml_scenario_error& e) {
             cerr << "Error in scenario XML file: " << e.what() << endl;
             TS_ASSERT(false);
         }

@@ -34,10 +34,9 @@
 #include "util/errors.h"
 #include <cstdlib>
 
-namespace OM {
-namespace interventions {
+namespace OpenMalaria {
 
-void iv_deploy(RunContext& ctx, Host::Human& human, const ComponentConfig& params) {
+void iv_deploy(RunContext& ctx, Human& human, const ComponentConfig& params) {
     // This adds per-host per-intervention details to the host's data set.
     // Records are never removed: they can contain per-host het samples, and
     // the list order is the effect-product order (parity: c).
@@ -85,7 +84,7 @@ void iv_deploy(RunContext& ctx, Host::Human& human, const ComponentConfig& param
         // Net rips and insecticide loss are assumed to co-vary dependent on
         // handling of net. They are sampled once per human: human handling
         // is presumed to be the largest cause of variance.
-        util::NormalSample x = util::NormalSample::generate(rng);
+        NormalSample x = NormalSample::generate(rng);
         r.hole_rate = p.holeRate->sample(x);
         r.rip_rate = p.ripRate->sample(x);
         r.decay = p.insecticideDecay.get();
@@ -124,14 +123,14 @@ void iv_deploy(RunContext& ctx, Host::Human& human, const ComponentConfig& param
     iv.push_back(r);
 }
 
-void iv_update(RunContext& ctx, Host::Human& human) {
+void iv_update(RunContext& ctx, Human& human) {
     // Only nets mutate per step (old HumanIRS/HumanGVI update() were no-ops).
     for (auto& r : human.cols->iv[human.row]) {
-        if (r.kind != Component::ITN || r.deploy == sim::never())
+        if (r.kind != Component::ITN || r.deploy == never())
             continue;
         // First use is at age 0 relative to ts0()
         if (ctx.clock.ts0() >= r.disposal) {
-            r.deploy = sim::never(); // DISCARDED state (§9)
+            r.deploy = never(); // DISCARDED state (§9)
             human.removeFromCohort(r.id);
             continue;
         }
@@ -167,7 +166,7 @@ inline double gvi_survival(RunContext& ctx, const IvRecord& r) {
 double iv_rel_attractiveness(RunContext& ctx, const IvRecord& r, size_t speciesIndex) {
     switch (r.kind) {
     case Component::ITN: {
-        if (r.deploy == sim::never())
+        if (r.deploy == never())
             return 1.0;
         const ITNParams& params = *ctx.itnComponents[r.id.id];
         const ITNParams::ITNAnopheles& anoph = params.species[speciesIndex];
@@ -193,7 +192,7 @@ double iv_rel_attractiveness(RunContext& ctx, const IvRecord& r, size_t speciesI
 double iv_preprandial_survival(RunContext& ctx, const IvRecord& r, size_t speciesIndex) {
     switch (r.kind) {
     case Component::ITN: {
-        if (r.deploy == sim::never())
+        if (r.deploy == never())
             return 1.0;
         const ITNParams& params = *ctx.itnComponents[r.id.id];
         const ITNParams::ITNAnopheles& anoph = params.species[speciesIndex];
@@ -219,7 +218,7 @@ double iv_preprandial_survival(RunContext& ctx, const IvRecord& r, size_t specie
 double iv_postprandial_survival(RunContext& ctx, const IvRecord& r, size_t speciesIndex) {
     switch (r.kind) {
     case Component::ITN: {
-        if (r.deploy == sim::never())
+        if (r.deploy == never())
             return 1.0;
         const ITNParams& params = *ctx.itnComponents[r.id.id];
         const ITNParams::ITNAnopheles& anoph = params.species[speciesIndex];
@@ -245,7 +244,7 @@ double iv_postprandial_survival(RunContext& ctx, const IvRecord& r, size_t speci
 double iv_rel_fecundity(RunContext& ctx, const IvRecord& r, size_t speciesIndex) {
     switch (r.kind) {
     case Component::ITN: {
-        if (r.deploy == sim::never())
+        if (r.deploy == never())
             return 1.0;
         const ITNParams& params = *ctx.itnComponents[r.id.id];
         const ITNParams::ITNAnopheles& anoph = params.species[speciesIndex];
@@ -268,5 +267,4 @@ double iv_rel_fecundity(RunContext& ctx, const IvRecord& r, size_t speciesIndex)
     }
 }
 
-}
 }

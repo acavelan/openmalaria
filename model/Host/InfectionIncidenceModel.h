@@ -26,12 +26,9 @@
 #include "Transmission/PerHost.h"
 #include "util/random.h"
 
-namespace OM {
+namespace OpenMalaria {
 class Parameters;
-namespace Host {
 class Human;
-
-using util::LocalRng;
 
 /** Models how a per-host EIR translates into new infections
  * (roughly when bites from infected mosquitos infect the host).
@@ -84,7 +81,7 @@ class InfectionIncidenceModel {
     double getAvailabilityFactor(LocalRng& rng, double baseAvailability = 1.0);
 
     /// Output _pinfected to the summary
-    void summarize(const Host::Human& human);
+    void summarize(const Human& human);
 
     /** Calculate the expected number of new infections to introduce.
  * 
@@ -101,7 +98,7 @@ class InfectionIncidenceModel {
  * @param effectiveEIR    EIR adjusted for availability (age, het,
  *        outside transmission due to hospitalisation)
  */
-    double expectedNumNewInfections(OM::Host::Human& human, double effectiveEIR);
+    double expectedNumNewInfections(Human& human, double effectiveEIR);
 
     /** Calculate the number of new infections to introduce.
    * 
@@ -109,7 +106,7 @@ class InfectionIncidenceModel {
    * @param expectedNumNewInfections   Expected number of infections
    * to be introduced
    */
-    int numNewInfections(OM::Host::Human& human, double expectedNumNewInfections);
+    int numNewInfections(Human& human, double expectedNumNewInfections);
 
     /** Report the number of new infections
    * 
@@ -124,11 +121,11 @@ class InfectionIncidenceModel {
   public: // run state; wire in checkpoint/humans.cpp + statics.cpp
     /// Calculates the expected number of infections, excluding vaccine effects.
     /// Kind switch: one case per old-subclass formula.
-    double getModelExpectedInfections(LocalRng& rng, double effectiveEIR, const Transmission::PerHost& phTrans);
+    double getModelExpectedInfections(LocalRng& rng, double effectiveEIR, const PerHost& phTrans);
 
     double susceptibility();
 
-    static void ctsReportNewInfections(const vector<Host::Human>&, ostream& stream);
+    static void ctsReportNewInfections(const vector<Human>&, ostream& stream);
 
     /// Which formulas this instance runs (set by createModel from ModelOptions).
     Kind kind;
@@ -146,5 +143,4 @@ class InfectionIncidenceModel {
     static int ctsNewInfections;
 };
 
-}
 }

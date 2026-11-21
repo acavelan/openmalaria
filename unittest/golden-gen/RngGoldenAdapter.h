@@ -52,10 +52,10 @@ using std::runtime_error;
 
 #include "util/random.h" // for the Xoshiro256P engine only
 #include "util/errors.h"
-// random.h opens namespace OM::util, so its bare Error:: resolves there;
+// random.h opens namespace util, so its bare Error:: resolves there;
 // alias the same namespace here so the mirrored poisson wrapper
 // stays character-identical:
-namespace Error = ::OM::util::Error;
+namespace Error = ::Error;
 
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
@@ -84,7 +84,7 @@ template <class T> gsl_rng_type make_gsl_rng_type(T& rng) {
             &sample_double01<T>};
 }
 
-/// Same construction as OM::util::RNG<Xoshiro256P>, but with
+/// Same construction as RNG<Xoshiro256P>, but with
 /// direct 4-word seeding and a state-word reader.
 struct Rng {
     Xoshiro256P m_rng;

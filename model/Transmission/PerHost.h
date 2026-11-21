@@ -35,11 +35,7 @@ namespace scnXml {
 class Mosq;
 }
 
-namespace OM {
-namespace Transmission {
-
-using util::AgeGroupInterpolator;
-using util::LocalRng;
+namespace OpenMalaria {
 
 /** Stores vector model data applicable between a category of host and a
  * mosquito species: intervention descriptions and model parameters.
@@ -89,18 +85,18 @@ class PerHostAnophParams {
 
     /** Availability heterogeneity factor
      * This multiplies the entoAvailabilityFactor. */
-    unique_ptr<util::Sampler> entoAvailability;
+    unique_ptr<Sampler> entoAvailability;
 
     /** Probability of mosquito successfully biting host (P_B_i) */
-    util::BetaSampler probMosqBiting;
+    BetaSampler probMosqBiting;
 
     /** Probability of mosquito escaping human and finding a resting site without
      * dying, after biting the human (P_C_i). */
-    util::BetaSampler probMosqFindRestSite;
+    BetaSampler probMosqFindRestSite;
 
     /** Probability of mosquito successfully resting after finding a resting site
      * (P_D_i). */
-    util::BetaSampler probMosqSurvivalResting;
+    BetaSampler probMosqSurvivalResting;
     //@}
 
     // (no per-type data here: the registry lives in RunContext::anophParams)
@@ -128,7 +124,7 @@ class PerHost {
     //@}
 
     /// Call once per time step. Updates net holes (interventions/IvState.cpp).
-    void update(Host::Human& human);
+    void update(Human& human);
 
     /** Calculates the adjustment for body size in exposure to mosquitoes,
      * relative to an average adult.
@@ -212,7 +208,7 @@ class PerHost {
     /** Get whether the user has any active deployments of interventions of
      * the given type, where type is one of ITN/IRS/GVI (in other cases this
      * will always return false). */
-    bool hasActiveInterv(interventions::Component::Type type) const;
+    bool hasActiveInterv(Component::Type type) const;
 
     //@}
 
@@ -244,5 +240,4 @@ class PerHost {
     static AgeGroupInterpolator relAvailAge;
 };
 
-}
 }

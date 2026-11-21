@@ -32,8 +32,7 @@ namespace scnXml {
 class TreatmentOption;
 }
 
-namespace OM {
-namespace WithinHost {
+namespace OpenMalaria {
 
 /**
  * Type used to select a treatment option.
@@ -61,7 +60,7 @@ struct TreatmentId {
  * 
  * For use within WithinHost only.
  */
-class Treatments : public interventions::TriggeredDeployments {
+class Treatments : public TriggeredDeployments {
   public:
     /// @brief Static methods
     //@{
@@ -91,5 +90,4 @@ class Treatments : public interventions::TriggeredDeployments {
     Treatments(RunContext& ctx, const scnXml::TreatmentOption& elt);
 };
 
-}
 }

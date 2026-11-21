@@ -54,10 +54,7 @@ class NonVector;
 #include "util/SpeciesIndexChecker.h"
 #include "Host/Human.h"
 
-namespace OM {
-namespace interventions {
-
-using Host::Human;
+namespace OpenMalaria {
 
 /** Flat replacement of the TimedDeployment subclass tree: kind selects the
  * variant payload and the deploy/print switch case (no per-timestep clones). */
@@ -84,7 +81,7 @@ inline bool replayed_on_restore(TimedDeploymentKind kind) {
  * (same throw/warn order as the old base ctor). */
 inline void check_timed_date(RunContext& ctx, SimTime deployDate) {
     if (deployDate < ctx.clock.start_date) {
-        throw util::xml_scenario_error("timed intervention deployment: may not be negative");
+        throw xml_scenario_error("timed intervention deployment: may not be negative");
     } else if (deployDate >= ctx.clock.end_date) {
         cerr << "Warning: timed intervention deployment at date " << deployDate;
         cerr << " happens after last survey" << endl;
@@ -99,7 +96,7 @@ struct HumanDeployParams {
                                   shared_ptr<const HumanIntervention> intervention, ComponentId subPop,
                                   bool complement);
 
-    inline void deployToHuman(RunContext& ctx, Host::Human& human, mon::Deploy::Method method) const {
+    inline void deployToHuman(RunContext& ctx, Human& human, Deploy::Method method) const {
         intervention->deploy(ctx, human, method, vaccLimits);
     }
 
@@ -118,8 +115,8 @@ struct TimedHumanParams {
                                  shared_ptr<const HumanIntervention> intervention, ComponentId subPop, bool complement);
 
     HumanDeployParams d;
-    SimTime minAge = sim::never(), maxAge = sim::never();
-    SimTime minAvailability = sim::never(), maxAvailability = sim::never();
+    SimTime minAge = never(), maxAge = never();
+    SimTime minAvailability = never(), maxAvailability = never();
 };
 
 /// Old TimedCumulativeHumanDeployment: coverage target against cumCovId.
@@ -134,7 +131,7 @@ struct VectorDeployParams {
 struct TrapDeployParams {
     size_t instance;
     double ratio;
-    SimTime lifespan = sim::never();
+    SimTime lifespan = never();
 };
 struct NhhModsDeployParams {
     size_t instance;
@@ -149,7 +146,7 @@ struct AddNhhDeployParams {
         double hostFecundityFactor = 0.0;
     };
     std::string intervName;
-    SimTime lifespan = sim::never();
+    SimTime lifespan = never();
     std::map<std::string, NhhSpec> bySpecies;
 };
 /// ChangeHS/ChangeEIR clones are consumed (deleted) on deploy. Raw pointers:
@@ -164,23 +161,21 @@ struct ChangeEirDeployParams {
 
 // Definitions in xml/interventions.cpp (they need the schema/clinical includes
 // this header must not pull in):
-void timed_deploy_change_hs(RunContext&, Transmission::TransmissionModel&, ChangeHsDeployParams&);
-void timed_deploy_change_eir(RunContext&, Transmission::TransmissionModel&, ChangeEirDeployParams&);
-void timed_deploy_add_nhh(RunContext&, std::vector<Host::Human>&, Transmission::TransmissionModel&,
-                          AddNhhDeployParams&);
-void timed_deploy_nhh_mods(RunContext&, std::vector<Host::Human>&, Transmission::TransmissionModel&,
-                           const NhhModsDeployParams&);
+void timed_deploy_change_hs(RunContext&, TransmissionModel&, ChangeHsDeployParams&);
+void timed_deploy_change_eir(RunContext&, TransmissionModel&, ChangeEirDeployParams&);
+void timed_deploy_add_nhh(RunContext&, std::vector<Human>&, TransmissionModel&, AddNhhDeployParams&);
+void timed_deploy_nhh_mods(RunContext&, std::vector<Human>&, TransmissionModel&, const NhhModsDeployParams&);
 
 // ———  timed human deployments  ———
 
 /// Old TimedHumanDeployment::deploy body, verbatim (filters then bernoulli-last).
-inline void timed_human_deploy(RunContext& ctx, std::vector<Host::Human>& population, const TimedHumanParams& th) {
+inline void timed_human_deploy(RunContext& ctx, std::vector<Human>& population, const TimedHumanParams& th) {
     const HumanDeployParams& d = th.d;
     for (Human& human : population) {
         const SimTime age = human.age(ctx.clock.now());
         if (age >= th.minAge && age < th.maxAge) {
             double availability = 0.0;
-            for (size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(ctx); ++i)
+            for (size_t i = 0; i < PerHostAnophParams::numSpecies(ctx); ++i)
                 availability += human.perHostTransmission.anoph_ento_avail()[i];
 
             double probability = d.coverage;
@@ -193,10 +188,10 @@ inline void timed_human_deploy(RunContext& ctx, std::vector<Host::Human>& popula
                     const double alpha = ((1.0 - beta_mean) / beta_var - 1.0 / beta_mean) * (beta_mean * beta_mean);
                     const double beta = alpha * (1.0 / beta_mean - 1.0);
 
-                    if (Transmission::PerHostAnophParams::numSpecies(ctx) > 1)
+                    if (PerHostAnophParams::numSpecies(ctx) > 1)
                         throw std::runtime_error("only supports one mosquito species");
 
-                    const double ux = Transmission::PerHostAnophParams::get(ctx, 0).entoAvailability->cdf(
+                    const double ux = PerHostAnophParams::get(ctx, 0).entoAvailability->cdf(
                         human.perHostTransmission.anoph_ento_raw()[0]);
                     if (ux < 1) {
                         // parity: a — per-human heterogeneity lognormal/beta draws (gsl_cdf pure quantiles, no stream cost) then bernoulli-last; per-candidate draw order/count frozen (plan §3a)
@@ -238,14 +233,12 @@ inline void timed_human_deploy(RunContext& ctx, std::vector<Host::Human>& popula
                 }
             }
 
-            if (availability >=
-                    Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, th.minAvailability) &&
-                availability <=
-                    Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, th.maxAvailability)) {
+            if (availability >= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, th.minAvailability) &&
+                availability <= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, th.maxAvailability)) {
                 if (d.subPop == ComponentId::wholePop() || (human.isInSubPop(d.subPop) != d.complement)) {
                     // parity: a — deploy short-circuit: RNG draw is the LAST test of the deploy condition; filter/age/cohort checks must precede it (plan §3a)
                     if (human.rng().bernoulli(probability)) {
-                        d.deployToHuman(ctx, human, mon::Deploy::TIMED);
+                        d.deployToHuman(ctx, human, Deploy::TIMED);
                     }
                 }
             }
@@ -254,23 +247,20 @@ inline void timed_human_deploy(RunContext& ctx, std::vector<Host::Human>& popula
 }
 
 /// Old TimedCumulativeHumanDeployment::deploy body, verbatim.
-inline void timed_cumulative_deploy(RunContext& ctx, std::vector<Host::Human>& population,
-                                    const CumulativeHumanParams& cum) {
+inline void timed_cumulative_deploy(RunContext& ctx, std::vector<Human>& population, const CumulativeHumanParams& cum) {
     const TimedHumanParams& th = cum.h;
     const HumanDeployParams& d = th.d;
     // Cumulative case: bring target group's coverage up to target coverage
-    std::vector<Host::Human*> unprotected;
+    std::vector<Human*> unprotected;
     size_t total = 0; // number of humans within age bound and optionally subPop
-    for (Host::Human& human : population) {
+    for (Human& human : population) {
         SimTime age = human.age(ctx.clock.now());
         if (age >= th.minAge && age < th.maxAge) {
             double availability = 0.0;
-            for (size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(ctx); ++i)
+            for (size_t i = 0; i < PerHostAnophParams::numSpecies(ctx); ++i)
                 availability += human.perHostTransmission.anoph_ento_avail()[i];
-            if (availability >=
-                    Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, th.minAvailability) &&
-                availability <=
-                    Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, th.maxAvailability)) {
+            if (availability >= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, th.minAvailability) &&
+                availability <= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, th.maxAvailability)) {
                 if (d.subPop == ComponentId::wholePop() || (human.isInSubPop(d.subPop) != d.complement)) {
                     total += 1;
                     if (!human.isInSubPop(cum.cumCovId))
@@ -293,7 +283,7 @@ inline void timed_cumulative_deploy(RunContext& ctx, std::vector<Host::Human>& p
         for (Human* human : unprotected) {
             // parity: a — deploy short-circuit: RNG draw is the LAST test of the deploy condition; filter/age/cohort checks must precede it (plan §3a)
             if (human->rng().uniform_01() < additionalCoverage) {
-                d.deployToHuman(ctx, *human, mon::Deploy::TIMED);
+                d.deployToHuman(ctx, *human, Deploy::TIMED);
             }
         }
     }
@@ -303,7 +293,7 @@ inline void timed_cumulative_deploy(RunContext& ctx, std::vector<Host::Human>& p
  * date, ties keeping load order (contract b); consumed via nextTimed cursor.
  * Move-only (changeHS/changeEIR payloads are consumed on deploy). */
 struct TimedDeployment {
-    SimTime date = sim::never();
+    SimTime date = never();
     TimedDeploymentKind kind = TimedDeploymentKind::DUMMY;
     std::variant<std::monostate, TimedHumanParams, CumulativeHumanParams, VectorDeployParams, TrapDeployParams,
                  AddNhhDeployParams, NhhModsDeployParams, ChangeHsDeployParams, ChangeEirDeployParams>
@@ -315,11 +305,10 @@ struct TimedDeployment {
     TimedDeployment(const TimedDeployment&) = delete;
     TimedDeployment& operator=(const TimedDeployment&) = delete;
 
-    void deploy(RunContext& ctx, std::vector<Host::Human>& population, Transmission::TransmissionModel& transmission);
+    void deploy(RunContext& ctx, std::vector<Human>& population, TransmissionModel& transmission);
 };
 
-inline void TimedDeployment::deploy(RunContext& ctx, std::vector<Host::Human>& population,
-                                    Transmission::TransmissionModel& transmission) {
+inline void TimedDeployment::deploy(RunContext& ctx, std::vector<Human>& population, TransmissionModel& transmission) {
     switch (kind) {
 
     case TimedDeploymentKind::DUMMY:
@@ -401,7 +390,7 @@ inline void print_timed_details(std::ostream& out, const TimedDeployment& td) {
                                                                            : std::get<CumulativeHumanParams>(td.p).h;
         const HumanDeployParams& d = th.d;
         out << "Human:" << endl;
-        out << "\tage: " << sim::inYears(th.minAge) << "y\tmax age: " << sim::inYears(th.maxAge) << "y\tsubpop: ";
+        out << "\tage: " << inYears(th.minAge) << "y\tmax age: " << inYears(th.maxAge) << "y\tsubpop: ";
         if (d.subPop == ComponentId::wholePop())
             out << "whole";
         else
@@ -442,7 +431,7 @@ struct ContinuousHumanDeployment {
      * 
      * @returns false iff this deployment (and thus all later ones in the
      *  ordered list) happens in the future. */
-    bool filterAndDeploy(RunContext& ctx, Host::Human& human) const {
+    bool filterAndDeploy(RunContext& ctx, Human& human) const {
         SimTime age = human.age(ctx.clock.now());
         if (deployAge > age) {
             // stop processing continuous deployments for this
@@ -450,18 +439,18 @@ struct ContinuousHumanDeployment {
             return false;
         } else if (deployAge == age) {
             double availability = 0.0;
-            for (size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(ctx); ++i)
+            for (size_t i = 0; i < PerHostAnophParams::numSpecies(ctx); ++i)
                 availability += human.perHostTransmission.anoph_ento_raw()[i];
 
-            if (availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, minAvailability) &&
-                availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, maxAvailability)) {
+            if (availability >= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, minAvailability) &&
+                availability <= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, maxAvailability)) {
                 auto now = ctx.clock.interv_date();
                 if (begin <= now && now < end &&
                     (d.subPop == ComponentId::wholePop() || (human.isInSubPop(d.subPop) != d.complement)) &&
                     // parity: a — deploy short-circuit: RNG draw is the LAST test of the deploy condition; filter/age/cohort checks must precede it (plan §3a)
                     human.rng().uniform_01() < d.coverage) // RNG call should be last test
                 {
-                    d.deployToHuman(ctx, human, mon::Deploy::CTS);
+                    d.deployToHuman(ctx, human, Deploy::CTS);
                 }
             }
         } //else: for some reason, a deployment age was missed; ignore it
@@ -471,11 +460,11 @@ struct ContinuousHumanDeployment {
     inline void print_details(std::ostream& out) const {
         out << "Human:" << endl;
         out << "\tbegin: " << begin << "\tend: ";
-        if (end == sim::future())
+        if (end == future())
             out << "(none)";
         else
             out << end;
-        out << "\tdeployAge: " << sim::inYears(deployAge) << "y\tsubpop: ";
+        out << "\tdeployAge: " << inYears(deployAge) << "y\tsubpop: ";
         if (d.subPop == ComponentId::wholePop())
             out << "whole";
         else
@@ -485,9 +474,9 @@ struct ContinuousHumanDeployment {
     }
 
     HumanDeployParams d;
-    SimTime begin = sim::never(), end = sim::never(); // first active/first inactive step
-    SimTime deployAge = sim::never();
-    SimTime minAvailability = sim::never(), maxAvailability = sim::never();
+    SimTime begin = never(), end = never(); // first active/first inactive step
+    SimTime deployAge = never();
+    SimTime minAvailability = never(), maxAvailability = never();
 };
 
 struct ByDeployTime {
@@ -500,5 +489,4 @@ struct ByDeployTime {
 // inline variable: Deployments.h is now included by more than one source
 inline const ByDeployTime byDeployTime{};
 
-}
 }

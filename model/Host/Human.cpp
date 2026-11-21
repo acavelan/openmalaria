@@ -35,16 +35,13 @@
 #include "interventions/Vaccine.h"
 #include "mon/Monitoring.h"
 
-namespace OM {
-namespace Host {
-using namespace OM::util;
-using interventions::ComponentId;
+namespace OpenMalaria {
 
 struct HumanHet {
     /* Human heterogeneity; affects:
      * comorbidityFactor (stored in PathogenesisModel)
      * treatmentSeekingFactor (stored in CaseManagementModel)
-     * availabilityFactor (stored in Transmission::PerHost) */
+     * availabilityFactor (stored in PerHost) */
     double comorbidityFactor;
     double treatmentSeekingFactor;
     double availabilityFactor;
@@ -52,34 +49,34 @@ struct HumanHet {
     HumanHet() : comorbidityFactor(1.0), treatmentSeekingFactor(1.0), availabilityFactor(1.0) {}
 };
 
-HumanHet hetSample(util::LocalRng& rng)
+HumanHet hetSample(LocalRng& rng)
 // §9 draw contract (checked phase 6.4): max 4 draws — the three leading `if`s
 // draw at most one each, then exactly one draw in the else-if chain.
 // parity: Deployments.h:245-306 (het consumed by deploys in that order)
 {
     HumanHet het;
-    if (util::ModelOptions::option(util::TRANS_HET)) {
+    if (ModelOptions::option(TRANS_HET)) {
         het.availabilityFactor = 0.2;
         // parity: order — local RNG stream: draw call order fixes stream state
         if (rng.bernoulli(0.5)) {
             het.availabilityFactor = 1.8;
         }
     }
-    if (util::ModelOptions::option(util::COMORB_HET)) {
+    if (ModelOptions::option(COMORB_HET)) {
         het.comorbidityFactor = 0.2;
         // parity: order — local RNG stream: draw call order fixes stream state
         if (rng.bernoulli(0.5)) {
             het.comorbidityFactor = 1.8;
         }
     }
-    if (util::ModelOptions::option(util::TREAT_HET)) {
+    if (ModelOptions::option(TREAT_HET)) {
         het.treatmentSeekingFactor = 0.2;
         // parity: order — local RNG stream: draw call order fixes stream state
         if (rng.bernoulli(0.5)) {
             het.treatmentSeekingFactor = 1.8;
         }
     }
-    if (util::ModelOptions::option(util::TRANS_TREAT_HET)) {
+    if (ModelOptions::option(TRANS_TREAT_HET)) {
         het.treatmentSeekingFactor = 0.2;
         het.availabilityFactor = 1.8;
         // parity: order — local RNG stream: draw call order fixes stream state
@@ -87,7 +84,7 @@ HumanHet hetSample(util::LocalRng& rng)
             het.treatmentSeekingFactor = 1.8;
             het.availabilityFactor = 0.2;
         }
-    } else if (util::ModelOptions::option(util::COMORB_TREAT_HET)) {
+    } else if (ModelOptions::option(COMORB_TREAT_HET)) {
         // parity: order — local RNG stream: draw call order fixes stream state
         if (rng.bernoulli(0.5)) {
             het.comorbidityFactor = 1.8;
@@ -96,7 +93,7 @@ HumanHet hetSample(util::LocalRng& rng)
             het.comorbidityFactor = 0.2;
             het.treatmentSeekingFactor = 1.8;
         }
-    } else if (util::ModelOptions::option(util::COMORB_TRANS_HET)) {
+    } else if (ModelOptions::option(COMORB_TRANS_HET)) {
         het.availabilityFactor = 1.8;
         het.comorbidityFactor = 1.8;
         // parity: order — local RNG stream: draw call order fixes stream state
@@ -104,7 +101,7 @@ HumanHet hetSample(util::LocalRng& rng)
             het.availabilityFactor = 0.2;
             het.comorbidityFactor = 0.2;
         }
-    } else if (util::ModelOptions::option(util::TRIPLE_HET)) {
+    } else if (ModelOptions::option(TRIPLE_HET)) {
         het.availabilityFactor = 1.8;
         het.comorbidityFactor = 1.8;
         het.treatmentSeekingFactor = 0.2;
@@ -127,16 +124,16 @@ Human::Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns)
     row = columns.append_row(dateOfBirth, ctx.master_RNG);
 
     // Initial humans are created at time 0 and may have dateOfBirth in past. Otherwise dateOfBirth must be now.
-    assert(dateOfBirth == ctx.clock.nowOrTs1() || (ctx.clock.now() == sim::zero() && dateOfBirth < ctx.clock.now()));
+    assert(dateOfBirth == ctx.clock.nowOrTs1() || (ctx.clock.now() == zero() && dateOfBirth < ctx.clock.now()));
 
     HumanHet het = hetSample(rng());
-    withinHostModel = WithinHost::WHInterface::createWithinHostModel(ctx, rng(), het.comorbidityFactor);
+    withinHostModel = WHInterface::createWithinHostModel(ctx, rng(), het.comorbidityFactor);
     withinHostModel->bind_columns(columns, row);
     double iiFactor = infIncidence->getAvailabilityFactor(rng(), 1.0);
     perHostTransmission.ctx = &ctx;
     perHostTransmission.bind_columns(columns, row);
     perHostTransmission.initialise(ctx, rng(), het.availabilityFactor * iiFactor);
-    clinicalModel = Clinical::ClinicalModel::createClinicalModel(ctx, het.treatmentSeekingFactor);
+    clinicalModel = ClinicalModel::createClinicalModel(ctx, het.treatmentSeekingFactor);
     clinicalModel->bind_columns(columns, row);
 }
 
@@ -151,8 +148,8 @@ void Human::set_row(size_t r) {
     perHostTransmission.bind_columns(*cols, r);
 }
 
-double Human::vaccine_factor(interventions::Vaccine::Types type, uint32_t genotype) const {
-    return interventions::vaccine_factor(*ctx, cols->vac[row], type, genotype);
+double Human::vaccine_factor(Vaccine::Types type, uint32_t genotype) const {
+    return OpenMalaria::vaccine_factor(*ctx, cols->vac[row], type, genotype);
 }
 
 namespace {
@@ -165,7 +162,7 @@ vector<pair<ComponentId, SimTime>>::iterator find_cohort(vector<pair<ComponentId
 }
 
 void Human::addToCohort(ComponentId id, SimTime duration) {
-    if (duration <= sim::zero())
+    if (duration <= zero())
         return; // nothing to do
     auto& spans = cols->cohorts[row];
     auto it = find_cohort(spans, id);
@@ -173,17 +170,17 @@ void Human::addToCohort(ComponentId id, SimTime duration) {
         it->second = ctx->clock.nowOrTs1() + duration;
     else
         spans.insert(it, make_pair(id, ctx->clock.nowOrTs1() + duration));
-    cols->cohort_set[row] = mon::updateCohortSet(*ctx, cols->cohort_set[row], id, true);
+    cols->cohort_set[row] = OpenMalaria::updateCohortSet(*ctx, cols->cohort_set[row], id, true);
 }
 
-void Human::removeFromCohort(interventions::ComponentId id) {
+void Human::removeFromCohort(ComponentId id) {
     auto& spans = cols->cohorts[row];
     auto it = find_cohort(spans, id);
     if (it != spans.end() && it->first == id)
         spans.erase(it);
 }
 
-void Human::removeFirstEvent(interventions::SubPopRemove::RemoveAtCode code) {
+void Human::removeFirstEvent(SubPopRemove::RemoveAtCode code) {
     const vector<ComponentId>& removeAtList = ctx->removeAtIds[code];
     for (auto it = removeAtList.begin(), end = removeAtList.end(); it != end; ++it) {
         auto& spans = cols->cohorts[row];
@@ -197,9 +194,9 @@ void Human::removeFirstEvent(interventions::SubPopRemove::RemoveAtCode code) {
                 clinicalModel->flushReports(); // reset HS memory
 
                 // report removal due to first infection/bout/treatment
-                mon::recordEvent(mon::measure("nSubPopRemovalFirstEvent"), *this);
+                recordEvent(measure("nSubPopRemovalFirstEvent"), *this);
             }
-            cols->cohort_set[row] = mon::updateCohortSet(*ctx, cols->cohort_set[row], expIt->first, false);
+            cols->cohort_set[row] = OpenMalaria::updateCohortSet(*ctx, cols->cohort_set[row], expIt->first, false);
             // remove (affects reporting, restrictToSubPop and cumulative deployment):
             spans.erase(expIt);
         }
@@ -215,8 +212,8 @@ void Human::updateCohortSet() {
         if (!(spans[k].second >= ctx->clock.ts0())) { // membership expired
             // don't flush reports
             // report removal due to expiry
-            mon::recordEvent(mon::measure("nSubPopRemovalTooOld"), *this);
-            cols->cohort_set[row] = mon::updateCohortSet(*ctx, cols->cohort_set[row], spans[k].first, false);
+            recordEvent(measure("nSubPopRemovalTooOld"), *this);
+            cols->cohort_set[row] = OpenMalaria::updateCohortSet(*ctx, cols->cohort_set[row], spans[k].first, false);
             // erase element, but continue iteration
             spans.erase(spans.begin() + k);
         } else {
@@ -233,18 +230,18 @@ void summarize(RunContext& ctx, Human& human, bool surveyOnlyNewEp) {
         return;
     }
 
-    mon::recordStat(mon::measure("nHost"), human);
-    mon::recordStat(mon::measure("sumAge"), human, sim::inYears(human.age(ctx.clock.now())));
+    recordStat(measure("nHost"), human);
+    recordStat(measure("sumAge"), human, inYears(human.age(ctx.clock.now())));
     bool patent = human.withinHostModel->summarize(human);
     human.infIncidence->summarize(human);
 
-    if (patent && mon::isReported(ctx)) {
+    if (patent && isReported(ctx)) {
         // this should happen after all other reporting!
-        human.removeFirstEvent(interventions::SubPopRemove::ON_FIRST_INFECTION);
+        human.removeFirstEvent(SubPopRemove::ON_FIRST_INFECTION);
     }
 }
 
-// —— The 7 §9 host-update stages (bodies verbatim from the old Host::update;
+// —— The 7 §9 host-update stages (bodies verbatim from the old update;
 // statements, order and `// parity:` comments untouched) ——
 
 bool host_is_dead(HostView& v) {
@@ -256,10 +253,10 @@ bool host_is_dead(HostView& v) {
 }
 
 void host_update_mon_cohorts(HostView& v) {
-    util::streamValidate(v.scratch.age0);
+    streamValidate(v.scratch.age0);
 
     // monitoringAgeGroup is the group for the start of the time step.
-    mon::updateAgeGroup(v.ctx, v.human.monitoringAgeGroup(), v.scratch.age0);
+    updateAgeGroup(v.ctx, v.human.monitoringAgeGroup(), v.scratch.age0);
 
     v.human.updateCohortSet();
 }
@@ -269,14 +266,14 @@ void host_calculate_eir(HostView& v) {
     // the difference between this and age at the start is not especially
     // important in the model design, but since we parameterised with
     // age1 we should stick with it.
-    v.scratch.age1 = sim::inYears(v.human.age(v.ctx.clock.ts1()));
+    v.scratch.age1 = inYears(v.human.age(v.ctx.clock.ts1()));
 
     // age1 used only in PerHost::relativeAvailabilityAge(); difference to age0 should be minor
     v.transmission.getEIR(v.human, v.scratch.age0, v.scratch.age1, v.scratch.EIR_per_genotype_i,
                           v.scratch.EIR_per_genotype_l);
 
-    v.scratch.eir_i = util::vectors::sum(v.scratch.EIR_per_genotype_i);
-    v.scratch.eir_l = util::vectors::sum(v.scratch.EIR_per_genotype_l);
+    v.scratch.eir_i = vectors::sum(v.scratch.EIR_per_genotype_i);
+    v.scratch.eir_l = vectors::sum(v.scratch.EIR_per_genotype_l);
     v.scratch.eir = v.scratch.eir_i + v.scratch.eir_l;
 }
 
@@ -304,12 +301,12 @@ void host_within_host_update(HostView& v) {
 
 void host_clinical_update(HostView& v) {
     // age1 used to get case fatality and sequelae probabilities, determine pathogenesis
-    v.human.clinicalModel->update(v.human, v.scratch.age1, v.scratch.age0 == sim::zero());
+    v.human.clinicalModel->update(v.human, v.scratch.age1, v.scratch.age0 == zero());
 }
 
 void host_update_infant_deaths(HostView& v) { v.human.clinicalModel->updateInfantDeaths(v.scratch.age0); }
 
-void update(RunContext& ctx, Human& human, Transmission::TransmissionModel& transmission, HostScratch& scratch) {
+void update(RunContext& ctx, Human& human, TransmissionModel& transmission, HostScratch& scratch) {
     HostView v{ctx, human, transmission, scratch};
     // For integer age checks we use age0 to e.g. get 73 steps comparing less than 1 year old
     scratch.age0 = human.age(ctx.clock.ts0());
@@ -324,5 +321,4 @@ void update(RunContext& ctx, Human& human, Transmission::TransmissionModel& tran
     host_update_infant_deaths(v);
 }
 
-}
 }

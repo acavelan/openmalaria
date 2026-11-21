@@ -123,11 +123,7 @@ auto gsl_root_solver_method = gsl_root_fsolver_bisection;
 // auto gsl_root_solver_method = gsl_root_fsolver_falsepos;
 #endif
 
-namespace OM {
-namespace Transmission {
-namespace Anopheles {
-using namespace OM::util;
-using WithinHost::Genotypes;
+namespace OpenMalaria {
 
 // -----  Initialisation of model, done before human warmup  ------
 
@@ -140,15 +136,15 @@ void AnophelesModel::initialise(MosquitoParams mosqParams) {
     // Set up fArray and ftauArray. Each step, all elements not set here are
     // calculated, even if they aren't directly used in the end;
     // however all calculated values are used in calculating the next value.
-    fArray.resize((mosq.EIPDuration - mosq.restDuration + sim::oneDay()));
-    fArray[sim::zero()] = 1.0;
+    fArray.resize((mosq.EIPDuration - mosq.restDuration + oneDay()));
+    fArray[zero()] = 1.0;
     ftauArray.resize(mosq.EIPDuration);
     for (int i = 0; i < mosq.restDuration; i += 1) {
         ftauArray[i] = 0.0;
     }
     ftauArray[mosq.restDuration] = 1.0;
     uninfected_v.resize(N_v_length);
-    uninfected_v[sim::zero()] = numeric_limits<double>::quiet_NaN(); // index not used
+    uninfected_v[zero()] = numeric_limits<double>::quiet_NaN(); // index not used
 }
 
 void AnophelesModel::initAvailability(size_t species, const vector<NhhParams>& nhhs, int populationSize) {
@@ -258,7 +254,7 @@ void AnophelesModel::initAvailability(size_t species, const vector<NhhParams>& n
         nhhi.P_C_I = P_C_i;
         nhhi.P_D_I = P_D_i;
         nhhi.rel_fecundity = rel_fecundity;
-        nhhi.expiry = sim::future();
+        nhhi.expiry = future();
 
         nhhInstances[name] = nhhi;
     }
@@ -270,7 +266,7 @@ void AnophelesModel::initAvailability(size_t species, const vector<NhhParams>& n
     mosq.seekingDeathRate = mu1 * mu2;
 
     if (mosq.seekingDeathRate <= 0)
-        throw xml_scenario_error("Anopheles::init mosq.seekingDeathRate is <= 0. \
+        throw xml_scenario_error("init mosq.seekingDeathRate is <= 0. \
 The probability of a mosquito surviving the entire feeding cycle \
 should be less than the product of the probabilities of a \
 mosquito surviving biting, finding a resting site, resting and ovipositing.");
@@ -292,11 +288,11 @@ void AnophelesModel::initEIR(const vector<double>& initEIR365, vector<double> FS
 
     // Add to the TransmissionModel's EIR, used for the initalization phase.
     // Note: sum stays the same, units changes to per-time-step.
-    for (SimTime i = sim::zero(); i < sim::oneYear(); i = i + sim::oneDay()) {
+    for (SimTime i = zero(); i < oneYear(); i = i + oneDay()) {
         partialInitEIR[mod_nn(ctx.clock.inSteps(i), ctx.clock.steps_per_year)] += initEIR365[i];
     }
 
-    if (util::CommandLine::option(util::CommandLine::PRINT_ANNUAL_EIR))
+    if (CommandLine::option(CommandLine::PRINT_ANNUAL_EIR))
         cout << "Annual EIR for " << mosq.name << ": " << vectors::sum(speciesEIR) << endl;
 
     // Set other data used for mosqEmergeRate calculation:
@@ -381,18 +377,17 @@ void AnophelesModel::init2(int nHumans, double meanPopAvail, double sum_avail, d
         double tsP_dff2 = tsP_dff;
 
         // Initialise nOvipositingDelayed
-        int y1 = sim::oneYear();
+        int y1 = oneYear();
         int tau = mosq.restDuration;
         for (int t = 0; t < sm.developmentDuration; t++) {
-            sm.nOvipositingDelayed[util::mod_nn(t + tau, sm.developmentDuration)] =
-                tsP_dff2 * initNvFromSv * forcedS_v[t];
+            sm.nOvipositingDelayed[mod_nn(t + tau, sm.developmentDuration)] = tsP_dff2 * initNvFromSv * forcedS_v[t];
         }
 
         // Used when calculating invLarvalResources (but not a hard constraint):
         assert(tau + sm.developmentDuration <= y1);
-        for (int t = 0; t < sim::oneYear(); t++) {
+        for (int t = 0; t < oneYear(); t++) {
             double yt = sm.fEggsLaidByOviposit * tsP_dff2 * initNvFromSv *
-                        forcedS_v[util::mod_nn(t + y1 - tau - sm.developmentDuration, y1)];
+                        forcedS_v[mod_nn(t + y1 - tau - sm.developmentDuration, y1)];
             sm.invLarvalResources[t] = (sm.probPreadultSurvival * yt - mosqEmergeRate[t]) / (mosqEmergeRate[t] * yt);
         }
     }
@@ -404,8 +399,7 @@ bool AnophelesModel::initIterate() {
     if (simpleMPD) {
         // SimpleMPD kind: update larval resources from 5-year ovipositing summary
         SimpleMPDState& sm = *simpleMPD;
-        int y1 = sim::oneYear(), y2 = sim::fromYearsI(2), y3 = sim::fromYearsI(3), y4 = sim::fromYearsI(4),
-            y5 = sim::fromYearsI(5);
+        int y1 = oneYear(), y2 = fromYearsI(2), y3 = fromYearsI(3), y4 = fromYearsI(4), y5 = fromYearsI(5);
 
         assert((int)mosqEmergeRate.size() == y1);
 
@@ -415,7 +409,7 @@ bool AnophelesModel::initIterate() {
             double yt = sm.fEggsLaidByOviposit * 0.2 *
                         (sm.quinquennialOvipositing[ttj + y1] + sm.quinquennialOvipositing[ttj + y2] +
                          sm.quinquennialOvipositing[ttj + y3] + sm.quinquennialOvipositing[ttj + y4] +
-                         sm.quinquennialOvipositing[util::mod_nn(ttj + y5, y5)]);
+                         sm.quinquennialOvipositing[mod_nn(ttj + y5, y5)]);
             sm.invLarvalResources[t] = (sm.probPreadultSurvival * yt - mosqEmergeRate[t]) / (mosqEmergeRate[t] * yt);
         }
     }
@@ -432,23 +426,22 @@ double AnophelesModel::getEmergenceRate(const SimTime& d0, const std::vector<dou
         SimpleMPDState& sm = *simpleMPD;
         int d1 = d0 + 1;
 
-        double yt = sm.fEggsLaidByOviposit * sm.nOvipositingDelayed[util::mod_nn(d1, sm.developmentDuration)];
-        double emergence =
-            sm.probPreadultSurvival * yt / (1.0 + sm.invLarvalResources[mod_nn(d0, sim::oneYear())] * yt);
-        sm.nOvipositingDelayed[util::mod_nn(d1, sm.developmentDuration)] = nOvipositing;
-        sm.quinquennialOvipositing[util::mod_nn(d1, sim::fromYearsI(5))] = nOvipositing;
+        double yt = sm.fEggsLaidByOviposit * sm.nOvipositingDelayed[mod_nn(d1, sm.developmentDuration)];
+        double emergence = sm.probPreadultSurvival * yt / (1.0 + sm.invLarvalResources[mod_nn(d0, oneYear())] * yt);
+        sm.nOvipositingDelayed[mod_nn(d1, sm.developmentDuration)] = nOvipositing;
+        sm.quinquennialOvipositing[mod_nn(d1, fromYearsI(5))] = nOvipositing;
 
         if (ctx.clock.interv > 0 && emergence < 0) {
             std::ostringstream oss;
             oss << "Error: SimpleMPD model: negative emergence at t=" << d0 << ": " << emergence << ". ";
             oss << "Check the seasonality and make sure it does not go too low. For monthly EIR values, the lowest point should not be below 1% of the peak EIR.";
-            throw util::base_exception(oss.str());
+            throw base_exception(oss.str());
         }
 
         return std::max(emergence, 0.0);
     }
     // Get emergence at start of step:
-    SimTime dYear1 = mod_nn(d0, sim::oneYear());
+    SimTime dYear1 = mod_nn(d0, oneYear());
     // Simple model: fixed emergence scaled by larviciding
     return mosqEmergeRate[dYear1];
 }
@@ -514,7 +507,7 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
 
     // ν_A: rate at which mosquitoes find hosts or die (i.e. leave host-seeking state
     double leaveRate = mosq.seekingDeathRate;
-    for (const util::SimpleDecayingValue& increase : seekingDeathRateIntervs) {
+    for (const SimpleDecayingValue& increase : seekingDeathRateIntervs) {
         leaveRate *= 1.0 + increase.current_value(ctx.clock.ts0());
     }
     double mu_v_interv = leaveRate;
@@ -533,7 +526,7 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
     // The five reduce maps below all applied the same multiply to a different Nhh
     // field. Hoisted find (the existence test was decay-invariant) keeps the exact
     // multiply sequence: map key order, then per-key vector order.
-    auto applyReduces = [&](map<string, vector<util::SimpleDecayingValue>>& reduces, double Nhh::* field) {
+    auto applyReduces = [&](map<string, vector<SimpleDecayingValue>>& reduces, double Nhh::* field) {
         for (const auto& reduce : reduces) {
             auto nhh = currentNhh.find(reduce.first);
             if (nhh == currentNhh.end())
@@ -576,7 +569,7 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
     // Calculate alpha_t for ATSB interventions with fixed target PA
     // =============================================================
     double pDeathSeeking = 0.0;
-    for (const util::SimpleDecayingValue& pDeath : probAdditionalDeathSugarFeedingIntervs)
+    for (const SimpleDecayingValue& pDeath : probAdditionalDeathSugarFeedingIntervs)
         pDeathSeeking += pDeath.current_value(ctx.clock.ts0());
 
     if (pDeathSeeking > 1.0)
@@ -632,7 +625,7 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
 
     // alphaE (α_E) is α_d * P_E, where P_E may be adjusted by interventions
     double alphaE = availDivisor * mosq.probMosqSurvivalOvipositing;
-    for (const util::SimpleDecayingValue& pDeath : probDeathOvipositingIntervs) {
+    for (const SimpleDecayingValue& pDeath : probDeathOvipositingIntervs) {
         alphaE *= 1.0 - pDeath.current_value(ctx.clock.ts0());
     }
     double tsP_df = sigma_df * alphaE;
@@ -656,7 +649,7 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
     // The code within the for loop needs to run per-day, wheras the main
     // simulation uses one or five day time steps.
     const SimTime nextTS = ctx.clock.ts0() + ctx.clock.one_TS();
-    for (SimTime d0 = ctx.clock.ts0(); d0 < nextTS; d0 = d0 + sim::oneDay()) {
+    for (SimTime d0 = ctx.clock.ts0(); d0 < nextTS; d0 = d0 + oneDay()) {
         update(d0, tsP_A, tsP_Amu, tsP_A1, tsP_Ah, tsP_df, sigma_dif_i, sigma_dif_l, tsP_dff, isDynamic, partialEIR_i,
                partialEIR_l, availDivisor);
     }
@@ -670,15 +663,15 @@ void AnophelesModel::update(SimTime d0, double tsP_A, double tsP_Amu, double tsP
     for (size_t i = 0; i < emergenceReduction.size(); ++i)
         interventionSurvival *= 1.0 - emergenceReduction[i].current_value(ctx.clock.ts0());
 
-    int d1 = d0 + 1; //sim::oneDay(); // end of step
+    int d1 = d0 + 1; //oneDay(); // end of step
 
     // We add N_v_length so that we can use mod_nn() instead of mod().
     int d1Mod = d1 + N_v_length;
     assert(d1Mod >= N_v_length);
     // Indecies for end time, start time, and mosqRestDuration days before end time:
-    int t1 = util::mod_nn(d1, N_v_length);
-    int t0 = util::mod_nn(d0, N_v_length);
-    int ttau = util::mod_nn(d1Mod - mosq.restDuration, N_v_length);
+    int t1 = mod_nn(d1, N_v_length);
+    int t0 = mod_nn(d0, N_v_length);
+    int ttau = mod_nn(d1Mod - mosq.restDuration, N_v_length);
 
     // These only need to be calculated once per time step, but should be
     // present in each of the previous N_v_length - 1 positions of arrays.
@@ -699,32 +692,32 @@ void AnophelesModel::update(SimTime d0, double tsP_A, double tsP_Amu, double tsP
     // BEGIN cache calculation: fArray, ftauArray, uninfected_v
     // Set up array with n in 1..θ_s−τ for f(d1Mod-n) (NDEMD eq. 1.6)
     for (int n = 1; n <= mosq.restDuration; n++) {
-        const int tn = util::mod_nn(d1Mod - n, N_v_length);
+        const int tn = mod_nn(d1Mod - n, N_v_length);
         fArray[n] = fArray[n - 1] * P_A[tn];
     }
     fArray[mosq.restDuration] += P_df[ttau];
 
     const int fAEnd = mosq.EIPDuration - mosq.restDuration;
     for (int n = mosq.restDuration + 1; n <= fAEnd; n++) {
-        const int tn = util::mod_nn(d1Mod - n, N_v_length);
+        const int tn = mod_nn(d1Mod - n, N_v_length);
         fArray[n] = P_df[tn] * fArray[n - mosq.restDuration] + P_A[tn] * fArray[n - 1];
     }
 
     // Set up array with n in 1..θ_s−1 for f_τ(d1Mod-n) (NDEMD eq. 1.7)
     const int fProdEnd = mosq.restDuration * 2;
     for (int n = mosq.restDuration + 1; n <= fProdEnd; n++) {
-        int tn = util::mod_nn(d1Mod - n, N_v_length);
+        int tn = mod_nn(d1Mod - n, N_v_length);
         ftauArray[n] = ftauArray[n - 1] * P_A[tn];
     }
-    ftauArray[fProdEnd] += P_df[util::mod_nn(d1Mod - fProdEnd, N_v_length)];
+    ftauArray[fProdEnd] += P_df[mod_nn(d1Mod - fProdEnd, N_v_length)];
 
     for (int n = fProdEnd + 1; n < mosq.EIPDuration; n++) {
-        int tn = util::mod_nn(d1Mod - n, N_v_length);
+        int tn = mod_nn(d1Mod - n, N_v_length);
         ftauArray[n] = P_df[tn] * ftauArray[n - mosq.restDuration] + P_A[tn] * ftauArray[n - 1];
     }
 
     for (int d = 1; d < N_v_length; d++) {
-        int t = util::mod_nn(d1Mod - d, N_v_length);
+        int t = mod_nn(d1Mod - d, N_v_length);
         double sum = N_v[t];
         for (size_t i = 0; i < n; ++i)
             sum -= (O_v_i[t * n + i] + O_v_l[t * n + i]); // .at(t, i);
@@ -749,14 +742,14 @@ void AnophelesModel::update(SimTime d0, double tsP_A, double tsP_Amu, double tsP
         double sum_i = 0.0, sum_l = 0.0;
         const int ts = d1Mod - mosq.EIPDuration;
         for (int l = 1; l < mosq.restDuration; l++) {
-            const int tsl = util::mod_nn(ts - l, N_v_length); // index d1Mod - theta_s - l
+            const int tsl = mod_nn(ts - l, N_v_length); // index d1Mod - theta_s - l
             sum_i += P_dif_i[tsl * n + g] * P_df[ttau] * (uninfected_v[mosq.EIPDuration + l]) *
                      ftauArray[mosq.EIPDuration + l - mosq.restDuration];
             sum_l += P_dif_l[tsl * n + g] * P_df[ttau] * (uninfected_v[mosq.EIPDuration + l]) *
                      ftauArray[mosq.EIPDuration + l - mosq.restDuration];
         }
 
-        const int tsm = util::mod_nn(ts, N_v_length); // index d1Mod - theta_s
+        const int tsm = mod_nn(ts, N_v_length); // index d1Mod - theta_s
         S_v_i[t1 * n + g] =
             P_dif_i[tsm * n + g] * fArray[mosq.EIPDuration - mosq.restDuration] * (uninfected_v[mosq.EIPDuration]) +
             sum_i + P_A[t0] * S_v_i[t0 * n + g] + P_df[ttau] * S_v_i[ttau * n + g];
@@ -781,12 +774,12 @@ void AnophelesModel::update(SimTime d0, double tsP_A, double tsP_Amu, double tsP
     }
 
     // We use time at end of step (i.e. start + 1) in index:
-    int d5Year = util::mod_nn(d1, sim::fromYearsI(5));
+    int d5Year = mod_nn(d1, fromYearsI(5));
     quinquennialS_v[d5Year] = total_S_v;
 
     const double nOvipositing = P_dff[ttau] * N_v[ttau]; // number ovipositing on this step
     const double newAdults = getEmergenceRate(d0, mosqEmergeRate, nOvipositing) * interventionSurvival;
-    util::streamValidate(newAdults);
+    streamValidate(newAdults);
 
     // num seeking mosquitos is: new adults + those which didn't find a host
     // yesterday + those who found a host tau days ago and survived cycle:
@@ -813,18 +806,18 @@ double sum1(const SimClock& clock, const std::vector<double>& arr, int end, int 
     // Last time step ended at clock.now(). Values are stored per day, and for
     // the last time step values at clock.now() and four previos were set.
     for (int d1 = end - clock.one_TS(); d1 < end; d1++) {
-        val += arr[util::mod_nn(d1, N_v_length)];
+        val += arr[mod_nn(d1, N_v_length)];
     }
     return val / clock.one_TS();
 }
 
-double sum2(const SimClock& clock, const WithinHost::Genotypes& genotypes, const std::vector<double>& arr, int end,
+double sum2(const SimClock& clock, const Genotypes& genotypes, const std::vector<double>& arr, int end,
             int N_v_length) {
     double val = 0.0;
     // Last time step ended at clock.now(). Values are stored per day, and for
     // the last time step values at clock.now() and four previos were set.
     for (int d1 = end - clock.one_TS(); d1 < end; d1++) {
-        int i1 = util::mod_nn(d1, N_v_length);
+        int i1 = mod_nn(d1, N_v_length);
         for (size_t g = 0; g < genotypes.N(); ++g) {
             val += arr[i1 * genotypes.N() + g]; //.at(i1, g);
         }
@@ -832,13 +825,13 @@ double sum2(const SimClock& clock, const WithinHost::Genotypes& genotypes, const
     return val / clock.one_TS();
 }
 
-double sum3(const SimClock& clock, const WithinHost::Genotypes& genotypes, const std::vector<double>& arr, size_t g,
-            int end, int N_v_length) {
+double sum3(const SimClock& clock, const Genotypes& genotypes, const std::vector<double>& arr, size_t g, int end,
+            int N_v_length) {
     double val = 0.0;
     // Last time step ended at clock.now(). Values are stored per day, and for
     // the last time step values at clock.now() and four previos were set.
     for (int d1 = end - clock.one_TS(); d1 < end; d1++) {
-        val += arr[util::mod_nn(d1, N_v_length) * genotypes.N() + g]; // .at(mod_nn(d1, N_v_length), g);
+        val += arr[mod_nn(d1, N_v_length) * genotypes.N() + g]; // .at(mod_nn(d1, N_v_length), g);
     }
     return val / clock.one_TS();
 }
@@ -880,20 +873,18 @@ void AnophelesModel::summarize(RunContext& ctx, size_t species) const {
     // the last time step values at ctx.clock.now() and four previos were set.
     // One plus last, plus (0 mod N_v_length) to avoid negatives:
     int end = ctx.clock.now() + 1 + N_v_length;
-    mon::recordStat(ctx, mon::measure("Vector_Nv0"), getLastN_v0(), species);
-    mon::recordStat(ctx, mon::measure("Vector_Nv"), sum1(ctx.clock, N_v, end, N_v_length), species);
+    recordStat(ctx, measure("Vector_Nv0"), getLastN_v0(), species);
+    recordStat(ctx, measure("Vector_Nv"), sum1(ctx.clock, N_v, end, N_v_length), species);
     for (size_t g = 0; g < ctx.genotypes.N(); ++g) {
-        mon::recordStat(ctx, mon::measure("Vector_Ov"),
-                        sum3(ctx.clock, ctx.genotypes, O_v_i, g, end, N_v_length) +
-                            sum3(ctx.clock, ctx.genotypes, O_v_l, g, end, N_v_length),
-                        species, g);
-        mon::recordStat(ctx, mon::measure("Vector_Sv"),
-                        sum3(ctx.clock, ctx.genotypes, S_v_i, g, end, N_v_length) +
-                            sum3(ctx.clock, ctx.genotypes, S_v_l, g, end, N_v_length),
-                        species, g);
+        recordStat(ctx, measure("Vector_Ov"),
+                   sum3(ctx.clock, ctx.genotypes, O_v_i, g, end, N_v_length) +
+                       sum3(ctx.clock, ctx.genotypes, O_v_l, g, end, N_v_length),
+                   species, g);
+        recordStat(ctx, measure("Vector_Sv"),
+                   sum3(ctx.clock, ctx.genotypes, S_v_i, g, end, N_v_length) +
+                       sum3(ctx.clock, ctx.genotypes, S_v_l, g, end, N_v_length),
+                   species, g);
     }
 }
 
-} // namespace Anopheles
-} // namespace Transmission
-} // namespace OM
+} // namespace OpenMalaria

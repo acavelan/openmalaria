@@ -28,7 +28,7 @@
 namespace scnXml {
 class Demography;
 }
-namespace OM {
+namespace OpenMalaria {
 class RunContext;
 
 /** Per-run demography state (was: AgeStructure statics; lives in

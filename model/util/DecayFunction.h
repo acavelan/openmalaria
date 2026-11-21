@@ -35,9 +35,8 @@ namespace scnXml {
 class DecayFunction;
 }
 
-namespace OM {
+namespace OpenMalaria {
 class SimClock;
-namespace util {
 
 /** A decay function (several also suitible as survival functions): one
  * enum-tagged value type — behaviour is chosen by DATA (Kind switch in
@@ -156,7 +155,7 @@ class DecayFunction {
     Kind kind;
     bool increasing;
     double initialEfficacy;
-    std::unique_ptr<util::Sampler> het;
+    std::unique_ptr<Sampler> het;
 
     double hetFactor = 0.0;
     /// Precomputed scale: 1/L days (Step/Linear/Hill/SmoothCompact),
@@ -229,8 +228,8 @@ inline double DecayFunction::compute_with(double effectiveAge, double factor) co
 inline SimTime DecayFunction::sampleAgeOfDecay(LocalRng& rng) const {
     switch (kind) {
     case Kind::Constant:
-        return sim::future(); // "in the future" (sim::never() would mean the past)
-    case Kind::Step:          // parity: xml/util.cpp:195
+        return future(); // "in the future" (never() would mean the past)
+    case Kind::Step:     // parity: xml/util.cpp:195
         return simClock->roundToTSFromDays(1.0 / invL);
     case Kind::Linear:
         // parity: order — local RNG stream: draw call order fixes stream state
@@ -266,8 +265,7 @@ inline SimTime DecayFunction::sampleAgeOfDecay(LocalRng& rng) const {
     case Kind::Emax: // parity: xml/util.cpp:447
         return simClock->roundToTSFromDays(f1->sampleAgeOfDecay(rng));
     }
-    return sim::never(); // unreachable: every Kind has a case
+    return never(); // unreachable: every Kind has a case
 }
 
-}
 }

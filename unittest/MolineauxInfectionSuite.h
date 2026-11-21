@@ -33,7 +33,6 @@
 #include <gsl/gsl_fit.h>
 #include <gsl/gsl_statistics_double.h>
 
-using namespace OM::WithinHost;
 
 class MolineauxInfectionSuite : public CxxTest::TestSuite
 {
@@ -76,13 +75,13 @@ public:
         do{
             extinct = infection->update(m_rng, 1.0 /*no external immunity*/, now, 71.43 /*adult body mass in kg to get 5l blood volume*/);
             SimTime age = now - infection->m_startDate - infection->s_latentP;
-            if( age >= sim::zero() ){
+            if( age >= zero() ){
                 ETS_ASSERT_LESS_THAN( day, dens.size() );
                 TS_ASSERT_APPROX( infection->getDensity(), dens[day] );
 //                 out << infection->getDensity() << endl;
                 day += 1;
             }
-            now = now + sim::oneDay();
+            now = now + oneDay();
         }while(!extinct);
         TS_ASSERT_EQUALS( day, dens.size() );
         delete infection;
@@ -294,7 +293,7 @@ private:
                 
                 while( !infection->update(rng, 1.0 /*no external immunity*/, now, 71.43 /*adult body mass in kg to get 5l blood volume*/) ){
                     dens.push_back( infection->getDensity() );
-                    now = now + sim::oneDay();
+                    now = now + oneDay();
                 }
                 delete infection;
                 calc( run, dens );

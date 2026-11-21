@@ -30,12 +30,8 @@ namespace scnXml{
     class Scenario;
     class HealthSystem;
 }
-namespace OM {
-namespace WithinHost {
-namespace Pathogenesis {
-    struct StatePair;
-} }
-namespace Clinical {
+namespace OpenMalaria {
+struct StatePair;
 
 /// Positive values of doomed (codes). (parity: old ClinicalModel members)
 enum DoomedCause {
@@ -47,7 +43,6 @@ enum DoomedCause {
         DOOMED_NEONATAL = 6,	///< died due to mother's malaria infection
         DOOMED_INDIRECT = 7,	///< died indirectly from malaria (after a delay)
 };
-    using Host::Human;
 
 /** The clinical model models the effects of sickness dependant on malarial
  * parasite densities and administers anti-malaria treatments via the drug
@@ -128,7 +123,7 @@ public:
         latestReport.flush();
     }
 
-    /** Time of the last treatment (sim::never() if never treated): SoA
+    /** Time of the last treatment (never() if never treated): SoA
      * column t_last_treatment (old member; accessors keep read/write syntax). */
     SimTime& t_last_treatment() const { return cols->t_last_treatment[row]; }
 
@@ -148,7 +143,7 @@ public:
 
     /// Per-kind clinical update tail (old virtual doClinicalUpdate; the
     /// shared preamble of update() ends here).
-    virtual void doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) {
+    virtual void doClinicalUpdate (Human& human, double ageYears, StatePair& pg) {
         assert(false); // no variant updates through the bare base
     }
 
@@ -206,10 +201,10 @@ public:
     static double getCommunityCFR(double caseFatalityRatio);
     
     /// Age-specific hospital case fatality "rates"
-    static util::AgeGroupInterpolator caseFatalityRate;
+    static AgeGroupInterpolator caseFatalityRate;
     /// Age-specific in-hospital rates of sequelae given a severe malaria bout
     /// Note: out-patients have currently have the same probabilities of sequelae
-    static util::AgeGroupInterpolator pSequelaeInpatient;
+    static AgeGroupInterpolator pSequelaeInpatient;
     //@}
 };
 
@@ -220,7 +215,7 @@ public:
 class CMDecisionTree5Day final : public ClinicalModel {
   public:
     CMDecisionTree5Day(RunContext& ctx, double tSF) : ClinicalModel(ctx, tSF, Kind::DecisionTree5Day) {}
-    void doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) override;
+    void doClinicalUpdate(Human& human, double ageYears, StatePair& pg) override;
     void uncomplicatedEvent(Human& human, Episode::State pgState) override;
 };
 
@@ -230,7 +225,7 @@ class CMDecisionTree5Day final : public ClinicalModel {
 class CMImmediateOutcomes final : public ClinicalModel {
   public:
     CMImmediateOutcomes(RunContext& ctx, double tSF) : ClinicalModel(ctx, tSF, Kind::ImmediateOutcomes) {}
-    void doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) override;
+    void doClinicalUpdate(Human& human, double ageYears, StatePair& pg) override;
     void uncomplicatedEvent(Human& human, Episode::State pgState) override;
 };
 
@@ -243,11 +238,11 @@ class CMEventScheduler final : public ClinicalModel {
   public:
     /// Rejects treatment-seeking heterogeneity (old ES ctor guard).
     CMEventScheduler(RunContext& ctx, double tSF);
-    void doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) override;
+    void doClinicalUpdate(Human& human, double ageYears, StatePair& pg) override;
     SimTime timeOfLastTreatment() const override;
 
   public: // run state; wire in checkpoint/humans.cpp
-    Episode::State esPgState = Episode::NONE;    ///< current sickness state
+    Episode::State esPgState = NONE;    ///< current sickness state
     /// ES bout clock/state (old esCaseStartTime/esTimeOfRecovery/
     /// esTimeLastTreatment SimTime members; column row refs, same syntax).
     SimTime& es_case_start() const { return cols->es_case_start[row]; }
@@ -279,4 +274,4 @@ public:
 };
 
 
-} }
+}

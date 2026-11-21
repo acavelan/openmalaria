@@ -27,8 +27,6 @@
 
 #include "util/vectors.h"
 
-using namespace OM::util;
-
 class UtilVectorsSuite : public CxxTest::TestSuite {
   public:
     void testInversion() {

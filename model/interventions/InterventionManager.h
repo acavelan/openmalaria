@@ -34,20 +34,15 @@ namespace scnXml {
 class Interventions;
 }
 
-namespace OM {
+namespace OpenMalaria {
 class Population;
-namespace Host {
 class Human;
-}
-
-namespace interventions {
 
 /** Management of interventions deployed on a per-time-step basis. */
 class InterventionManager {
   public:
     /** Read XML descriptions. */
-    static void init(RunContext& ctx, const scnXml::Interventions& intervElt,
-                     Transmission::TransmissionModel& transmission);
+    static void init(RunContext& ctx, const scnXml::Interventions& intervElt, TransmissionModel& transmission);
 
     /** Call after loading a checkpoint, passing the intervention-period time.
      * 
@@ -60,7 +55,7 @@ class InterventionManager {
      * 
      * Continuous interventions are deployed as humans reach the target ages.
      * Unlike with vaccines, missing one schedule doesn't preclude the next. */
-    static void deploy(RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission);
+    static void deploy(RunContext& ctx, vector<Human>& population, TransmissionModel& transmission);
 
     /** Get a numeric ComponentId from the textual identifier used in the XML.
      * 
@@ -80,14 +75,13 @@ inline ComponentId InterventionManager::getComponentId(RunContext& ctx, const st
         ostringstream msg;
         msg << "unable to find an intervention component with id \"" << textId
             << "\" (wrong name, no definition or used before definition?)";
-        throw util::xml_scenario_error(msg.str());
+        throw xml_scenario_error(msg.str());
     }
     return it->second;
 }
 
-inline void InterventionManager::deploy(RunContext& ctx, vector<Host::Human>& population,
-                                        Transmission::TransmissionModel& transmission) {
-    if (ctx.clock.interv < sim::zero())
+inline void InterventionManager::deploy(RunContext& ctx, vector<Human>& population, TransmissionModel& transmission) {
+    if (ctx.clock.interv < zero())
         return;
 
     // deploy imported infections (not strictly speaking an intervention)
@@ -96,7 +90,7 @@ inline void InterventionManager::deploy(RunContext& ctx, vector<Host::Human>& po
     // deploy timed interventions
     SimTime now = ctx.clock.interv_date();
     while ((*ctx.timed)[ctx.nextTimed].date <= now) {
-        if (util::CommandLine::option(util::CommandLine::VERBOSE)) {
+        if (CommandLine::option(CommandLine::VERBOSE)) {
             cout << "deploy::" << now << "::Timed";
             print_timed_details(cout, (*ctx.timed)[ctx.nextTimed]);
             cout << endl;
@@ -107,11 +101,11 @@ inline void InterventionManager::deploy(RunContext& ctx, vector<Host::Human>& po
     }
 
     // deploy continuous interventions
-    for (Host::Human& human : population) {
+    for (Human& human : population) {
         uint32_t nextCtsDist = human.nextCtsDist();
         // deploy continuous interventions
         while (nextCtsDist < ctx.continuous->size()) {
-            if (util::CommandLine::option(util::CommandLine::VERBOSE)) {
+            if (CommandLine::option(CommandLine::VERBOSE)) {
                 cout << "deploy::" << now << "::Continuous";
                 (*ctx.continuous)[nextCtsDist].print_details(cout);
                 cout << endl;
@@ -123,5 +117,4 @@ inline void InterventionManager::deploy(RunContext& ctx, vector<Host::Human>& po
     }
 }
 
-}
 }

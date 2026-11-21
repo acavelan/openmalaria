@@ -31,8 +31,7 @@
 #include "util/CommandLine.h"
 #include <limits>
 
-namespace OM {
-namespace WithinHost {
+namespace OpenMalaria {
 
 // ———  Diagnostic (non-static)  ———
 
@@ -73,7 +72,7 @@ const Diagnostic& diagnostics::get(RunContext& ctx, const string& name) {
     auto& diagnostic_set = ctx.diagnostic_set;
     auto it = diagnostic_set.find(name);
     if (it == diagnostic_set.end()) {
-        throw util::xml_scenario_error(string("diagnostic not found: ").append(name));
+        throw xml_scenario_error(string("diagnostic not found: ").append(name));
     }
     return it->second;
 }
@@ -91,6 +90,5 @@ const Diagnostic& diagnostics::make_deterministic(RunContext& ctx, double minDen
 const Diagnostic& diagnostics::monitoringDiagnostic(RunContext& ctx) {
     assert(ctx.monitoring_diagnostic != 0);
     return *ctx.monitoring_diagnostic;
-}
 }
 }

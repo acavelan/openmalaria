@@ -34,8 +34,7 @@
 
 using std::pair;
 using std::multimap;
-using namespace OM;
-using namespace OM::PkPd;
+using namespace OpenMalaria;
 
 // Use one of these to switch verbosity on/off:
 #define PCS_VERBOSE( x )
@@ -181,7 +180,7 @@ public:
             PCS_VERBOSE(res_Fac[i] = totalFac;)
             
             // update (two parts):
-            UnittestUtil::incrTime(sim::oneDay());
+            UnittestUtil::incrTime(oneDay());
             proxy->decayDrugs(bodymass);
             
             // after update:
