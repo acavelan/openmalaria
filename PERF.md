@@ -208,3 +208,39 @@ Follow-up (FOLLOW-UP ITEM, promoted): profile-driven hunt for the structural tax
 vectorUpdate single-pass experiment (port PR-480 shape fully, drop slab), calculateEIR lane,
 mon record* cost, column-touch pattern at 10k. Recovering ~9% puts the rewrite recipe at ~1.19× vs
 baseline without giving up the LOC win.
+
+### Round 4 — structural-tax hunt: E-series; tax 9.4/20.4 % → 4.7/7.7 % (2026-11-23)
+
+Hunt targets from round 3 (equal-alloc structural tax vs patched baseline). All experiments:
+worktree off `rewrite`, plain `-O3 -ffp-contract=off` no-LTO build for isolation, full gates
+(0w0e, 64/64, .OK!, T1 63/63), parent-session medians. Counter evidence pre-fix (10k, ours vs
+patched-baseline, both recipe builds): +6.3 % instructions, IPC 2.50→2.31, cache-misses 1.81×,
+dTLB-misses 1.62×, branches flat — memory-traffic tax, pop-scaling as suspected.
+
+| # | change | measured | verdict |
+|---|---|---|---|
+| E1 | fuse `vectorUpdate_vector` two-pass slab sweeps → single host-major pass (addend order per accumulator = ascending host index ⇒ bit-exact); −29 LOC | −2.4 % vs pre-480 default (−1 % on top of 480) | MERGED `4a8001ef` |
+| E4 | `Population::update` batched stable compaction (keep-list, one pass/column/year) replaces per-death `cols.erase_at`+`humans.erase` — 25-column × 10k-row memmove storm (2.4 s erase lanes absent in AoS baseline); self-move guard for nested columns, tail-erase for non-default rows | −4.2 % @10k, every round | MERGED `b5819dd4` |
+| E5 | bind per-host IV/availability rows once per host in `vectorUpdate_vector`/`calculateEIR_vector` — `PerHost` getters re-walked cols→column→row→iv per (host,species) across 3 TUs, LTO could not inline (getter 1.38 s @10k); in-TU `IvRows` view, bodies verbatim | −1.7 % @10k, −1.4 % @2k | MERGED `eac9764b` |
+| E6 | `updatePyrogenThres` zero-numerator fast path (provably bit-exact reduction of the 11-step serial div chain when `td·a==0`; exhaustive guard self-check) | plain: −0.5 % @2k / −0.8 % @10k (14/14 rounds). RECIPE head-to-head: +1.7 % **slower** @10k, 6/7 | REVERTED `8e807739`; kept `fork-wt-hunt4 de21d840`. Lesson: candidates must be gated in RECIPE form — PGO + new branch interacts |
+
+E6 side-product (attribution correction): the 5.2 s `determineMorbidity` lane vs "absent" baseline
+lane was an LTO-inlining artifact — the baseline carries the byte-identical pyrogen recurrence
+(Submodels.cpp:104); WH-descriptive update is at parity (7.0 vs 7.3 s @10k). Latency-bound, both trees.
+
+Final ladder, same windows (example scenario; ours = `build-pgo-ex3` = rewrite+E1+E4+E5+PR-480+LTO+
+example-PGO, all gates green; theirs = `fork-wt-bs/build-pgo3` = baseline+7 PRs+LTO+generic-PGO):
+
+| pop | A0 original | ours | theirs | ours vs A0 | residual gap |
+|---|---|---|---|---|---|
+| 2000 | 12.25 s | **10.98 s** | 10.48 s | **1.116×** | 4.7 % |
+| 10000 | 55.63 s | **48.65 s** | 45.19 s | **1.144×** | 7.7 % |
+
+Tax recovered this round: 9.4→4.7 % @2k, 20.4→7.7 % @10k (vs patched baseline at equal flags the
+latter is 20.4→~11 % @plain -O3, e1→e5 58.38→54.38 s). LOC still −13.6 % vs baseline (16,263).
+
+Remaining suspects (round-5 shortlist): `calculateEIR_vector` still 3.6 % @10k vs baseline lane
+<1 % (E5 absorbed getter cost into it, net −1.7 % but not parity); `expectedNumNewInfections`
++0.4 s; `HumanColumns::compact` 1.3 s irreducible floor ≈ theirs; residual dTLB/column pressure
+(counter re-run vs post-E5 recipe build pending); devirtualisation gap (WHInterface pure-virtual
+trio per host tick — p8-Q2 keeps polymorphism per user order; PGO devirtualises in recipe builds).
