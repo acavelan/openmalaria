@@ -96,3 +96,41 @@ Machine counters (example@2000): **IPC 3.48**, L1D miss 1.49 % (969M/65G), **LLC
 | p8-names | **Name shortening (user order, "only if it makes sense")**: RunContext->Context (+RunContext.h->Context.h, 508 refs, zero collisions) + post-rename reflow (-16, md5-proofed, 9 macro traps respected). REJECTED with evidence: TransmissionModel/ClinicalModel->Model (bare Model already = OM::Model + scnXml::Model schema type everywhere -> would add ambiguity, not remove it); ->Sim (reads against sim:: namespace); ->Mosquitos (DotModel/NullModel have no mosquito) | **16,747 (−17 this wave; baseline −2,066)**, 115 files | — | — (identifier+whitespace only) | — | doc prose in old HANDOFF rows keeps historical names | green; full gates on final tree: ctest 64/64, unittest .OK!, **T1 a+b 63/63** |
 | p8-names2 | **Naming wave 2 (user: "reasonable shorter names"): xml_scenario_error->xml_error (250), Transmission::TransmissionModel->Transmission::Model + Clinical::ClinicalModel->Clinical::Model + Pathogenesis::PathogenesisModel->Pathogenesis::Model (files renamed; earlier veto REVERSED with proof - the fwd-decl Model is scnXml::Model, no OM::Model exists, zero bare-Model uses in the namespaces), InfectionIncidenceModel->IncidenceModel, TimedDeploymentKind->DeploymentKind, InfectionOrigin->Origin, OM::sNaN/NaN/INF constants replacing 110 spelled-out numeric_limits sites; final reflow -32. Honest: identifier shortening yields tens of LOC (only >120-wrap lines rejoin), readability is the real dividend | **16,721 (−43 this wave; baseline −2,092)**, 115 files | — | — (identifiers+whitespace only) | — | Model/Sim/Mosquitos veto list of wave 1 superseded where proof changed (Model now OK in-namespace) | full gates final tree: ctest 64/64, unittest .OK!, **T1 a+b 63/63** |
 | p8-ns | **Namespace flattening (user experiment: "get rid of all namespaces, keep a true OpenMalaria instead of OM; revert the name changes")**: all model namespaces (util/Host/WithinHost/Transmission/Anopheles/Clinical/Pathogenesis/interventions/PkPd/checkpoint/mon/internal/sim) flattened into single `namespace OpenMalaria`; naming waves 1-2 REVERTED (RunContext/xml_scenario_error/TransmissionModel etc. are back). Kept nested with reasons: scnXml/xsd (generated), Continuous/Deploy/GT/Error/Messages/UnitTest. Collisions: Episode::State + Pathogenesis State MERGED (by-construction value proof: mirrors were initialized from Pathogenesis by name; additions value-disjoint; underlying type unchanged) ; vaccine_factor/updateCohortSet/measure shadowed by members/params -> qualified/renamed; summarize/update/initVector* audit-benign (free-context call sites, arity mismatch guards). Golden-gen tool silently broken by sweep (outside cmake targets) -> found by audit, fix compile-verified. Reindent: clang-format clean tree-wide except 6 legacy macro-trap files | **16,233 (−488 this wave; baseline 18,813 → −2,580)**, 115 files | — | — (identifiers/braces/whitespace only) | — | free-function overload sets now global-to-model: new duplicate helper names collide at compile time (loud); nm+source collision audit on file; sim:: stripped from comments | per-commit + main-session merged tree: build 0w0e, ctest 64/64 (incl Resume_*), unittest .OK!, **T1 a+b 63/63** (A0 rebuilt from baseline cfc3c8e0 after tmp-GC; rebuild revalidated vs pre-merge tree 53/53 first) |
+
+## Draft-TODO-PR evaluation (upstream PRs #476–#482, b-s-code, 2026-11-23)
+
+Seven DRAFT TODO PRs on OpenMalaria-Org/openmalaria, all branched from the pre-rewrite
+baseline (`upstream/main` = `cfc3c8e0`). Evaluated against `rewrite` HEAD `5ac4a450`
+(16,233 model LOC). Every perf candidate passed the full gate before any timing claim:
+build 0w0e, ctest 64/64, unittest `.OK!`, parity tiers a+b seeds 1–10 **63/63 bit-identical vs B0**.
+Bench: `util/example/example_scenario.xml` @ popSize 2000, core-5 pinned (`taskset`), serialized,
+2 warm + median-of-5 measured rounds, `/usr/bin/time %U`, MAD ≤ 0.01 s (0.08%) — quiet window.
+Parity anchor: B0 (this tree's own binary, itself T1 a+b 63/63 vs A0 at merge); candidate-vs-B0
+is the sharp test for "does this PR change results". (`/tmp/opencode` tmp-GC destroyed the A0
+copy again — rebuild it outside /tmp before the next phase that needs it.)
+
+| PR | Content | Merge into rewrite | Perf (median, this tree) | Verdict |
+|---|---|---|---|---|
+| #476 | hoist `updateKappa` per-genotype vectors | CONFLICT | — superseded: already in tree (`TransmissionModel.h:322`, hoist + `assign` re-zero) | **Close upstream** (duplicate) |
+| #477 | reuse per-genotype EIR vectors in `Human::update` | CONFLICT + modify/delete | — superseded: in tree via persistent `HostScratch.EIR_per_genotype_*` | **Close upstream** (duplicate, ours stronger) |
+| #478 | `util/perf/` bench+golden tools, CI workflow (0 model lines) | clean merge | n/a (no model change) | **Skip** — duplicates `util/parity.py` + pinned bench protocol; CI workflow assumes their tools |
+| #479 | single-pass `Population::update` compaction (move+truncate vs per-death erase) | CONFLICT → hand-ported (commits `d18a18f6`/`5cd2566a` in `fork-wt-bc`) | 12.38 s = **+0.16%** (B0 12.36 s) — under 1% floor | **Reject**: bit-exact and correct, but no measurable gain on the representative scenario; upstream: no effect expected for small per-step removal counts |
+| #480 | compute per-human availability factors once in `vectorUpdate` | modify/delete → hand-ported (commit `d64310c1` in `fork-wt-c`); PR's other hoist already present as `s_tbv` slab | 12.19 s = **−1.38%** | **Accept content**: FP-exact by the inline `entoAvailabilityFull` definition; ready to cherry-pick |
+| #481 | LTO-on-by-default CMake + `util/pgo-build.sh` (0 model lines) | clean merge (script run with `--`-equivalent flags + required `-ffp-contract=off` deviation) | LTO: 12.15 s = −1.70%; LTO+PGO: **11.38 s = −7.93%** (B0/B5 = **1.086×**) | **Accept recipe**: bit-exact both tiers; profile consumption proven (60 gcda + discriminating `-Wmissing-profile` probe) |
+| #482 | `thread_local` y_lag scratch in `WHFalciparum::probTransmissionToMosquito` | CONFLICT | — superseded: in tree as `static` + documented proof (`WHFalciparum.cpp:205`) | **Close upstream** (duplicate; ours fits single-thread contract) |
+
+Combined best recipe (PR-480 + LTO + PGO script) on this tree: **11.25 s = −8.98% vs B0** (B0/B6 = **1.100×**; MAD 0.01 s). The PR-480 delta survives on top of PGO (11.25 vs 11.39 s, −1.2%) — additive, not absorbed.
+
+Notes:
+- All model-touching PRs conflict textually because the rewrite moved/renamed files — a
+  semantic merge = hand-port; ports 479/480 were ported faithfully (479's helper list mirrors
+  the 25-column `erase_at`; `resize` via range-erase because `LocalRng`/`Human` deliberately
+  lack default ctors).
+- PGO training set = script's default 6 scenarios (Genotypes Penny VecFullTest NonHumanHosts
+  MSAT_HRP2 Vivax), not the bench scenario (no benchmark-specific profiling).
+- p7d-era numbers (PGO 11.15 s on the 18.2k-LOC tree) reproduce in shape: here PGO −6.3%
+  on top of LTO (was −6.9%), LTO alone −1.7%.
+- Bench harness: `/home/razlock/git/om-pr-bench.sh` (run dir needs `scenario_50.xsd` —
+  example scenario pins schema v50, not `scenario_current.xsd`).
+- Worktrees left in place for inspection: `fork-wt-bc` (479, 479+480), `fork-wt-c` (480),
+  `fork-wt-de` (LTO/PGO + combined). Delete after decision.
