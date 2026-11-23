@@ -27,8 +27,10 @@
 #include "util/random.h"
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <limits>
 #include <map>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #ifdef __linux__
@@ -204,21 +206,48 @@ struct HumanColumns {
         return rng.size() - 1;
     }
 
-    /// Drop every row except those listed in `keep` (ascending indices;
-    /// Population-only). Stable: final row order == sequential erase_at, but
-    /// every column is touched once. The w != r guard is load-bearing: a
-    /// self-move of a nested column (vector/map element) empties it.
-    /// Adding a column: append to one of the e(...) calls below.
+    /** Drop every row except those listed in `keep` (ascending indices;
+     * Population-only). Stable: final row order == sequential erase_at.
+     * `keep` is a sorted index list, so it decomposes into few contiguous
+     * runs; between runs are the removals. Only rows in a non-leading run
+     * move, and the leading run (src == dst) is skipped, so the cost is
+     * O(removals · tail) — the rows after the first removal per segment —
+     * not O(rows). Trivially-copyable columns memmove each whole run (left
+     * shifts can make one run's src/dst ranges adjacent ⇒ memmove, not
+     * memcpy); nested columns (LocalRng, vector/map element types) move
+     * element-wise — a self-move is impossible because a run is listed only
+     * when src != dst, so dst + k != src + k for every k (a self-move of a
+     * nested column would empty it). Adding a column: append to one of the
+     * e(...) calls below. */
     void compact(const std::vector<uint32_t>& keep) {
+        struct Run { uint32_t src, dst, len; };
+        // Function-local scratch reused across calls (no per-call alloc).
+        // The move list is identical for every column, so build it once.
+        // dst = kept-so-far; a run breaks where keep is not consecutive.
+        static std::vector<Run> runs;
+        runs.clear();
+        for (uint32_t i = 0, n = static_cast<uint32_t>(keep.size()), dst = 0; i < n;) {
+            const uint32_t src = keep[i];
+            uint32_t len = 1;
+            while (i + len < n && keep[i + len] == keep[i] + len) ++len;
+            if (src != dst) runs.push_back(Run{src, dst, len}); // skip prefix run
+            dst += len;
+            i += len;
+        }
         const auto e = [&keep](auto& col) {
-            size_t w = 0;
-            for (const uint32_t r : keep) {
-                if (w != r) col[w] = std::move(col[r]);
-                ++w;
+            using T = typename std::decay_t<decltype(col)>::value_type;
+            for (const Run r : runs) {
+                if constexpr (std::is_trivially_copyable_v<T>) {
+                    std::memmove(col.data() + r.dst, col.data() + r.src,
+                                 sizeof(T) * r.len);
+                } else {
+                    for (uint32_t k = 0; k < r.len; ++k)
+                        col[r.dst + k] = std::move(col[r.src + k]);
+                }
             }
             // range-erase, not resize: resize needs a default ctor which
             // LocalRng/nested columns deliberately don't have
-            col.erase(col.begin() + w, col.end());
+            col.erase(col.begin() + keep.size(), col.end());
         };
         e(rng);
         e(dob);
