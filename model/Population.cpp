@@ -77,10 +77,12 @@ void Population::update() {
     // size is assumed to be the _actual and exact_ population size by other code.
     int cumPop = 0;
 
-    // NOTE: during compaction the Human::row of elements after an erase is
-    // stale (renumbered after this loop), so per-host state must be read here
-    // through POSITION (cols[i]) — human accessors would read the wrong row.
-    for (size_t i = 0; i < humans.size();) {
+    // NOTE: this pass only decides (reads per-host state through POSITION,
+    // cols[i]); Human::row goes stale for rows the compaction below moves and
+    // is fixed by the renumber pass, so don't use Human accessors here.
+    std::vector<uint32_t> keep;
+    keep.reserve(humans.size());
+    for (size_t i = 0; i < humans.size(); ++i) {
         bool isDead = cols.death[i] != never();
 
         // if (Actual number of people so far > target population size for this age)
@@ -90,22 +92,30 @@ void Population::update() {
         SimTime age1 = ctx.clock.ts1() - cols.dob[i];
         bool outmigrate = cumPop >= AgeStructure::targetCumPop(ctx, ctx.clock.inSteps(age1), size);
 
-        if (isDead || outmigrate) {
-            // mirror the removal into the SoA columns (same index)
-            cols.erase_at(i);
-            humans.erase(humans.begin() + i);
-            continue;
+        if (!(isDead || outmigrate)) {
+            keep.push_back(static_cast<uint32_t>(i));
+            ++cumPop;
         }
-        ++cumPop;
-        ++i;
     } // end of per-human updates
 
-    // Erasing shifted rows 1..n left; renumber so Human::row matches position
-    // again (newborns below append at the correct index themselves).
-    // Erasing shifted rows 1..n left; renumber so Human::row matches position
-    // again (newborns below append at the correct index themselves).
-    for (size_t i = 0; i < humans.size(); ++i)
-        humans[i].set_row(i);
+    if (keep.size() != humans.size()) {
+        // One stable batched compaction == the old per-death erase_at +
+        // humans.erase (same survivor order), but each column shifts once.
+        // The w != r guard avoids self-move (empties nested containers).
+        cols.compact(keep);
+        size_t w = 0;
+        for (const uint32_t r : keep) {
+            if (w != r) humans[w] = std::move(humans[r]);
+            ++w;
+        }
+        humans.erase(humans.begin() + w, humans.end()); // no default ctor
+
+        // Compaction shifted rows left; renumber so Human::row matches
+        // position again (newborns below append at the correct index
+        // themselves).
+        for (size_t i = 0; i < humans.size(); ++i)
+            humans[i].set_row(i);
+    }
 
     // increase population size to targetPop
     recentBirths += (size - cumPop);
