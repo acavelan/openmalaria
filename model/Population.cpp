@@ -70,6 +70,10 @@ void Population::createInitialHumans() {
     // Vector setup dependant on human population structure (we *want* to
     // include all humans, whether they'll survive to vector init phase or not).
     assert(ctx.clock.now() == zero()); // assumed below
+
+    // Huge-page hint for the heap segments just grown by the appends above
+    // (best-effort, see Host/HostColumns.h).
+    advise_heap_huge();
 }
 
 void Population::update() {
@@ -124,6 +128,12 @@ void Population::update() {
         humans.push_back(Human(ctx, ctx.clock.ts1(), cols));
         ++cumPop;
     }
+
+    // Yearly re-scan for heap segments grown since the last pass (arena
+    // extensions, monitoring buffers); the madvise hint is idempotent and
+    // costs ~1 ms, so doing it every week isn't worth the tracking (see
+    // Host/HostColumns.h).
+    if (mod_nn(ctx.clock.now(), 52) == 0) advise_heap_huge();
 }
 
 void registerContinousPopulationCallbacks(RunContext& ctx) {
