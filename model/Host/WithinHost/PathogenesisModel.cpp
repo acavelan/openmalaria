@@ -121,36 +121,12 @@ double PathogenesisModel::getPEpisode(double timeStepMaxDensity, double totalDen
 }
 
 void PathogenesisModel::updatePyrogenThres(double totalDensity) {
-    // Note: this calculation is slow (something like 5% of runtime): 11
-    // iterations of a SERIAL recurrence — the running _pyrogenThres feeds the
-    // next iteration's denominator, so the loop is latency-bound on the chain
-    // add+mul+DIV+add+add (~30 cycles/iteration; PERF.md 7c-C1: no closed
-    // form, not vectorizable). E6: with a zero numerator (every zero-density
-    // host tick — the common case) each division term is exactly +0.0/−0.0,
-    // so the chain reduces to P += b*P: one divsd (~13 cycles) drops off the
-    // serial path per iteration. Invariant operands T and S1 are hoisted (the
-    // compiler cannot: the same-typed _pyrogenThres store may alias the
-    // file-scope doubles). The guard admits only the provable case; every
-    // other input (NaN, −0.0 threshold, b outside (−1,1), S1/S2 ≤ 0) runs the
-    // general loop with the original operand tree, so those bits are unchanged.
-    // Numerical approximation to equation 2, AJTMH p.57
-    double& P = _pyrogenThres;
-    const double T = totalDensity * a;          // invariant numerator
-    const double S1 = Ystar1_26 + totalDensity; // invariant denominator part
-    if (T == 0.0 && S1 >= 1e-100 && Ystar2_13 >= 1e-100 && P > 0.0 && b > -1.0 && b < 1.0) {
-        // parity: the guard bounds make S1*(S2+P) lie in [1e-200, +inf] (never
-        // 0, never NaN: each factor is finite-or-inf and ≥1e-100, P ≥ 0 is an
-        // invariant), so each term is exactly ±0.0 and P + (±0.0 + b*P) ==
-        // P + (b*P) bit-exactly (RNE). P > 0 is preserved: the step
-        // multiplies P by 1+b ∈ (0,2); underflow to +0.0 keeps both forms at
-        // +0.0.
-        for (size_t i = 1; i <= n; ++i) {
-            P += b * P;
-        }
-    } else {
-        for (size_t i = 1; i <= n; ++i) {
-            P += T / (S1 * (Ystar2_13 + P)) + b * P;
-        }
+    // Note: this calculation is slow (something like 5% of runtime)
+
+    //Numerical approximation to equation 2, AJTMH p.57
+    for (size_t i = 1; i <= n; ++i) {
+        _pyrogenThres +=
+            totalDensity * a / ((Ystar1_26 + totalDensity) * (Ystar2_13 + _pyrogenThres)) + b * _pyrogenThres;
     }
 }
 
