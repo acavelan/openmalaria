@@ -289,3 +289,52 @@ per-sweep batch row-pointer flattening of the 5 ragged nested columns (real, ~1 
 devirtualising WHInterface (user veto p8-Q2 keeps the polymorphism; PGO devirtualises at the three
 host-tick calls anyway), SIMD reductions (phase-8 plan, bit-exact-hostile). If a future
 low-density scenario mix materialises, re-evaluate E6 (fork-wt-hunt4) WITHOUT the recipe.
+
+### Round 6 — E8 kills the compaction storm; the method finally works (instruction-count attribution) (2026-11-23)
+
+New attribution tooling (round 5 proved cycles-share useless across trees):
+1. **LD_PRELOAD call-count shim** (callcount.so, /home/razlock/git/): every libm/GSL/BLAS entry
+   counted on all three trees, same scenario: dgemm 405,886 = 405,886; lognormal 56,761,242 =
+   56,761,242; poisson/P/Pinv/pow/log identical to ±1; exp: ours 229.3M vs theirs 272.9M (PGO
+   folds 43.6M — we call LESS). ⇒ zero library-call-count difference anywhere; surplus is model code.
+2. **Retired-instruction sampling** (`perf record -e cpu_core/instructions/ -c 16000003`, flat —
+   LBR/fp callgraphs dead under LTO): histogram in BILLIONS of instructions per run names the lanes
+   despite symbol renames (WH update 69.7 vs 66.7, probTrans 66.8 vs 61.7, host-scan family
+   ~+10 diffuse) — and one monster: **HumanColumns::compact 35.3B = 5.6 % of all instructions.**
+3. **Instrumented counters** (scratch worktree, never merged): compaction ran EVERY step
+   (10,293 steps — the example sim is 140 simulated years incl. 90 warmup, 73 steps/yr, not the
+   ~45 I assumed), full width: 2.57e9 element moves/run, 8.2e8 of them heap-ownership moves of
+   nested columns. Their AoS erase memmoves only the tail — and deaths cluster at the
+   age-ordered tail, so their tails are tiny while our gather was population-proportional regardless.
+
+**E8 (MERGED `8298a431`) — run-based compaction:** keep[] decomposes into contiguous runs
+(`build_compaction_runs`); move only non-leading runs; `memmove` for the 16 trivially-copyable
+columns, elementwise `std::move` for the 9 heap columns; prefix skipped. Final layout identical ⇒
+bit-exact (same stable-order argument as E4/E7). Gated in BOTH forms (plain and LTO+PGO: 64/64,
+.OK!, 63/63) per the E6 lesson. Measured −2.1 % @10k / −1.5 % @2k, recipe form, anchored windows.
+
+**E9 (REJECTED, kept `fork-wt-hunt7 5ed28b7f`):** same run-ification for the humans vector —
+measured FLAT at both pops (+0.2 % 10k, +0.01 s 2k, both 7/7): Human move-assigns were never the
+cost; the columns were. Reverted by the LOC KPI. Its side-product is on file: probTrans +8 %
+instruction surplus mechanism = `this→ctx→subobject` re-materialisation (file-scope statics in the
+old tree are rip-relative single loads) + static-scratch resize-guard reloads — the named mechanism
+behind round 5's "diffuse" surplus; any future pass must attack the ctx indirection class wholesale
+(declined: invasive, high churn, ~1 % ceiling, T1 risk on 140-year sims).
+
+**Dual-PGO training variant:** training on example@2000 + example@10000 (`build-pgo-ex6dual`,
+script /tmp/opencode/pgo-build-dual.sh): −0.7 % @10k (7/7) vs +0.2 % @2k (7/7). KPI pop is 2000 ⇒
+shipping keeps single-training. For large-population fleets the dual profile is the better recipe;
+retraining on a representative workload mix is the honest knob (documented since round 2).
+
+Ladder (pgo3 anchored every window; A0 stable 12.24/55.6–55.9 across windows):
+
+| pop | original A0 | theirs | **ours (build-pgo-ex6)** | ours vs A0 | residual gap |
+|---|---|---|---|---|---|
+| 2000 | 12.24 s | 10.47 s | **10.68 s** | **1.146×** | **2.0 %** |
+| 10000 | 55.6 s | 44.97 s | **45.82 s** | **1.214×** | **1.9 %** |
+
+Tax arc: 9.4/20.4 → 4.7/7.7 → 3.2/3.2 → **2.0/1.9**. Shipping binary:
+/home/razlock/git/fork/build-pgo-ex6 (util/pgo-build.sh on HEAD reproduces it; 16,263 LOC, −13.6 %).
+Residual ~2 % is the ctx-indirection class (named above) + inlining luck; below it, the recipe's
+own cross-window reproducibility (~0.5 %) starts to bite. LOC budget of the hunt: E1 −29, E4 +23,
+E5 +59, E7 +76, E8 +23, E6/E9 rejected ⇒ +152 net against the −2,580 rewrite (−13.6 % intact).
