@@ -134,3 +134,40 @@ Notes:
   example scenario pins schema v50, not `scenario_current.xsd`).
 - Worktrees left in place for inspection: `fork-wt-bc` (479, 479+480), `fork-wt-c` (480),
   `fork-wt-de` (LTO/PGO + combined). Delete after decision.
+
+### Round 2 — scaling, ours-vs-theirs, attribution, total chain (2026-11-23)
+
+Durable A0 rebuilt at /home/razlock/git/om-ref/A0 (baseline cfc3c8e0, `-O3 -DNDEBUG
+-ffp-contract=off`, gcc 16.2.1/GSL 2.8, recipe.json stamped; re-validated 63/63 vs B0).
+V477/V482 = upstream PR idioms grafted INTO our tree (`fork-wt-theirs` commits 8b0c7c77/a67e61c5,
+both bit-exact 63/63 + 64/64). Scenario copy popSize=5000 (`/home/razlock/git/bench-scen-5000.xml`,
+throwaway; KPI file untouched). Same-window medians, MAD shown; cross-session numbers NOT comparable
+(older A0 stamp 13.25 s ≠ today's A0 12.24 s — machine state moved, same-window protocol mandatory).
+
+| binary | pop 2000 | pop 5000 | note |
+|---|---|---|---|
+| A0 baseline | 12.24 (0.00) | 27.71 (0.06) | no hoists, AoS, per-call allocs |
+| B0 rewrite | 12.35 (0.01) | 28.51 (0.03) | vs A0: +0.9% (under floor) @2k; **+2.9% slower** @5k |
+| V477 (their function-static EIR idiom) | 12.31 (0.02) | — | −0.3% vs B0 — under floor ⇒ ours≈theirs; ours per-run-scratch-safe (their shape needed `assign(1,0.0)` guards the tree doesn't) |
+| V482 (their thread_local y_lag) | 12.35 (0.02) | — | = B0 exactly (TLS costs nothing single-threaded) |
+| B1 = B0+PR-479 | 12.38 (+0.16%) | 28.46 (−0.18%) | flat at BOTH pops |
+| B2 = B0+PR-480 | 12.19 (−1.38%) | 27.90 (−2.07%) | win grows with pop (per-host loop) |
+| B6 = B0+480+LTO+PGO | 11.24 (−8.98% vs B0) | 25.47 (−10.6% vs B0) | vs A0: **1.089× @2k, 1.088× @5k**, bit-exact |
+
+Why PR-479 can't win (perf -F 999, B0@2000): compaction lane is tiny —
+`HumanColumns::erase_at` 0.72% + `Human::set_row` renumber 0.78% + memmove share <0.7%; the port
+replaces 25 vectorized bulk memmoves per removal with ~n scalar `move_row` steps (worse constant,
+same O(rem×n)) and keeps the renumber loop; ceiling <1% at any removal rate, confirmed flat at
+pop 2000 (+0.16%) and 5000 (−0.18%). **Closed: no performance to gain there.**
+#476/#477/#482 add nothing on merge because their gains are ALREADY IN B0 (A0-vs-B0 carries both
+trees' equivalent hoists; V477/V482 prove ours≈theirs within noise).
+
+Flag ladder on current tree (bit-exact throughout): LTO −1.70%, PGO on top −6.3..−7.5%,
+PR-480 −1.4..−2.1% (additive, survives PGO). **Cumulative chain vs baseline: −13.7% model LOC
+at speed −0.9% (2k, floor) / −2.9% (5k, real); with 480+LTO+PGO recipe: −8.1% faster than
+baseline at both pops.** p7d-era A0→A2true = 1.097× reproduces as 1.099× @2k.
+
+FOLLOW-UP ITEM (new, honest): rewrite-vs-A0 gap grows with pop (+0.9% @2k → +2.9% @5k).
+Perf diff shows no single hot lane (shares move across inlining boundaries; A0 pays
+Population::update 2.7% + cfree 2.4%, tree pays vectorUpdate_vector/probTransmission shares).
+Profile A0-vs-B0 with call graphs if this ever matters; the recipe overpays it at both pops.
