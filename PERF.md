@@ -171,3 +171,40 @@ FOLLOW-UP ITEM (new, honest): rewrite-vs-A0 gap grows with pop (+0.9% @2k → +2
 Perf diff shows no single hot lane (shares move across inlining boundaries; A0 pays
 Population::update 2.7% + cfree 2.4%, tree pays vectorUpdate_vector/probTransmission shares).
 Profile A0-vs-B0 with call graphs if this ever matters; the recipe overpays it at both pops.
+
+### Round 3 — CORRECTION: baseline-relative ladder (author's claims reproduce; structural tax exposed) (2026-11-23)
+
+Rounds 1-2 anchored every candidate on OUR tree, where the PRs' content was already banked — so they
+read ~0%. The fair test the author actually ran: his branches on the CLEAN baseline. Merged all 7
+branches into `eval/bs-all` @ cfc3c8e0 (`fork-wt-bs`, zero conflicts, model union +32/−16 across 6
+files); every tier bit-exact vs A0 (T1 a+b 63/63) + baseline ctest 52/52 + cxxtest OK. His own
+harness (util/perf/bench.py, 7 box scenarios, median-of-5 interleaved, user+sys CPU, mallocs via
+LD_PRELOAD counter) — and our example scenario:
+
+| measurement | base | +model PRs | +LTO | +PGO | ours (rewrite+480+LTO+PGO) |
+|---|---|---|---|---|---|
+| his 7-scenario TOTAL | 23.0 s | **−10.2%** | −12.4% | **−18.7%** | −14.0% |
+| example @2000 | 12.23 s | **−7.7%** | — | **−14.4%** (10.47) | −8.2% (11.23) |
+| example @10000 | 55.7 s | **−12.2%** | — | **−18.9%** (45.1) | −5.6% (52.7) |
+| mallocs / run (Genotypes) | 78.6 M | 6.2 M (−92%) | — | — | 6.2 M |
+
+Verdict corrections:
+1. **The DRAFT PRs are good** — his claims verified (12% bench / 11% at 10k ⇒ measured 10.2/12.2;
+   21% with LTO+PGO ⇒ measured 18.7-18.9). All bit-exact.
+2. **Nothing left for our tree from their content**: our tree matches his malloc counts (~6 M) and
+   all five idioms are already in rewrite (rounds 1-2 A/Bs on our tree were the right test for THAT
+   question — each ~0 by construction).
+3. **NEW #1 finding: the rewrite pays ~9% structural time vs the patched baseline at pop 2000**
+   (patch 11.29 vs B0 12.35 with equal allocs), growing to ~20% at pop 10000 (patch 48.9 vs B0 58.9)
+   — the flat-vs-A0 result was alloc-removal gain cancelling the tax. perf (example@2000, abs s):
+   our `vectorUpdate_vector` 0.54 vs 0.31, `calculateEIR_vector` 0.25 vs 0.16,
+   `probTransmissionToMosquito` 0.61 vs 0.44, `recordStat/Value` +0.4; per-host sweep lanes +
+   SoA-column pressure with pop are prime suspects (two-pass s_* slabs vs his single-pass statics).
+4. Total-vs-baseline restated: ours best = 1.089× @2k / 1.059× @10k; his ladder = 1.168× @2k /
+   1.234× @10k. **His tree is the faster codebase until the tax is found; ours is 13.7% smaller.**
+   New yardstick candidate: /home/razlock/git/fork-wt-bs/build-pgo3 (baseline+PRs+flags, 10.47 s @2k).
+
+Follow-up (FOLLOW-UP ITEM, promoted): profile-driven hunt for the structural tax; targets:
+vectorUpdate single-pass experiment (port PR-480 shape fully, drop slab), calculateEIR lane,
+mon record* cost, column-touch pattern at 10k. Recovering ~9% puts the rewrite recipe at ~1.19× vs
+baseline without giving up the LOC win.
