@@ -115,6 +115,30 @@ struct VacRecord {
     double decay_factor = 0.0;            // per-human het sample (sampled once)
 };
 
+/** One block of a compaction move: rows [src, src+len) move to
+ * [dst, dst+len). Always dst <= src — a compaction only ever left-shifts — and
+ * dst == src only for a leading run, which callers skip. */
+struct Run { uint32_t src, dst, len; };
+
+/** Decompose `keep` (a sorted index list) into the contiguous runs that survive
+ * a compaction: the removals are exactly the gaps between runs, so only rows in
+ * a non-leading run move, and the leading run (src == dst) is not listed at
+ * all — cost O(removals · tail) instead of O(rows). Appends to `scratch` after
+ * clearing it; callers keep the vector static so nothing allocates per call.
+ * Shared by HumanColumns::compact and Population::update's humans vector so
+ * both move the same rows into the same final layout. */
+inline void build_compaction_runs(const std::vector<uint32_t>& keep, std::vector<Run>& scratch) {
+    scratch.clear();
+    for (uint32_t i = 0, n = static_cast<uint32_t>(keep.size()), dst = 0; i < n;) {
+        const uint32_t src = keep[i];
+        uint32_t len = 1;
+        while (i + len < n && keep[i + len] == keep[i] + len) ++len;
+        if (src != dst) scratch.push_back(Run{src, dst, len}); // skip prefix run
+        dst += len;
+        i += len;
+    }
+}
+
 /** Persistent per-host SoA columns (plan §7 row 6 pinned list; owner module,
  * passed by reference, never global).
  *
@@ -220,20 +244,10 @@ struct HumanColumns {
      * nested column would empty it). Adding a column: append to one of the
      * e(...) calls below. */
     void compact(const std::vector<uint32_t>& keep) {
-        struct Run { uint32_t src, dst, len; };
         // Function-local scratch reused across calls (no per-call alloc).
         // The move list is identical for every column, so build it once.
-        // dst = kept-so-far; a run breaks where keep is not consecutive.
         static std::vector<Run> runs;
-        runs.clear();
-        for (uint32_t i = 0, n = static_cast<uint32_t>(keep.size()), dst = 0; i < n;) {
-            const uint32_t src = keep[i];
-            uint32_t len = 1;
-            while (i + len < n && keep[i + len] == keep[i] + len) ++len;
-            if (src != dst) runs.push_back(Run{src, dst, len}); // skip prefix run
-            dst += len;
-            i += len;
-        }
+        build_compaction_runs(keep, runs);
         const auto e = [&keep](auto& col) {
             using T = typename std::decay_t<decltype(col)>::value_type;
             for (const Run r : runs) {

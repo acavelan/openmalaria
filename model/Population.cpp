@@ -105,14 +105,21 @@ void Population::update() {
     if (keep.size() != humans.size()) {
         // One stable batched compaction == the old per-death erase_at +
         // humans.erase (same survivor order), but each column shifts once.
-        // The w != r guard avoids self-move (empties nested containers).
         cols.compact(keep);
-        size_t w = 0;
-        for (const uint32_t r : keep) {
-            if (w != r) humans[w] = std::move(humans[r]);
-            ++w;
-        }
-        humans.erase(humans.begin() + w, humans.end()); // no default ctor
+        // Same run decomposition (see build_compaction_runs), so the humans
+        // vector ends in the layout cols just moved to. Only rows after a
+        // removal move; Human is non-trivially movable so a run is moved
+        // element-wise ascending, which is safe under left-shift overlap: a
+        // write to dst+k can never hit a src+i not yet read (dst <= src makes
+        // any shared index written only after it was read), and a run is
+        // listed only when src != dst, so no self-move (that would empty a
+        // Human's own state).
+        static std::vector<Run> runs;
+        build_compaction_runs(keep, runs);
+        for (const Run r : runs)
+            for (uint32_t k = 0; k < r.len; ++k)
+                humans[r.dst + k] = std::move(humans[r.src + k]);
+        humans.erase(humans.begin() + keep.size(), humans.end()); // no default ctor
 
         // Compaction shifted rows left; renumber so Human::row matches
         // position again (newborns below append at the correct index
