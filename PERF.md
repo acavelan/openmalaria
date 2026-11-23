@@ -244,3 +244,48 @@ Remaining suspects (round-5 shortlist): `calculateEIR_vector` still 3.6 % @10k v
 +0.4 s; `HumanColumns::compact` 1.3 s irreducible floor ≈ theirs; residual dTLB/column pressure
 (counter re-run vs post-E5 recipe build pending); devirtualisation gap (WHInterface pure-virtual
 trio per host tick — p8-Q2 keeps polymorphism per user order; PGO devirtualises in recipe builds).
+
+### Round 5 — E7 heap-THP: memory side of the tax eliminated; residual is instruction-count-only (2026-11-23)
+
+Post-round-4 state: 3.5 s @10k gap, counters +4.3 % instructions / IPC −3.7 % / dTLB 2.0×.
+Symbol-level attribution declared unusable this deep: (a) LTO inlines differently per tree so
+same-named symbols carry different payloads (E6 correction; expectedNNI annotate showed 41 % in
+divsd = frozen math under whoever owns the symbol); (b) perf-record distorts the two binaries
+differently (record-time gap 0.6 s vs bench gap 3.5 s).
+
+Probe chain: THP=always on the box, but glibc never flags its mmap chunks/heap VMAs
+MADV_HUGEPAGE (defrag=always mode missing). `GLIBC_TUNABLES=glibc.malloc.hugetlb=1` measured on
+BOTH trees: theirs −4.0 % (45.19→43.37), ours −6.1 % (48.54→45.60) — a universal win, ours bigger
+(bigger mapped arrays). Shipped as in-code E7 (no env dependency): `mallopt(M_TOP_PAD=64 MB)` +
+trim-off + `MADV_HUGEPAGE` sweep of rw-anon VMAs at population build / every 52 steps /
+checkpoint load (hint-only, Linux-only, values untouched). Per-column madvise was tried FIRST and
+is a dead mechanism — sub-2 MB malloc VMAs can never host a 2 MB page (measured: 739 madvise calls,
+0 THP); the heap-VMA recipe works (peak AnonHugePages 26 MB vs 0 pre-E7, > env-var version).
+
+E7 (MERGED `eac9764b..`): plain builds −6.1 % @10k / −1.9 % @2k, 7/7 rounds both.
+
+Post-E7 counters @10k (both recipe builds, ours=ex5 vs theirs=pgo3): cycles +2.1 %; instructions
++4.3 % (unchanged — E7 is memory-side); **IPC 2.69 vs 2.64 (we now lead); cache-misses 34 M vs
+61 M (we lead); dTLB-load-misses 0.05 M vs 277 M (5400× lead)**. Memory side of the structural tax:
+CLOSED, all three counters ours.
+
+Final ladder (same window):
+
+| pop | A0 original | theirs (pgo3) | **ours (build-pgo-ex5)** | ours vs A0 | residual gap |
+|---|---|---|---|---|---|
+| 2000 | 12.24 s | 10.47 s | **10.81 s** | **1.132×** | 3.2 % |
+| 10000 | 55.89 s | 45.05 s | **46.51 s** | **1.202×** | 3.2 % |
+
+Tax arc: 9.4/20.4 % → 4.7/7.7 % (round 4) → **3.2/3.2 %**. Shipping binary:
+/home/razlock/git/fork/build-pgo-ex5 (util/pgo-build.sh on rewrite HEAD reproduces it).
+Honesty note: the THP trick is portable — `GLIBC_TUNABLES=glibc.malloc.hugetlb=1` gives THEIR tree
+43.37 s too (env needs no code). Equal-trick comparison: 43.37 vs our 46.51 = 7.2 % — the residual
+instruction surplus (+4.3 %, ≈ SoA indirection + inlining luck) is the real remaining code distance;
+we just happen to have captured the platform win first.
+
+Hunt closed: the residual 3.2 % has no named lane that isn't frozen-formula arithmetic (divsd
+chains) or diffuse SoA indirection. Remaining theoretical levers, all costed and declined:
+per-sweep batch row-pointer flattening of the 5 ragged nested columns (real, ~1 %, high churn),
+devirtualising WHInterface (user veto p8-Q2 keeps the polymorphism; PGO devirtualises at the three
+host-tick calls anyway), SIMD reductions (phase-8 plan, bit-exact-hostile). If a future
+low-density scenario mix materialises, re-evaluate E6 (fork-wt-hunt4) WITHOUT the recipe.
