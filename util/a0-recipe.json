@@ -1,0 +1,8 @@
+{
+  "compiler": "gcc (GCC) 16.2.1 20260810",
+  "gsl": "2.8",
+  "gsl_so_sha256": "a70d9bdc0a17fd9686317933ec02505023a88ce8710e4429bf1904670800f2a7",
+  "machine": "Linux 7.2.14-arch1-1",
+  "source_commit": "cfc3c8e0",
+  "flags": "-O3 -DNDEBUG -ffp-contract=off"
+}

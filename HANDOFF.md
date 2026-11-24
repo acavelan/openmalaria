@@ -1,4 +1,5 @@
-# MAIN-SESSION STATUS (2026-11-20, authoritative — everything below is per-agent history)
+# MAIN-SESSION STATUS (2026-11-24, authoritative — everything below is per-agent history)
+**→ START AT `RECOVERY.md`: full change report, branch map, recovery-from-zero recipe. Branch pushed to origin 2026-11-24 (`rewrite`, `eval/bs-all`, `eval/e6-pyrogen`, `eval/e9-humans`, `eval/instr-counters`, tag `rewrite-status-2026-11-24`). Final: model 16,317 code LOC (baseline 18,813, −13.3%), 10.68s @2k / 45.82s @10k = 1.146×/1.214× vs A0, gap 2.0/1.9pct vs patched-baseline, all gates green at HEAD.**
 `rewrite` HEAD = p8-collapse merged onto p8-poly (merge 488ec0ea + PERF rows). ALL phase-8
 waves 1–2 merged & verified: structure, checkpoint-redo, files, Q2-polymorphism, collapse+reflow.
 **model 16,233 code LOC / 115 files (baseline 18,813 → −2,580).** One namespace: single `namespace OpenMalaria` (p8-ns merged; naming waves 1–2 REVERTED — RunContext/xml_scenario_error/TransmissionModel/ClinicalModel names are back and current; Context/xml_error/Model spellings in rows above that line are historical). Kept nested: scnXml/xsd, Continuous, Deploy, GT, Error/Messages, UnitTest.

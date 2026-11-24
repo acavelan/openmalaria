@@ -334,7 +334,7 @@ Ladder (pgo3 anchored every window; A0 stable 12.24/55.6–55.9 across windows):
 | 10000 | 55.6 s | 44.97 s | **45.82 s** | **1.214×** | **1.9 %** |
 
 Tax arc: 9.4/20.4 → 4.7/7.7 → 3.2/3.2 → **2.0/1.9**. Shipping binary:
-/home/razlock/git/fork/build-pgo-ex6 (util/pgo-build.sh on HEAD reproduces it; 16,263 LOC, −13.6 %).
+/home/razlock/git/fork/build-pgo-ex6 (util/pgo-build.sh on HEAD reproduces it; LOC re-measured at push: 16,317, −13.3 %).
 Residual ~2 % is the ctx-indirection class (named above) + inlining luck; below it, the recipe's
 own cross-window reproducibility (~0.5 %) starts to bite. LOC budget of the hunt: E1 −29, E4 +23,
 E5 +59, E7 +76, E8 +23, E6/E9 rejected ⇒ +152 net against the −2,580 rewrite (−13.6 % intact).
