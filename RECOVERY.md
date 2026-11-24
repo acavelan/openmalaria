@@ -177,3 +177,51 @@ candidate in the same window (the bench script interleaves them for you).
 - `util/bench-om.sh`, `util/bench-scen-10000.xml` — benchmark harness.
 - `util/callcount.c` — LD_PRELOAD call-count shim (attribution tool).
 - `util/a0-recipe.json` — the reference build's exact toolchain record.
+
+## 10. Appendix: "SoA should be faster" — why it had to be earned, not assumed
+
+Our model stores host state as Structure-of-Arrays columns (`HostColumns`: one
+vector per state field; a host is a row index), so the intuition is that
+scanning state should beat the old row-object style nearly for free. True in
+principle; three measured corrections make it accurate.
+
+**1. SoA is a bet on access patterns, not a free speedup.** It pays when loops
+touch few fields across many rows. OpenMalaria's hottest loops (per-host
+within-host update, `probTransmissionToMosquito`) walk MOST FIELDS OF ONE ROW
+at a time — column-major storage, row-major access: every read becomes
+column-base + row-index instead of one `this`-relative offset, and no
+cross-row SIMD is possible because the T1 contract freezes RNG draw order and
+the pyrogen-division recurrence is serial. The model's own semantics block
+SoA's headline win in exactly these loops. Worse, flatness only holds for POD
+elements: 9 of 25 columns hold per-row containers (vectors/maps), so a density
+read chases THREE levels — column base → row container header → its heap
+buffer — partly defeating the layout precisely where it's hottest.
+
+**2. The original code was ALREADY columnar** (`HostColumns` is upstream;
+`rewrite` kept it). So the round-3 "structural tax" was never SoA vs AoS — it
+was four concrete things, three of which we fixed:
+
+| tax item | why it hurt | fixed by |
+|---|---|---|
+| gather-compaction per step | re-gathered O(25 cols × N rows) EVERY 5-day step for 10,293 steps, while theirs shifts only the short tail past the clustered deaths | E4+E8 (run-based memmove of column runs — itself a pure SoA win) |
+| two-pass vectorUpdate | two host-major slab sweeps where one pass does | E1 |
+| per-(host,species) row walks | getters re-walked ctx→column→row→iv per call, not LTO-inlinable across 3 TUs | E5 |
+| scattered heap | 25 growing allocations spread the columns over more 4K pages than their denser rows | E7 (in-code THP) |
+| ctx pointer chains | state moved from file-scope statics (one rip-relative load) to `this→ctx→subobject` re-materialisation | OPEN — ~1% ceiling, declined |
+
+**3. After the fixes, SoA visibly wins its own scorecard** (pop 10,000, same
+recipe, same windows, ours vs patched baseline): dTLB misses 0.05M vs 277M
+(≈5,400×), cache misses 34M vs 61M, IPC 2.69 vs 2.64 — and vs the original
+A0: 6.2M mallocs/run vs 164M. What remains of the gap is instruction COUNT,
+not memory behaviour: 662.8B vs 635.3B retired instructions (+4.3%) —
+per-element address re-materialisation in the row-major hot lanes — which the
+memory lead cashes back down to the 1.9% wall-clock residual.
+
+**Verdict:** SoA delivered exactly what it promises (locality, low TLB/cache
+pressure, whole-column memmove runs, one-pass column algorithms) and cost
+exactly what it promises (addressing overhead for row-major access, extra
+indirection for container columns). The tax we paid was algorithmic and
+codegen-level — not the layout — and at larger populations, where the memory
+lead grows and the instruction surplus doesn't, the layout is the side to be
+on. That the layout also cut per-column code is why it survived every phase of
+the LOC rewrite.
