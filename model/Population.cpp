@@ -77,6 +77,7 @@ void Population::createInitialHumans() {
 }
 
 void Population::update() {
+    ++g_compact_stats.pop_updates; // TEMP instrumentation
     //NOTE: other parts of code are not set up to handle changing population size. Also
     // size is assumed to be the _actual and exact_ population size by other code.
     int cumPop = 0;
@@ -103,6 +104,9 @@ void Population::update() {
     } // end of per-human updates
 
     if (keep.size() != humans.size()) {
+        // TEMP instrumentation
+        ++g_compact_stats.steps_with_removals;
+        g_compact_stats.removals_total += humans.size() - keep.size();
         // One stable batched compaction == the old per-death erase_at +
         // humans.erase (same survivor order), but each column shifts once.
         // The w != r guard avoids self-move (empties nested containers).

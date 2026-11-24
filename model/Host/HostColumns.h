@@ -37,6 +37,22 @@
 
 namespace OpenMalaria {
 
+// TEMP instrumentation (diagnostic build only, not for commit): compaction
+// counters, flushed to stderr from this static's destructor at exit.
+struct CompactStats {
+    unsigned long long calls = 0, skipped = 0, rows_moved = 0;
+    unsigned long long scalar_rows = 0, nested_rows = 0, map_rows = 0;
+    unsigned long long pop_updates = 0, steps_with_removals = 0, removals_total = 0;
+    ~CompactStats() {
+        std::fprintf(stderr,
+                     "COMPACT calls=%llu skipped=%llu rows_moved=%llu scalar_rows=%llu nested_rows=%llu map_rows=%llu\n"
+                     "POP updates=%llu steps_with_removals=%llu removals_total=%llu\n",
+                     calls, skipped, rows_moved, scalar_rows, nested_rows, map_rows, pop_updates, steps_with_removals,
+                     removals_total);
+    }
+};
+inline CompactStats g_compact_stats;
+
 class DecayFunction;
 
 /** Best-effort perf hint only, never a correctness path: madvise(MADV_HUGEPAGE)
@@ -210,6 +226,16 @@ struct HumanColumns {
     /// self-move of a nested column (vector/map element) empties it.
     /// Adding a column: append to one of the e(...) calls below.
     void compact(const std::vector<uint32_t>& keep) {
+        // TEMP instrumentation: 17 scalar cols, 7 nested-vector cols, 1 map col.
+        ++g_compact_stats.calls;
+        if (keep.size() == rng.size()) {
+            ++g_compact_stats.skipped; // no internal early-out exists; should stay 0
+        } else {
+            g_compact_stats.rows_moved += keep.size();
+            g_compact_stats.scalar_rows += 17ull * keep.size();
+            g_compact_stats.nested_rows += 7ull * keep.size();
+            g_compact_stats.map_rows += 1ull * keep.size();
+        }
         const auto e = [&keep](auto& col) {
             size_t w = 0;
             for (const uint32_t r : keep) {
