@@ -213,9 +213,10 @@ was four concrete things, three of which we fixed:
 recipe, same windows, ours vs patched baseline): dTLB misses 0.05M vs 277M
 (≈5,400×), cache misses 34M vs 61M, IPC 2.69 vs 2.64 — and vs the original
 A0: 6.2M mallocs/run vs 164M. What remains of the gap is instruction COUNT,
-not memory behaviour: 662.8B vs 635.3B retired instructions (+4.3%) —
-per-element address re-materialisation in the row-major hot lanes — which the
-memory lead cashes back down to the 1.9% wall-clock residual.
+not memory behaviour: 647.5B vs 635.3B retired instructions (+1.9%) with
+cycles +2.1% — a ~1:1 exposure: the remaining surplus (per-element address
+re-materialisation in the row-major hot lanes, E8 having removed the earlier
+larger share) now converts directly into the 1.9% wall-clock residual.
 
 **Verdict:** SoA delivered exactly what it promises (locality, low TLB/cache
 pressure, whole-column memmove runs, one-pass column algorithms) and cost
