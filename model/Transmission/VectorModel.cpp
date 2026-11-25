@@ -27,7 +27,6 @@
 #include "mon/Continuous.h"
 #include "util/vectors.h"
 #include "util/ModelOptions.h"
-#include "util/SpeciesIndexChecker.h"
 #include "util/StreamValidator.h"
 #include "Transmission/Anopheles/SimpleMPDAnophelesModel.h"
 
@@ -296,33 +295,6 @@ void VectorModel::init2(const vector<Host::Human> &population)
     simulationMode = forcedEIR; // now we should be ready to start
 }
 
-void VectorModel::initVectorInterv(const scnXml::Description::AnophelesSequence &list, size_t instance, const string &name)
-{
-    SpeciesIndexChecker checker(name, speciesIndex);
-    for (const scnXml::VectorSpeciesIntervention &anoph : list)
-    {
-        const string &mosq = anoph.getMosquito();
-        species[checker.getIndex(mosq)]->initVectorInterv(anoph, instance);
-    }
-    checker.checkNoneMissed();
-}
-void VectorModel::initVectorTrap(const scnXml::VectorTrap::DescriptionSequence list, size_t instance,
-                                 const scnXml::VectorTrap::NameOptional name_opt)
-{
-    stringstream name_ss;
-    if (name_opt.present())
-        name_ss << name_opt.get();
-    else
-        name_ss << "vector trap intervention " << (instance + 1);
-    string name = name_ss.str();
-    SpeciesIndexChecker checker(name, speciesIndex);
-    for (const scnXml::Description1 &anoph : list)
-    {
-        const string &mosq = anoph.getMosquito();
-        species[checker.getIndex(mosq)]->initVectorTrap(anoph, instance);
-    }
-    checker.checkNoneMissed();
-}
 void VectorModel::scaleEIR(double factor)
 {
     for (size_t i = 0; i < speciesIndex.size(); ++i)
@@ -514,18 +486,6 @@ void VectorModel::deployVectorTrap(size_t instance, double number, SimTime lifes
     }
 }
 
-void VectorModel::changeEIRIntervention(const scnXml::NonVector &nonVectorData)
-{
-    if((simulationMode != forcedEIR) && (simulationMode != transientEIRknown))
-        throw util::xml_scenario_error("changeEIR intervention can only be used in forced EIR mode");
-
-    simulationMode = transientEIRknown;
-
-    if(speciesIndex.size() != 1)
-        throw util::xml_scenario_error("changeEIR intervention can only be used with a single anopheles species");
-
-    species[0]->changeEIRIntervention(nonVectorData);
-}
 
 void VectorModel::uninfectVectors()
 {

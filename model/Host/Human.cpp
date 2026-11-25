@@ -32,7 +32,6 @@
 #include "Population.h"
 #include "interventions/InterventionManager.h"
 #include "mon/Monitoring.h"
-#include "schema/scenario.h"
 
 namespace OM { namespace Host {
     using namespace OM::util;

@@ -26,7 +26,6 @@
 #include "util/random.h"
 #include "util/errors.h"
 #include "util/ModelOptions.h"
-#include "schema/interventions.h"
 #include "util/StreamValidator.h"
 #include "Host/WithinHost/Genotypes.h"
 
@@ -39,101 +38,6 @@ using namespace OM::util;
 
 vector<VaccineComponent*> VaccineComponent::params;
 ComponentId VaccineComponent::reportComponent = ComponentId::wholePop();
-
-VaccineComponent::VaccineComponent( ComponentId component, const scnXml::VaccineDescription& vd, Vaccine::Types type ) :
-        HumanInterventionComponent(component),
-        type(type),
-        decayFunc(DecayFunction::makeObject( vd.getDecay(), "decay" )),
-        efficacyB(vd.getEfficacyB().getValue())
-{
-    if( type == Vaccine::BSV && ModelOptions::option( util::VIVAX_SIMPLE_MODEL ) )
-        throw util::unimplemented_exception( "blood stage vaccines (BSV) cannot be used with vivax model" );
-    
-    opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
-
-    if( reportComponent == ComponentId::wholePop() /* the initial value */ ){
-        // set to the first type described
-        reportComponent = component;
-    }
-
-    const scnXml::VaccineDescription::InitialEfficacySequence ies = vd.getInitialEfficacy();
-    const scnXml::VaccineDescription::PhenotypeSequence ps = vd.getPhenotype();
-
-    //cout << ies.size() << " " << ps.size() << " " << WithinHost::Genotypes::N() << endl;
-
-    if(opt_vaccine_genotype == false && ies.size() == 0)
-        throw util::xml_scenario_error( "Vaccine: initialEfficacy is required but is missing" );
-    
-    if(opt_vaccine_genotype == true && ies.size() != 0)
-        throw util::xml_scenario_error( "Vaccine: initialEfficacy outside of phenotype definition with VACCINE_GENOTYPE option enabled is not allowed" );
-    
-/*    if(opt_vaccine_genotype == true && ies.size() == 0 && ps.size() != WithinHost::Genotypes::N())
-        throw util::xml_scenario_error( "Vaccine: Phenotype sequence must reference all genotypes" );
-    */
-    if(opt_vaccine_genotype == true)
-    {
-        perGenotypeInitialMeanEfficacy.resize(WithinHost::Genotypes::N());
-
-        for(size_t i = 0; i < ps.size(); ++i)
-        {
-            //cout << "Phenotype: " << ps[i].getName() << endl;
-            
-            const scnXml::VaccinePhenotype::RestrictionSequence restrictions = ps[i].getRestriction();
-            const scnXml::VaccinePhenotype::InitialEfficacySequence vpies = ps[i].getInitialEfficacy();
-
-            for(size_t j = 0; j < restrictions.size(); ++j)
-            {
-                //cout << "\tonLocus: " << restrictions[j].getOnLocus() << ", " << "toAllelle: " << restrictions[j].getToAllele() << endl;
-                //cout << "\tmatching allelle code: " << WithinHost::Genotypes::findAlleleCode(restrictions[j].getOnLocus(), restrictions[j].getToAllele()) << endl;
-
-                uint32_t allele_code = WithinHost::Genotypes::findAlleleCode(restrictions[j].getOnLocus(), restrictions[j].getToAllele());
-
-                if( allele_code == numeric_limits<uint32_t>::max() ){
-                    throw util::xml_scenario_error("phenotype has "
-                    "restriction on locus " + string(restrictions[j].getOnLocus())
-                    + " allele " + string(restrictions[j].getToAllele()) + " but this locus/allele "
-                    "has not been defined in parasiteGenetics section");
-                }
-
-                if (allele_code >= WithinHost::Genotypes::N())
-                    throw util::xml_scenario_error( string("Vaccine phenotype: Invalid Locus ") + restrictions[j].getOnLocus() + string(" and allele ") + restrictions[j].getToAllele());
-
-                if (perGenotypeInitialMeanEfficacy[allele_code].size() != 0)
-                    throw util::xml_scenario_error( string("Vaccine phenotype: there are multiple restrictions locus " + string(restrictions[j].getOnLocus() + string(" and allele ") + restrictions[j].getToAllele())));
-
-                if(vpies.size() == 0)
-                    throw util::xml_scenario_error( string("Vaccine phenotype: initialEfficacy is required but is missing for phenotype: " + string(restrictions[j].getOnLocus() + string(" ") + restrictions[j].getToAllele())));
-
-                perGenotypeInitialMeanEfficacy[allele_code].resize(vpies.size());
-
-                for(size_t k = 0; k < vpies.size(); ++k)
-                    perGenotypeInitialMeanEfficacy[allele_code][k] = vpies[k].getValue();
-            }
-        }
-
-        // Check that all genotypes have been adressed
-        for(size_t i = 0; i < WithinHost::Genotypes::N(); ++i)
-        {
-            if(perGenotypeInitialMeanEfficacy[i].size() == 0)
-                throw util::xml_scenario_error( "Vaccine phenotype: missing restriction for at least one locus and allele pair" );
-        }
-    }
-    else
-    {
-        perGenotypeInitialMeanEfficacy.resize(1);
-        perGenotypeInitialMeanEfficacy[0].resize(ies.size());
-        for(size_t i = 0; i < ies.size(); ++i)
-            perGenotypeInitialMeanEfficacy[0][i] = ies[i].getValue();
-    }
-
-   /* initialMeanEfficacy.resize (ies.size());
-    for(size_t i = 0; i < initialMeanEfficacy.size(); ++i)
-        initialMeanEfficacy[i] = ies[i].getValue();*/
-    
-    if( params.size() <= component.id ) params.resize( component.id + 1 );
-    assert( params[component.id] == 0 );
-    params[component.id] = this;
-}
 
 void VaccineComponent::deploy(Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const
 {

@@ -27,8 +27,8 @@
 #include "util/ModelOptions.h"
 #include "util/ModelNameProvider.h"
 #include "util/StreamValidator.h"
-#include "util/DocumentLoader.h"
-#include "util/XMLChecker.h"
+#include "xml/DocumentLoader.h"
+#include "xml/XMLChecker.h"
 
 #include "mon/Continuous.h"
 #include "mon/init.h"
@@ -40,7 +40,6 @@
 #include "Host/NeonatalMortality.h"
 #include "checkpoint.h"
 
-#include "schema/scenario.h"
 
 #include <cerrno>
 
