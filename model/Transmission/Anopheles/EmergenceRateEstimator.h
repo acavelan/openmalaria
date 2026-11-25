@@ -100,27 +100,30 @@ inline double findAngle(const double EIRRotageAngle, const std::vector<double> &
     return minAngle;
 }
 
-class EmergenceRateEstimator
+/** Estimates/forces the mosquito emergence rate during vector-model fitting:
+ * one final class, behaviour chosen by DATA (Kind). The AdaptiveFitter kind
+ * iterates (estimate() returns true until converged); the Solver kind computes
+ * the exact solution in one step (ATSB secant path: phase 8/9). */
+class EmergenceRateEstimator final
 {
 public:
-    virtual ~EmergenceRateEstimator() = default;
+    enum class Kind { AdaptiveFitter, Solver };
 
-    // Interface: returns true if further fitting iterations are needed.
-    // EmergenceRateSolver returns false because it computes the exact solution in one step.
-    virtual bool estimate(AnophelesModel& m, const std::vector<double> &laggedKappa, double meanAvail) = 0;
-};
-
-class EmergenceRateAdaptiveFitter final : public EmergenceRateEstimator
-{
-public:
-    EmergenceRateAdaptiveFitter(AnophelesModel &m) : scaleFactor(1.0), rotated(false), scaled(false)
+    EmergenceRateEstimator (Kind kind, AnophelesModel &m, int populationSize) :
+        kind(kind), scaleFactor(1.0), rotated(false), scaled(false),
+        populationSize(populationSize)
     {
-        // usually around 20 days; no real analysis for effect of changing EIPDuration or mosqRestDuration
-        shiftAngle = m.EIRRotateAngle - (m.mosq.EIPDuration + 10) / 365. * 2. *M_PI; 
+        if (kind == Kind::AdaptiveFitter) {
+            // usually around 20 days; no real analysis for effect of changing EIPDuration or mosqRestDuration
+            shiftAngle = m.EIRRotateAngle - (m.mosq.EIPDuration + 10) / 365. * 2. *M_PI;
+        }
     }
 
-    bool estimate(AnophelesModel &m, const std::vector<double> &laggedKappa, double meanAvail) override
+    // Returns true if further fitting iterations are needed.
+    bool estimate(AnophelesModel &m, const std::vector<double> &laggedKappa, double meanAvail)
     {
+        if (kind == Kind::Solver)
+            return estimateSolver(m, laggedKappa, meanAvail);
         std::vector<double> avgAnnualS_v(sim::oneYear(), 0.0);
         for (SimTime i = sim::fromYearsI(4); i < sim::fromYearsI(5); i = i + sim::oneDay())
         {
@@ -181,16 +184,7 @@ public:
     }
 
 private:
-    double scaleFactor, shiftAngle;
-    bool rotated, scaled;
-};
-
-class EmergenceRateSolver final : public EmergenceRateEstimator
-{
-public:
-    EmergenceRateSolver(AnophelesModel &m, int populationSize) : populationSize(populationSize) {}
-
-    bool estimate(AnophelesModel &m, const std::vector<double> &laggedKappa, double meanAvail) override
+    bool estimateSolver(AnophelesModel &m, const std::vector<double> &laggedKappa, double meanAvail)
     {
         std::vector<double> &mosqEmergeRateVector = m.mosqEmergeRate;
         int thetap = sim::DAYS_IN_YEAR;
@@ -269,7 +263,11 @@ public:
         return false;
     }
 
-private:
+    Kind kind;
+    // AdaptiveFitter-kind state:
+    double scaleFactor, shiftAngle;
+    bool rotated, scaled;
+    // Solver-kind state:
     int populationSize;
 };
 

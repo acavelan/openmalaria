@@ -20,7 +20,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "PkPd/Drug/LSTMDrugThreeComp.h"
+// LSTMDrug ThreeComp kind (was LSTMDrugThreeComp; hierarchy collapsed phase 4b):
+// "Mathematical Expressions of the Pharmacokinetic and Pharmacodynamic Models
+// implemented in the Monolix software", Julie Bertrand and France Mentré, Sept
+// 2008. From page 37, in particular equation (1.72) p44.
+#include "PkPd/Drug/LSTMDrug.h"
+#include "PkPd/Drug/LSTMDrugType.h"
 #include "Host/WithinHost/Infection/CommonInfection.h"
 #include "util/errors.h"
 #include "util/StreamValidator.h"
@@ -32,39 +37,10 @@ using namespace std;
 
 namespace OM { namespace PkPd {
 
-LSTMDrugThreeComp::LSTMDrugThreeComp(const LSTMDrugType& type, LocalRng& rng) :
-    LSTMDrug(type.sample_Vd(rng)),
-    typeData(type),
-    concA(0.0), concB(0.0), concC(0.0), concABC(0.0),
-    elim_sample(type.sample_elim_rate(rng)),
-    k12(type.sample_k12(rng)),
-    k21(type.sample_k21(rng)),
-    k13(type.sample_k13(rng)),
-    k31(type.sample_k31(rng)),
-    nka(-type.sample_ka(rng)),
-    last_bm(numeric_limits<double>::quiet_NaN()),
-    na(numeric_limits<double>::quiet_NaN()),
-    nb(numeric_limits<double>::quiet_NaN()),
-    ng(numeric_limits<double>::quiet_NaN()),
-    A(numeric_limits<double>::quiet_NaN()),
-    B(numeric_limits<double>::quiet_NaN()),
-    C(numeric_limits<double>::quiet_NaN())
-{
-    // These are from the Monolix article, pp38-39.
-}
-
-size_t LSTMDrugThreeComp::getIndex() const {
-    return typeData.getIndex();
-}
-double LSTMDrugThreeComp::getConcentration(size_t index) const {
-    if( index == typeData.getIndex() ) return conc();
-    else return 0.0;
-}
-
-void LSTMDrugThreeComp::updateCached(double body_mass) const{
+void LSTMDrug::updateCached(double body_mass) const{
     if( last_bm == body_mass ) return;
     
-    double k = elim_sample * pow(body_mass, typeData.neg_m_exponent());
+    double k = elim_sample * pow(body_mass, typeData->neg_m_exponent());
     
     const double a0 = k*k21*k31;
     const double a1 = k*k31 + k21*k31 + k21*k13 + k*k21 + k31*k12;
@@ -129,7 +105,7 @@ gsl_integration_workspace *gsl_intgr_wksp = gsl_integration_workspace_alloc (GSL
 //NOTE: we "should" free, but mem-leaks at end of program aren't really important
 // gsl_integration_workspace_free (gsl_intgr_wksp);
 
-double LSTMDrugThreeComp::calculateFactor(const Params_fC& p, double duration) const{
+double LSTMDrug::calculateFactor_fC(const Params_fC& p, double duration) const{
     gsl_function F;
     F.function = &func_fC;
     // gsl_function doesn't accept const; we re-apply const later
@@ -158,16 +134,16 @@ double LSTMDrugThreeComp::calculateFactor(const Params_fC& p, double duration) c
 
 // TODO: in high transmission, is this going to get called more often than updateConcentration?
 // When does it make sense to try to optimise (avoid doing decay calcuations here)?
-double LSTMDrugThreeComp::calculateDrugFactor(LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const {
+double LSTMDrug::drugFactor_threeComp(LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const {
     if( conc() == 0.0 && doses.size() == 0 ) return 1.0; // nothing to do
     updateCached(body_mass);
     
     Params_fC p;
     p.cA = concA;       p.cB = concB;   p.cC = concC;   p.cABC = concABC;
     p.na = na;  p.nb = nb;      p.ng = ng;      p.nka = nka;
-    const LSTMDrugPD& pd = typeData.getPD(inf->genotype());
+    const LSTMDrugPD& pd = typeData->getPD(inf->genotype());
     p.n = pd.slope();   p.V = pd.max_killing_rate();
-    p.Kn = pd.IC50_pow_slope(rng, typeData.getIndex(), inf);
+    p.Kn = pd.IC50_pow_slope(rng, typeData->getIndex(), inf);
     
     double time = 0.0;  // time since start of day
     double totalFactor = 1.0;   // survival factor for whole day
@@ -178,7 +154,7 @@ double LSTMDrugThreeComp::calculateDrugFactor(LocalRng& rng, WithinHost::CommonI
         if( time_conc.first < 1.0 /*i.e. today*/ ){
             if( time < time_conc.first ){
                 double duration = time_conc.first - time;
-                totalFactor *= calculateFactor(p, duration);
+                totalFactor *= calculateFactor_fC(p, duration);
                 p.cA *= exp(p.na * duration);
                 p.cB *= exp(p.nb * duration);
                 p.cC *= exp(p.ng * duration);
@@ -195,13 +171,13 @@ double LSTMDrugThreeComp::calculateDrugFactor(LocalRng& rng, WithinHost::CommonI
         }
     }
     if( time < 1.0 ){
-        totalFactor *= calculateFactor(p, 1.0 - time);
+        totalFactor *= calculateFactor_fC(p, 1.0 - time);
     }
     
     return totalFactor;
 }
 
-void LSTMDrugThreeComp::updateConcentration (double body_mass) {
+void LSTMDrug::updateConcentration_threeComp (double body_mass) {
     if( conc() == 0.0 && doses.size() == 0 ) return;     // nothing to do
     updateCached(body_mass);
     
@@ -233,7 +209,7 @@ void LSTMDrugThreeComp::updateConcentration (double body_mass) {
     doses.erase(doses.begin(), doses.begin() + doses_taken);
     
     util::streamValidate( conc() );
-    if( conc() < typeData.getNegligibleConcentration() ){
+    if( conc() < typeData->getNegligibleConcentration() ){
         // once negligible, try to optimise so that we don't have to do
         // anything next time step
         concA = 0.0;
@@ -243,7 +219,7 @@ void LSTMDrugThreeComp::updateConcentration (double body_mass) {
     }
 }
 
-void LSTMDrugThreeComp::checkpoint(ostream& stream){
+void LSTMDrug::checkpoint_threeComp(ostream& stream){
     concA & stream;
     concB & stream;
     concC & stream;
@@ -262,7 +238,7 @@ void LSTMDrugThreeComp::checkpoint(ostream& stream){
     B & stream;
     C & stream;
 }
-void LSTMDrugThreeComp::checkpoint(istream& stream){
+void LSTMDrug::checkpoint_threeComp(istream& stream){
     concA & stream;
     concB & stream;
     concC & stream;
