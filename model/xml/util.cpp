@@ -399,8 +399,11 @@ namespace OM { namespace util {
     {
         if (namedModelToUse == util::ModelNames::base)
         {
-            // This completely discards any legacy model options set above.
-            options = getBaseModelOptions();
+            // This completely discards any legacy model options set above: the
+            // named "base" model is all options off. (Note: the base model sets
+            // values that are not "default" — defaults often undesired, but kept
+            // on for legacy compatibility absent input to the contrary.)
+            options.reset();
         }
         else
         {

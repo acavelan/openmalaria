@@ -166,32 +166,15 @@ struct HumanColumns {
     }
 
     /// Drop row `r` from every column (Population-only; mirrors humans.erase).
+    /// Adding a column: append to one of the e(...) calls below.
     void erase_at( size_t r ) {
-        rng.erase( rng.begin() + r );
-        dob.erase( dob.begin() + r );
-        death.erase( death.begin() + r );
-        cohort_set.erase( cohort_set.begin() + r );
-        cohorts.erase( cohorts.begin() + r );
-        mon_age_group.erase( mon_age_group.begin() + r );
-        next_cts_dist.erase( next_cts_dist.begin() + r );
-        imm_h.erase( imm_h.begin() + r );
-        imm_Y.erase( imm_Y.begin() + r );
-        imm_Y_lag.erase( imm_Y_lag.begin() + r );
-        cum_prim_inf.erase( cum_prim_inf.begin() + r );
-        t_last_treatment.erase( t_last_treatment.begin() + r );
-        es_case_start.erase( es_case_start.begin() + r );
-        es_time_recovery.erase( es_time_recovery.begin() + r );
-        es_time_treatment.erase( es_time_treatment.begin() + r );
-        es_prev_density.erase( es_prev_density.begin() + r );
-        anoph_ento_raw.erase( anoph_ento_raw.begin() + r );
-        anoph_ento_avail.erase( anoph_ento_avail.begin() + r );
-        anoph_prob_biting.erase( anoph_prob_biting.begin() + r );
-        anoph_prob_resting.erase( anoph_prob_resting.begin() + r );
-        rel_avail_het.erase( rel_avail_het.begin() + r );
-        outside_trans.erase( outside_trans.begin() + r );
-        iv.erase( iv.begin() + r );
-        vac.erase( vac.begin() + r );
-        copula_g.erase( copula_g.begin() + r );
+        const auto e = [r]( auto& col ) { col.erase( col.begin() + r ); };
+        e(rng); e(dob); e(death); e(cohort_set); e(cohorts); e(mon_age_group);
+        e(next_cts_dist); e(imm_h); e(imm_Y); e(imm_Y_lag); e(cum_prim_inf);
+        e(t_last_treatment); e(es_case_start); e(es_time_recovery);
+        e(es_time_treatment); e(es_prev_density); e(anoph_ento_raw);
+        e(anoph_ento_avail); e(anoph_prob_biting); e(anoph_prob_resting);
+        e(rel_avail_het); e(outside_trans); e(iv); e(vac); e(copula_g);
     }
 };
 

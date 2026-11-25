@@ -180,14 +180,13 @@ void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human, double 
 	if( (cm.esPgState & Episode::COMPLICATED)
 	    && !(cm.esPgState & Episode::DIRECT_DEATH)
 	) {
-            const bool inHospital = true /*FIXME auxOut.hospitalisation == CMAuxOutput::IMMEDIATE */;
 	    double pDeath = ClinicalModel::caseFatalityRate.eval( ageYears );
-	    // community fatality rate when not in hospital or delayed hospital entry
-            if( !inHospital )
-                pDeath = ClinicalModel::getCommunityCFR( pDeath );
+	    // NOTE: hospitalisation is hardwired (was: const bool inHospital = true,
+	    // FIXME auxOut.hospitalisation == CMAuxOutput::IMMEDIATE), so the
+	    // community-CFR (!inHospital) branch and the inHospital guard around
+	    // expectedHospitalDeaths were removed as dead (audit sweep).
             mon::recordStat(mon::measure("expectedDirectDeaths"), human, pDeath);
-            if( inHospital )
-                mon::recordStat(mon::measure("expectedHospitalDeaths"), human, pDeath);
+            mon::recordStat(mon::measure("expectedHospitalDeaths"), human, pDeath);
 	    // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
 	    if (human.rng().uniform_01() < pDeath) {
 		cm.esPgState = Episode::State (cm.esPgState | Episode::DIRECT_DEATH | Episode::EVENT_FIRST_DAY);
@@ -211,7 +210,6 @@ void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human, double 
                 bool needTreat = human.rng().bernoulli(pNeedTreat);
                 
                 // Calculate chance of antibiotic administration:
-                double pTreatment = 0.0;
                 /*FIXME
                 if( auxOut.AB_provider != CMAuxOutput::NO_AB ){
                     // Treatment seeking; may be at a health facility or from
@@ -235,20 +233,17 @@ void esClinicalUpdate (ClinicalModel& cm, RunContext& ctx, Human& human, double 
                     pTreatment = oddsTreatment / (1.0 + oddsTreatment);
                 }*/
                 
-                double treatmentEffectMult = 1.0;
-                
                 // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-                if( human.rng().uniform_01() < pTreatment ){
-                    /*FIXME: impossible due to above; NMF output removed
-                    Survey::current().addInt( Report::MI_NMF_TREATMENTS, human, 1 );
-                    treatmentEffectMult = ClinicalEventScheduler::oneMinusEfficacyAb;
-                    */
-                }
+                // Draw kept; the old `uniform_01() < pTreatment` branch was
+                // provably never taken (pTreatment was hardwired 0.0, see the
+                // FIXME above), so its empty body and treatmentEffectMult
+                // (always 1.0) are removed.
+                human.rng().uniform_01();
                 
                 // In a severe NMF case (only when not malarial), there is a
                 // chance of death:
                 if( needTreat ){
-                    double pDeath = ClinicalEventScheduler::severeNmfMortality.eval( ageYears ) * treatmentEffectMult;
+                    double pDeath = ClinicalEventScheduler::severeNmfMortality.eval( ageYears );
                     if( human.rng().uniform_01() < pDeath ){
                         cm.esPgState = Episode::State (cm.esPgState | Episode::DIRECT_DEATH);
                     }

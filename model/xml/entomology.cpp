@@ -459,7 +459,7 @@ TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, in
             annualEIR += initialisationEIR[indTS];
         }
 
-        initialKappa.assign(ctx.clock.inSteps(sim::fromYearsI(nYearsWarmupData)), 0.0);
+        initialKappa.assign(ctx.clock.inSteps(sim::fromYearsI(5)), 0.0);   // 5y warmup data (was nYearsWarmupData)
     }
 
 // Shared loop tail of both changeEIRIntervention variants: fills

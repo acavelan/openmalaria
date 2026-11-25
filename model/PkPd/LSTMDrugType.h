@@ -128,9 +128,6 @@ public:
     LSTMDrugType(LSTMDrugType&&) = default;
     LSTMDrugType& operator=(LSTMDrugType&&) = default;
     
-    inline size_t getIndex() const {
-        return index;
-    }
     inline double getNegligibleConcentration() const{
         return negligible_concentration;
     }

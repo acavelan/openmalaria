@@ -109,29 +109,19 @@ void infection_init_empirical(RunContext& ctx){
 
     std::istringstream csvStream(csvLine);
 
-    string csvField1, csvField2, csvField3, csvField4, csvField5, csvField6, csvField7;
-
     // read every element from the line that is separated by commas
-    getline(csvStream, csvField1, ',');
-    getline(csvStream, csvField2, ',');
-    getline(csvStream, csvField3, ',');
-    getline(csvStream, csvField4, ',');
-    getline(csvStream, csvField5, ',');
-    getline(csvStream, csvField6, ',');
-    getline(csvStream, csvField7, ',');
+    string csvField[7];
+    for( string& field : csvField ) getline(csvStream, field, ',');
 
-    istringstream csvNum1(csvField1), csvNum2(csvField2), csvNum3(csvField3), csvNum4(csvField4), csvNum5(csvField5), csvNum6(csvField6), csvNum7 (csvField7);
-    
+    istringstream csvNum1(csvField[0]);
     int day;
     csvNum1 >> day;
     if (day < 0 || day >= _maximumDurationInDays)
       throw TRACED_EXCEPTION_DEFAULT ("EmpiricalInfection::init(): invalid day");
-    csvNum2 >> _mu_beta1[day];
-    csvNum3 >> _sigma_beta1[day];
-    csvNum4 >> _mu_beta2[day];
-    csvNum5 >> _sigma_beta2[day];
-    csvNum6 >> _mu_beta3[day];
-    csvNum7 >> _sigma_beta3[day];
+    // value order unchanged: mu/sigma of beta1, beta2, beta3
+    double* target[6] = { &_mu_beta1[day], &_sigma_beta1[day], &_mu_beta2[day],
+                          &_sigma_beta2[day], &_mu_beta3[day], &_sigma_beta3[day] };
+    for( int i=0; i<6; ++i ){ istringstream num(csvField[i + 1]); num >> *target[i]; }
   }  
   f_autoRegressionParameters.close();
 }

@@ -98,41 +98,31 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
 
     SlotAllocator::clamp_new( nNewInfs_i, nNewInfs_l, numInfs );   // mode B
 
-    numInfs += nNewInfs_i;
-    assert( numInfs>=0 && numInfs<=SlotAllocator::MAX_INFECTIONS );
-    for( int i=0; i<nNewInfs_i; ++i ) {
-        uint32_t genotype = ctx.genotypes.sampleGenotype(rng, genotype_weights_i);
+    // i/l twin fold: each side completes every draw before the next side
+    // starts (numInfs update, loop, assert), so folding the twins into a
+    // 2-element loop leaves the per-host RNG draw sequence byte-identical.
+    struct Side { vector<double>& weights; int& nNewInfs; InfectionOrigin origin; };
+    Side sides[] = { { genotype_weights_i, nNewInfs_i, InfectionOrigin::Introduced },
+                     { genotype_weights_l, nNewInfs_l, InfectionOrigin::Indigenous } };
+    for( Side& side : sides ) {
+        numInfs += side.nNewInfs;
+        assert( numInfs>=0 && numInfs<=SlotAllocator::MAX_INFECTIONS );
+        for( int i=0; i<side.nNewInfs; ++i ) {
+            uint32_t genotype = ctx.genotypes.sampleGenotype(rng, side.weights);
 
-        // If opt_vaccine_genotype is true the infection is discarded with probability 1-vaccineFactor
-        if( opt_vaccine_genotype )
-        {
-            double vaccineFactor = human.vaccine_factor( interventions::Vaccine::PEV, genotype );
-            // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-            if(vaccineFactor == 1.0 || human.rng().bernoulli(vaccineFactor))
-                infections.push_back(infection_new (ctx, rng, genotype, InfectionOrigin::Introduced, Infection::Kind::Descriptive));
+            // If opt_vaccine_genotype is true the infection is discarded with probability 1-vaccineFactor
+            if( opt_vaccine_genotype )
+            {
+                double vaccineFactor = human.vaccine_factor( interventions::Vaccine::PEV, genotype );
+                // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
+                if(vaccineFactor == 1.0 || human.rng().bernoulli(vaccineFactor))
+                    infections.push_back(infection_new (ctx, rng, genotype, side.origin, Infection::Kind::Descriptive));
+            }
+            else
+                infections.push_back(infection_new (ctx, rng, genotype, side.origin, Infection::Kind::Descriptive));
         }
-        else if (opt_vaccine_genotype == false)
-            infections.push_back(infection_new (ctx, rng, genotype, InfectionOrigin::Introduced, Infection::Kind::Descriptive));
+        assert( numInfs == static_cast<int>(infections.size()) );
     }
-    assert( numInfs == static_cast<int>(infections.size()) );
-
-    numInfs += nNewInfs_l;
-    assert( numInfs>=0 && numInfs<=SlotAllocator::MAX_INFECTIONS );
-    for( int i=0; i<nNewInfs_l; ++i ) {
-        uint32_t genotype = ctx.genotypes.sampleGenotype(rng, genotype_weights_l);
-
-        // If opt_vaccine_genotype is true the infection is discarded with probability 1-vaccineFactor
-        if( opt_vaccine_genotype )
-        {
-            double vaccineFactor = human.vaccine_factor( interventions::Vaccine::PEV, genotype );
-            // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-            if(vaccineFactor == 1.0 || human.rng().bernoulli(vaccineFactor))
-                infections.push_back(infection_new (ctx, rng, genotype, InfectionOrigin::Indigenous, Infection::Kind::Descriptive));
-        }
-        else if (opt_vaccine_genotype == false)
-            infections.push_back(infection_new (ctx, rng, genotype, InfectionOrigin::Indigenous, Infection::Kind::Descriptive));
-    }
-    assert( numInfs == static_cast<int>(infections.size()) );
 
     updateImmuneStatus ();
 
@@ -203,21 +193,7 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
     assert( (std::isfinite)(totalDensity) );        // inf probably wouldn't be a problem but NaN would be
     
     // Cache total density for infectiousness calculations
-    int y_lag_i = ctx.clock.moduloSteps(ctx.clock.ts1(), y_lag_len);
-
-    for( size_t g = 0; g < ctx.genotypes.N(); ++g )
-    {
-        m_y_lag_i[y_lag_i * ctx.genotypes.N() + g] = 0.0;
-        m_y_lag_l[y_lag_i * ctx.genotypes.N() + g] = 0.0;
-    }
-
-    for( auto inf = infections.begin(); inf != infections.end(); ++inf )
-    {
-        if((*inf)->origin() == InfectionOrigin::Imported)
-            m_y_lag_i[y_lag_i * ctx.genotypes.N() + (*inf)->genotype()] += (*inf)->getDensity();
-        else
-            m_y_lag_l[y_lag_i * ctx.genotypes.N() + (*inf)->genotype()] += (*inf)->getDensity();
-    }
+    cache_y_lag();
 
     // This is a bug, we keep it this way to be consistent with old simulations
     if(opt_vaccine_genotype == false)

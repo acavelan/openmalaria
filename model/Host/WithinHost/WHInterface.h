@@ -251,8 +251,6 @@ public:
     
     WHInterface(const WHInterface&) = delete;
     WHInterface& operator= (const WHInterface&) = delete;
-    // Out-of-line (defaulted) so PathogenesisModel can stay incomplete here.
-    WHInterface(WHInterface&&);
     WHInterface& operator=(WHInterface&&) = delete;    // ctx reference member
 
     //@}
@@ -395,6 +393,9 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
         vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears);
     void update_descriptive(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
         vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears);
+    /// Reset and refill the m_y_lag_{i,l} infectiousness cache for the current
+    /// tick (shared tail of update_common and update_descriptive).
+    void cache_y_lag();
     
     double getTotalDensity_vivax() const;
     double getCumulative_h_vivax() const;

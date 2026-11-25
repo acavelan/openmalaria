@@ -78,18 +78,18 @@ LSTMDrug::LSTMDrug (Kind kind, const LSTMDrugType& type,
 }
 
 size_t LSTMDrug::getIndex() const {
-    return typeData->getIndex();   // Conversion: parent drug's index
+    return typeData->index;   // Conversion: parent drug's index
 }
 
 double LSTMDrug::getConcentration(size_t index) const {
     switch (kind) {
     case Kind::OneComp:
-        return index == typeData->getIndex() ? concentration : 0.0;
+        return index == typeData->index ? concentration : 0.0;
     case Kind::ThreeComp:
-        return index == typeData->getIndex() ? conc() : 0.0;
+        return index == typeData->index ? conc() : 0.0;
     case Kind::Conversion:
-        if( index == typeData->getIndex() ) return getParentConcentration();
-        else if( index == metaboliteData->getIndex() ) return getMetaboliteConcentration();
+        if( index == typeData->index ) return getParentConcentration();
+        else if( index == metaboliteData->index ) return getMetaboliteConcentration();
         else return 0.0;
     }
     return 0.0;

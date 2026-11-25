@@ -133,47 +133,35 @@ void WHInterface::update_common(Host::Human &human, LocalRng& rng, int &nNewInfs
 
     assert( numInfs>=0 && numInfs<=SlotAllocator::MAX_INFECTIONS );
 
-    int nNewInfsDiscarded = 0;
-    for( int i=0; i<nNewInfs_i; ++i ) {
-        uint32_t genotype = ctx.genotypes.sampleGenotype(rng, genotype_weights_i);
+    // i/l twin fold: the per-host RNG stream sees every Introduced(i) draw,
+    // then the nNewInfs/numInfs update, then every Indigenous(l) draw —
+    // exactly the sequence the two separate loops produced (no draw happens
+    // between the two sides, so the fold cannot reorder the stream).
+    struct Side { vector<double>& weights; int& nNewInfs; InfectionOrigin origin; };
+    Side sides[] = { { genotype_weights_i, nNewInfs_i, InfectionOrigin::Introduced },
+                     { genotype_weights_l, nNewInfs_l, InfectionOrigin::Indigenous } };
+    for( Side& side : sides ) {
+        int nNewInfsDiscarded = 0;
+        for( int i=0; i<side.nNewInfs; ++i ) {
+            uint32_t genotype = ctx.genotypes.sampleGenotype(rng, side.weights);
 
-        // If opt_vaccine_genotype is true the infection is discarded with probability 1-vaccineFactor
-        if( opt_vaccine_genotype )
-        {
-            double vaccineFactor = human.vaccine_factor( interventions::Vaccine::PEV, genotype );
-            // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-            if(vaccineFactor == 1.0 || human.rng().bernoulli(vaccineFactor))
-                infections.push_back(ctx.createInfection (ctx, rng, genotype, InfectionOrigin::Introduced));
+            // If opt_vaccine_genotype is true the infection is discarded with probability 1-vaccineFactor
+            if( opt_vaccine_genotype )
+            {
+                double vaccineFactor = human.vaccine_factor( interventions::Vaccine::PEV, genotype );
+                // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
+                if(vaccineFactor == 1.0 || human.rng().bernoulli(vaccineFactor))
+                    infections.push_back(ctx.createInfection (ctx, rng, genotype, side.origin));
+                else
+                    nNewInfsDiscarded++;
+            }
             else
-                nNewInfsDiscarded++;
+                infections.push_back(ctx.createInfection (ctx, rng, genotype, side.origin));
         }
-        else if (opt_vaccine_genotype == false)
-            infections.push_back(ctx.createInfection (ctx, rng, genotype, InfectionOrigin::Introduced));
+        // Update nNewInfs, this is the number that will be reported in Human
+        side.nNewInfs -= nNewInfsDiscarded;
+        numInfs += side.nNewInfs;
     }
-    // Update nNewInfs, this is the number that will be reported in Human
-    nNewInfs_i -= nNewInfsDiscarded;
-    numInfs += nNewInfs_i;
-
-    nNewInfsDiscarded = 0;
-    for( int i=0; i<nNewInfs_l; ++i ) {
-        uint32_t genotype = ctx.genotypes.sampleGenotype(rng, genotype_weights_l);
-
-        // If opt_vaccine_genotype is true the infection is discarded with probability 1-vaccineFactor
-        if( opt_vaccine_genotype )
-        {
-            double vaccineFactor = human.vaccine_factor( interventions::Vaccine::PEV, genotype );
-            // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-            if(vaccineFactor == 1.0 || human.rng().bernoulli(vaccineFactor))
-                infections.push_back(ctx.createInfection (ctx, rng, genotype, InfectionOrigin::Indigenous));
-            else
-                nNewInfsDiscarded++;
-        }
-        else if (opt_vaccine_genotype == false)
-            infections.push_back(ctx.createInfection (ctx, rng, genotype, InfectionOrigin::Indigenous));
-    }
-    // Update nNewInfs, this is the number that will be reported in Human
-    nNewInfs_l -= nNewInfsDiscarded;
-    numInfs += nNewInfs_l;
 
     assert( numInfs == static_cast<int>(infections.size()) );
     
@@ -242,6 +230,17 @@ void WHInterface::update_common(Host::Human &human, LocalRng& rng, int &nNewInfs
     assert( (std::isfinite)(totalDensity) );        // inf probably wouldn't be a problem but NaN would be
     
     // Cache total density for infectiousness calculations
+    cache_y_lag();
+
+    // This is a bug, we keep it this way to be consistent with old simulations
+    if(nNewInfsIgnored > 0)
+        nNewInfs_l += nNewInfsIgnored;
+}
+
+// Shared by update_common and update_descriptive (byte-identical blocks).
+// No RNG draws — pure cache bookkeeping.
+void WHInterface::cache_y_lag()
+{
     int y_lag_i = ctx.clock.moduloSteps(ctx.clock.ts1(), y_lag_len);
     for( size_t g = 0; g < ctx.genotypes.N(); ++g )
     {
@@ -256,21 +255,12 @@ void WHInterface::update_common(Host::Human &human, LocalRng& rng, int &nNewInfs
         else
             m_y_lag_l[y_lag_i * ctx.genotypes.N() + (*inf)->genotype()] += (*inf)->getDensity();
     }
-
-    // This is a bug, we keep it this way to be consistent with old simulations
-    if(nNewInfsIgnored > 0)
-        nNewInfs_l += nNewInfsIgnored;
 }
 
 // -----  Summarize  -----
 
 // Used in summarizeInfs.
 vector<Infection*> sortedInfs;
-struct InfGenotypeSorter {
-    bool operator() (Infection* i, Infection* j){
-        return i->genotype() < j->genotype();
-    }
-} infGenotypeSorter;
 
 bool WHInterface::summarize_common( Host::Human& human )const{
     pathogenesisModel->summarize( human );
@@ -319,7 +309,8 @@ bool WHInterface::summarize_common( Host::Human& human )const{
             // order when updating, and the monitoring system should not in my
             // opinion affect outputs (since it would make testing harder).
             sortedInfs.assign( infections.begin(), infections.end() );
-            sort( sortedInfs.begin(), sortedInfs.end(), infGenotypeSorter );
+            sort( sortedInfs.begin(), sortedInfs.end(),
+                  []( Infection* i, Infection* j ){ return i->genotype() < j->genotype(); } );
             auto inf = sortedInfs.begin();
             while( inf != sortedInfs.end() ){
                 uint32_t genotype = (*inf)->genotype();
