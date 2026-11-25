@@ -236,6 +236,149 @@ public:
         return UnittestUtil::getPrescribedMg( whm->pkpd );
     }
     
+    // ———  boundary/compile-canonicalization goldens (phase 4a)  ———
+    // Golden values below were captured from the pre-rewrite polymorphic
+    // decision-tree code (p3-green). They pin: age-switch exact-boundary
+    // routing, cumulative-key ties (p=0 duplicate keys are dropped by
+    // map-insert: the earlier child wins), leaf-run fold seams (adjacent
+    // outcomes with identical subtrees must select identically), and the
+    // CMDTMultiple screened-swallowing quirk. Golden == today's behavior.
+    
+    /** Run the tree once; return (treated, screened) with treatment-marker
+     * observation via WHMock simple-treat timestamps. */
+    CMDTOut execOnce( const scnXml::DecisionTree& dt ) {
+        const CMDecisionTree& cmdt = CMDecisionTree::create( UnittestUtil::ctx(), dt, true );
+        whm->lastTimeLiver = whm->lastTimeBlood = sim::never();
+        return cmdt.exec( UnittestUtil::ctx(), *hd );
+    }
+    
+    // treatSimple markers distinguish branch identity without RNG prediction:
+    static constexpr SimTime MARK_A = 0;        // "0t"/"1t" → liver 0
+    static constexpr SimTime MARK_B = 1*5;      // "1t"/"1t" → liver 5 (5-day TS)
+    
+    void testAgeFoldSeams(){
+        // age groups [0,2.5)→treat, [2.5,50)→treat (identical subtree),
+        // [50,∞)→none: adjacent identical leaves are a fold seam.
+        scnXml::DTTreatPKPD treat1( "sched1", "dosage1" );
+        scnXml::DTAge ageSwitch;
+        scnXml::Age g0( 0.0 );  g0.getTreatPKPD().push_back( treat1 );
+        scnXml::Age g1( 2.5 );  g1.getTreatPKPD().push_back( treat1 );
+        scnXml::Age g2( 50.0 ); g2.setNoTreatment( scnXml::DTNoTreatment() );
+        ageSwitch.getAge().push_back( g0 );
+        ageSwitch.getAge().push_back( g1 );
+        ageSwitch.getAge().push_back( g2 );
+        scnXml::DecisionTree dt;
+        dt.setAge( ageSwitch );
+        
+        // golden (pre-rewrite): key order = {2.5→g0, 50→g1, +inf→g2},
+        // upper_bound strictly-greater selection at each boundary:
+        const double ages[] = { 2.4, 2.5, 3.0, 50.0, 1e6 };
+        const int golden[]  = { 1,   1,    1,   0,    0   };
+        for( size_t i = 0; i < 5; ++i ){
+            hd->ageYears = ages[i];
+            TS_ASSERT_EQUALS( execOnce( dt ).treated, golden[i] != 0 );
+        }
+        hd->ageYears = 21;
+    }
+    
+    void testRandomTieDrop(){
+        // p=0 middle outcome creates a cumulative-key tie with the first
+        // outcome (0.5). map-insert drops the duplicate key: the SECOND
+        // outcome's subtree (marker B) must never be selected.
+        scnXml::DTTreatSimple a( "0t", "1t" ), b( "1t", "1t" );
+        scnXml::Outcome oA( 0.5 ), oB( 0.0 ), oC( 0.5 );
+        oA.getTreatSimple().push_back( a );
+        oB.getTreatSimple().push_back( b );
+        oC.setNoTreatment( scnXml::DTNoTreatment() );
+        scnXml::DTRandom r;
+        r.getOutcome().push_back( oA );
+        r.getOutcome().push_back( oB );
+        r.getOutcome().push_back( oC );
+        scnXml::DecisionTree dt;
+        dt.setRandom( r );
+        
+        const int N = 20000;
+        int nTreated = 0, nMarkB = 0, nMarkA = 0;
+        for( int i = 0; i < N; ++i ){
+            CMDTOut out = execOnce( dt );
+            nTreated += out.treated ? 1 : 0;
+            nMarkA += (whm->lastTimeLiver == MARK_A) ? 1 : 0;
+            nMarkB += (whm->lastTimeLiver == MARK_B && whm->lastTimeBlood == 1*5
+                      && whm->lastTimeLiver != MARK_A) ? 1 : 0;
+        }
+        // golden (pre-rewrite, DTGOLDEN capture): dropped key never fires
+        TS_ASSERT_EQUALS( nMarkB, 0 );
+        TS_ASSERT_EQUALS( nTreated, nMarkA );
+        TS_ASSERT_DELTA( double(nTreated)/N, 0.5, 0.02 );
+    }
+    
+    void testRandomAllFold(){
+        // All outcomes share one identical subtree: keys {0.5,1.0} fold to
+        // {1.0}; every draw must treat (exact, no statistics).
+        scnXml::DTTreatPKPD treat1( "sched1", "dosage1" );
+        scnXml::Outcome o1( 0.5 ), o2( 0.5 );
+        o1.getTreatPKPD().push_back( treat1 );
+        o2.getTreatPKPD().push_back( treat1 );
+        scnXml::DTRandom r;
+        r.getOutcome().push_back( o1 );
+        r.getOutcome().push_back( o2 );
+        scnXml::DecisionTree dt;
+        dt.setRandom( r );
+        
+        const int N = 1000;
+        int nTreated = 0;
+        for( int i = 0; i < N; ++i ) nTreated += execOnce( dt ).treated ? 1 : 0;
+        TS_ASSERT_EQUALS( nTreated, 1000 );   // golden: uniform_01 < 0.5 or not, target is identical
+    }
+    
+    void testRandomZeroPFirst(){
+        // p=0 first outcome: key 0.0 is never upper-bounded above by
+        // uniform_01() in [0,1) — actually key 0.0 is skipped even for
+        // x==0.0 (strictly-greater semantics) — never selected.
+        scnXml::DTTreatPKPD treat1( "sched1", "dosage1" );
+        scnXml::Outcome oT( 0.0 ), oN( 1.0 );
+        oT.getTreatPKPD().push_back( treat1 );
+        oN.setNoTreatment( scnXml::DTNoTreatment() );
+        scnXml::DTRandom r;
+        r.getOutcome().push_back( oT );
+        r.getOutcome().push_back( oN );
+        scnXml::DecisionTree dt;
+        dt.setRandom( r );
+        
+        const int N = 1000;
+        int nTreated = 0;
+        for( int i = 0; i < N; ++i ) nTreated += execOnce( dt ).treated ? 1 : 0;
+        TS_ASSERT_EQUALS( nTreated, 0 );   // golden (pre-rewrite)
+    }
+    
+    void testScreenedSwallowed(){
+        // CMDTMultiple quirk: treated ORs out of children, screened does
+        // not. Diagnostic forces screened=true within its own subtree.
+        scnXml::DTTreatPKPD treat1( "sched1", "dosage1" );
+        scnXml::DecisionTree simpleTreat;
+        simpleTreat.getTreatPKPD().push_back( treat1 );
+        
+        scnXml::DTDiagnostic diag( simpleTreat, simpleTreat, "microscopy" );
+        scnXml::DecisionTree diagTree;
+        diagTree.setDiagnostic( diag );
+        
+        scnXml::DTMultiple m;
+        m.getDiagnostic().push_back( diag );
+        scnXml::DecisionTree multi;
+        multi.setMultiple( m );
+        
+        hd->pgState = static_cast<Episode::State>( Pathogenesis::STATE_MALARIA );
+        // Diagnostic alone: screened visible.
+        CMDTOut out = execOnce( diagTree );
+        TS_ASSERT_EQUALS( out.treated, true );
+        TS_ASSERT_EQUALS( out.screened, true );
+        // Inside Multiple: screened swallowed at the Multiple boundary,
+        // treated survives (from either child).
+        out = execOnce( multi );
+        TS_ASSERT_EQUALS( out.treated, true );
+        TS_ASSERT_EQUALS( out.screened, false );   // golden (pre-rewrite quirk)
+    }
+    
     void testDosing(){
         scnXml::DTTreatPKPD treat1( "sched1", "dosage1" );
         scnXml::DecisionTree dt1;
