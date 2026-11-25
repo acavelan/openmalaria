@@ -25,7 +25,7 @@
 
 #include "Clock.h"
 #include "util/checkpoint.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Transmission/PerHost.h"
 #include "util/SimpleDecayingValue.h"
 #include "util/vectors.h"

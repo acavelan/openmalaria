@@ -75,7 +75,7 @@ public:	// constructed by the diagnostics registry (Diagnostic.cpp)
  * objects. */
 class diagnostics {
 public:
-    /** Initialise from input data (registry: ctx.ext->diagnostic_set). */
+    /** Initialise from input data (registry: ctx.diagnostic_set). */
     static void init( RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario );
     
     /** Look up a diagnostic by name and get a reference to it.

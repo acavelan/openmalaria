@@ -21,7 +21,7 @@
  */
 
 // Note: this file is included by several sources (InterventionManager.cpp,
-// xml/interventions.cpp and core/RunExtensions.h). All definitions here must
+// xml/interventions.cpp and run.cpp). All definitions here must
 // stay inline/template or header-only.
 
 // Phase 7.1: the polymorphic TimedDeployment class tree is gone — one flat
@@ -35,7 +35,7 @@
 #define OM_INTERVENTIONS_DEPLOYMENTS_H
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "util/errors.h"
 #include "Population.h"
 #include "Transmission/TransmissionModel.h"

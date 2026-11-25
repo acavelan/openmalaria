@@ -20,9 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "util/checkpoint.h"
-#include "core/RunExtensions.h"
 #include "mon/Continuous.h"
 #include "util/errors.h"
 #include "util/CommandLine.h"
@@ -38,16 +37,16 @@ namespace OM {
         using util::xml_scenario_error;
 
         void checkpoint (RunContext& ctx, ostream& stream){
-            auto& streamOffset = ctx.ext->ctsStreamOffset;
-            if( ctx.ext->ctsPeriod == sim::zero() )
+            auto& streamOffset = ctx.ctsStreamOffset;
+            if( ctx.ctsPeriod == sim::zero() )
                 return;	// output disabled
 
             streamOffset & stream;
         }
         void checkpoint (RunContext& ctx, istream& stream){
-            auto& ctsOStream = ctx.ext->ctsOStream;
-            auto& streamOffset = ctx.ext->ctsStreamOffset;
-            if( ctx.ext->ctsPeriod == sim::zero() )
+            auto& ctsOStream = ctx.ctsOStream;
+            auto& streamOffset = ctx.ctsStreamOffset;
+            if( ctx.ctsPeriod == sim::zero() )
                 return;	// output disabled
 
             /* We attempt to resume output correctly after a reload by recording
@@ -65,30 +64,30 @@ namespace OM {
         }
 
         void registerCallback (RunContext& ctx, string optName, string titles, function<void(ostream&)> f){
-            auto& registered = ctx.ext->ctsRegistered;
+            auto& registered = ctx.ctsRegistered;
             assert(registered.count(optName) == 0); // name clash/registered twice?
             function<void(const Population&, ostream&)> _f = [f](const Population&, ostream& ostream){ f(ostream); };
             registered[optName] = {titles, _f};
         }
 
         void registerCallback (RunContext& ctx, string optName, string titles, function<void(const vector<Host::Human> &, ostream&)> f){
-            auto& registered = ctx.ext->ctsRegistered;
+            auto& registered = ctx.ctsRegistered;
             assert(registered.count(optName) == 0); // name clash/registered twice?
             function<void(const Population&, ostream&)> _f = [f](const Population &p, ostream& ostream){ f(p.humans, ostream); };
             registered[optName] = {titles, _f};
         }
 
         void registerCallback (RunContext& ctx, string optName, string titles, function<void(Population &, ostream&)> f){
-            auto& registered = ctx.ext->ctsRegistered;
+            auto& registered = ctx.ctsRegistered;
             assert(registered.count(optName) == 0); // name clash/registered twice?
             registered[optName] = {titles, f};
         }
 
-        void update (const RunContext& ctx, Population &population){
-            auto& ctsOStream = ctx.ext->ctsOStream;
-            auto& toReport = ctx.ext->ctsToReport;
-            const SimTime ctsPeriod = ctx.ext->ctsPeriod;
-            const bool duringInit = ctx.ext->ctsDuringInit;
+        void update (RunContext& ctx, Population &population){
+            auto& ctsOStream = ctx.ctsOStream;
+            auto& toReport = ctx.ctsToReport;
+            const SimTime ctsPeriod = ctx.ctsPeriod;
+            const bool duringInit = ctx.ctsDuringInit;
             if( ctsPeriod == sim::zero() )
                 return;	// output disabled
             if( !duringInit ){
@@ -114,7 +113,7 @@ namespace OM {
             // (resulting in incorrect real-time graphs).
             ctsOStream << '\n' << flush;
 
-            ctx.ext->ctsStreamOffset = ctsOStream.tellp();
+            ctx.ctsStreamOffset = ctsOStream.tellp();
         }
     } // namespace Continuous
     } // namespace mon

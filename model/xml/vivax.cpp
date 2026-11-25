@@ -27,7 +27,7 @@
 // WHVivax.cpp (extern re-declared below).
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/CommandLine.h"

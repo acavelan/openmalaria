@@ -24,7 +24,7 @@
 // estimation from scnXml::Demography. Moved verbatim from
 // PopulationAgeStructure.cpp; declaration stays in PopulationAgeStructure.h.
 
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Clock.h"
 #include "PopulationAgeStructure.h"
 #include "util/errors.h"

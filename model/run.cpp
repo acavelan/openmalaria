@@ -25,7 +25,7 @@
 
 #include "Clock.h"
 
-#include "core/run.h"
+#include "run.h"
 
 #include "util/errors.h"
 #include "util/CommandLine.h"
@@ -43,7 +43,15 @@
 
 #include "Host/NeonatalMortality.h"
 #include "checkpoint.h"
-#include "core/RunExtensions.h"
+// RunContext's pointer members + Treatments::select need these complete
+// (they cannot be pulled in through RunContext.h — include cycle):
+#include "Clinical/CMDecisionTree.h"
+#include "Host/WithinHost/Treatments.h"
+#include "Host/ImportedInfections.h"
+#include "interventions/Components.h"
+#include "interventions/Deployments.h"
+#include "Transmission/PerHost.h"
+#include <cassert>
 
 #include <cerrno>
 
@@ -142,13 +150,49 @@ void run(RunContext& ctx, Population &population, TransmissionModel &transmissio
 
 } // namespace
 
-/// run_simulation() — loads scenario XML and runs the simulation (was main())
-RunContext::~RunContext() { delete ext; }
+/// RunContext ctor/dtor: create/destroy the registry pointer members.
+/// // parity: order — identical to the old ensure_extensions()/RunExtensions
+/// member-init order (declaration order of RunContext.h); registries and
+/// unittest backend installers depend on it.
+RunContext::RunContext() :
+    decision_trees(new std::vector<std::unique_ptr<Clinical::FlatTree>>),
+    whTreatments(new std::vector<WithinHost::Treatments>),
+    humanComponents(new std::vector<interventions::ComponentConfig>),
+    continuous(new std::vector<interventions::ContinuousHumanDeployment>),
+    timed(new std::vector<interventions::TimedDeployment>),
+    importedInfections(new OM::Host::ImportedInfections),
+    removeAtIds(new std::vector<interventions::ComponentId>
+        [interventions::SubPopRemove::NUM]),
+    anophParams(new std::vector<Transmission::PerHostAnophParams>),
+    monitoring(new mon::internal::RuntimeState)
+{}
 
+// (was: delete ext; destroys the old RunExtensions members in the same
+// reverse-declaration order)
+RunContext::~RunContext()
+{
+    delete monitoring;
+    delete anophParams;
+    delete importedInfections;
+    delete timed;
+    delete continuous;
+    delete humanComponents;
+    delete[] removeAtIds;
+    delete whTreatments;
+    delete decision_trees;
+}
+
+// The one accessor for a TreatmentId (plain struct now; needs whTreatments).
+const WithinHost::Treatments& WithinHost::Treatments::select(
+    RunContext& ctx, TreatmentId treatId )
+{
+    assert( treatId.id < ctx.whTreatments->size() );
+    return (*ctx.whTreatments)[treatId.id];
+}
+
+/// run_simulation() — loads scenario XML and runs the simulation (was main())
 void run_simulation(RunContext& ctx, const std::string& scenarioFile)
 {
-    ensure_extensions( ctx );
-
     bool startedFromCheckpoint;
 
     SimTime estEndTime, endTime;

@@ -24,9 +24,9 @@
 #define Hmod_WithinHost_Interface
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "Host/HostColumns.h"
-#include "Host/SlotAllocator.h"
+#include "Host/WithinHost/SlotAllocator.h"
 #include "util/random.h"
 #include "util/sampler.h"
 #include "util/errors.h"
@@ -197,7 +197,7 @@ private:
  * shared P. falciparum model used by the Dummy/Empirical/Molineaux/Penny
  * infection models) and Descriptive (the original descriptive model). Kind
  * ::Mock is only reachable from unit tests (see unittest/WHMock.h; the
- * behaviour lives in a hook table on RunExtensions).
+ * behaviour lives in a hook table on RunContext (RunContext::WHMockHooks)).
  *
  * Method definitions are split per kind over WHFalciparum.cpp (shared
  * P. falciparum immunity code), CommonWithinHost.cpp, DescriptiveWithinHost.cpp
@@ -353,7 +353,7 @@ public:
     InfectionOrigin getInfectionOrigin() const;
 
     /** The maximum number of infections a human can have: owned by
-     * SlotAllocator (model/Host/SlotAllocator.h), the single clamp
+     * SlotAllocator (model/Host/WithinHost/SlotAllocator.h), the single clamp
      * owner; see its comment for the two RNG-visible modes. */
 
 public:	// simple data + per-kind fragments (test suites and WH models touch these directly)

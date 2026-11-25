@@ -28,7 +28,7 @@
 #include <fstream>
 
 #include "Clock.h"
-#include "core/RunContext.h"
+#include "RunContext.h"
 #include "util/errors.h"
 
 namespace scnXml { class NonVector; class Entomology; class Vector; }
