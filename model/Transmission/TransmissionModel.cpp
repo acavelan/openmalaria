@@ -25,6 +25,7 @@
 #include "Population.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Genotypes.h"
+#include "interventions/IvState.h" // iv_rel_* (E5 hoisted getter bodies)
 #include "mon/Continuous.h"
 #include "util/vectors.h"
 #include "util/ModelOptions.h"
@@ -54,6 +55,48 @@ template <typename Term> double meanOver(const vector<Human>& population, Term t
         total += term(human);
     return total / population.size();
 }
+
+/** E5: per-host view of the transmission row containers, bound once per host.
+ * Bodies are the PerHost getter bodies (PerHost.cpp) verbatim, reading rows
+ * already resolved — same value per species, but the out-of-line calls and
+ * their per-(host,species) cols->col[row]/cols->iv[row] walks are gone.
+ * Bind after any iv-deploying call (e.g. PerHost::update). */
+struct IvRows {
+    explicit IvRows(const PerHost& host)
+        : ctx(*host.ctx), iv(host.cols->iv[host.row]), avail(host.anoph_ento_avail()),
+          bite(host.anoph_prob_biting()), rest(host.anoph_prob_resting()) {}
+    // parity: c — history-ordered iv-record FP product — multiply in vector order, not reassociated
+    double entoAvailabilityHetVecItv(size_t species) const {
+        double alpha_i = avail[species];
+        for (const IvRecord& r : iv)
+            alpha_i *= iv_rel_attractiveness(ctx, r, species);
+        return alpha_i;
+    }
+    double probMosqBiting(size_t species) const {
+        double P_B_i = bite[species];
+        for (const IvRecord& r : iv)
+            P_B_i *= iv_preprandial_survival(ctx, r, species);
+        return P_B_i;
+    }
+    double probMosqResting(size_t species) const {
+        double pRest = rest[species];
+        for (const IvRecord& r : iv)
+            pRest *= iv_postprandial_survival(ctx, r, species);
+        return pRest;
+    }
+    double relMosqFecundity(size_t species) const {
+        double relFecundity = 1.0;
+        for (const IvRecord& r : iv)
+            relFecundity *= iv_rel_fecundity(ctx, r, species);
+        return relFecundity;
+    }
+
+    RunContext& ctx;
+    const std::vector<IvRecord>& iv;
+    const std::vector<double>& avail;
+    const std::vector<double>& bite;
+    const std::vector<double>& rest;
+};
 }
 
 void TransmissionModel::ctsCbAlpha(const vector<Human>& population, ostream& stream) {
@@ -223,6 +266,7 @@ void TransmissionModel::calculateEIR_vector(Human& human, double ageYears, vecto
 
     PerHost& host = human.perHostTransmission;
     host.update(human);
+    const IvRows iv{host}; // E5: rows bound once per host (see IvRows)
     if (simulationMode == transientEIRknown) {
         EIR_i.assign(1, 0.0);
         EIR_l.assign(1, 0.0);
@@ -231,8 +275,8 @@ void TransmissionModel::calculateEIR_vector(Human& human, double ageYears, vecto
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
-            double eir = species[i]->getInterventionEIR() * host.relativeAvailabilityAge(ageYears) *
-                         host.entoAvailabilityHetVecItv(i);
+            double eir =
+                species[i]->getInterventionEIR() * host.relativeAvailabilityAge(ageYears) * iv.entoAvailabilityHetVecItv(i);
             recordStat(measure("innoculationsPerAgeGroup"), human, eir);
             recordStat(measure("innoculationsPerVector"), human, eir, i);
             // cout << host.availBite(i) << endl;
@@ -253,8 +297,8 @@ void TransmissionModel::calculateEIR_vector(Human& human, double ageYears, vecto
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
-            double eir = species[i]->getInitPartialEIR() * host.relativeAvailabilityAge(ageYears) *
-                         host.entoAvailabilityHetVecItv(i);
+            double eir =
+                species[i]->getInitPartialEIR() * host.relativeAvailabilityAge(ageYears) * iv.entoAvailabilityHetVecItv(i);
             recordStat(measure("innoculationsPerAgeGroup"), human, eir);
             recordStat(measure("innoculationsPerVector"), human, eir, i);
             // cout << host.availBite(i) << endl;
@@ -277,7 +321,7 @@ void TransmissionModel::calculateEIR_vector(Human& human, double ageYears, vecto
             /* Calculates EIR per individual (hence N_i == 1).
              *
              * See comment in AnophelesModel::advancePeriod for method. */
-            double entoFactor = ageFactor * host.availBite(i);
+            double entoFactor = ageFactor * (iv.entoAvailabilityHetVecItv(i) * iv.probMosqBiting(i));
             for (size_t g = 0; g < EIR_i.size(); ++g) {
                 double eir_i = partialEIR_i[g] * entoFactor;
                 double eir_l = partialEIR_l[g] * entoFactor;
@@ -323,17 +367,24 @@ void TransmissionModel::vectorUpdate_vector(const vector<Human>& population) {
         // species inside entoAvailabilityFull). Operand order kept (PerHost.h:167:
         // entoAvailabilityHetVecItv(s) * relativeAvailabilityAge(ageYears)) ⇒ FP-exact.
         const double ageFactor = host.relativeAvailabilityAge(inYears(human.age(ctx.clock.ts1())));
+        // E5 hoist: bind this host's row containers once per host instead of
+        // per species x getter. Each out-of-line getter re-did cols->col[row]
+        // (bounds-checked vector<vector<double>> index) plus its own pass over
+        // cols->iv[row]; per host that's 5 row lookups x nSpec. The iv product
+        // runs below keep list order and multiply order, so each value is the
+        // same FP expression as the getter returned (parity: c).
+        const IvRows iv{host};
         for (size_t s = 0; s < nSpec; ++s) {
-            const double avail = host.entoAvailabilityHetVecItv(s) * ageFactor;
+            const double avail = iv.entoAvailabilityHetVecItv(s) * ageFactor;
             sum_avail[s] += avail;
-            const double df = avail * host.probMosqBiting(s) * host.probMosqResting(s);
+            const double df = avail * iv.probMosqBiting(s) * iv.probMosqResting(s);
             sigma_df[s] += df;
             for (size_t g = 0; g < nGenotypes; ++g) {
                 const double tbv = anyVac ? human.vaccine_factor(Vaccine::TBV, opt_vaccine_genotype ? g : 0) : 1.0;
                 sigma_dif_i[s][g] += df * probTransmission_i[g] * tbv;
                 sigma_dif_l[s][g] += df * probTransmission_l[g] * tbv;
             }
-            sigma_dff[s] += df * host.relMosqFecundity(s);
+            sigma_dff[s] += df * iv.relMosqFecundity(s);
         }
     }
 
