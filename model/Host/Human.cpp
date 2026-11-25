@@ -129,7 +129,7 @@ Human::Human(RunContext& ctx, SimTime dateOfBirth) :
     double iiFactor = infIncidence->getAvailabilityFactor(rng, 1.0);
     perHostTransmission.ctx = &ctx;
     vaccine.ctx = &ctx;
-    perHostTransmission.initialise (rng, het.availabilityFactor * iiFactor);
+    perHostTransmission.initialise (ctx, rng, het.availabilityFactor * iiFactor);
     clinicalModel = Clinical::ClinicalModel::createClinicalModel(ctx, het.treatmentSeekingFactor);
 }
 
@@ -137,7 +137,7 @@ void Human::addToCohort(ComponentId id, SimTime duration )
 {
     if( duration <= sim::zero() ) return; // nothing to do
     subPopExp[id] = ctx->clock.nowOrTs1() + duration;
-    cohortSet = mon::updateCohortSet( cohortSet, id, true );
+    cohortSet = mon::updateCohortSet(*ctx, cohortSet, id, true );
 }
 
 void Human::removeFromCohort(interventions::ComponentId id)
@@ -161,7 +161,7 @@ void Human::removeFirstEvent(interventions::SubPopRemove::RemoveAtCode code )
                 // report removal due to first infection/bout/treatment
                 mon::recordEvent(mon::measure("nSubPopRemovalFirstEvent"), *this);
             }
-            cohortSet = mon::updateCohortSet( cohortSet, expIt->first, false );
+            cohortSet = mon::updateCohortSet(*ctx, cohortSet, expIt->first, false );
             // remove (affects reporting, restrictToSubPop and cumulative deployment):
             subPopExp.erase( expIt );
         }
@@ -176,7 +176,7 @@ void Human::updateCohortSet()
             // don't flush reports
             // report removal due to expiry
             mon::recordEvent(mon::measure("nSubPopRemovalTooOld"), *this);
-            cohortSet = mon::updateCohortSet( cohortSet, expIt->first, false );
+            cohortSet = mon::updateCohortSet(*ctx, cohortSet, expIt->first, false );
             // erase element, but continue iteration
             expIt = subPopExp.erase( expIt );
         }else{
@@ -228,7 +228,7 @@ void summarize(RunContext& ctx, Human &human, bool surveyOnlyNewEp) {
     bool patent = human.withinHostModel->summarize (human);
     human.infIncidence->summarize (human);
     
-    if( patent && mon::isReported() ){
+    if( patent && mon::isReported(ctx) ){
         // this should happen after all other reporting!
         human.removeFirstEvent(interventions::SubPopRemove::ON_FIRST_INFECTION);
     }
@@ -246,7 +246,7 @@ void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& tran
     util::streamValidate( age0 );
 
     // monitoringAgeGroup is the group for the start of the time step.
-    mon::updateAgeGroup(human.monitoringAgeGroup, age0);
+    mon::updateAgeGroup(ctx, human.monitoringAgeGroup, age0);
     
     human.updateCohortSet();
 

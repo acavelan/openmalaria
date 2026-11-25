@@ -381,7 +381,7 @@ VectorModel *createVectorModel(RunContext& ctx, const scnXml::Entomology &entoDa
     {
         auto anoph = anophelesList[i];
 
-        PerHostAnophParams::init(anoph.getMosq());
+        PerHostAnophParams::init(ctx, anoph.getMosq());
 
         Anopheles::AnophelesModel *anophModel = createAnophelesModel(ctx, i, anoph, initialisationEIR, populationSize, interventionMode);
         std::unique_ptr<Anopheles::EmergenceRateEstimator> estimator;

@@ -29,6 +29,7 @@
 // run_simulation() (and by UnittestUtil for tests).
 
 #include "Clinical/CMDecisionTree.h"
+#include "mon/Monitoring.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/Infection/CommonInfection.h"
@@ -85,6 +86,27 @@ struct RunExtensions {
     /// Which vaccine component deployment monitoring reports on.
     interventions::ComponentId vaccineReportComponent =
         interventions::ComponentId::wholePop();
+
+    // ——— entomology parameters (was: PerHostAnophParams statics) ———
+    /// Per-species host-availability/biting parameters (XML read).
+    std::vector<Transmission::PerHostAnophParams> anophParams;
+    std::vector<double> entoAvailabilityPercentiles;
+
+    // ——— continuous output (was: mon/Continuous.cpp statics) ———
+    /// Continuous-output file; its resume position; callback registry.
+    std::fstream ctsOStream;
+    std::streamoff ctsStreamOffset = 0;
+    std::map<std::string, std::tuple<std::string,
+        std::function<void(Population&, std::ostream&)>>> ctsRegistered;
+    std::vector<std::tuple<std::string,
+        std::function<void(Population&, std::ostream&)>>> ctsToReport;
+    SimTime ctsPeriod = sim::zero();
+    bool ctsDuringInit = false;
+
+    /// Monitoring runtime state (survey numbers, stores, conditions; mon/).
+    /// (In ext, not RunContext: the state's map keys need ComponentId
+    /// complete, which would cycle RunContext.h through Interfaces.h.)
+    mon::internal::RuntimeState monitoring;
 };
 
 /// Create RunContext::ext if not yet present (idempotent).

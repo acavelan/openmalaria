@@ -61,10 +61,10 @@ void Population::createInitialHumans()
     until vector init, which saves computation and memory (no infections). */
     
     int cumulativePop = 0;
-    for(size_t iage_prev = AgeStructure::getMaxTStepsPerLife(), iage = iage_prev - 1;
+    for(size_t iage_prev = AgeStructure::getMaxTStepsPerLife(ctx), iage = iage_prev - 1;
          iage_prev > 0; iage_prev = iage, iage -= 1 )
     {
-        int targetPop = AgeStructure::targetCumPop( iage, size );
+        int targetPop = AgeStructure::targetCumPop(ctx, iage, size );
         while (cumulativePop < targetPop) {
             SimTime dob = sim::zero() - ctx.clock.fromTS(iage);
             util::streamValidate( dob );
@@ -91,7 +91,7 @@ void Population::update()
         // "outmigrate" some to maintain population shape
         //NOTE: better to use age(ctx.clock.ts0())? Possibly, but the difference will not be very significant.
         // Also see targetPop = ... comment above
-        bool outmigrate = cumPop >= AgeStructure::targetCumPop(ctx.clock.inSteps(it->age(ctx.clock.ts1())), size);
+        bool outmigrate = cumPop >= AgeStructure::targetCumPop(ctx, ctx.clock.inSteps(it->age(ctx.clock.ts1())), size);
         
         if( isDead || outmigrate ){
             it = humans.erase (it);
@@ -137,17 +137,17 @@ void registerContinousPopulationCallbacks(RunContext& ctx)
     for( double ubound : ctsDemogAgeGroups )
         ctsDemogTitle << "\thost % ≤ " << ubound;
 
-    mon::Continuous::registerCallback( "hosts", "\thosts", &ctsHosts );
-    mon::Continuous::registerCallback( "host demography", ctsDemogTitle.str(), [&ctx](Population &pop, ostream& s){ ctsHostDemography(ctx, pop, s); });
-    mon::Continuous::registerCallback( "recent births", "\trecent births", &ctsRecentBirths);
-    mon::Continuous::registerCallback( "patent hosts", "\tpatent hosts", [&ctx](Population &pop, ostream& s){ ctsPatentHosts(ctx, pop, s); });
-    mon::Continuous::registerCallback( "immunity h", "\timmunity h", &ctsImmunityh);
-    mon::Continuous::registerCallback( "immunity Y", "\timmunity Y", &ctsImmunityY);
-    mon::Continuous::registerCallback( "median immunity Y", "\tmedian immunity Y", &ctsMedianImmunityY);
-    mon::Continuous::registerCallback( "human age availability", "\thuman age availability", [&ctx](Population &pop, ostream& s){ ctsMeanAgeAvailEffect(ctx, pop, s); });
-    mon::Continuous::registerCallback( "ITN coverage", "\tITN coverage", &ctsITNCoverage);
-    mon::Continuous::registerCallback( "IRS coverage", "\tIRS coverage", &ctsIRSCoverage);
-    mon::Continuous::registerCallback( "GVI coverage", "\tGVI coverage", &ctsGVICoverage);
+    mon::Continuous::registerCallback(ctx,  "hosts", "\thosts", &ctsHosts );
+    mon::Continuous::registerCallback(ctx,  "host demography", ctsDemogTitle.str(), [&ctx](Population &pop, ostream& s){ ctsHostDemography(ctx, pop, s); });
+    mon::Continuous::registerCallback(ctx,  "recent births", "\trecent births", &ctsRecentBirths);
+    mon::Continuous::registerCallback(ctx,  "patent hosts", "\tpatent hosts", [&ctx](Population &pop, ostream& s){ ctsPatentHosts(ctx, pop, s); });
+    mon::Continuous::registerCallback(ctx,  "immunity h", "\timmunity h", &ctsImmunityh);
+    mon::Continuous::registerCallback(ctx,  "immunity Y", "\timmunity Y", &ctsImmunityY);
+    mon::Continuous::registerCallback(ctx,  "median immunity Y", "\tmedian immunity Y", &ctsMedianImmunityY);
+    mon::Continuous::registerCallback(ctx,  "human age availability", "\thuman age availability", [&ctx](Population &pop, ostream& s){ ctsMeanAgeAvailEffect(ctx, pop, s); });
+    mon::Continuous::registerCallback(ctx,  "ITN coverage", "\tITN coverage", &ctsITNCoverage);
+    mon::Continuous::registerCallback(ctx,  "IRS coverage", "\tIRS coverage", &ctsIRSCoverage);
+    mon::Continuous::registerCallback(ctx,  "GVI coverage", "\tGVI coverage", &ctsGVICoverage);
 }
 
 void ctsHosts (Population &population, ostream& stream){

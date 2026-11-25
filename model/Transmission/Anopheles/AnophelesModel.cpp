@@ -241,7 +241,7 @@ void AnophelesModel::initAvailability(size_t species, const vector<NhhParams> &n
     }
 
     // -----  Calculate availability rate of hosts (α_i) and non-human population data  -----
-    PerHostAnophParams::setEntoAvailabilityFactor(species, (P_A1 / populationSize) * availFactor);
+    PerHostAnophParams::setEntoAvailabilityFactor(ctx, species, (P_A1 / populationSize) * availFactor);
 
     initAvail = (P_A1 / populationSize) * availFactor;
 
@@ -416,7 +416,7 @@ void AnophelesModel::deployVectorTrap(LocalRng &rng, size_t species, size_t inst
     assert(instance < trapParams.size());
     TrapData data;
     data.instance = instance;
-    const PerHostAnophParams &anophParams = PerHostAnophParams::get(species);
+    const PerHostAnophParams &anophParams = PerHostAnophParams::get(ctx, species);
     const double adultAvail = anophParams.entoAvailability->mean() * anophParams.entoAvailabilityFactor;
     data.initialAvail = popSize * adultAvail * trapParams[instance].relAvail;
     data.availHet = trapParams[instance].availDecay->hetSample(rng);
@@ -861,18 +861,18 @@ double AnophelesModel::getLastVecStat(VecStat vs) const
     }
 }
 
-void AnophelesModel::summarize(size_t species) const
+void AnophelesModel::summarize(RunContext& ctx, size_t species) const
 {
     // Last time step ended at ctx.clock.now(). Values are stored per day, and for
     // the last time step values at ctx.clock.now() and four previos were set.
     // One plus last, plus (0 mod N_v_length) to avoid negatives:
     int end = ctx.clock.now() + 1 + N_v_length;
-    mon::recordStat(mon::measure("Vector_Nv0"), getLastN_v0(), species);
-    mon::recordStat(mon::measure("Vector_Nv"), sum1(ctx.clock, N_v, end, N_v_length), species);
+    mon::recordStat(ctx, mon::measure("Vector_Nv0"), getLastN_v0(), species);
+    mon::recordStat(ctx, mon::measure("Vector_Nv"), sum1(ctx.clock, N_v, end, N_v_length), species);
     for (size_t g = 0; g < ctx.genotypes.N(); ++g)
     {
-        mon::recordStat(mon::measure("Vector_Ov"), sum3(ctx.clock, ctx.genotypes, O_v_i, g, end, N_v_length) + sum3(ctx.clock, ctx.genotypes, O_v_l, g, end, N_v_length), species, g);
-        mon::recordStat(mon::measure("Vector_Sv"), sum3(ctx.clock, ctx.genotypes, S_v_i, g, end, N_v_length) + sum3(ctx.clock, ctx.genotypes, S_v_l, g, end, N_v_length), species, g);
+        mon::recordStat(ctx, mon::measure("Vector_Ov"), sum3(ctx.clock, ctx.genotypes, O_v_i, g, end, N_v_length) + sum3(ctx.clock, ctx.genotypes, O_v_l, g, end, N_v_length), species, g);
+        mon::recordStat(ctx, mon::measure("Vector_Sv"), sum3(ctx.clock, ctx.genotypes, S_v_i, g, end, N_v_length) + sum3(ctx.clock, ctx.genotypes, S_v_l, g, end, N_v_length), species, g);
     }
 }
 

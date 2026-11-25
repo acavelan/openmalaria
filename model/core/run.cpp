@@ -95,11 +95,11 @@ void run(RunContext& ctx, Population &population, TransmissionModel &transmissio
         // Monitoring. ctx.clock.now() gives time of end of last step,
         // and is when reporting happens in our time-series.
         mon::Continuous::update( ctx, population );
-        if( ctx.clock.interv_date() == mon::nextSurveyDate() ){
+        if( ctx.clock.interv_date() == mon::nextSurveyDate(ctx) ){
             for(Host::Human &human : population.humans)
                 Host::summarize(ctx, human, surveyOnlyNewEp);
-            transmission.summarize();
-            mon::concludeSurvey();
+            transmission.summarize(ctx);
+            mon::concludeSurvey(ctx);
         }
         
         // Deploy interventions, at time ctx.clock.now().
@@ -171,7 +171,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
     util::ModelNameProvider modelNameProvider(scenario->getModel());
 
     // 2) elements depending on only elements initialised in (1):
-    ctx.clock.init(*scenario, modelNameProvider); // Also reads survey dates.
+    ctx.clock.init(ctx, *scenario, modelNameProvider); // Also reads survey dates.
 
     // 3) elements depending on only elements initialised in (2).
     Parameters parameters( scenario->getModel().getParameters(), modelNameProvider ); // Depends on ModelNameProvider.
@@ -185,7 +185,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
 
     // Init models used by humans
     Transmission::PerHost::init( ctx, scenario->getModel().getHuman().getAvailabilityToMosquitoes() );
-    Host::InfectionIncidenceModel::init( parameters );
+    Host::InfectionIncidenceModel::init( ctx, parameters );
     WithinHost::WHInterface::init( ctx, parameters, *scenario );
     Clinical::ClinicalModel::init( ctx, parameters, *scenario );
     Host::NeonatalMortality::init( ctx, scenario->getModel().getClinical() );
@@ -247,7 +247,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
         readCheckpoint(ctx, checkpointFileName, endTime, estEndTime, *population, *transmission);
 
         /** Calculate ento availability percentiles **/
-        Transmission::PerHostAnophParams::calcAvailabilityPercentiles();
+        Transmission::PerHostAnophParams::calcAvailabilityPercentiles(ctx);
     }
     else
     {
@@ -256,7 +256,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
         transmission->init2(population->humans);
         
         /** Calculate ento availability percentiles **/
-        Transmission::PerHostAnophParams::calcAvailabilityPercentiles();
+        Transmission::PerHostAnophParams::calcAvailabilityPercentiles(ctx);
 
         /** Warm-up phase: 
          * Run the simulation using the equilibrium inoculation rates over one
@@ -291,8 +291,8 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
         Clinical::InfantMortality::preMainSimInit();
         ctx.genotypes.preMainSimInit();
         population->resetRecentBirths();
-        transmission->summarize(); // Only to reset TransmissionModel::inoculationsPerAgeGroup
-        mon::initMainSim();
+        transmission->summarize(ctx); // Only to reset TransmissionModel::inoculationsPerAgeGroup
+        mon::initMainSim(ctx);
 
         if(util::CommandLine::option (util::CommandLine::CHECKPOINT))
         {
@@ -310,7 +310,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
     for(Host::Human &human : population->humans)
         human.clinicalModel->flushReports();
 
-    mon::writeSurveyData();
+    mon::writeSurveyData(ctx);
     
 #ifdef OM_STREAM_VALIDATOR
     util::StreamValidator.saveStream();

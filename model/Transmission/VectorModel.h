@@ -75,7 +75,7 @@ public:
 
     virtual void uninfectVectors();
 
-    virtual void summarize();
+    virtual void summarize(RunContext& ctx);
 
 protected:
     virtual void checkpoint(istream &stream);

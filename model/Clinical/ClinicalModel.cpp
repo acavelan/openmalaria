@@ -71,6 +71,7 @@ double ClinicalModel::getCommunityCFR (double caseFatalityRatio){
 
 ClinicalModel::ClinicalModel (RunContext& ctx) :
     ctx(ctx),
+    latestReport(ctx),
     doomed(NOT_DOOMED)
 {}
 ClinicalModel::~ClinicalModel () {

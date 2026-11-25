@@ -237,24 +237,24 @@ VectorModel::VectorModel(RunContext& ctx, vector<double> initEIR, int interventi
         ctsRR << "\tres req(" << name << ")";
     }
 
-    mon::Continuous::registerCallback("N_v0", ctsNv0.str(), std::bind( &VectorModel::ctsCbN_v0, this, _1));
-    mon::Continuous::registerCallback("P_A", ctsPA.str(), std::bind( &VectorModel::ctsCbP_A, this, _1));
-    mon::Continuous::registerCallback("P_Amu", ctsPAmu.str(), std::bind( &VectorModel::ctsCbP_Amu, this, _1));
-    mon::Continuous::registerCallback("P_A1", ctsPA1.str(), std::bind( &VectorModel::ctsCbP_A1, this, _1));
-    mon::Continuous::registerCallback("P_Ah", ctsPAh.str(), std::bind( &VectorModel::ctsCbP_Ah, this, _1));
-    mon::Continuous::registerCallback("P_df", ctsPdf.str(), std::bind( &VectorModel::ctsCbP_df, this, _1));
-    mon::Continuous::registerCallback("P_dif", ctsPdif.str(), std::bind( &VectorModel::ctsCbP_dif, this, _1));
-    mon::Continuous::registerCallback("N_v", ctsNv.str(), std::bind( &VectorModel::ctsCbN_v, this, _1));
-    mon::Continuous::registerCallback("O_v", ctsOv.str(), std::bind( &VectorModel::ctsCbO_v, this, _1));
-    mon::Continuous::registerCallback("S_v", ctsSv.str(), std::bind( &VectorModel::ctsCbS_v, this, _1));
+    mon::Continuous::registerCallback(ctx, "N_v0", ctsNv0.str(), std::bind( &VectorModel::ctsCbN_v0, this, _1));
+    mon::Continuous::registerCallback(ctx, "P_A", ctsPA.str(), std::bind( &VectorModel::ctsCbP_A, this, _1));
+    mon::Continuous::registerCallback(ctx, "P_Amu", ctsPAmu.str(), std::bind( &VectorModel::ctsCbP_Amu, this, _1));
+    mon::Continuous::registerCallback(ctx, "P_A1", ctsPA1.str(), std::bind( &VectorModel::ctsCbP_A1, this, _1));
+    mon::Continuous::registerCallback(ctx, "P_Ah", ctsPAh.str(), std::bind( &VectorModel::ctsCbP_Ah, this, _1));
+    mon::Continuous::registerCallback(ctx, "P_df", ctsPdf.str(), std::bind( &VectorModel::ctsCbP_df, this, _1));
+    mon::Continuous::registerCallback(ctx, "P_dif", ctsPdif.str(), std::bind( &VectorModel::ctsCbP_dif, this, _1));
+    mon::Continuous::registerCallback(ctx, "N_v", ctsNv.str(), std::bind( &VectorModel::ctsCbN_v, this, _1));
+    mon::Continuous::registerCallback(ctx, "O_v", ctsOv.str(), std::bind( &VectorModel::ctsCbO_v, this, _1));
+    mon::Continuous::registerCallback(ctx, "S_v", ctsSv.str(), std::bind( &VectorModel::ctsCbS_v, this, _1));
 
     // availability to mosquitoes relative to other humans, excluding age factor
-    mon::Continuous::registerCallback("alpha", ctsAlpha.str(), std::bind( &VectorModel::ctsCbAlpha, this, _1, _2));
-    mon::Continuous::registerCallback("P_B", ctsPB.str(), std::bind( &VectorModel::ctsCbP_B, this, _1, _2));
-    mon::Continuous::registerCallback("P_C*P_D", ctsPCD.str(), std::bind( &VectorModel::ctsCbP_CD, this, _1, _2));
+    mon::Continuous::registerCallback(ctx, "alpha", ctsAlpha.str(), std::bind( &VectorModel::ctsCbAlpha, this, _1, _2));
+    mon::Continuous::registerCallback(ctx, "P_B", ctsPB.str(), std::bind( &VectorModel::ctsCbP_B, this, _1, _2));
+    mon::Continuous::registerCallback(ctx, "P_C*P_D", ctsPCD.str(), std::bind( &VectorModel::ctsCbP_CD, this, _1, _2));
 
-    mon::Continuous::registerCallback("resource availability", ctsRA.str(), std::bind( &VectorModel::ctsCbResAvailability, this, _1));
-    mon::Continuous::registerCallback("resource requirements", ctsRR.str(), std::bind( &VectorModel::ctsCbResRequirements, this, _1));
+    mon::Continuous::registerCallback(ctx, "resource availability", ctsRA.str(), std::bind( &VectorModel::ctsCbResAvailability, this, _1));
+    mon::Continuous::registerCallback(ctx, "resource requirements", ctsRR.str(), std::bind( &VectorModel::ctsCbResRequirements, this, _1));
 }
 
 VectorModel::~VectorModel() {}
@@ -494,13 +494,13 @@ void VectorModel::uninfectVectors()
         species[i]->uninfectVectors();
 }
 
-void VectorModel::summarize()
+void VectorModel::summarize(RunContext& ctx)
 {
-    TransmissionModel::summarize();
+    TransmissionModel::summarize(ctx);
 
     for (size_t i = 0; i < speciesIndex.size(); ++i)
     {
-        species[i]->summarize(i);
+        species[i]->summarize(ctx, i);
     }
 }
 

@@ -21,6 +21,7 @@
  */
 
 #include "core/RunContext.h"
+#include "core/RunExtensions.h"
 #include "mon/Continuous.h"
 #include "util/errors.h"
 #include "util/CommandLine.h"
@@ -35,30 +36,17 @@ namespace OM {
     namespace Continuous {
         using util::xml_scenario_error;
 
-        /// This is used to output some statistics in a tab-deliminated-value file.
-        /// (It used to be csv, but German Excel can't open csv directly.)
-        fstream ctsOStream;
-
-        // Serializable output position used when resuming from a checkpoint.
-        streamoff streamOffset;
-
-        map<string, tuple<string, std::function<void(Population&, ostream&)>> > registered;
-
-        // List that we report.
-        vector< tuple<string, std::function<void(Population&, ostream&)>> > toReport;
-
-        SimTime ctsPeriod = sim::zero();
-
-        bool duringInit = false;
-
-        void checkpoint (ostream& stream){
-            if( ctsPeriod == sim::zero() )
+        void checkpoint (RunContext& ctx, ostream& stream){
+            auto& streamOffset = ctx.ext->ctsStreamOffset;
+            if( ctx.ext->ctsPeriod == sim::zero() )
                 return;	// output disabled
 
             streamOffset & stream;
         }
-        void checkpoint (istream& stream){
-            if( ctsPeriod == sim::zero() )
+        void checkpoint (RunContext& ctx, istream& stream){
+            auto& ctsOStream = ctx.ext->ctsOStream;
+            auto& streamOffset = ctx.ext->ctsStreamOffset;
+            if( ctx.ext->ctsPeriod == sim::zero() )
                 return;	// output disabled
 
             /* We attempt to resume output correctly after a reload by recording
@@ -75,24 +63,31 @@ namespace OM {
                 throw util::checkpoint_error ("Continuous: resume error (bad pos/file)");
         }
 
-        void registerCallback (string optName, string titles, function<void(ostream&)> f){
+        void registerCallback (RunContext& ctx, string optName, string titles, function<void(ostream&)> f){
+            auto& registered = ctx.ext->ctsRegistered;
             assert(registered.count(optName) == 0); // name clash/registered twice?
             function<void(const Population&, ostream&)> _f = [f](const Population&, ostream& ostream){ f(ostream); };
             registered[optName] = {titles, _f};
         }
 
-        void registerCallback (string optName, string titles, function<void(const vector<Host::Human> &, ostream&)> f){
+        void registerCallback (RunContext& ctx, string optName, string titles, function<void(const vector<Host::Human> &, ostream&)> f){
+            auto& registered = ctx.ext->ctsRegistered;
             assert(registered.count(optName) == 0); // name clash/registered twice?
             function<void(const Population&, ostream&)> _f = [f](const Population &p, ostream& ostream){ f(p.humans, ostream); };
             registered[optName] = {titles, _f};
         }
 
-        void registerCallback (string optName, string titles, function<void(Population &, ostream&)> f){
+        void registerCallback (RunContext& ctx, string optName, string titles, function<void(Population &, ostream&)> f){
+            auto& registered = ctx.ext->ctsRegistered;
             assert(registered.count(optName) == 0); // name clash/registered twice?
             registered[optName] = {titles, f};
         }
 
         void update (const RunContext& ctx, Population &population){
+            auto& ctsOStream = ctx.ext->ctsOStream;
+            auto& toReport = ctx.ext->ctsToReport;
+            const SimTime ctsPeriod = ctx.ext->ctsPeriod;
+            const bool duringInit = ctx.ext->ctsDuringInit;
             if( ctsPeriod == sim::zero() )
                 return;	// output disabled
             if( !duringInit ){
@@ -118,7 +113,7 @@ namespace OM {
             // (resulting in incorrect real-time graphs).
             ctsOStream << '\n' << flush;
 
-            streamOffset = ctsOStream.tellp();
+            ctx.ext->ctsStreamOffset = ctsOStream.tellp();
         }
     } // namespace Continuous
     } // namespace mon

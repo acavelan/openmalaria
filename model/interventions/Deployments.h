@@ -159,7 +159,7 @@ public:
             const SimTime age = human.age(ctx.clock.now());
             if( age >= minAge && age < maxAge ){
                 double availability = 0.0;
-                for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(); ++i)
+                for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(ctx); ++i)
                     availability += human.perHostTransmission.anophEntoAvailability[i];
 
                 double probability = coverage;
@@ -174,10 +174,10 @@ public:
                         const double alpha = ((1.0 - beta_mean) / beta_var - 1.0 / beta_mean) * (beta_mean * beta_mean);
                         const double beta = alpha * (1.0 / beta_mean - 1.0);
 
-                        if(Transmission::PerHostAnophParams::numSpecies() > 1)
+                        if(Transmission::PerHostAnophParams::numSpecies(ctx) > 1)
                             throw std::runtime_error("only supports one mosquito species");
 
-                        const double ux = Transmission::PerHostAnophParams::get(0).entoAvailability->cdf(human.perHostTransmission.anophEntoAvailabilityRaw[0]);
+                        const double ux = Transmission::PerHostAnophParams::get(ctx, 0).entoAvailability->cdf(human.perHostTransmission.anophEntoAvailabilityRaw[0]);
                         if(ux < 1)
                         {
                             // parity: a — per-human heterogeneity lognormal/beta draws (gsl_cdf pure quantiles, no stream cost) then bernoulli-last; per-candidate draw order/count frozen (plan §3a)
@@ -221,7 +221,7 @@ public:
                     }
                 }
 
-                if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(maxAvailability) ) {
+                if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, maxAvailability) ) {
                     if( subPop == ComponentId::wholePop() || (human.isInSubPop( subPop ) != complement) ){
                         // parity: a — deploy short-circuit: RNG draw is the LAST test of the deploy condition; filter/age/cohort checks must precede it (plan §3a)
                         if( human.rng.bernoulli( probability ) ){
@@ -277,9 +277,9 @@ public:
             SimTime age = human.age(ctx.clock.now());
             if( age >= minAge && age < maxAge ){
                 double availability = 0.0;
-                for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(); ++i)
+                for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(ctx); ++i)
                     availability += human.perHostTransmission.anophEntoAvailability[i];
-                if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(maxAvailability) ) {
+                if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, maxAvailability) ) {
                     if( subPop == ComponentId::wholePop() || (human.isInSubPop( subPop ) != complement) ){
                         total+=1;
                         if( !human.isInSubPop(cumCovInd) )
@@ -376,10 +376,10 @@ public:
             return false;
         }else if( deployAge == age ){
             double availability = 0.0;
-            for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(); ++i)
+            for(size_t i = 0; i < Transmission::PerHostAnophParams::numSpecies(ctx); ++i)
                 availability += human.perHostTransmission.anophEntoAvailabilityRaw[i];
 
-            if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(maxAvailability) )
+            if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, maxAvailability) )
             {
                 auto now = ctx.clock.interv_date();
                 if( begin <= now && now < end &&

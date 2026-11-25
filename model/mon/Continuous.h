@@ -47,10 +47,10 @@ namespace Continuous {
 	 * assume we shouldn't overwrite existing files for security reasons).
 	 * 
 	 * Callbacks should be registered before init() is called. */
-	void init (const RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint);
+	void init (RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint);
 
-    void checkpoint(ostream& stream);
-    void checkpoint(istream& stream);
+    void checkpoint(RunContext& ctx, ostream& stream);
+    void checkpoint(RunContext& ctx, istream& stream);
         
 	/** Register a callback function which produces output.
 	 *
@@ -64,11 +64,11 @@ namespace Continuous {
 	 * @param outputCb A callback function, which when called, outputs its
 	 * data to the passed stream, with each entry preceeded by '\t'.
 	 */
-    void registerCallback (string optName, string titles, function<void(ostream&)> f);
+    void registerCallback (RunContext& ctx, string optName, string titles, function<void(ostream&)> f);
 
-    void registerCallback (string optName, string titles, function<void(const vector<Host::Human> &, ostream&)> f);
+    void registerCallback (RunContext& ctx, string optName, string titles, function<void(const vector<Host::Human> &, ostream&)> f);
 
-    void registerCallback (string optName, string titles, function<void(Population &, ostream&)> f);
+    void registerCallback (RunContext& ctx, string optName, string titles, function<void(Population &, ostream&)> f);
 	
 	/// Generate time-step's output. Called at beginning of time step.
         /// Passed population since some callbacks use this to generate output.

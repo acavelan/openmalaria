@@ -62,19 +62,18 @@ namespace OM {
 namespace mon {
 
 using internal::SurveyDate;
-using internal::runtime;
 
 
 
 using internal::SurveyDate;
-using internal::runtime;
 
 namespace {
 
 constexpr uint32_t maxCohortNumber = uint32_t{1} << 21;
 
-static void initAgeGroups(const SimClock& clock, const scnXml::Monitoring& monitoring)
+static void initAgeGroups(RunContext& ctx, const scnXml::Monitoring& monitoring)
 {
+    auto& runtime = ctx.ext->monitoring;
     const scnXml::MonAgeGroup::GroupSequence& groups = monitoring.getAgeGroup().getGroup();
     if (!(monitoring.getAgeGroup().getLowerbound() <= 0.0)) {
         throw util::xml_scenario_error("Expected survey age-group lowerbound of 0");
@@ -82,7 +81,7 @@ static void initAgeGroups(const SimClock& clock, const scnXml::Monitoring& monit
 
     runtime.ageGroupUpperBound.resize(groups.size() + 1);
     for (size_t i = 0; i < groups.size(); ++i) {
-        runtime.ageGroupUpperBound[i] = clock.from_years_d(groups[i].getUpperbound());
+        runtime.ageGroupUpperBound[i] = ctx.clock.from_years_d(groups[i].getUpperbound());
     }
     runtime.ageGroupUpperBound[groups.size()] = sim::future();
 }
@@ -91,6 +90,7 @@ static void initAgeGroups(const SimClock& clock, const scnXml::Monitoring& monit
 
 void initReporting(RunContext& ctx, const scnXml::Scenario& scenario)
 {
+    auto& runtime = ctx.ext->monitoring;
     runtime.reportIMR = -1;
     const scnXml::MonitoringOptions& optsElt = scenario.getMonitoring().getSurveyOptions();
     std::vector<OutMeasure> reportedMeasures;
@@ -148,8 +148,10 @@ void initReporting(RunContext& ctx, const scnXml::Scenario& scenario)
     internal::initStores(ctx, reportedMeasures, nSpecies, nDrugs);
 }
 
-SimTime readSurveyDates(const SimClock& clock, const scnXml::Monitoring& monitoring)
+SimTime readSurveyDates(RunContext& ctx, const scnXml::Monitoring& monitoring)
 {
+    const SimClock& clock = ctx.clock;
+    auto& runtime = ctx.ext->monitoring;
     const scnXml::Surveys::SurveyTimeSequence& survs = monitoring.getSurveys().getSurveyTime();
     std::map<SimTime, bool> surveys;
 
@@ -220,12 +222,13 @@ SimTime readSurveyDates(const SimClock& clock, const scnXml::Monitoring& monitor
     if (monitoring.getCohorts().present()) {
         runtime.nCohorts = static_cast<uint32_t>(1) << monitoring.getCohorts().get().getSubPop().size();
     }
-    initAgeGroups(clock, monitoring);
+    initAgeGroups(ctx, monitoring);
     return runtime.surveyDates.back().date;
 }
 
 void initCohorts(RunContext& ctx, const scnXml::Monitoring& monitoring)
 {
+    auto& runtime = ctx.ext->monitoring;
     runtime.cohortSubPopNumbers.clear();
     runtime.cohortSubPopIds.clear();
     if (!monitoring.getCohorts().present()) return;
@@ -258,7 +261,13 @@ using util::xml_scenario_error;
 
         /* Initialise: enable outputs registered and requested in XML.
          * Search for Continuous::registerCallback to see outputs available. */
-        void init (const RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint) {
+        void init (RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint) {
+            auto& ctsOStream = ctx.ext->ctsOStream;
+            auto& registered = ctx.ext->ctsRegistered;
+            auto& toReport = ctx.ext->ctsToReport;
+            SimTime& ctsPeriod = ctx.ext->ctsPeriod;
+            bool& duringInit = ctx.ext->ctsDuringInit;
+            auto& streamOffset = ctx.ext->ctsStreamOffset;
             const scnXml::Monitoring::ContinuousOptional& ctsOpt = monitoring.getContinuous();
             if( !ctsOpt.present() ) {
                 ctsPeriod = sim::zero();

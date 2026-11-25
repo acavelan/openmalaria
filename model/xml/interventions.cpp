@@ -388,8 +388,8 @@ public:
                     throw util::xml_scenario_error("non human hosts type " + intervName + " already deployed during non human hosts deployment");
 
                 const NhhParamsInterv &p = nhhParams[anophModel->mosq.name];
-                const double adultAvail = Transmission::PerHostAnophParams::get(i).entoAvailability->mean();
-                const double avail_i = Transmission::PerHostAnophParams::get(i).entoAvailabilityFactor * popSize * adultAvail * p.mosqRelativeAvailabilityHuman;
+                const double adultAvail = Transmission::PerHostAnophParams::get(ctx, i).entoAvailability->mean();
+                const double avail_i = Transmission::PerHostAnophParams::get(ctx, i).entoAvailabilityFactor * popSize * adultAvail * p.mosqRelativeAvailabilityHuman;
                 Transmission::Anopheles::Nhh nhh;
 
                 nhh.avail_i = avail_i;

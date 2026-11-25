@@ -29,6 +29,7 @@
 #include "Host/WithinHost/Genotypes.h"
 #include "PkPd/Drug/LSTMDrugType.h"
 #include "PkPd/LSTMMedicate.h"
+#include "PopulationAgeStructure.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -157,7 +158,7 @@ public:
     //@}
 
     /// Initial set-up: called by run_simulation via Scenario::load.
-    void init( const scnXml::Scenario& scenario, util::ModelNameProvider mnp );
+    void init( RunContext& ctx, const scnXml::Scenario& scenario, util::ModelNameProvider mnp );
 
     /** Sets up time step duration: either a named model's interval or the
      * scenario's explicit interval. Must be 1 or 5 days (checked by
@@ -205,6 +206,8 @@ public:
     /// owned and deleted by ~RunContext (raw pointer: gcc 16 instantiates
     /// unique_ptr's deleter on incomplete types at class scope).
     RunExtensions* ext = nullptr;
+    /// Demography / target age-structure state (PopulationAgeStructure.h).
+    AgeStructureState age;
     /// Intervention states saved for checkpoints (checkpoint read/write).
 };
 

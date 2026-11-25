@@ -129,7 +129,7 @@ void HumanIntervention::deploy( RunContext& ctx, Human& human, mon::Deploy::Meth
 {
     for( size_t cond : conditions ){
         // Abort deployment if any condition is false.
-        if( !mon::checkCondition(cond) ) return;
+        if( !mon::checkCondition(ctx, cond) ) return;
     }
     
     for( auto it = components.begin(); it != components.end(); ++it ) {
