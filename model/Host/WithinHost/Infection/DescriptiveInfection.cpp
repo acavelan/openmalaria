@@ -42,7 +42,7 @@ using namespace util;
 /* A triangular matrix: meanLogParasiteCount[i][j] is the
  * Mean Log Parasite Count for age i (in time steps) of an infection which
  * lasts j days. Indices with i>j are unused. */
-static double meanLogParasiteCount[numDurations][numDurations];
+static double meanLogParasiteCount[DescriptiveInfection::numDurations][DescriptiveInfection::numDurations];
 static double sigma0sq;       ///< Sigma0^2 from AJTM p.9 eq. 13
 static double xNuStar;        ///< XNuStar in AJTM p.9 eq. 13
 
@@ -51,7 +51,7 @@ bool bugfix_max_dens = true, bugfix_innate_max_dens = true;
 
 // ———  static init/clear ———
 
-void infection_init_descriptive (RunContext& ctx, const Parameters& parameters) {
+void DescriptiveInfection::init (RunContext& ctx, const Parameters& parameters) {
     // Error checks
     if( ctx.clock.one_TS() != 5 ){
         // To support non-5-day time-step models, either different data would
@@ -122,7 +122,7 @@ void infection_init_descriptive (RunContext& ctx, const Parameters& parameters) 
 
 // ———  non-static init  ———
 
-SimTime infection_duration_descriptive(RunContext& ctx, LocalRng& rng) {
+SimTime DescriptiveInfection::sample_duration(RunContext& ctx, LocalRng& rng) {
     // Forgive the excess precision; it just avoids having to update all expected results
     double dur_mean = 5.1300001144409179688;
     double dur_sigma = 0.80000001192092895508;
@@ -141,16 +141,22 @@ SimTime infection_duration_descriptive(RunContext& ctx, LocalRng& rng) {
 
 // ———  construction  ———
 
-// Ctor hook for Kind::Descriptive: the duration draw keeps the slot the member
-// ctor's init list held — nothing else draws between construction and here.
-void infection_ctor_descriptive(Infection& inf, LocalRng& rng) {
-    inf.descriptive.duration = infection_duration_descriptive(inf.ctx, rng);
+// The duration draw keeps the slot the old infection_new()/member ctor's init
+// list held — nothing else draws between construction and here.
+DescriptiveInfection::DescriptiveInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin) :
+    Infection (ctx, genotype, origin, Kind::Descriptive)
+{
+    duration = sample_duration (this->ctx, rng);
+    assert( this->ctx.clock.one_TS() == 5 );
+}
+
+bool DescriptiveInfection::expired() {
+    return ctx.clock.ts0() > m_startDate + duration;
 }
 
 
 // ———  time-step updates  ———
-void determine_densities_descriptive(
-        Infection& inf,
+void DescriptiveInfection::determine_densities(
         LocalRng& rng,
         double cumulativeh,
         double &timeStepMaxDensity,
@@ -158,6 +164,9 @@ void determine_densities_descriptive(
         double innateImmSurvFact,
         double bsvFactor)
 {
+    // alias: the equation block below is verbatim from the free function
+    // (inf.* payload refs became inf.* member refs)
+    auto& inf = *this;
     // Age of patent blood stage infection. Note: liver stage is fixed at one
     // 5-day time step and prepatent blood stage is latentp - 1 time steps.
     SimTime infage = inf.ctx.clock.ts0() - inf.m_startDate - Infection::s_latentP;
@@ -168,7 +177,7 @@ void determine_densities_descriptive(
         timeStepMaxDensity = 0.0;
         
         int32_t infAge = min( inf.ctx.clock.inSteps(infage), maxDurationTS );
-        int32_t infDur = min( inf.ctx.clock.inSteps(inf.descriptive.duration), maxDurationTS );
+        int32_t infDur = min( inf.ctx.clock.inSteps(inf.duration), maxDurationTS );
         inf.m_density=max (meanLogParasiteCount[infAge][infDur], 0.0);
         
         // The expected parasite density in the non naive host (AJTM p.9 eq. 9)
@@ -197,9 +206,9 @@ void determine_densities_descriptive(
                 timeStepMaxDensity = inf.m_density;
             }
         }
-        if (timeStepMaxDensity > maxDens && inf.descriptive.notPrintedMDWarning){
+        if (timeStepMaxDensity > maxDens && inf.notPrintedMDWarning){
             cerr << "TSMD hit limit:\t" << inf.m_density << ",\t" << timeStepMaxDensity << endl;
-            inf.descriptive.notPrintedMDWarning = false;
+            inf.notPrintedMDWarning = false;
         }
         inf.m_density = min(inf.m_density, maxDens);
         timeStepMaxDensity = min(timeStepMaxDensity, maxDens);

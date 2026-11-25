@@ -31,7 +31,7 @@
  * untested (many inputs, 2 outputs — needs full Human scaffolding; see
  * T2FixtureManifest.md).
  * 
- * What is pinned here is the small pure function infection_duration_descriptive()
+ * What is pinned here is the small pure function DescriptiveInfection::sample_duration()
  * (DescriptiveInfection.cpp:128): log-normal draw over hard-coded params plus
  * integer time-step rounding — a T2 fixture over the RNG primitive layer,
  * goldens generated with the same adapter as rng_dist_v50.csv.
@@ -54,7 +54,7 @@ public:
         UnittestUtil::initTime( 5 );
     }
     
-    /// infection_duration_descriptive() over a fixed stream: per draw, the returned
+    /// DescriptiveInfection::sample_duration() over a fixed stream: per draw, the returned
     /// infection duration and the 4 post-draw Xoshiro256P state words.
     /// Values generated 2026-11-19 with golden-gen/RngGoldenAdapter.h (GCC
     /// 16.2.1, GSL 2.8, -O2 -ffp-contract=off), mirroring the hard-coded
@@ -79,7 +79,7 @@ public:
         
         LocalRng rng(3, 4);  // Xoshiro256P(3, 4, default, default) — engine seed defaults in util/random.h
         for (size_t i = 0; i < sizeof(GOLDEN)/sizeof(GOLDEN[0]); ++i) {
-            SimTime dur = infection_duration_descriptive( UnittestUtil::ctx(), rng );
+            SimTime dur = DescriptiveInfection::sample_duration( UnittestUtil::ctx(), rng );
             TS_ASSERT_EQUALS( dur, sim::fromDays(GOLDEN[i].days) - UnittestUtil::clock().one_TS() );
             
             // state words after this draw, via the model's own checkpoint API

@@ -83,7 +83,7 @@ void initNHypnozoites(){
     }
 }
 
-void WHInterface::initVivax( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model ){
+void WHVivax::init( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model ){
 
     // Default value to use if no <parameters> element is present in XML.
     latentP = read_latentP( ctx.clock, model );
@@ -127,7 +127,7 @@ void WHInterface::initVivax( RunContext& ctx, const OM::Parameters& parameters, 
     Pathogenesis::PathogenesisModel::init( ctx, parameters, model.getClinical(), true );
 }
 
-void WHInterface::setHSParametersVivax(const scnXml::LiverStageDrug* elt){
+void WHVivax::setHSParameters(const scnXml::LiverStageDrug* elt){
     double oldPHetNoPQ = pHetNoPQ;
     if( elt == 0 ){
         ignoreNoPQ = false;

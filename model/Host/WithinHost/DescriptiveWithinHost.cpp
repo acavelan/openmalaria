@@ -42,7 +42,7 @@ extern bool bugfix_max_dens;    // DescriptiveInfection.cpp
 bool reportPatentInfected = false;
 // -----  Initialization  -----
 
-void WHInterface::initDescriptive(RunContext& ctx){
+void WHDescriptive::init(RunContext& ctx){
     reportPatentInfected = (
                                 mon::isUsed(ctx, mon::measure("totalPatentInf"))
                                 || mon::isUsed(ctx, mon::measure("totalPatentInf_Imported"))
@@ -51,19 +51,11 @@ void WHInterface::initDescriptive(RunContext& ctx){
                             );
 }
 
-void WHInterface::ctorDescriptive( LocalRng& rng, double comorbidityFactor )
+WHDescriptive::WHDescriptive( RunContext& ctx, LocalRng& rng, double comorbidityFactor ) :
+    WHFalciparum( ctx, rng, comorbidityFactor, Kind::Descriptive )
 {
-    ctorFalciparum( rng, comorbidityFactor );
-    
     assert( ctx.clock.one_TS() == sim::fromDays(5) );
     opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
-}
-
-void WHInterface::dtorDescriptive() {
-    for( auto inf = infections.begin(); inf != infections.end(); ++inf ){
-        delete *inf;
-    }
-    infections.clear();
 }
 
 
@@ -72,7 +64,7 @@ void WHInterface::dtorDescriptive() {
 // clearInfections() and clearImmunity_falciparum() are shared with the Common
 // kind (identical code, defined in CommonWithinHost.cpp).
 
-void WHInterface::importInfection_descriptive(LocalRng& rng){
+void WHDescriptive::importInfection(LocalRng& rng){
     if( SlotAllocator::try_import(numInfs) ){   // mode A: at the cap, no draw at all
         imm_h_ref() += 1;
         numInfs += 1;
@@ -80,7 +72,7 @@ void WHInterface::importInfection_descriptive(LocalRng& rng){
         // should use initial frequencies to select genotypes.
         vector<double> weights( 0 );        // zero length: signal to use initial frequencies
         uint32_t genotype = ctx.genotypes.sampleGenotype(rng, weights);
-        infections.push_back(infection_new(ctx, rng, genotype, InfectionOrigin::Imported, Infection::Kind::Descriptive));
+        infections.push_back(new DescriptiveInfection(ctx, rng, genotype, InfectionOrigin::Imported));
     }
     assert( numInfs == static_cast<int>(infections.size()) );
 }
@@ -88,7 +80,7 @@ void WHInterface::importInfection_descriptive(LocalRng& rng){
 
 // -----  Density calculations  -----
 
-void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
+void WHDescriptive::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
         vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears)
 {
     // Note: adding infections at the beginning of the update instead of the end
@@ -116,10 +108,10 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
                 double vaccineFactor = human.vaccine_factor( interventions::Vaccine::PEV, genotype );
                 // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
                 if(vaccineFactor == 1.0 || human.rng().bernoulli(vaccineFactor))
-                    infections.push_back(infection_new (ctx, rng, genotype, side.origin, Infection::Kind::Descriptive));
+                    infections.push_back(new DescriptiveInfection (ctx, rng, genotype, side.origin));
             }
             else
-                infections.push_back(infection_new (ctx, rng, genotype, side.origin, Infection::Kind::Descriptive));
+                infections.push_back(new DescriptiveInfection (ctx, rng, genotype, side.origin));
         }
         assert( numInfs == static_cast<int>(infections.size()) );
     }
@@ -142,7 +134,7 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
     // ageInYears is fixed) — one computation per host tick, same IEEE values
     // the per-infection call used. Computed on first use so a NaN still throws
     // at exactly the first infection that reaches the call (original point).
-    WHInterface::ImmSurvTick immTick = {};
+    ImmSurvTick immTick = {};
     bool immTickReady = false;
     for(auto inf = infections.begin(); inf != infections.end();) {
         //NOTE: it would be nice to combine this code with that in
@@ -168,7 +160,7 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
         double immSurvFact = immunitySurvivalFactor(immTick, (*inf)->cumulativeExposureJ());
         double bsvFactor = anyVac ? human.vaccine_factor(interventions::Vaccine::BSV, opt_vaccine_genotype? (*inf)->genotype() : 0) : 1.0;
 
-        determine_densities_descriptive(**inf, rng, imm_h_ref(), infStepMaxDens, immSurvFact, _innateImmSurvFact, bsvFactor);
+        static_cast<DescriptiveInfection*>(*inf)->determine_densities(rng, imm_h_ref(), infStepMaxDens, immSurvFact, _innateImmSurvFact, bsvFactor);
 
         if (bugfix_max_dens)
             infStepMaxDens = std::max(infStepMaxDens, timeStepMaxDensity);
@@ -205,7 +197,7 @@ void WHInterface::update_descriptive(Host::Human &human, LocalRng& rng, int &nNe
 
 // -----  Summarize  -----
 
-bool WHInterface::summarize_descriptive( Host::Human& human )const{
+bool WHDescriptive::summarize( Host::Human& human )const{
     pathogenesisModel->summarize( human );
     
     InfectionOrigin infectionType = get_infection_origin(infections);
@@ -290,7 +282,7 @@ bool WHInterface::summarize_descriptive( Host::Human& human )const{
 // -----  Data checkpointing  -----
 
 char const*const not_impl = "feature not available with the \"descriptive\" within-host model";
-void WHInterface::treatPkPd_descriptive(size_t schedule, size_t dosages, double age, double delay_d){
+void WHDescriptive::treatPkPd(size_t schedule, size_t dosages, double age, double delay_d){
     throw TRACED_EXCEPTION( not_impl, util::Error::WHFeatures ); }
 
 }
