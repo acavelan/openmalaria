@@ -52,6 +52,9 @@ struct HumanHet {
 };
 
 HumanHet hetSample(util::LocalRng& rng)
+// §9 draw contract (checked phase 6.4): max 4 draws — the three leading `if`s
+// draw at most one each, then exactly one draw in the else-if chain.
+// parity: Deployments.h:245-306 (het consumed by deploys in that order)
 {
     HumanHet het;
     if(util::ModelOptions::option (util::TRANS_HET)){
@@ -286,57 +289,84 @@ void summarize(RunContext& ctx, Human &human, bool surveyOnlyNewEp) {
     }
 }
 
-void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& transmission, HostScratch& scratch)
-{
-    // For integer age checks we use age0 to e.g. get 73 steps comparing less than 1 year old
-    SimTime age0 = human.age(ctx.clock.ts0());
-    if (human.clinicalModel->isDead(age0)) {
-        human.kill();
-        return;
+// —— The 7 §9 host-update stages (bodies verbatim from the old Host::update;
+// statements, order and `// parity:` comments untouched) ——
+
+bool host_is_dead(HostView& v) {
+    if (v.human.clinicalModel->isDead(v.scratch.age0)) {
+        v.human.kill();
+        return true;
     }
-    
-    util::streamValidate( age0 );
+    return false;
+}
+
+void host_update_mon_cohorts(HostView& v) {
+    util::streamValidate( v.scratch.age0 );
 
     // monitoringAgeGroup is the group for the start of the time step.
-    mon::updateAgeGroup(ctx, human.monitoringAgeGroup(), age0);
-    
-    human.updateCohortSet();
+    mon::updateAgeGroup(v.ctx, v.human.monitoringAgeGroup(), v.scratch.age0);
 
+    v.human.updateCohortSet();
+}
+
+void host_calculate_eir(HostView& v) {
     // Age at  the end of the update period. In most cases
     // the difference between this and age at the start is not especially
     // important in the model design, but since we parameterised with
     // age1 we should stick with it.
-    double age1 = sim::inYears(human.age(ctx.clock.ts1()));
+    v.scratch.age1 = sim::inYears(v.human.age(v.ctx.clock.ts1()));
 
     // age1 used only in PerHost::relativeAvailabilityAge(); difference to age0 should be minor
-    transmission.getEIR(human, age0, age1, scratch.EIR_per_genotype_i, scratch.EIR_per_genotype_l);
-    vector<double> &EIR_per_genotype_i = scratch.EIR_per_genotype_i;
-    vector<double> &EIR_per_genotype_l = scratch.EIR_per_genotype_l;
+    v.transmission.getEIR(v.human, v.scratch.age0, v.scratch.age1, v.scratch.EIR_per_genotype_i, v.scratch.EIR_per_genotype_l);
 
-    double EIR_i = util::vectors::sum(EIR_per_genotype_i);
-    double EIR_l = util::vectors::sum(EIR_per_genotype_l);
-    double EIR = EIR_i + EIR_l;
+    v.scratch.eir_i = util::vectors::sum(v.scratch.EIR_per_genotype_i);
+    v.scratch.eir_l = util::vectors::sum(v.scratch.EIR_per_genotype_l);
+    v.scratch.eir = v.scratch.eir_i + v.scratch.eir_l;
+}
 
+void host_sample_new_infections(HostView& v) {
     double x = 0.0;
-    
-    if(EIR > 0)
-        x = EIR_i / EIR;
 
-    double expectedNNewInfs = human.infIncidence->expectedNumNewInfections( human, EIR);
+    if(v.scratch.eir > 0)
+        x = v.scratch.eir_i / v.scratch.eir;
+
+    double expectedNNewInfs = v.human.infIncidence->expectedNumNewInfections( v.human, v.scratch.eir);
     double expectedNNewInfs_i = x * expectedNNewInfs;
     double expectedNNewInfs_l = (1.0-x) * expectedNNewInfs;
 
     // One more rng call if imported infection
-    int nNewInfs_l = human.infIncidence->numNewInfections( human, expectedNNewInfs_l);
-    int nNewInfs_i = human.infIncidence->numNewInfections( human, expectedNNewInfs_i);
+    v.scratch.nNewInfs_l = v.human.infIncidence->numNewInfections( v.human, expectedNNewInfs_l);
+    v.scratch.nNewInfs_i = v.human.infIncidence->numNewInfections( v.human, expectedNNewInfs_i);
+}
 
+void host_within_host_update(HostView& v) {
     // age1 used when medicating drugs (small effect) and in immunity model (which was parameterised for it)
-    human.withinHostModel->update(human, human.rng(), nNewInfs_i, nNewInfs_l, EIR_per_genotype_i, EIR_per_genotype_l, age1);
-    human.infIncidence->reportNumNewInfections(human, nNewInfs_i, nNewInfs_l);
+    v.human.withinHostModel->update(v.human, v.human.rng(), v.scratch.nNewInfs_i, v.scratch.nNewInfs_l, v.scratch.EIR_per_genotype_i, v.scratch.EIR_per_genotype_l, v.scratch.age1);
+    v.human.infIncidence->reportNumNewInfections(v.human, v.scratch.nNewInfs_i, v.scratch.nNewInfs_l);
+}
 
+void host_clinical_update(HostView& v) {
     // age1 used to get case fatality and sequelae probabilities, determine pathogenesis
-    human.clinicalModel->update( human, age1, age0 == sim::zero() );
-    human.clinicalModel->updateInfantDeaths( age0 );
+    v.human.clinicalModel->update( v.human, v.scratch.age1, v.scratch.age0 == sim::zero() );
+}
+
+void host_update_infant_deaths(HostView& v) {
+    v.human.clinicalModel->updateInfantDeaths( v.scratch.age0 );
+}
+
+void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& transmission, HostScratch& scratch)
+{
+    HostView v{ ctx, human, transmission, scratch };
+    // For integer age checks we use age0 to e.g. get 73 steps comparing less than 1 year old
+    scratch.age0 = human.age(ctx.clock.ts0());
+    if (host_is_dead(v)) return;
+
+    host_update_mon_cohorts(v);
+    host_calculate_eir(v);
+    host_sample_new_infections(v);
+    host_within_host_update(v);
+    host_clinical_update(v);
+    host_update_infant_deaths(v);
 }
 
 } }
