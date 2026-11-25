@@ -72,10 +72,10 @@ void ImportedInfections::init( RunContext& ctx, const scnXml::ImportedInfections
             }
             rate.reserve( tElt.getRate().size() );
             try{
-                for( auto it = tElt.getRate().begin(); it != tElt.getRate().end(); ++it ){
-                    SimTime date = UnitParse::readDate(ctx.clock,  it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/ );
+                for( const auto& rateElt : tElt.getRate() ){
+                    SimTime date = UnitParse::readDate(ctx.clock,  rateElt.getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/ );
                     // convert to per-time-step, per-person
-                    double rateVal = it->getValue() * ctx.clock.years_per_step * (1.0 / 1000.0);
+                    double rateVal = rateElt.getValue() * ctx.clock.years_per_step * (1.0 / 1000.0);
                     rate.push_back( Rate( date - ctx.clock.start_date, rateVal ) );
                 }
                 sort( rate.begin(), rate.end() );
@@ -106,6 +106,12 @@ namespace OM {
 namespace interventions {
 
 using namespace util;  // moved code (ITN/IRS/GVI/Vaccine) uses unqualified util names
+
+// Frozen error texts duplicated verbatim in the parse ladders below; single
+// definitions here, every throw site emits the identical bytes (message
+// multiset and first-error order unchanged — punch-list #16).
+static const string min_avail_err = "timed intervention must have 0 <= minAvailability <= maxAvailability <= 100";
+static const string nonvec_err = "vector model interventions can not be used with the non-vector model";
 
 // 7.1: changeHS/changeEIR timed-deployment classes gone; the payload is the
 // schema clone in the TimedDeployment variant, consumed (deleted) on deploy.
@@ -172,6 +178,16 @@ HumanDeployParams HumanDeployParams::read( RunContext&, const scnXml::Deployment
         return d;
     }
 
+    /// max/minAvailability present-reads + range check, shared by the timed and
+    /// continuous human deployment readers (getMax before getMin, same message
+    /// and check position as the former duplicated blocks).
+    template<class Elt>
+    static void read_avail_limits(const Elt& elt, SimTime& mn, SimTime& mx){
+        if( elt.getMaxAvailability().present() ) mx = elt.getMaxAvailability().get();
+        if( elt.getMinAvailability().present() ) mn = elt.getMinAvailability().get();
+        if( mn < sim::zero() || mx < mn ) throw util::xml_scenario_error(min_avail_err);
+    }
+
     TimedHumanParams TimedHumanParams::read( RunContext& ctx, SimTime date,
                    const scnXml::MassDeployment& mass,
                    shared_ptr<const HumanIntervention> intervention,
@@ -189,16 +205,9 @@ HumanDeployParams HumanDeployParams::read( RunContext&, const scnXml::Deployment
             th.maxAge = ctx.clock.from_years_n( mass.getMaxAge().get() );
             
         if( th.minAge < sim::zero() || th.maxAge < th.minAge )
-            throw util::xml_scenario_error("timed intervention must have 0 <= minAvailability <= maxAvailability <= 100");
+            throw util::xml_scenario_error(min_avail_err);
 
-        if( mass.getMaxAvailability().present() )
-            th.maxAvailability = mass.getMaxAvailability().get();
-
-        if( mass.getMinAvailability().present() )
-            th.minAvailability = mass.getMinAvailability().get();
-            
-        if( th.minAvailability < sim::zero() || th.maxAvailability < th.minAvailability )
-            throw util::xml_scenario_error("timed intervention must have 0 <= minAvailability <= maxAvailability <= 100");
+        read_avail_limits( mass, th.minAvailability, th.maxAvailability );
         return th;
     }
 
@@ -230,14 +239,7 @@ HumanDeployParams HumanDeployParams::read( RunContext&, const scnXml::Deployment
             msg << sim::inYears(ctx.clock.max_human_age);
             throw util::xml_scenario_error( msg.str() );
         }
-        if( elt.getMaxAvailability().present() )
-            c.maxAvailability = elt.getMaxAvailability().get();
-
-        if( elt.getMinAvailability().present() )
-            c.minAvailability = elt.getMinAvailability().get();
-            
-        if( c.minAvailability < sim::zero() || c.maxAvailability < c.minAvailability )
-            throw util::xml_scenario_error("timed intervention must have 0 <= minAvailability <= maxAvailability <= 100");
+        read_avail_limits( elt, c.minAvailability, c.maxAvailability );
         return c;
     }
 
@@ -324,8 +326,6 @@ void timed_deploy_nhh_mods( RunContext& ctx, std::vector<Host::Human>&,
         }
     }
 }
-const string vec_mode_err = "vector interventions can only be used in dynamic transmission mode (mode=\"dynamic\")";
-
 /// Old TimedAddNonHumanHostsDeployment ctor body (per-species parameter read);
 /// check_timed_date (was the TimedDeployment base ctor) runs first, as before.
 static AddNhhDeployParams read_add_nhh( RunContext& ctx, SimTime date, const string &intervName,
@@ -369,7 +369,7 @@ void timed_deploy_add_nhh( RunContext& ctx, vector<Host::Human>& population,
     if(vectorModel)
     {
         double popSize = population.size();
-        if (vectorModel->interventionMode != Transmission::SimulationMode::dynamicEIR) { throw util::xml_scenario_error(vec_mode_err); }
+        if (vectorModel->interventionMode != Transmission::SimulationMode::dynamicEIR) { throw util::xml_scenario_error(Transmission::vec_mode_err); }
         for (size_t i = 0; i < vectorModel->speciesIndex.size(); ++i)
         {
             Transmission::Anopheles::AnophelesModel *anophModel = vectorModel->species[i].get();
@@ -801,34 +801,23 @@ void ITNParams::ITNAnopheles::init(
         assert (elt.getTwoStageDeterrency().present());
         relAttractiveness.initTwoStage(elt.getTwoStageDeterrency().get(), maxInsecticide, holeIndexMax, holeIndexMaxPresent);
     }
-    if (elt.getPreprandialKillingEffect().present()) {
-        preprandialKillingEffect.init(elt.getPreprandialKillingEffect().get(),
-                                      maxInsecticide,
-                                      "ITN.description.anophelesParams.preprandialKillingFactor",
-                                      false);
-    } else {
-        assert (elt.getPreprandialKillingEffectLogit().present());
-        if (!holeIndexMax) {
-            throw util::xml_scenario_error("ITN.description.anophelesParams: holeIndexMax required when using logit killing effect");
+    // pre/postprandial killing: identical ladders (same holeIndexMax message),
+    // differing only in target/accessor/name — present()/get() call order kept.
+    auto init_kill = [&](factors::SurvivalFactor& target, const auto& eltOpt, const auto& logitOpt, const char* eltName) {
+        if (eltOpt.present()) {
+            target.init(eltOpt.get(), maxInsecticide, eltName, false);
+        } else {
+            assert (logitOpt.present());
+            if (!holeIndexMax) {
+                throw util::xml_scenario_error("ITN.description.anophelesParams: holeIndexMax required when using logit killing effect");
+            }
+            target.initLogit(logitOpt.get(), holeIndexMax, false);
         }
-        preprandialKillingEffect.initLogit(elt.getPreprandialKillingEffectLogit().get(),
-                                           holeIndexMax,
-                                           false);
-    }
-    if (elt.getPostprandialKillingEffect().present()) {
-        postprandialKillingEffect.init(elt.getPostprandialKillingEffect().get(),
-                                       maxInsecticide,
-                                       "ITN.description.anophelesParams.postprandialKillingFactor",
-                                       false);
-    } else {
-        assert (elt.getPostprandialKillingEffectLogit().present());
-        if (!holeIndexMax) {
-            throw util::xml_scenario_error("ITN.description.anophelesParams: holeIndexMax required when using logit killing effect");
-        }
-        postprandialKillingEffect.initLogit(elt.getPostprandialKillingEffectLogit().get(),
-                                            holeIndexMax,
-                                            false);
-    }
+    };
+    init_kill(preprandialKillingEffect, elt.getPreprandialKillingEffect(), elt.getPreprandialKillingEffectLogit(),
+              "ITN.description.anophelesParams.preprandialKillingFactor");
+    init_kill(postprandialKillingEffect, elt.getPostprandialKillingEffect(), elt.getPostprandialKillingEffectLogit(),
+              "ITN.description.anophelesParams.postprandialKillingFactor");
     if (elt.getFecundityReduction().present()) {
         relFecundityEffect.init(elt.getFecundityReduction().get(),
                                 maxInsecticide,
@@ -1128,9 +1117,8 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
         const scnXml::HumanInterventions &human = intervElt.getHuman().get();
 
         // 1. Read components
-        for (auto it = human.getComponent().begin(), end = human.getComponent().end(); it != end; ++it)
+        for (const scnXml::HumanInterventionComponent &component : human.getComponent())
         {
-            const scnXml::HumanInterventionComponent &component = *it;
             if (ctx.identifierMap.count(component.getId()) > 0)
             {
                 ostringstream msg;
@@ -1200,9 +1188,8 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             }
             return std::make_pair(subPop, complement);
         };
-        for (auto it = human.getDeployment().begin(), end = human.getDeployment().end(); it != end; ++it)
+        for (const scnXml::Deployment &elt : human.getDeployment())
         {
-            const scnXml::Deployment &elt = *it;
             // 2.a intervention components
             auto intervention = shared_ptr<HumanIntervention>(new HumanIntervention(ctx, elt.getComponent(), elt.getCondition()));
 
@@ -1332,15 +1319,12 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
     if (intervElt.getUninfectVectors().present())
     {
         const scnXml::UninfectVectors &elt = intervElt.getUninfectVectors().get();
-        if (elt.getTimedDeployment().size() > 0)
+        // timed deployments:
+        for (const auto &it : elt.getTimedDeployment())
         {
-            // timed deployments:
-            for (auto it = elt.getTimedDeployment().begin(); it != elt.getTimedDeployment().end(); ++it)
-            {
-                SimTime date = UnitParse::readDate(ctx.clock, it->getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
-                check_timed_date(ctx, date);
-                ctx.timed->push_back(timed_deployment(date, TimedDeploymentKind::UNINFECT_VECTORS));
-            }
+            SimTime date = UnitParse::readDate(ctx.clock, it.getTime(), UnitParse::STEPS /*STEPS is only for backwards compatibility*/);
+            check_timed_date(ctx, date);
+            ctx.timed->push_back(timed_deployment(date, TimedDeploymentKind::UNINFECT_VECTORS));
         }
     }
     if (intervElt.getVectorPop().present())
@@ -1351,9 +1335,8 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             typedef scnXml::VectorPop::InterventionSequence SeqT;
             const SeqT &seq = intervElt.getVectorPop().get().getIntervention();
             size_t instance = 0;
-            for (auto it = seq.begin(), end = seq.end(); it != end; ++it)
+            for (const scnXml::VectorIntervention &elt : seq)
             {
-                const scnXml::VectorIntervention &elt = *it;
                 if (elt.getTimed().present())
                 {
                     initVectorInterv(*vectorModel, elt.getDescription().getAnopheles(), instance, elt.getName());
@@ -1370,7 +1353,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             }
         }
         else
-            throw util::xml_scenario_error("vector model interventions can not be used with the non-vector model");
+            throw util::xml_scenario_error(nonvec_err);
     }
     if (intervElt.getAddNonHumanHosts().present())
     {
@@ -1379,9 +1362,8 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
         {
             typedef scnXml::AddNonHumanHosts::NonHumanHostsSequence SeqT;
             const SeqT &seq = intervElt.getAddNonHumanHosts().get().getNonHumanHosts();
-            for (auto it = seq.begin(), end = seq.end(); it != end; ++it)
+            for (const scnXml::NonHumanHosts2 &elt : seq)
             {
-                const scnXml::NonHumanHosts2 &elt = *it;
                 if (elt.getTimed().present())
                 {
                     for (const scnXml::Deploy2 &deploy : elt.getTimed().get().getDeploy())
@@ -1396,7 +1378,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             }
         }
         else
-            throw util::xml_scenario_error("vector model interventions can not be used with the non-vector model");
+            throw util::xml_scenario_error(nonvec_err);
     }
     if (intervElt.getNonHumanHostsModifications().present())
     {
@@ -1406,9 +1388,8 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             typedef scnXml::NonHumanHostsModifications::InterventionSequence SeqT;
             const SeqT &seq = intervElt.getNonHumanHostsModifications().get().getIntervention();
             size_t instance = 0;
-            for (auto it = seq.begin(), end = seq.end(); it != end; ++it)
+            for (const scnXml::NonHumanHostsIntervention &elt : seq)
             {
-                const scnXml::NonHumanHostsIntervention &elt = *it;
                 if (elt.getTimed().present())
                 {
                     const scnXml::DecayFunction &decay = elt.getDecay();
@@ -1426,7 +1407,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             }
         }
         else
-            throw util::xml_scenario_error("vector model interventions can not be used with the non-vector model");
+            throw util::xml_scenario_error(nonvec_err);
     }
     if (intervElt.getVectorTrap().present())
     {
@@ -1453,7 +1434,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions &int
             }
         }
         else
-            throw util::xml_scenario_error("vector model interventions can not be used with the non-vector model");
+            throw util::xml_scenario_error(nonvec_err);
     }
 
     // lists must be sorted, increasing

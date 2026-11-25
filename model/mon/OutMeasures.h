@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <limits>
 #include <string_view>
@@ -369,10 +370,7 @@ inline bool isValidCondition(Measure measure)
         mon::measure("nSubPopRemovalFirstEvent"), mon::measure("innoculationsPerAgeGroup"), mon::measure("innoculationsPerVector"),
         mon::measure("inputEIR"), mon::measure("simulatedEIR"), allCauseIMR
     };
-    for (Measure invalidMeasure : invalid) {
-        if (measure == invalidMeasure) return false;
-    }
-    return true;
+    return !std::any_of(std::begin(invalid), std::end(invalid), [measure](Measure m){ return measure == m; });
 }
 
 } // namespace mon

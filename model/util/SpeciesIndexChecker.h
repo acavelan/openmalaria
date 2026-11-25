@@ -54,7 +54,7 @@ private:
 };
 
 inline size_t SpeciesIndexChecker::getIndex( string species ){
-    if( found.count( species ) > 0 ){
+    if( !found.insert( species ).second ){
         std::ostringstream msg;
         msg << "Intervention \"" << _intervName
             << "\" has multiple descriptions for vector species \""
@@ -69,7 +69,6 @@ inline size_t SpeciesIndexChecker::getIndex( string species ){
             << "\", but this species is not mentioned in the entomology section";
         throw util::xml_scenario_error( msg.str() );
     }
-    found.insert( species );
     return sIndex->second;
 }
 

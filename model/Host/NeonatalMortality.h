@@ -121,11 +121,8 @@ inline void NeonatalMortality::update (RunContext& ctx, vector<Host::Human> &pop
     //update the vector containing the prevalence by gestational age
     size_t index = ctx.clock.moduloSteps(ctx.clock.ts0(), prevByGestationalAge.size());
     prevByGestationalAge[index] = prev2025;
-    for(size_t i = 0; i < prevByGestationalAge.size(); ++i) {
-        if (prevByGestationalAge[i] > maxPrev) {
-            maxPrev = prevByGestationalAge[i];
-        }
-    }
+    // max is order-free (plain > comparisons, no FP combine) — punch-list #12
+    maxPrev = std::max(maxPrev, *std::max_element(prevByGestationalAge.begin(), prevByGestationalAge.end()));
     
     // equation (2) p 75 AJTMH 75 suppl 2
     double prevPG= maxPrev / (critPrevPrim + maxPrev);

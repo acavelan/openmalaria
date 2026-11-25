@@ -22,3 +22,4 @@ lib
 .opencode/skills/test-driven-development/
 build
 build-*/
+contrib/cxxtest/build_tools/

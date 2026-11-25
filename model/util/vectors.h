@@ -25,6 +25,8 @@
 #include "Clock.h"
 #include "util/errors.h"
 
+#include <numeric>
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -39,16 +41,12 @@ namespace vectors {
   //@{
   /// Scale all elements of a vector by a in-situ
   inline void scale (vector<double>& vec, double a) {
-    for(size_t i = 0; i < vec.size(); ++i)
-      vec[i] *= a;
+    for (double& v : vec) v *= a;
   }
   
   /// Return sum of all elements
   inline double sum (const vector<double>& vec) {
-    double r = 0.0;
-    for(size_t i = 0; i < vec.size(); ++i)
-      r += vec[i];
-    return r;
+    return std::accumulate(vec.begin(), vec.end(), 0.0);  // same left fold
   }
   
   /// Return sum of all elements

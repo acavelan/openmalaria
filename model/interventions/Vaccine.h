@@ -160,13 +160,9 @@ inline bool vaccinate( RunContext& ctx, Host::Human& human,
                 ComponentId componentId, interventions::VaccineLimits vaccLimits )
 {
     auto& vac = human.cols->vac[human.row];
-    VacRecord* record = 0;
-    for( VacRecord& r : vac ){
-        if( r.id == componentId ){
-            record = &r;
-            break;
-        }
-    }
+    // first record with this vaccine's id (exact ComponentId equality), if any
+    auto rec = std::ranges::find_if(vac, [componentId](const VacRecord& r){ return r.id == componentId; });
+    VacRecord* record = rec != vac.end() ? &*rec : nullptr;
     
     uint32_t numDosesAdministered = (record == 0) ? 0 : record->num_doses;
     if( numDosesAdministered < vaccLimits.minPrevDoses ||

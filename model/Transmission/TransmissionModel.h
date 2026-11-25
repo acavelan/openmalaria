@@ -60,7 +60,10 @@ class Human;
 namespace Transmission
 {
 
-
+/// Shared error text: vector interventions require dynamic mode (defined in
+/// TransmissionModel.cpp; also thrown by xml/interventions.cpp — one string,
+/// bytes unchanged).
+extern const std::string vec_mode_err;
 
 /** Variable describing current simulation mode. */
 enum SimulationMode
@@ -573,15 +576,7 @@ private:
     void changeEIRIntervention_vector(const scnXml::NonVector &nonVectorData);
 
     void ctsCbN_v0(ostream &stream);
-    void ctsCbP_A(ostream &stream);
-    void ctsCbP_Amu(ostream &stream);
-    void ctsCbP_A1(ostream &stream);
-    void ctsCbP_Ah(ostream &stream);
-    void ctsCbP_df(ostream &stream);
-    void ctsCbP_dif(ostream &stream);
-    void ctsCbN_v(ostream &stream);
-    void ctsCbO_v(ostream &stream);
-    void ctsCbS_v(ostream &stream);
+    void ctsCbVecStat(Anopheles::VecStat, ostream &stream);
     void ctsCbAlpha(const vector<Host::Human> &population, ostream &stream);
     void ctsCbP_B(const vector<Host::Human> &population, ostream &stream);
     void ctsCbP_CD(const vector<Host::Human> &population, ostream &stream);

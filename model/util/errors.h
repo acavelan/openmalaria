@@ -44,12 +44,6 @@ using namespace std;
 #define OM_GNU_STACK_TRACE
 #endif
 
-// Macro to make checking XML inputs easier
-#define XML_ASSERT( cond, msg ) if(!(cond)) throw ::OM::util::xml_scenario_error(msg)
-
-#define OM_ASSERT_EQ( a, b ) ::OM::util::do_assertion( (a), (b), __FILE__, __LINE__ )
-#define OM_ASSERT_EQ_TOL( a, b, tol ) ::OM::util::do_assertion_tol( (a), (b), (tol), __FILE__, __LINE__ )
-
 /** Standard exception classes for OpenMalaria. */
 namespace OM { namespace util {
     
@@ -68,7 +62,7 @@ namespace OM { namespace util {
         None = 0,
         Default = 64,
         TracedDefault,
-        Assertion,
+        Assertion, // dead since do_assertion* removal; entry kept to pin following exit codes
         /// any error from Code Synthesis's XSD
         XSD,
         /// invalid scenario file
@@ -200,22 +194,4 @@ namespace OM { namespace util {
     
     /** Set up a GSL handler to throw a traced exception. */
     void set_gsl_handler();
-    
-    template<typename A, typename B>
-    void do_assertion(A a, B b, const char *file, int line) {
-        if( a != b ) {
-                ostringstream oss;
-                oss << "Expected " << a << " == " << b;
-                throw traced_exception( oss.str(), file, line, Error::Assertion );
-        }
-    }
-    
-    template<typename T>
-    void do_assertion_tol(T a, T b, T tol, const char *file, int line) {
-        if( !((a < b + tol ) && (b < a + tol)) ){
-                ostringstream oss;
-                oss << "Expected " << a << " == " << b << " to tolerance " << tol;
-                throw traced_exception( oss.str(), file, line, Error::Assertion );
-        }
-    }
 } }
