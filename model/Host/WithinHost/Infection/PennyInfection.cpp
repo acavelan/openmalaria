@@ -139,12 +139,12 @@ const double Omega=0.00025;
 
 //@}
 
-CommonInfection* createPennyInfection (LocalRng& rng, uint32_t protID, int origin) {
-    return new PennyInfection (rng, protID, origin);
+CommonInfection* createPennyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+    return new PennyInfection (ctx, rng, protID, origin);
 }
 
-CommonInfection* checkpointedPennyInfection (istream& stream) {
-    return new PennyInfection (stream);
+CommonInfection* checkpointedPennyInfection (RunContext& ctx, istream& stream) {
+    return new PennyInfection (ctx, stream);
 }
 
 void PennyInfection::init() {
@@ -164,8 +164,8 @@ void PennyInfection::init() {
     }
 }
 
-PennyInfection::PennyInfection(LocalRng& rng, uint32_t protID, int origin):
-        CommonInfection(protID, origin),
+PennyInfection::PennyInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin):
+        CommonInfection(ctx, protID, origin),
         variantSpecificSummation(0),
         clonalSummation(0)
 {
@@ -325,8 +325,8 @@ double PennyInfection::getClonalSummation(int ageDays) {
 }
 
 
-PennyInfection::PennyInfection (istream& stream) :
-        CommonInfection(stream)
+PennyInfection::PennyInfection (RunContext& ctx, istream& stream) :
+        CommonInfection(ctx, stream)
 {
     for(int i=0; i<delta_C; ++i){
         cirDensities[i] & stream;

@@ -22,6 +22,7 @@
 
 #include "PopulationAgeStructure.h"
 #include "Global.h"
+#include "core/RunContext.h"
 #include "util/errors.h"
 
 #include <cmath>
@@ -43,12 +44,12 @@ double AgeStructure::alpha1;
 vector<double> AgeStructure::cumAgeProp;
 
 
-void AgeStructure::init( const scnXml::Demography& demography ){
+void AgeStructure::init( RunContext& ctx, const scnXml::Demography& demography ){
     // this number of cells are needed:
-    cumAgeProp.resize( sim::inSteps(sim::maxHumanAge()) + 1 );
+    cumAgeProp.resize( ctx.clock.inSteps(ctx.clock.max_human_age) + 1 );
     
-    estimateRemovalRates( demography );
-    calcCumAgeProp();
+    estimateRemovalRates( ctx, demography );
+    calcCumAgeProp(ctx);
 }
 
 int AgeStructure::targetCumPop( size_t ageTSteps, int targetPop ){
@@ -152,17 +153,17 @@ double AgeStructure::setDemoParameters (double param1, double param2)
     return result;
 }
 
-void AgeStructure::calcCumAgeProp ()
+void AgeStructure::calcCumAgeProp (RunContext& ctx)
 {
     cumAgeProp[0] = 0.0;
     for(size_t j=1;j < cumAgeProp.size(); ++j) {
-	SimTime age = sim::fromTS( cumAgeProp.size() - j - 1 );
+	SimTime age = ctx.clock.fromTS( cumAgeProp.size() - j - 1 );
 	double ageYears = sim::inYears(age);
 	double M1s = (mu0 * (1.0 - exp (-alpha0 * ageYears)) / alpha0);
 	double M2s = (mu1 * (exp (alpha1 * ageYears) - 1.0) / alpha1);
 	double Ms = M1s + M2s;
 	double predperc = exp (-rho * ageYears - Ms);
-	if (age >= sim::maxHumanAge()) {
+	if (age >= ctx.clock.max_human_age) {
 	    predperc = 0.0;
 	}
 	cumAgeProp[j] = cumAgeProp[j-1] + predperc;

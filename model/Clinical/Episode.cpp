@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include "Clinical/Episode.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
@@ -39,13 +40,13 @@ void Episode::flush() {
 }
 
 
-void Episode::update (const Host::Human& human, Episode::State newState)
+void Episode::update (RunContext& ctx, const Host::Human& human, Episode::State newState)
 {
     bool toReport = false;
 
-    if (healthSystemMemoryFix && (time + ClinicalModel::hsMemory() <= sim::ts0()))
+    if (healthSystemMemoryFix && (time + ClinicalModel::hsMemory() <= ctx.clock.ts0()))
         toReport = true;
-    else if (!healthSystemMemoryFix && (time + ClinicalModel::hsMemory() < sim::ts0()))
+    else if (!healthSystemMemoryFix && (time + ClinicalModel::hsMemory() < ctx.clock.ts0()))
         toReport = true;
 
     if(toReport) {
@@ -53,7 +54,7 @@ void Episode::update (const Host::Human& human, Episode::State newState)
 
         report ();
 
-        time = sim::ts0();
+        time = ctx.clock.ts0();
         surveyPeriod = mon::eventSurveyNumber();
         ageGroup = human.monitoringAgeGroup;
         cohortSet = human.getCohortSet();

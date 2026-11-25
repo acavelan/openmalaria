@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include "interventions/Vaccine.h"
 #include "interventions/HumanComponents.h"
 #include "Host/Human.h"
@@ -39,7 +40,7 @@ using namespace OM::util;
 vector<VaccineComponent*> VaccineComponent::params;
 ComponentId VaccineComponent::reportComponent = ComponentId::wholePop();
 
-void VaccineComponent::deploy(Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const
+void VaccineComponent::deploy(RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const
 {
     bool administered = human.vaccine.possiblyVaccinate( human, id(), vaccLimits );
     if( administered && VaccineComponent::reportComponent == id() ){
@@ -126,7 +127,7 @@ double PerHumanVaccine::getFactor( Vaccine::Types type, uint32_t genotype) const
     double factor = 1.0;
     for( EffectList::const_iterator effect = effects.begin(); effect != effects.end(); ++effect ){
         if( VaccineComponent::getParams(effect->component).type == type ){
-            SimTime age = sim::ts1() - effect->timeLastDeployment;  // implies age 1 TS on first use
+            SimTime age = ctx->clock.ts1() - effect->timeLastDeployment;  // implies age 1 TS on first use
             double decayFactor = effect->hetSample->eval( age );
             factor *= 1.0 - effect->perGenotypeInitialEfficacy[genotype] * decayFactor;
         }
@@ -165,7 +166,7 @@ bool PerHumanVaccine::possiblyVaccinate( Host::Human& human,
     util::streamValidate(effect->perGenotypeInitialEfficacy);
     
     effect->numDosesAdministered = numDosesAdministered + 1;
-    effect->timeLastDeployment = sim::nowOrTs1();
+    effect->timeLastDeployment = ctx->clock.nowOrTs1();
     
     return true;
 }

@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include "Clinical/DecisionTree5Day.h"
 #include "Clinical/CMDecisionTree.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -43,28 +44,28 @@ const CMDecisionTree *treeUCOfficial = 0, *treeUCSelfTreat = 0;
 
 // ———  per-human, update  ———
 
-void DecisionTree5Day::uncomplicatedEvent ( Human& human, Episode::State pgState ){    
+void DecisionTree5Day::uncomplicatedEvent ( RunContext& ctx, Human& human, Episode::State pgState ){    
     // If last treatment prescribed was in recent memory, consider second line.
     CaseType regimen = FirstLine;
-    if (m_tLastTreatment + healthSystemMemory > sim::ts0()){
+    if (m_tLastTreatment + healthSystemMemory > ctx.clock.ts0()){
         pgState = Episode::State (pgState | Episode::SECOND_CASE);
         regimen = SecondLine;
     }
 
-    latestReport.update (human, Episode::State( pgState ) );
+    latestReport.update (ctx, human, Episode::State( pgState ) );
 
     // parity: d — clinical decision fraction draw order (plan §3d)
     double x = human.rng.uniform_01();
     if( x < accessUCAny[regimen] * m_treatmentSeekingFactor ){
-        CMHostData hostData( human, sim::inYears(human.age(sim::ts0())), pgState );
+        CMHostData hostData( human, sim::inYears(human.age(ctx.clock.ts0())), pgState );
         
         // Run tree (which may deploy treatment)
         CMDTOut output = ( x < accessUCSelfTreat[regimen] * m_treatmentSeekingFactor ) ?
-            treeUCSelfTreat->exec( hostData ) :
-            treeUCOfficial->exec( hostData );
+            treeUCSelfTreat->exec( ctx, hostData ) :
+            treeUCOfficial->exec( ctx, hostData );
         
         if( output.treated ){   // if any treatment or intervention deployed
-            m_tLastTreatment = sim::ts0();
+            m_tLastTreatment = ctx.clock.ts0();
             mon::recordEvent(measures[regimen], human);
         }
         if( output.screened ){

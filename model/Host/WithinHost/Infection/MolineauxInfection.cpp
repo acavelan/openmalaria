@@ -151,12 +151,12 @@ const double case_specific_data[] = {
 
 // ———  static (non-class-member) code  ———
 
-CommonInfection* createMolineauxInfection (LocalRng& rng, uint32_t protID, int origin) {
-    return new MolineauxInfection (rng, protID, origin);
+CommonInfection* createMolineauxInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+    return new MolineauxInfection (ctx, rng, protID, origin);
 }
 
-CommonInfection* checkpointedMolineauxInfection (istream& stream) {
-    return new MolineauxInfection (stream);
+CommonInfection* checkpointedMolineauxInfection (RunContext& ctx, istream& stream) {
+    return new MolineauxInfection (ctx, stream);
 }
 
 void MolineauxInfection::init( const Parameters& parameters ){
@@ -202,8 +202,8 @@ void MolineauxInfection::init( const Parameters& parameters ){
 
 // ———  MolineauxInfection: initialisation  ———
 
-MolineauxInfection::MolineauxInfection(LocalRng& rng, uint32_t genotype, int origin):
-        CommonInfection(genotype, origin)
+MolineauxInfection::MolineauxInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin):
+        CommonInfection(ctx, genotype, origin)
 {
     for( size_t i = 0; i < v; i++ ){
         // Molineaux paper, equation 11
@@ -392,8 +392,8 @@ bool MolineauxInfection::updateDensity( LocalRng&, double survival_factor, SimTi
 
 // ———  MolineauxInfection: checkpointing  ———
 
-MolineauxInfection::MolineauxInfection (istream& stream) :
-        CommonInfection(stream)
+MolineauxInfection::MolineauxInfection (RunContext& ctx, istream& stream) :
+        CommonInfection(ctx, stream)
 {
     Sm_summation & stream;
     for(size_t i=0;i<v;i++) {

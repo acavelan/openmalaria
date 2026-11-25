@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include "interventions/InterventionManager.h"
 #include "Population.h"
 #include "util/CommandLine.h"
@@ -61,15 +62,15 @@ ComponentId InterventionManager::getComponentId(const string textId)
 }
 
 
-void InterventionManager::deploy(vector<Host::Human> &population, Transmission::TransmissionModel &transmission)
+void InterventionManager::deploy(RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel &transmission)
 {
-    if (sim::intervTime() < sim::zero()) return;
+    if (ctx.clock.interv < sim::zero()) return;
 
     // deploy imported infections (not strictly speaking an intervention)
-    importedInfections.import(population);
+    importedInfections.import(ctx, population);
 
     // deploy timed interventions
-    SimTime now = sim::intervDate();
+    SimTime now = ctx.clock.interv_date();
     while (timed[nextTimed]->date <= now)
     {
         if (util::CommandLine::option(util::CommandLine::VERBOSE))
@@ -79,7 +80,7 @@ void InterventionManager::deploy(vector<Host::Human> &population, Transmission::
             cout << endl;
         }
 
-        timed[nextTimed]->deploy(population, transmission);
+        timed[nextTimed]->deploy(ctx, population, transmission);
         nextTimed += 1;
     }
 
@@ -96,7 +97,7 @@ void InterventionManager::deploy(vector<Host::Human> &population, Transmission::
                 continuous[nextCtsDist].print_details(cout);
                 cout << endl;
             }
-            if (!continuous[nextCtsDist].filterAndDeploy(human)) break; // deployment (and all remaining) happens in the future
+            if (!continuous[nextCtsDist].filterAndDeploy(ctx, human)) break; // deployment (and all remaining) happens in the future
             nextCtsDist = ++human.nextCtsDist;
         }
     }

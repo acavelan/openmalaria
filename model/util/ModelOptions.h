@@ -34,6 +34,7 @@ namespace scnXml{ class OptionSet; }
 namespace xsd{ namespace cxx{ namespace tree{
     template<typename T, bool> class optional;  // real template: bool fund defaults to fundamental_p<T>::r
 } } }
+namespace OM { class SimClock; }
 namespace OM { namespace util {
     
     /** Flags signalling which versions of some models to use. */
@@ -301,7 +302,7 @@ namespace OM { namespace util {
     /*
     * Initialize the set of model options to use, based on input XML contents.
     */
-    static void init(xsd::cxx::tree::optional<scnXml::OptionSet, false>& optionsElt,
+    static void init(const SimClock& clock, xsd::cxx::tree::optional<scnXml::OptionSet, false>& optionsElt,
                             util::ModelNameProvider mnp);
 
     private:

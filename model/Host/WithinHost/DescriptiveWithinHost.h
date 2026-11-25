@@ -42,7 +42,7 @@ public:
     static void initDescriptive();
     
     /// Create a new WHM
-    DescriptiveWithinHostModel( LocalRng& rng, double comorbidityFactor );
+    DescriptiveWithinHostModel( RunContext& ctx, LocalRng& rng, double comorbidityFactor );
     virtual ~DescriptiveWithinHostModel();
     
     virtual void importInfection(LocalRng& rng);

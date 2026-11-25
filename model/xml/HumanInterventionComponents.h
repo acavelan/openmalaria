@@ -24,6 +24,7 @@
 // and contains definitions as well as declarations.
 
 // The includes here are more for documentation than required.
+#include "core/RunContext.h"
 #include "interventions/Interfaces.h"
 #include "interventions/InterventionManager.h"
 #include "util/ModelOptions.h"
@@ -120,7 +121,7 @@ HumanIntervention::HumanIntervention( const xsd::cxx::tree::sequence<scnXml::DTD
     std::stable_sort( components.begin(), components.end(), componentCmp );
 }
 
-void HumanIntervention::deploy( Human& human, mon::Deploy::Method method,
+void HumanIntervention::deploy( RunContext& ctx, Human& human, mon::Deploy::Method method,
     VaccineLimits vaccLimits ) const
 {
     for( size_t cond : conditions ){
@@ -133,7 +134,7 @@ void HumanIntervention::deploy( Human& human, mon::Deploy::Method method,
         // we must report first, since it can change cohort and sub-population
         // which may affect what deployment does (at least in the case of reporting deployments)
         human.addToCohort(component.id(), component.duration());
-        component.deploy( human, method, vaccLimits );
+        component.deploy( ctx, human, method, vaccLimits );
     }
 }
 
@@ -146,28 +147,28 @@ void HumanIntervention::print_details( std::ostream& out )const{
 
 // ———  Utilities  ———
 
-TriggeredDeployments::TriggeredDeployments(const scnXml::TriggeredDeployments& elt){
+TriggeredDeployments::TriggeredDeployments(RunContext& ctx, const scnXml::TriggeredDeployments& elt){
     lists.reserve( elt.getDeploy().size() );
     for( auto it = elt.getDeploy().begin(), end = elt.getDeploy().end(); it != end; ++it ) {
-        lists.push_back( SubList( *it ) );
+        lists.push_back( SubList( ctx, *it ) );
     }
 }
-void TriggeredDeployments::deploy(Human& human,
+void TriggeredDeployments::deploy( RunContext& ctx, Human& human,
         mon::Deploy::Method method, VaccineLimits vaccLimits) const
 {
     for( auto it = lists.begin(); it != lists.end(); ++it ){
-        it->deploy( human, method, vaccLimits );
+        it->deploy( ctx, human, method, vaccLimits );
     }
 }
 
-TriggeredDeployments::SubList::SubList( const scnXml::Deploy& elt ) :
+TriggeredDeployments::SubList::SubList( RunContext& ctx, const scnXml::Deploy& elt ) :
         HumanIntervention( elt.getComponent() ),
-        minAge( sim::fromYearsN( elt.getMinAge() ) ),
+        minAge( ctx.clock.from_years_n( elt.getMinAge() ) ),
         maxAge( sim::future() ),
         coverage( elt.getP() )
 {
     if( elt.getMaxAge().present() )
-        maxAge = sim::fromYearsN( elt.getMaxAge().get() );
+        maxAge = ctx.clock.from_years_n( elt.getMaxAge().get() );
     
     if( minAge < sim::zero() || maxAge < minAge ){
         throw util::xml_scenario_error("triggered intervention must have 0 <= minAge <= maxAge");
@@ -180,18 +181,18 @@ TriggeredDeployments::SubList::SubList( const scnXml::Deploy& elt ) :
     // Zero coverage: optimise
     if( coverage <= 0.0 || minAge >= maxAge ) components.clear();
 }
-void TriggeredDeployments::SubList::deploy( Host::Human& human,
+void TriggeredDeployments::SubList::deploy( RunContext& ctx, Host::Human& human,
         mon::Deploy::Method method, VaccineLimits vaccLimits )const
 {
     // This may be used within a time step; in that case we use human age at
     // the beginning of the step since this gives the expected result with age
     // limits of 0 to 1 time step.
     //TODO: why does the above contradict what we do? Is this due to a date being shifted later?
-    SimTime age = human.age(sim::nowOrTs1());
+    SimTime age = human.age(ctx.clock.nowOrTs1());
     if( age >= minAge && age < maxAge ){
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
         if( coverage >= 1.0 || human.rng.bernoulli( coverage ) ){
-            HumanIntervention::deploy( human, method, vaccLimits );
+            HumanIntervention::deploy( ctx, human, method, vaccLimits );
         }
     }
 }
@@ -207,7 +208,7 @@ public:
     virtual ~RecruitmentOnlyComponent() {}
     
     /// Reports to monitoring, nothing else
-    virtual void deploy( Host::Human& human, mon::Deploy::Method method, VaccineLimits ) const{
+    virtual void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits ) const{
         mon::recordDeploy(mon::measure("nMassRecruitOnly"), mon::measure("nCtsRecruitOnly"), human, method);
     }
     
@@ -229,12 +230,12 @@ public:
         negative( elt.getNegative() )
     {}
     
-    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits ) const{
+    void deploy( RunContext& ctx, Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits ) const{
         mon::recordDeploy(mon::measure("nMassScreenings"), mon::measure("nCtsScreenings"), human, method);
         if( human.withinHostModel->diagnosticResult(human.rng, diagnostic) ){
-            positive.deploy( human, method, vaccLimits );
+            positive.deploy( ctx, human, method, vaccLimits );
         }else{
-            negative.deploy( human, method, vaccLimits );
+            negative.deploy( ctx, human, method, vaccLimits );
         }
     }
     
@@ -252,14 +253,14 @@ private:
 /// Simple treatment: no PK/PD, just remove parasites
 class TreatSimpleComponent : public HumanInterventionComponent {
 public:
-    TreatSimpleComponent( ComponentId id, const scnXml::DTTreatSimple& elt ) :
+    TreatSimpleComponent( RunContext& ctx, ComponentId id, const scnXml::DTTreatSimple& elt ) :
         HumanInterventionComponent(id)
     {
         //NOTE: this code is currently identical to that in CMDTTreatSimple
         try{
-            SimTime durL = UnitParse::readShortDuration( elt.getDurationLiver(), UnitParse::NONE ),
-                durB = UnitParse::readShortDuration( elt.getDurationBlood(), UnitParse::NONE );
-            SimTime neg1 = -sim::oneTS();
+            SimTime durL = UnitParse::readShortDuration(ctx.clock,  elt.getDurationLiver(), UnitParse::NONE ),
+                durB = UnitParse::readShortDuration(ctx.clock,  elt.getDurationBlood(), UnitParse::NONE );
+            SimTime neg1 = -ctx.clock.one_TS();
             if( durL < neg1 || durB < neg1 ){
                 throw util::xml_scenario_error( "treatSimple: cannot have durationBlood or durationLiver less than -1" );
             }
@@ -275,7 +276,7 @@ public:
         }
     }
     
-    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits ) const{
+    void deploy( RunContext& ctx, Human& human, mon::Deploy::Method method, VaccineLimits ) const{
         mon::recordDeploy(mon::measure("nMDAs"), mon::measure("nCtsMDA"), human, method);
         human.withinHostModel->treatSimple( human, timeLiver, timeBlood );
     }
@@ -301,9 +302,9 @@ public:
     {
     }
     
-    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits ) const{
+    void deploy( RunContext& ctx, Human& human, mon::Deploy::Method method, VaccineLimits ) const{
         mon::recordDeploy(mon::measure("nMDAs"), mon::measure("nCtsMDA"), human, method);
-        double age = sim::inYears(human.age(sim::nowOrTs1()));
+        double age = sim::inYears(human.age(ctx.clock.nowOrTs1()));
         human.withinHostModel->treatPkPd( schedule, dosage, age, delay_d );
     }
     
@@ -321,14 +322,14 @@ private:
 
 class DecisionTreeComponent : public HumanInterventionComponent {
 public:
-    DecisionTreeComponent( ComponentId id, const scnXml::DecisionTree& elt ) :
+    DecisionTreeComponent( RunContext& ctx, ComponentId id, const scnXml::DecisionTree& elt ) :
         HumanInterventionComponent(id),
-        tree(Clinical::CMDecisionTree::create(elt, false))
+        tree(Clinical::CMDecisionTree::create(ctx, elt, false))
     {}
     
-    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits )const{
-        Clinical::CMDTOut out = tree.exec( Clinical::CMHostData(human,
-                sim::inYears(human.age(sim::nowOrTs1())),
+    void deploy( RunContext& ctx, Human& human, mon::Deploy::Method method, VaccineLimits )const{
+        Clinical::CMDTOut out = tree.exec( ctx, Clinical::CMHostData(human,
+                sim::inYears(human.age(ctx.clock.nowOrTs1())),
                 human.clinicalModel->getLatestState()) );
         if( out.treated ){
             mon::recordDeploy(mon::measure("nMDAs"), mon::measure("nCtsMDA"), human, method);
@@ -353,7 +354,7 @@ public:
     ClearImmunityComponent( ComponentId id ) :
         HumanInterventionComponent(id) {}
     
-    void deploy( Human& human, mon::Deploy::Method method, VaccineLimits )const{
+    void deploy( RunContext& ctx, Human& human, mon::Deploy::Method method, VaccineLimits )const{
         human.withinHostModel->clearImmunity();
         //NOTE: not reported
     }

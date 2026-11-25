@@ -44,7 +44,7 @@ class TimedDeployment;
 class InterventionManager {
 public:
     /** Read XML descriptions. */
-    static void init (const scnXml::Interventions& intervElt, const Population &population, Transmission::TransmissionModel& transmission);
+    static void init (RunContext& ctx, const scnXml::Interventions& intervElt, const Population &population, Transmission::TransmissionModel& transmission);
     
     /// Checkpointing
     template<class S>
@@ -60,7 +60,7 @@ public:
      * Serves to replace health-system and EIR where changeHS/changeEIR
      * interventions have been used. */
     static void loadFromCheckpoint(
-                vector<Host::Human> &population,
+                RunContext& ctx, vector<Host::Human> &population,
                 Transmission::TransmissionModel& transmission);
     
     /** @brief Deploy interventions
@@ -69,7 +69,7 @@ public:
      * 
      * Continuous interventions are deployed as humans reach the target ages.
      * Unlike with vaccines, missing one schedule doesn't preclude the next. */
-    static void deploy(vector<Host::Human> &population, Transmission::TransmissionModel& transmission);
+    static void deploy(RunContext& ctx, vector<Host::Human>& population, Transmission::TransmissionModel& transmission);
     
     /** Get a constant reference to a component class with a certain index.
      * 

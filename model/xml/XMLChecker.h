@@ -73,6 +73,18 @@ namespace OM
                     throw util::xml_scenario_error(
                         "If a model name is not specified then both <ModelOptions> and <parameters> must be specified");
                 }
+                if (parameters)
+                {
+                    // Same rule ModelOptions::compatCheck() applies later, checked before the
+                    // clock is initialised (a bogus interval would divide by zero there).
+                    const int interval = scenario.getModel().getParameters().get().getInterval();
+                    if (interval != 1 && interval != 5)
+                    {
+                        throw util::xml_scenario_error(
+                            "Time step set to " + std::to_string(interval)
+                            + " days but only 1 and 5 days are supported.");
+                    }
+                }
             }
         };
     }

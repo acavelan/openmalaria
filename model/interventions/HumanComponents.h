@@ -110,6 +110,8 @@ private:
 /** Per-human vaccine code. */
 class PerHumanVaccine {
 public:
+    RunContext* ctx = nullptr;  ///< set by the owning Human ctor
+public:
     PerHumanVaccine() {}
     
     /** Get one minus the efficacy of the vaccine (1 for no effect, 0 for full effect). */

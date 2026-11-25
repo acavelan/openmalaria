@@ -21,6 +21,7 @@
  */
 
 #include "Global.h"
+#include "core/RunContext.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/DescriptiveWithinHost.h"
 #include "Host/WithinHost/Diagnostic.h"
@@ -50,10 +51,10 @@ void DescriptiveWithinHostModel::initDescriptive(){
                             );
 }
 
-DescriptiveWithinHostModel::DescriptiveWithinHostModel( LocalRng& rng, double comorbidityFactor ) :
-        WHFalciparum( rng, comorbidityFactor )
+DescriptiveWithinHostModel::DescriptiveWithinHostModel( RunContext& ctx, LocalRng& rng, double comorbidityFactor ) :
+        WHFalciparum( ctx, rng, comorbidityFactor )
 {
-    assert( sim::oneTS() == sim::fromDays(5) );
+    assert( ctx.clock.one_TS() == sim::fromDays(5) );
     opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
 }
 
@@ -68,7 +69,7 @@ DescriptiveWithinHostModel::~DescriptiveWithinHostModel() {
 // -----  Simple infection adders/removers  -----
 
 void DescriptiveWithinHostModel::loadInfection(istream& stream) {
-    infections.push_back(new DescriptiveInfection(stream));
+    infections.push_back(new DescriptiveInfection(ctx, stream));
 }
 
 void DescriptiveWithinHostModel::clearInfections( Treatments::Stages stage ){
@@ -104,7 +105,7 @@ void DescriptiveWithinHostModel::importInfection(LocalRng& rng){
         // should use initial frequencies to select genotypes.
         vector<double> weights( 0 );        // zero length: signal to use initial frequencies
         uint32_t genotype = Genotypes::sampleGenotype(rng, weights);
-        infections.push_back(new DescriptiveInfection(rng, genotype, WithinHost::InfectionOrigin::Imported));
+        infections.push_back(new DescriptiveInfection(ctx, rng, genotype, WithinHost::InfectionOrigin::Imported));
     }
     assert( numInfs == static_cast<int>(infections.size()) );
 }
@@ -134,10 +135,10 @@ void DescriptiveWithinHostModel::update(Host::Human &human, LocalRng& rng, int &
             double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
             // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
-                infections.push_back(new DescriptiveInfection (rng, genotype, InfectionOrigin::Introduced));
+                infections.push_back(new DescriptiveInfection (ctx, rng, genotype, InfectionOrigin::Introduced));
         }
         else if (opt_vaccine_genotype == false)
-            infections.push_back(new DescriptiveInfection (rng, genotype, InfectionOrigin::Introduced));
+            infections.push_back(new DescriptiveInfection (ctx, rng, genotype, InfectionOrigin::Introduced));
     }
     assert( numInfs == static_cast<int>(infections.size()) );
 
@@ -152,10 +153,10 @@ void DescriptiveWithinHostModel::update(Host::Human &human, LocalRng& rng, int &
             double vaccineFactor = human.vaccine.getFactor( interventions::Vaccine::PEV, genotype );
             // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
             if(vaccineFactor == 1.0 || human.rng.bernoulli(vaccineFactor))
-                infections.push_back(new DescriptiveInfection (rng, genotype, InfectionOrigin::Indigenous));
+                infections.push_back(new DescriptiveInfection (ctx, rng, genotype, InfectionOrigin::Indigenous));
         }
         else if (opt_vaccine_genotype == false)
-            infections.push_back(new DescriptiveInfection (rng, genotype, InfectionOrigin::Indigenous));
+            infections.push_back(new DescriptiveInfection (ctx, rng, genotype, InfectionOrigin::Indigenous));
     }
     assert( numInfs == static_cast<int>(infections.size()) );
 
@@ -165,8 +166,8 @@ void DescriptiveWithinHostModel::update(Host::Human &human, LocalRng& rng, int &
     hrp2Density = 0.0;
     timeStepMaxDensity = 0.0;
 
-    bool treatmentLiver = treatExpiryLiver > sim::ts0();
-    bool treatmentBlood = treatExpiryBlood > sim::ts0();
+    bool treatmentLiver = treatExpiryLiver > ctx.clock.ts0();
+    bool treatmentBlood = treatExpiryBlood > ctx.clock.ts0();
 
     for(auto inf = infections.begin(); inf != infections.end();) {
         //NOTE: it would be nice to combine this code with that in
@@ -209,14 +210,14 @@ void DescriptiveWithinHostModel::update(Host::Human &human, LocalRng& rng, int &
     // As in AJTMH p22, cumulative_h (X_h + 1) doesn't include infections added
     // this time-step and cumulative_Y only includes past densities.
     m_cumulative_h += nNewInfs_i + nNewInfs_l;
-    m_cumulative_Y += sim::oneTS() * totalDensity;
+    m_cumulative_Y += ctx.clock.one_TS() * totalDensity;
     
     util::streamValidate( totalDensity );
     util::streamValidate( hrp2Density );
     assert( (std::isfinite)(totalDensity) );        // inf probably wouldn't be a problem but NaN would be
     
     // Cache total density for infectiousness calculations
-    int y_lag_i = sim::moduloSteps(sim::ts1(), y_lag_len);
+    int y_lag_i = ctx.clock.moduloSteps(ctx.clock.ts1(), y_lag_len);
 
     for( size_t g = 0; g < Genotypes::N(); ++g )
     {

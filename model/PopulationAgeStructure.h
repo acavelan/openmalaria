@@ -29,12 +29,13 @@
 namespace scnXml{ class Demography; }
 namespace OM
 {
+class RunContext;
     /** Encapsulates code just setting up the age structure (i.e.  cumAgeProp). */
     class AgeStructure
     {
     public:
         /** Set up cumAgeProp from XML data. */
-        static void init( const scnXml::Demography& demography );
+        static void init( RunContext& ctx, const scnXml::Demography& demography );
         
         /** Return maximum individual lifetime in intervals that AgeStructure can handle. */
         static inline size_t getMaxTStepsPerLife(){
@@ -48,7 +49,7 @@ namespace OM
     private:
         /*! Estimates demography parameters to define a smooth curve for the target
         population age-distribution (age in years) */
-        static void estimateRemovalRates( const scnXml::Demography& demography );
+        static void estimateRemovalRates( RunContext& ctx, const scnXml::Demography& demography );
 	
         /** For input values for alpha1 and mu1, the fit to field data (residualSS)
         * is calculated and returned function called iteratively by
@@ -57,7 +58,7 @@ namespace OM
 
         /** Takes the best-fitting demography parameters estimated by
         * estimateRemovalRates and calculates the age structure (cumAgeProp). */
-	static void calcCumAgeProp ();
+	static void calcCumAgeProp (RunContext& ctx);
         
 	//BEGIN static parameters only used by estimateRemovalRates(), setDemoParameters() and calcCumAgeProp()
 	/** The bounds for each age group and percentage of population in this age

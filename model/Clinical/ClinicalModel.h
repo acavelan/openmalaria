@@ -47,21 +47,25 @@ namespace OM { namespace Clinical {
  * RDTs (Rapid Diagnostic Tests) for costing purposes. */\
 class ClinicalModel
 {
+protected:
+    /// The run this clinical model belongs to (clock accessed as ctx.clock).
+    RunContext& ctx;
+
 public:
     /// @brief Static functions
     //@{
     /// First stage of initialisation
-    static void init ( const Parameters& parameters, const scnXml::Scenario& model );
+    static void init ( RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& model );
   
     /** Second stage of initialisation, done after interventions are configured
      * 
      * Also done when a certain intervention is deployed. */
-    static void setHS (const scnXml::HealthSystem& healthSystem);
+    static void setHS (RunContext& ctx, const scnXml::HealthSystem& healthSystem);
     
     /** Return a new ClinicalModel.
      *
      * @param tSF	treatment seeking factor, passed to CaseManagementModel */
-    static unique_ptr<ClinicalModel> createClinicalModel (double tSF);
+    static unique_ptr<ClinicalModel> createClinicalModel (RunContext& ctx, double tSF);
     //@}
     
     /// Destructor
@@ -117,7 +121,7 @@ public:
     
 protected:
     /// Constructor.
-    ClinicalModel ();
+    explicit ClinicalModel (RunContext& ctx);
     
     /** Update for clinical model - new pathogenesis status, treatment, etc.
      *
@@ -125,7 +129,7 @@ protected:
      * @param hostTransmission per-host transmission data of human.
      * @param ageYears Age of human.
      * @param ageGroup Survey age group of human. */
-    virtual void doClinicalUpdate (Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg) =0;
+    virtual void doClinicalUpdate (RunContext& ctx, Human& human, double ageYears, WithinHost::Pathogenesis::StatePair &pg) =0;
     
     virtual void checkpoint (istream& stream);
     virtual void checkpoint (ostream& stream);
@@ -185,7 +189,7 @@ protected:
 class InfantMortality {
 public:
     /** Initialise parameters. */
-    static void init( const Parameters& parameters );
+    static void init( RunContext& ctx, const Parameters& parameters );
     static void preMainSimInit();
 
     /// Static checkpointing

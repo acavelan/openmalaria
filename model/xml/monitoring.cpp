@@ -72,7 +72,7 @@ namespace {
 
 constexpr uint32_t maxCohortNumber = uint32_t{1} << 21;
 
-void initAgeGroups(const scnXml::Monitoring& monitoring)
+static void initAgeGroups(const SimClock& clock, const scnXml::Monitoring& monitoring)
 {
     const scnXml::MonAgeGroup::GroupSequence& groups = monitoring.getAgeGroup().getGroup();
     if (!(monitoring.getAgeGroup().getLowerbound() <= 0.0)) {
@@ -81,7 +81,7 @@ void initAgeGroups(const scnXml::Monitoring& monitoring)
 
     runtime.ageGroupUpperBound.resize(groups.size() + 1);
     for (size_t i = 0; i < groups.size(); ++i) {
-        runtime.ageGroupUpperBound[i] = sim::fromYearsD(groups[i].getUpperbound());
+        runtime.ageGroupUpperBound[i] = clock.from_years_d(groups[i].getUpperbound());
     }
     runtime.ageGroupUpperBound[groups.size()] = sim::future();
 }
@@ -147,7 +147,7 @@ void initReporting(const scnXml::Scenario& scenario)
     internal::initStores(reportedMeasures, nSpecies, nDrugs);
 }
 
-SimTime readSurveyDates(const scnXml::Monitoring& monitoring)
+SimTime readSurveyDates(const SimClock& clock, const scnXml::Monitoring& monitoring)
 {
     const scnXml::Surveys::SurveyTimeSequence& survs = monitoring.getSurveys().getSurveyTime();
     std::map<SimTime, bool> surveys;
@@ -167,17 +167,17 @@ SimTime readSurveyDates(const scnXml::Monitoring& monitoring)
             s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
                 return !std::isspace(ch);
             }).base(), s.end());
-            SimTime cur = UnitParse::readDate(s, UnitParse::STEPS);
+            SimTime cur = UnitParse::readDate(clock, s, UnitParse::STEPS);
             const bool reporting = surv.getReported();
             if (surv.getRepeatStep().present() != surv.getRepeatEnd().present()) {
                 throw util::xml_scenario_error("surveyTime: use of repeatStep or repeatEnd without other");
             }
             if (surv.getRepeatStep().present()) {
-                const SimTime step = UnitParse::readDuration(surv.getRepeatStep().get(), UnitParse::NONE);
-                if (step < sim::oneTS()) {
+                const SimTime step = UnitParse::readDuration(clock, surv.getRepeatStep().get(), UnitParse::NONE);
+                if (step < clock.one_TS()) {
                     throw util::xml_scenario_error("surveyTime: repeatStep must be >= 1");
                 }
-                const SimTime end = UnitParse::readDate(surv.getRepeatEnd().get(), UnitParse::NONE);
+                const SimTime end = UnitParse::readDate(clock, surv.getRepeatEnd().get(), UnitParse::NONE);
                 while (cur < end) {
                     addSurvey(cur, reporting);
                     cur = cur + step;
@@ -210,7 +210,7 @@ SimTime readSurveyDates(const scnXml::Monitoring& monitoring)
             if (!surveyDate.isReported()) continue;
             std::cout
                 << (surveyDate.num + 1) << '\t'
-                << sim::inSteps(surveyDate.date - sim::startDate()) << '\t'
+                << clock.inSteps(surveyDate.date - clock.start_date) << '\t'
                 << surveyDate.date << std::endl;
         }
     }
@@ -219,11 +219,11 @@ SimTime readSurveyDates(const scnXml::Monitoring& monitoring)
     if (monitoring.getCohorts().present()) {
         runtime.nCohorts = static_cast<uint32_t>(1) << monitoring.getCohorts().get().getSubPop().size();
     }
-    initAgeGroups(monitoring);
+    initAgeGroups(clock, monitoring);
     return runtime.surveyDates.back().date;
 }
 
-void initCohorts(const scnXml::Monitoring& monitoring)
+void initCohorts(const SimClock& clock, const scnXml::Monitoring& monitoring)
 {
     runtime.cohortSubPopNumbers.clear();
     runtime.cohortSubPopIds.clear();
@@ -257,7 +257,7 @@ using util::xml_scenario_error;
 
         /* Initialise: enable outputs registered and requested in XML.
          * Search for Continuous::registerCallback to see outputs available. */
-        void init (const scnXml::Monitoring& monitoring, bool isCheckpoint) {
+        void init (const RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint) {
             const scnXml::Monitoring::ContinuousOptional& ctsOpt = monitoring.getContinuous();
             if( !ctsOpt.present() ) {
                 ctsPeriod = sim::zero();
@@ -266,8 +266,8 @@ using util::xml_scenario_error;
             const auto& options = ctsOpt.get();
             try{
                 //NOTE: if changing XSD, this should not have a default unit:
-                ctsPeriod = UnitParse::readShortDuration( options.getPeriod(), UnitParse::STEPS );
-                if( ctsPeriod < sim::oneTS() )
+                ctsPeriod = UnitParse::readShortDuration( ctx.clock, options.getPeriod(), UnitParse::STEPS );
+                if( ctsPeriod < ctx.clock.one_TS() )
                     throw util::format_error("must be >= 1 time step");
             }catch( const util::format_error& e ){
                 throw xml_scenario_error( string("monitoring/continuous/period: ").append(e.message()) );

@@ -23,6 +23,7 @@
 #ifndef Hmod_NonVectorModel
 #define Hmod_NonVectorModel
 
+#include "core/RunContext.h"
 #include "TransmissionModel.h"
 #include "util/vectors.h"
 #include "Host/Human.h"
@@ -43,7 +44,7 @@ namespace Transmission
 class NonVectorModel : public TransmissionModel
 {
 public:
-    NonVectorModel(vector<double> initEIR, int interventionMode, const scnXml::Entomology &entoData, const scnXml::NonVector &nonVectorData, int eipDuration);
+    NonVectorModel(RunContext& ctx, vector<double> initEIR, int interventionMode, const scnXml::Entomology &entoData, const scnXml::NonVector &nonVectorData, int eipDuration);
 
     virtual ~NonVectorModel() {}
 
@@ -61,14 +62,14 @@ public:
         if (simulationMode != dynamicEIR) { return sim::zero(); }
 
         // initialKappa is used in calculateEIR
-        assert(initialKappa.size() >= sim::stepsPerYear());
-        assert(mod_nn(initialKappa.size(), sim::stepsPerYear()) == 0);
-        for (size_t i = sim::stepsPerYear(); i < initialKappa.size(); ++i)
+        assert(initialKappa.size() >= ctx.clock.steps_per_year);
+        assert(mod_nn(initialKappa.size(), ctx.clock.steps_per_year) == 0);
+        for (size_t i = ctx.clock.steps_per_year; i < initialKappa.size(); ++i)
         {
-            initialKappa[mod_nn(i, sim::stepsPerYear())] += initialKappa[i];
+            initialKappa[mod_nn(i, ctx.clock.steps_per_year)] += initialKappa[i];
         }
-        double factor = static_cast<double>(sim::stepsPerYear()) / static_cast<double>(initialKappa.size());
-        initialKappa.resize(sim::stepsPerYear());
+        double factor = static_cast<double>(ctx.clock.steps_per_year) / static_cast<double>(initialKappa.size());
+        initialKappa.resize(ctx.clock.steps_per_year);
         for (size_t i = 0; i < initialKappa.size(); ++i)
         {
             initialKappa[i] *= factor;
@@ -92,7 +93,7 @@ public:
     virtual double updateKappa(const vector<Host::Human> &population)
     {
         double currentKappa = TransmissionModel::updateKappa(population);
-        if (simulationMode == forcedEIR) { initialKappa[sim::moduloSteps(sim::ts1(), initialKappa.size())] = currentKappa; }
+        if (simulationMode == forcedEIR) { initialKappa[ctx.clock.moduloSteps(ctx.clock.ts1(), initialKappa.size())] = currentKappa; }
         return currentKappa;
     }
 
@@ -101,23 +102,23 @@ public:
         EIR_i.resize(1);
         EIR_l.resize(1); // no support for per-genotype tracking in this model (possible, but we're lazy)
         // where the full model, with estimates of human mosquito transmission is in use, use this:
-        if (simulationMode == forcedEIR) { EIR_l[0] = initialisationEIR[sim::moduloYearSteps(sim::ts0())]; }
+        if (simulationMode == forcedEIR) { EIR_l[0] = initialisationEIR[ctx.clock.moduloYearSteps(ctx.clock.ts0())]; }
         else if (simulationMode == transientEIRknown)
         {
             // where the EIR for the intervention phase is known, obtain this from
             // the interventionEIR array
-            EIR_l[0] = interventionEIR[sim::inSteps(sim::intervTime())];
+            EIR_l[0] = interventionEIR[ctx.clock.inSteps(ctx.clock.interv)];
         }
         else if (simulationMode == dynamicEIR)
         {
-            EIR_l[0] = initialisationEIR[sim::moduloYearSteps(sim::ts0())];
-            if (sim::intervTime() >= sim::zero())
+            EIR_l[0] = initialisationEIR[ctx.clock.moduloYearSteps(ctx.clock.ts0())];
+            if (ctx.clock.interv >= sim::zero())
             {
                 // we modulate the initialization based on the human infectiousness time steps ago in the
                 // simulation relative to infectiousness at the same time-of-year, pre-intervention.
                 // nspore gives the sporozoite development delay.
-                size_t t = sim::inSteps(sim::ts1() - nSpore);
-                EIR_l[0] *= laggedKappa[mod_nn(t, laggedKappa.size())] / initialKappa[mod_nn(t, sim::stepsPerYear())];
+                size_t t = ctx.clock.inSteps(ctx.clock.ts1() - nSpore);
+                EIR_l[0] *= laggedKappa[mod_nn(t, laggedKappa.size())] / initialKappa[mod_nn(t, ctx.clock.steps_per_year)];
             }
         }
         else
@@ -127,10 +128,10 @@ public:
 #ifndef NDEBUG
         if (!(std::isfinite)(EIR_l[0]))
         {
-            size_t t = sim::inSteps(sim::ts1() - nSpore);
+            size_t t = ctx.clock.inSteps(ctx.clock.ts1() - nSpore);
             ostringstream msg;
             msg << "Error: non-vect eir is: " << EIR_l[0] << "\nlaggedKappa:\t" << laggedKappa[mod_nn(t, laggedKappa.size())]
-                << "\ninitialKappa:\t" << initialKappa[mod_nn(t, sim::stepsPerYear())] << endl;
+                << "\ninitialKappa:\t" << initialKappa[mod_nn(t, ctx.clock.steps_per_year)] << endl;
             throw TRACED_EXCEPTION(msg.str(), util::Error::InitialKappa);
         }
 #endif
@@ -180,7 +181,7 @@ private:
     //@}
 
     /** EIR per time interval during the intervention period. Value at index
-     * sim::intervTime().inSteps() used each time-step.
+     * ctx.clock.interv.inSteps() used each time-step.
      *
      * Units: inoculations per adult per time step */
     vector<double> interventionEIR;
@@ -191,7 +192,7 @@ private:
      * When simulationMode == equilibriumMode, this may be multiple years long and
      * is used to collect values of kappa (human infectiousness).
      *
-     * In either case, sim::ts0().moduloSteps(initialKappa.size()) is the index
+     * In either case, ctx.clock.ts0().moduloSteps(initialKappa.size()) is the index
      * for the current infectiousness during updates. */
     vector<double> initialKappa;
 };

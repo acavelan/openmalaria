@@ -29,6 +29,7 @@
 // headers (scnXml forward-declared).
 
 #include "Global.h"
+#include "core/RunContext.h"
 #include "Parameters.h"
 #include "Host/WithinHost/CommonWithinHost.h"
 #include "Host/WithinHost/DescriptiveWithinHost.h"
@@ -85,16 +86,16 @@ extern bool reportInfectedOrPatentInfected;
 // State defined in Diagnostic.cpp (external linkage):
 extern map<string, Diagnostic> diagnostic_set;
 
-void WHInterface::init( const OM::Parameters& parameters, const scnXml::Scenario& scenario ) {
+void WHInterface::init( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Scenario& scenario ) {
     reportInfectionsByGenotype = mon::isUsed(mon::measure("nInfectByGenotype")) ||
         mon::isUsed(mon::measure("nPatentByGenotype")) ||
         mon::isUsed(mon::measure("logDensByGenotype"));
     
     if( util::ModelOptions::option( util::VIVAX_SIMPLE_MODEL ) ){
         opt_vivax_simple = true;
-        WHVivax::init( parameters, scenario.getModel() );
+        WHVivax::init( ctx, parameters, scenario.getModel() );
     }else{
-        WHFalciparum::init( parameters, scenario.getModel() );
+        WHFalciparum::init( ctx, parameters, scenario.getModel() );
         
         if (util::ModelOptions::option (util::DUMMY_WITHIN_HOST_MODEL)) {
             opt_dummy_whm = true;
@@ -109,20 +110,20 @@ void WHInterface::init( const OM::Parameters& parameters, const scnXml::Scenario
             opt_penny_whm = true;
             PennyInfection::init();
         } else {
-            DescriptiveInfection::init( parameters );      // 5-day time step check
+            DescriptiveInfection::init( ctx, parameters );      // 5-day time step check
         }
         opt_common_whm = opt_dummy_whm || opt_empirical_whm
                 || opt_molineaux_whm || opt_penny_whm;
         
         if( opt_common_whm ){
-            CommonWithinHost::init( scenario );
+            CommonWithinHost::init( ctx.clock, scenario );
         }else{
             DescriptiveWithinHostModel::initDescriptive();
         }
     }
 }
 
-void WHFalciparum::init( const OM::Parameters& parameters, const scnXml::Model& model ) {
+void WHFalciparum::init( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model ) {
     sigma_i=sqrt(parameters[Parameter::SIGMA_I_SQ]);
     immPenalty_22=1-exp(parameters[Parameter::IMMUNITY_PENALTY]);
     immEffectorRemain=exp(-parameters[Parameter::IMMUNE_EFFECTOR_DECAY]);
@@ -134,18 +135,18 @@ void WHFalciparum::init( const OM::Parameters& parameters, const scnXml::Model& 
     alpha_m = 1.0 - exp(-parameters[Parameter::NEG_LOG_ONE_MINUS_ALPHA_M]);
     decayM = parameters[Parameter::DECAY_M];
     
-    y_lag_len = sim::inSteps(sim::fromDays(20)) + 1;
+    y_lag_len = ctx.clock.inSteps(sim::fromDays(20)) + 1;
     
     //NOTE: should also call cleanup() on the PathogenesisModel, but it only frees memory which the OS does anyway
-    Pathogenesis::PathogenesisModel::init( parameters, model.getClinical(), false );
+    Pathogenesis::PathogenesisModel::init( ctx, parameters, model.getClinical(), false );
     
     // Default value to use if no <parameters> element is present in XML.
-    SimTime latentP = UnitParse::readShortDuration("15d", UnitParse::DAYS);
+    SimTime latentP = UnitParse::readShortDuration(ctx.clock, "15d", UnitParse::DAYS);
     try
     {
         if (model.getParameters().present())
         {
-            latentP = UnitParse::readShortDuration(
+            latentP = UnitParse::readShortDuration(ctx.clock, 
                 model.getParameters().get().getLatentp(), UnitParse::NONE);
         }
     }
@@ -157,13 +158,13 @@ void WHFalciparum::init( const OM::Parameters& parameters, const scnXml::Model& 
     Infection::init( latentP );
 }
 
-void CommonWithinHost::init( const scnXml::Scenario& scenario ){
+void CommonWithinHost::init( const SimClock& clock, const scnXml::Scenario& scenario ){
     const scnXml::Human human = scenario.getModel().getHuman();
     if( !human.getWeight().present() ){
         // Technically this is needed by the PK/PD and Molineaux models
         throw util::xml_scenario_error( "model->human->weight element required by certain models" );
     }
-    massByAge.set( human.getWeight().get(), "weight" );
+    massByAge.set( clock, human.getWeight().get(), "weight" );
     hetMassMultStdDev = human.getWeight().get().getMultStdDev();
     // hetWeightMult must be large enough that birth weight is at least 0.5 kg:
     minHetMassMult = 0.5 / massByAge.eval( 0.0 );
@@ -511,35 +512,35 @@ void diagnostics::init( const Parameters& parameters, const scnXml::Scenario& sc
 }
 }
 
-// ———  sim::init, ModelNameProvider: scenario-level reading  ———
+// ———  SimClock::init: scenario-level reading  ———
 
 namespace OM {
 
-void sim::init( const scnXml::Scenario& scenario, util::ModelNameProvider mnp ){
+void SimClock::init( const scnXml::Scenario& scenario, util::ModelNameProvider mnp ){
     initInterval(scenario, mnp);
-    SimData::steps_per_year = sim::inSteps(sim::oneYear());
-    SimData::years_per_step = 1.0 / SimData::steps_per_year;
-    sim::s_max_human_age = sim::fromYearsD( scenario.getDemography().getMaximumAgeYrs() );
-    
-    sim::s_start = sim::origin();
+    steps_per_year = inSteps(sim::oneYear());
+    years_per_step = 1.0 / steps_per_year;
+    max_human_age = from_years_d( scenario.getDemography().getMaximumAgeYrs() );
+
+    start_date = sim::origin();
     auto mon = scenario.getMonitoring();
     if( mon.getStartDate().present() ){
         try{
             // on failure, this throws or returns sim::never()
-            sim::s_start = UnitParse::parseDate( mon.getStartDate().get() );
-            if( sim::s_start == sim::never() ){
+            start_date = UnitParse::parseDate(*this, mon.getStartDate().get() );
+            if( start_date == sim::never() ){
                 throw util::format_error( "invalid format (expected YYYY-MM-DD)" );
             }
         }catch( const util::format_error& e ){
             throw util::xml_scenario_error( string("monitoring/startDate: ").append(e.message()) );
         }
     }
-    
-    sim::s_interv = sim::never(); // large negative number
-    sim::s_end = mon::readSurveyDates( mon );
+
+    interv = sim::never(); // large negative number
+    end_date = mon::readSurveyDates(*this, mon );
 }
 
-void sim::initInterval(const scnXml::Scenario& scenario, util::ModelNameProvider mnp)
+void SimClock::initInterval(const scnXml::Scenario& scenario, util::ModelNameProvider mnp)
 {
     // If scenario states to use a named model, set the relevant time step duration for
     // that named model here.  It may possibly get overwritten later in this method if
@@ -553,7 +554,7 @@ void sim::initInterval(const scnXml::Scenario& scenario, util::ModelNameProvider
         {
             // This is where we define the length of the default time step, in days,
             // for the base model.
-            SimData::interval = 5;
+            interval = 5;
         }
         else
         {
@@ -568,7 +569,7 @@ void sim::initInterval(const scnXml::Scenario& scenario, util::ModelNameProvider
     {
         // Schema dictates that interval attribute is required if parameter element exists.
         // So no need to check for existsence of interval attribute in this case.
-        SimData::interval = scenario.getModel().getParameters().get().getInterval();
+        interval = scenario.getModel().getParameters().get().getInterval();
     }
 }
 

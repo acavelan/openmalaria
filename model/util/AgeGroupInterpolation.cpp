@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunContext.h"
 #include <fstream>
 
 #include "util/AgeGroupInterpolation.h"
@@ -32,13 +33,13 @@ namespace OM { namespace util {
 
 // ———  AgeGroupInterpolation derivatives  ———
     
-    void AgeGroupInterpolation::outputSamples( const string name ){
+    void AgeGroupInterpolation::outputSamples( const SimClock& clock, const string name ){
         if( !util::CommandLine::option(util::CommandLine::SAMPLE_INTERPOLATIONS) ){
             return;
         }
         ofstream fstream( (name+".csv").c_str() );
         
-        double max = sim::inYears(sim::maxHumanAge());
+        double max = sim::inYears(clock.max_human_age);
         for( double age = 0.0; age < max; age += 0.1 ){
             fstream << age << "," << this->eval( age ) << endl;
         }

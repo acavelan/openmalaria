@@ -48,13 +48,13 @@ public:
     void testBad() {
         dfElt.setFunction( "unknown" );
         string errMsg = "decay function DecayFunctionSuite of type unknown unrecognized";
-        TS_ASSERT_THROWS_EQUALS( df = DecayFunction::makeObject( dfElt, "DecayFunctionSuite" ),
+        TS_ASSERT_THROWS_EQUALS( df = DecayFunction::makeObject( UnittestUtil::clock(), dfElt, "DecayFunctionSuite" ),
                           const std::runtime_error &e, e.what(), errMsg );
     }
     
     void testConstant () {
         dfElt.setFunction( "constant" );
-        df = DecayFunction::makeObject( dfElt, "DecayFunctionSuite" );
+        df = DecayFunction::makeObject( UnittestUtil::clock(), dfElt, "DecayFunctionSuite" );
         // Second test: with an appropriately sampled helper value, we should get the results we want
         unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
         TS_ASSERT_APPROX( dHet->eval( sim::zero() ) , 1.0 );
@@ -65,7 +65,7 @@ public:
     
     void testStep () {
         dfElt.setFunction( "step" );
-        df = DecayFunction::makeObject( dfElt, "DecayFunctionSuite" );
+        df = DecayFunction::makeObject( UnittestUtil::clock(), dfElt, "DecayFunctionSuite" );
         unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
         TS_ASSERT_APPROX( dHet->eval( sim::zero() ), 1.0 );
         TS_ASSERT_APPROX( dHet->eval( sim::fromYearsI(6 ) ), 1.0 );
@@ -75,7 +75,7 @@ public:
     
     void testLinear () {
         dfElt.setFunction( "linear" );
-        df = DecayFunction::makeObject( dfElt, "DecayFunctionSuite" );
+        df = DecayFunction::makeObject( UnittestUtil::clock(), dfElt, "DecayFunctionSuite" );
         unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
         TS_ASSERT_APPROX( dHet->eval( sim::zero() ), 1.0 );
         TS_ASSERT_APPROX( dHet->eval( sim::fromYearsI(6 ) ), 0.4 );
@@ -84,7 +84,7 @@ public:
     
     void testExponential () {
         dfElt.setFunction( "exponential" );
-        df = DecayFunction::makeObject( dfElt, "DecayFunctionSuite" );
+        df = DecayFunction::makeObject( UnittestUtil::clock(), dfElt, "DecayFunctionSuite" );
         unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
         TS_ASSERT_APPROX( dHet->eval( sim::zero() ), 1.0 );
         TS_ASSERT_APPROX( dHet->eval( sim::fromYearsI(6 ) ), 0.65975394736842108 );
@@ -93,7 +93,7 @@ public:
     
     void testWeibull () {
         dfElt.setFunction( "weibull" );
-        df = DecayFunction::makeObject( dfElt, "DecayFunctionSuite" );
+        df = DecayFunction::makeObject( UnittestUtil::clock(), dfElt, "DecayFunctionSuite" );
         unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
         TS_ASSERT_APPROX( dHet->eval( sim::zero() ), 1.0 );
         TS_ASSERT_APPROX( dHet->eval( sim::fromYearsI(6 ) ), 0.73631084210526321 );
@@ -102,7 +102,7 @@ public:
     
     void testHill () {
         dfElt.setFunction( "hill" );
-        df = DecayFunction::makeObject( dfElt, "DecayFunctionSuite" );
+        df = DecayFunction::makeObject( UnittestUtil::clock(), dfElt, "DecayFunctionSuite" );
         unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
         TS_ASSERT_APPROX( dHet->eval( sim::zero() ), 1.0 );
         TS_ASSERT_APPROX( dHet->eval( sim::fromYearsI(6 ) ), 0.6936673684210527 );
@@ -111,7 +111,7 @@ public:
     
     void testSmoothCompact () {
         dfElt.setFunction( "smooth-compact" );
-        df = DecayFunction::makeObject( dfElt, "DecayFunctionSuite" );
+        df = DecayFunction::makeObject( UnittestUtil::clock(), dfElt, "DecayFunctionSuite" );
         unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
         TS_ASSERT_APPROX( dHet->eval( sim::zero() ), 1.0 );
         TS_ASSERT_APPROX( dHet->eval( sim::fromYearsI(6 ) ), 0.40656965789473687 );
@@ -129,7 +129,7 @@ public:
         inner.setL( "10y" );
         dfElt.getDecay().push_back( inner );
 
-        df = DecayFunction::makeObject( dfElt, "DecayFunctionSuite" );
+        df = DecayFunction::makeObject( UnittestUtil::clock(), dfElt, "DecayFunctionSuite" );
         unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
         TS_ASSERT_APPROX( dHet->eval( sim::zero() ), 0.5333333333333333 );
         TS_ASSERT_APPROX( dHet->eval( sim::fromYearsI(10) ), 0.4 );
@@ -147,7 +147,7 @@ public:
         dfElt.getDecay().push_back( inner );
 
         string errMsg = "Emax function: IC50 must be > 0, got -1.000000";
-        TS_ASSERT_THROWS_EQUALS( df = DecayFunction::makeObject( dfElt, "DecayFunctionSuite" ),
+        TS_ASSERT_THROWS_EQUALS( df = DecayFunction::makeObject( UnittestUtil::clock(), dfElt, "DecayFunctionSuite" ),
                           const std::runtime_error &e, e.what(), errMsg );
     }
     

@@ -39,9 +39,9 @@ class ESCaseManagement {
 public:
     /** Load health system data from initial data or an intervention's data (both from XML).
     * (Re)loads all data affected by this healthSystem element. */
-    static void setHealthSystem (const scnXml::HSEventScheduler& esData);
+    static void setHealthSystem (RunContext& ctx, const scnXml::HSEventScheduler& esData);
     
-    static CMDTOut execute( const CMHostData& hostData );
+    static CMDTOut execute( RunContext& ctx, const CMHostData& hostData );
 };
 
 } }

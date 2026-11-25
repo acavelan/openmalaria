@@ -75,7 +75,7 @@ public:
      *  xml_scenario_error exception is thrown. CMHostData::pgState is only
      *  used by the "case type" decision, so if isUC is false when creating the
      *  tree, pgState does not need to be set when executing the tree. */
-    static const CMDecisionTree& create( const ::scnXml::DecisionTree& node, bool isUC );
+    static const CMDecisionTree& create( RunContext& ctx, const ::scnXml::DecisionTree& node, bool isUC );
     
     /** Test for equivalence in two decision trees. Nodes are equivalent if
      * they have the same type, same deployments and treatments, and their
@@ -89,7 +89,7 @@ public:
      * 
      * Reporting: use of diagnostics is reported. Treatment is not, but the
      * output may be used to determine whether any treatment took place. */
-    virtual CMDTOut exec( CMHostData hostData ) const =0;
+    virtual CMDTOut exec( RunContext& ctx, CMHostData hostData ) const =0;
 };
 
 } }

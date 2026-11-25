@@ -25,6 +25,7 @@
 
 #include "PkPd/Drug/LSTMDrug.h"
 
+class UnittestUtil;
 namespace scnXml{
     class PKPDMedication;
 }

@@ -24,6 +24,7 @@
 #define Hmod_WithinHost_Vivax
 
 #include "Global.h"
+#include "core/RunContext.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/errors.h"
 #include "util/sampler.h"
@@ -48,7 +49,11 @@ namespace Pathogenesis {
 class WHVivax;
 
 struct HypnozoiteReleaseDistribution {
-    HypnozoiteReleaseDistribution(std::unique_ptr<util::LognormalSampler> sampler, double latentRelapse) :
+    /// The run this sampler serves (clock accessed as ctx.clock).
+    RunContext& ctx;
+
+    HypnozoiteReleaseDistribution(RunContext& ctx, std::unique_ptr<util::LognormalSampler> sampler, double latentRelapse) :
+        ctx(ctx),
         sampler(std::move(sampler)),
         latentRelapse(latentRelapse)
         {}
@@ -70,7 +75,7 @@ struct HypnozoiteReleaseDistribution {
         } while( delay > liverStageMaximumDays || delay < 0.0  );
         
         assert( delay >= 0 && delay < liverStageMaximumDays );
-        return sim::roundToTSFromDays( delay + latentRelapse );
+        return ctx.clock.roundToTSFromDays( delay + latentRelapse );
     }
     
 private:
@@ -93,12 +98,15 @@ public:
      * @param host      The host creating this. Not really needed, except to
      * prevent VivaxBrood being default-constructed by its container.
      */
-    VivaxBrood( LocalRng& rng, int origin, WHVivax *host );
+    /// The run this brood belongs to (clock accessed as ctx.clock).
+    RunContext& ctx;
+
+    VivaxBrood( RunContext& ctx, LocalRng& rng, int origin, WHVivax *host );
     ~VivaxBrood();
     /** Save a checkpoint. */
     void checkpoint( ostream& stream );
     /** Create from checkpoint. */
-    VivaxBrood( istream& stream );
+    VivaxBrood( RunContext& ctx, istream& stream );
     
     struct UpdResult{
         UpdResult() : newPrimaryBS(false), newRelapseBS(false), newRelapsebBS(false), newBS(false) {}
@@ -123,7 +131,7 @@ public:
      * gametocytes independently, thus this also tests existance of
      * gametocytes. */
     inline bool isPatent() const{
-        return bloodStageClearDate > sim::latestTs0();
+        return bloodStageClearDate > ctx.clock.latestTs0();
     }
     
     /** Fully clear blood stage parasites. */
@@ -133,7 +141,6 @@ public:
     void treatmentLS();
     
 private:
-    VivaxBrood() {}     // not default constructible
     
     // list of times at which the merozoite and hypnozoites release, ordered by
     // time of release, soonest last (i.e. last element is next one to release)
@@ -171,7 +178,7 @@ public:
     /// @brief Static methods
     //@{
     /// Initialise static parameters
-    static void init( const OM::Parameters& parameters, const scnXml::Model& model );
+    static void init( RunContext& ctx, const OM::Parameters& parameters, const scnXml::Model& model );
     
     /** Called when health system parameters are loaded.
      * 
@@ -182,7 +189,7 @@ public:
 
     /// @brief Constructors, destructors and checkpointing functions
     //@{
-    WHVivax( LocalRng& rng, double comorbidityFactor );
+    WHVivax( RunContext& ctx, LocalRng& rng, double comorbidityFactor );
     virtual ~WHVivax();
     //@}
     

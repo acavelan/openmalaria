@@ -24,6 +24,7 @@
 #define OM_IMPORTED_INFECTIONS
 
 #include "Global.h"
+#include "core/RunContext.h"
 namespace scnXml { class ImportedInfections; }
 #include "util/errors.h"
 #include "util/UnitParse.h"
@@ -45,7 +46,7 @@ namespace Host {
          * @param iiElt The scenario element with description of rates
          * @returns True if any infections are imported
          */
-        void init( const scnXml::ImportedInfections& iiElt );
+        void init( RunContext& ctx, const scnXml::ImportedInfections& iiElt );
         
         /** Import this time-step's imported infections, according to initialised rates
          * 
@@ -56,10 +57,10 @@ namespace Host {
          *  person.
          * 
          * @param pop The Population class encapsulating all humans */
-        void import(vector<Human> &population)
+        void import(RunContext& ctx, vector<Human>& population)
         {
             if( rate.size() == 0 ) return;      // no imported infections
-            SimTime now = sim::intervTime();
+            SimTime now = ctx.clock.interv;
             assert( now >= sim::zero() );
             if( period > sim::zero() ){
                 now = mod_nn(now, period);

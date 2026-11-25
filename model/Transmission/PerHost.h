@@ -24,6 +24,7 @@
 #define Hmod_PerHost
 
 #include "Global.h"
+#include "core/RunContext.h"
 #include "interventions/Interfaces.h"
 #include "util/AgeGroupInterpolation.h"
 #include "util/DecayFunction.h"
@@ -155,7 +156,7 @@ private:
  * A base class for interventions affecting human-vector interaction.
  * 
  * The constructor should initialise the data to represent an intervention
- * deployed at this time (sim::now()).
+ * deployed at this time (ctx.clock.now()).
  * 
  * redeploy() should reset the intervention to a freshly deployed state. If
  * necessary, PerHost::deployComponent can be updated to make it create a new
@@ -163,6 +164,9 @@ private:
  */
 class PerHostInterventionData {
 public:
+    /// The run this data belongs to (clock accessed as ctx.clock).
+    RunContext& ctx;
+
     virtual ~PerHostInterventionData() {}
     
     /** Deploy an intervention. */
@@ -202,8 +206,9 @@ public:
     
 protected:
     /// Set the component id
-    explicit PerHostInterventionData( interventions::ComponentId id ) :
-            deployTime( sim::now() ),
+    explicit PerHostInterventionData( RunContext& ctx, interventions::ComponentId id ) :
+            ctx(ctx),
+            deployTime( this->ctx.clock.now() ),
             m_id(id) {}
     
     /// Checkpointing: write
@@ -219,8 +224,8 @@ public:
     virtual ~HumanVectorInterventionComponent() {}
     
     /** Create a new object to store human-specific details of deployment. */
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(LocalRng&) const =0;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( istream& stream,
+    virtual unique_ptr<PerHostInterventionData> makeHumanPart(RunContext& ctx, LocalRng&) const =0;
+    virtual unique_ptr<PerHostInterventionData> makeHumanPart( RunContext& ctx, istream& stream,
             interventions::ComponentId id ) const =0;
 protected:
     explicit HumanVectorInterventionComponent(interventions::ComponentId id) :
@@ -236,11 +241,12 @@ public:
     /// @brief Static member functions
     //@{
     /** Static initialisation. */
-    static void init (const scnXml::AgeGroupValues& availabilityToMosquitoes);
+    static void init (RunContext& ctx, const scnXml::AgeGroupValues& availabilityToMosquitoes);
     //@}
     
     ///@brief Initialisation / checkpionting
     //@{
+RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoint restore
     PerHost ();
     void initialise (LocalRng& rng, double availabilityFactor);
     //@}
@@ -249,7 +255,7 @@ public:
     void update(Host::Human& human);
   
     /// Deploy some intervention component
-    void deployComponent( LocalRng& rng, const HumanVectorInterventionComponent& params );
+    void deployComponent( RunContext& ctx, LocalRng& rng, const HumanVectorInterventionComponent& params );
     //@}
     
     /** Calculates the adjustment for body size in exposure to mosquitoes,
@@ -327,8 +333,8 @@ public:
     //@{
     /** Get the age at which individuals are considered adults (i.e. where
      * availability to mosquitoes reaches its maximum). */
-    static inline SimTime adultAge() {
-        return sim::fromYearsD( relAvailAge.firstGlobalMaximum() );
+    static inline SimTime adultAge( const SimClock& clock ) {
+        return clock.from_years_d( relAvailAge.firstGlobalMaximum() );
     }
     
     /** Get whether the user has any active deployments of interventions of

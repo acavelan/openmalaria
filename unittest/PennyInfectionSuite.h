@@ -44,7 +44,7 @@ public:
         UnittestUtil::initTime(1);
         UnittestUtil::Infection_init_latentP_and_NaN ();
         PennyInfection::init();
-        infection = new PennyInfection (m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous);    // pkpdID (value) isn't important since we're not using drug model here
+        infection = new PennyInfection (UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous);    // pkpdID (value) isn't important since we're not using drug model here
     }
     void tearDown () {
         delete infection;
@@ -81,7 +81,7 @@ public:
         
         bool extinct = false;
         int iterations=0;
-        SimTime now = sim::ts0();
+        SimTime now = UnittestUtil::clock().ts0();
         do{
             extinct = infection->update(m_rng, 1.0, now, numeric_limits<double>::quiet_NaN());
             int ageDays = (now - infection->m_startDate - infection->s_latentP);
