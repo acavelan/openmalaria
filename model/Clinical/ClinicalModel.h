@@ -58,7 +58,7 @@ enum DoomedCause {
  *
  * Base of the case-management variant hierarchy (p8-poly pattern): holds the
  * state every variant shares (treatment-seeking factor, episode report/state,
-     * doomed codes) and draws NO random numbers; each XML-selected
+ * doomed codes) and draws NO random numbers; each XML-selected
  * variant is a clearly independent derived class below with its own update
  * functions. createClinicalModel() selects the variant (one create-line
  * each). */\
@@ -148,7 +148,7 @@ public:
         assert(false); // 5-day kinds only
     }
 
-    /// isExistingCase() memory clock (ES keeps its own column).
+    /// isExistingCase() memory clock (ES keeps its own clock).
     virtual SimTime timeOfLastTreatment() const { return t_last_treatment; }
 
 protected:

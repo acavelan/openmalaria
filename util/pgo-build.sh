@@ -72,5 +72,5 @@ rm -rf "$d"
 # later reconfigures of this build dir keep PGO.
 make -C "$OUT" clean
 cmake -S "$SRC" -B "$OUT" -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="$USE" "$@"
-make -C "$OUT" -j"$JOBS" openMalaria
+make -C "$OUT" -j"$JOBS" inlined_xsd openMalaria
 echo "PGO build: $OUT/openMalaria"

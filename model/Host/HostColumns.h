@@ -126,7 +126,7 @@ struct HostSpecies {
  * Row i of every column belongs to Population::humans[i]. Only Population
  * changes the row count (create/checkpoint-read append; update compacts dead/
  * outmigrating rows in one batch) and keeps Human::row in sync after every
- * compaction (renumber pass).
+ * compaction (only moved humans need rebinding).
  *
  * RNG RULE (census fact 1): the rng row is constructed — copy-seeded from the
  * master — exactly at the owning Human's old member-init moment. Moving the

@@ -182,7 +182,7 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
             if (human.rng().uniform_01() < pDeath) {
                 cm.esPgState = Episode::State(cm.esPgState | DIRECT_DEATH | EVENT_FIRST_DAY);
                 // Human is killed at end of time at risk
-                //cm.es_time_recovery += ClinicalEventScheduler::extraDaysAtRisk;	(no point updating; will be set later: ATORWD)
+                // es_time_recovery will be set later: ATORWD (search keyword).
             }
             cm.es_prev_density = withinHostModel.getTotalDensity();
         }
