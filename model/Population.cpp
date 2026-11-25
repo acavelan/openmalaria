@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunExtensions.h"
 #include "core/RunContext.h"
 #include "Population.h"
 #include "mon/Continuous.h"
@@ -139,7 +140,7 @@ void registerContinousPopulationCallbacks(RunContext& ctx)
     mon::Continuous::registerCallback( "hosts", "\thosts", &ctsHosts );
     mon::Continuous::registerCallback( "host demography", ctsDemogTitle.str(), [&ctx](Population &pop, ostream& s){ ctsHostDemography(ctx, pop, s); });
     mon::Continuous::registerCallback( "recent births", "\trecent births", &ctsRecentBirths);
-    mon::Continuous::registerCallback( "patent hosts", "\tpatent hosts", &ctsPatentHosts);
+    mon::Continuous::registerCallback( "patent hosts", "\tpatent hosts", [&ctx](Population &pop, ostream& s){ ctsPatentHosts(ctx, pop, s); });
     mon::Continuous::registerCallback( "immunity h", "\timmunity h", &ctsImmunityh);
     mon::Continuous::registerCallback( "immunity Y", "\timmunity Y", &ctsImmunityY);
     mon::Continuous::registerCallback( "median immunity Y", "\tmedian immunity Y", &ctsMedianImmunityY);
@@ -171,10 +172,10 @@ void ctsRecentBirths (Population &population, ostream& stream){
     population.resetRecentBirths();
 }
 
-void ctsPatentHosts (Population &population, ostream& stream){
+void ctsPatentHosts (RunContext& ctx, Population &population, ostream& stream){
     int patent = 0;
     for(Host::Human &human : population.humans) {
-        auto diag = WithinHost::diagnostics::monitoringDiagnostic();
+        auto diag = WithinHost::diagnostics::monitoringDiagnostic( ctx );
         if( human.withinHostModel->diagnosticResult(human.rng, diag) )
             ++patent;
     }

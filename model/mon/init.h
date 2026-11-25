@@ -32,12 +32,12 @@ class Monitoring;
 
 class SimClock;
 
-namespace OM {
+namespace OM { class RunContext;
 namespace mon {
 
 SimTime readSurveyDates(const SimClock& clock, const scnXml::Monitoring& monitoring);
-void initReporting(const scnXml::Scenario& scenario);
-void initCohorts(const SimClock& clock, const scnXml::Monitoring& monitoring);
+void initReporting(RunContext& ctx, const scnXml::Scenario& scenario);
+void initCohorts(RunContext& ctx, const scnXml::Monitoring& monitoring);
 
 } // namespace mon
 } // namespace OM

@@ -78,7 +78,7 @@ public:
     void tearDown () {
         delete inf;
         delete proxy;
-        LSTMDrugType::clear();
+        UnittestUtil::ctx().drugs.clear();
     }
     
     void assembleTripleDosageSchedule ( double dosage ){
@@ -169,10 +169,10 @@ public:
             }
             cout <<  endl << "====\033[0m" << endl;
         )
-        size_t drugIndex = LSTMDrugType::findDrug( drugName );
-        size_t drug2Ind = hasSecondDrug ? LSTMDrugType::findDrug( drug2Name ) : 0;
-        double conc_abs_tol = LSTMDrugType::get(drugIndex).getNegligibleConcentration();
-        double conc_abs_tol2 = hasSecondDrug ? LSTMDrugType::get(drug2Ind).getNegligibleConcentration() : 0;
+        size_t drugIndex = UnittestUtil::ctx().drugs.findDrug( drugName );
+        size_t drug2Ind = hasSecondDrug ? UnittestUtil::ctx().drugs.findDrug( drug2Name ) : 0;
+        double conc_abs_tol = UnittestUtil::ctx().drugs.get(drugIndex).getNegligibleConcentration();
+        double conc_abs_tol2 = hasSecondDrug ? UnittestUtil::ctx().drugs.get(drug2Ind).getNegligibleConcentration() : 0;
         const size_t maxDays = 6;
         PCS_VERBOSE(double res_Fac[maxDays];)
         double res_Conc[maxDays];

@@ -122,7 +122,7 @@ double PerHost::relMosqFecundity (size_t species) const {
 bool PerHost::hasActiveInterv(interventions::Component::Type type) const{
     for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
         if( (*iter)->isDeployed() ){
-            if( interventions::InterventionManager::getComponent( (*iter)->id() ).componentType() == type )
+            if( interventions::InterventionManager::getComponent( *ctx, (*iter)->id() ).componentType() == type )
                 return true;
         }
     }
@@ -144,7 +144,7 @@ void PerHost::checkpointIntervs( istream& stream ){
         interventions::ComponentId id( stream );
         try{
             const interventions::HumanInterventionComponent& gen_params =
-                interventions::InterventionManager::getComponent( id );   // may throw
+                interventions::InterventionManager::getComponent( *ctx, id );   // may throw
             const HumanVectorInterventionComponent *params =
                 dynamic_cast<const HumanVectorInterventionComponent*>( &gen_params );
             if( params == 0 )

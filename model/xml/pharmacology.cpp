@@ -51,21 +51,16 @@ namespace PkPd {
 using namespace OM::util;
 using WithinHost::Genotypes;
 
-// State defined in LSTMDrugType.cpp (external linkage):
-extern vector<LSTMDrugType> drugTypes;
-extern map<string,size_t> drugTypeNames;
-extern void drugIsUsed(size_t index);
-// State defined in LSTMTreatments.cpp (external linkage):
-extern map<string,size_t> scheduleNames;
-extern map<string,size_t> dosagesNames;
-
 LSTMDrugPD::LSTMDrugPD( const scnXml::Phenotype& phenotype ){
     n = phenotype.getSlope ();
     IC50 = util::createSampler( phenotype.getIC50() );
     V = phenotype.getMax_killing_rate ();  
 }
 
-void LSTMDrugType::init (const scnXml::Pharmacology::DrugsType& drugData) {
+void LSTMDrugType::init (RunContext& ctx, const scnXml::Pharmacology::DrugsType& drugData) {
+    DrugRegistry& reg = ctx.drugs;
+    vector<LSTMDrugType>& drugTypes = reg.drugTypes;
+    map<string,size_t>& drugTypeNames = reg.drugTypeNames;
     drugTypes.reserve(drugData.getDrug().size());
     for( const scnXml::PKPDDrug& drug : drugData.getDrug() ){
         const string& abbrev = drug.getAbbrev();
@@ -74,12 +69,12 @@ void LSTMDrugType::init (const scnXml::Pharmacology::DrugsType& drugData) {
             throw TRACED_EXCEPTION_DEFAULT (string ("Drug added twice: ").append(abbrev));
         
         size_t i = drugTypes.size();
-        drugTypes.emplace_back( i, drug );
+        drugTypes.emplace_back( ctx, i, drug );
         drugTypeNames[abbrev] = i;
     }
 }
 
-LSTMDrugType::LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData) :
+LSTMDrugType::LSTMDrugType (RunContext& ctx, size_t index, const scnXml::PKPDDrug& drugData) :
         index (index), metabolite(0),
         negligible_concentration(numeric_limits<double>::quiet_NaN()),
         neg_m_exp(numeric_limits<double>::quiet_NaN()),
@@ -126,7 +121,7 @@ LSTMDrugType::LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData) :
         }
         const scnXml::Conversion& conv = pk.getConversion().get();
         try{
-            metabolite = findDrug(conv.getMetabolite());
+            metabolite = ctx.drugs.findDrug(conv.getMetabolite());
         }catch( util::xml_scenario_error& e ){
             throw util::xml_scenario_error( "PK: metabolite drug not found; metabolite must be defined *before* parent drug!" );
         }
@@ -205,7 +200,7 @@ LSTMDrugType::LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData) :
         map<string,size_t> loci;
         vector<vector<uint32_t> > loc_alleles;
         for( const scnXml::Restriction& restriction : phenotype.getRestriction() ){
-            uint32_t allele = Genotypes::findAlleleCode( restriction.getOnLocus(), restriction.getToAllele() );
+            uint32_t allele = ctx.genotypes.findAlleleCode( restriction.getOnLocus(), restriction.getToAllele() );
             if( allele == numeric_limits<uint32_t>::max() ){
                 throw util::xml_scenario_error("phenotype has "
                     "restriction on locus " + string(restriction.getOnLocus())
@@ -230,10 +225,10 @@ LSTMDrugType::LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData) :
                 " restrictions required when num. phenotypes > 1" );
         }else{
             // All genotypes map to phenotype 0
-            genotype_mapping.assign( Genotypes::getGenotypes().size(), 0 );
+            genotype_mapping.assign( ctx.genotypes.getGenotypes().size(), 0 );
         }
     }else{
-        const vector<Genotypes::Genotype>& genotypes = Genotypes::getGenotypes();
+        const vector<Genotypes::Genotype>& genotypes = ctx.genotypes.getGenotypes();
         genotype_mapping.assign( genotypes.size(), 0 );
         for( size_t j = 0; j < genotypes.size(); ++j ){
             uint32_t phenotype = numeric_limits<uint32_t>::max();
@@ -301,17 +296,17 @@ LSTMDrugType::LSTMDrugType (size_t index, const scnXml::PKPDDrug& drugData) :
 
 // ———  treatments (origins: LSTMTreatments.cpp; *.load members -> read_*)  ———
 
-void MedicateData::load( const scnXml::PKPDMedication& med ){
-    drug = LSTMDrugType::findDrug( med.getDrug() );
+void MedicateData::load( DrugRegistry& drugs, const scnXml::PKPDMedication& med ){
+    drug = drugs.findDrug( med.getDrug() );
     qty = med.getMg();
     time = med.getHour() / 24.0; // convert from hours to days
 }
 
-void read_schedule( Schedule& out, const scnXml::PKPDSchedule::MedicateSequence& seq ){
+void read_schedule( Schedule& out, DrugRegistry& drugs, const scnXml::PKPDSchedule::MedicateSequence& seq ){
     out.medications.resize( seq.size() );
     size_t i = 0;
     for( const scnXml::PKPDMedication& med : seq ){
-        out.medications[i].load( med );
+        out.medications[i].load( drugs, med );
         i += 1;
     }
 }
@@ -336,11 +331,16 @@ void read_dosage_table( DosageTable& out, const xsd::cxx::tree::sequence<scnXml:
     out.table[numeric_limits<double>::infinity()] = lastMult;
 }
 
-void LSTMTreatments::init(const scnXml::Treatments& data){
+void LSTMTreatments::init(RunContext& ctx, const scnXml::Treatments& data){
+    TreatmentRegistry& reg = ctx.treatments;
+    vector<Schedule>& schedules = reg.schedules;
+    map<string,size_t>& scheduleNames = reg.scheduleNames;
+    vector<DosageTable>& dosages = reg.dosages;
+    map<string,size_t>& dosagesNames = reg.dosagesNames;
     schedules.resize( data.getSchedule().size() );
     size_t i = 0;
     for( const scnXml::PKPDSchedule& schedule : data.getSchedule() ){
-        read_schedule( schedules[i], schedule.getMedicate() );
+        read_schedule( schedules[i], ctx.drugs, schedule.getMedicate() );
         scheduleNames[schedule.getName()] = i;
         i += 1;
     }
@@ -369,10 +369,10 @@ void LSTMTreatments::init(const scnXml::Treatments& data){
 
 // ———  LSTMModel::init (origin: LSTMModel.cpp)  ———
 
-void LSTMModel::init( const scnXml::Scenario& scenario ){
+void LSTMModel::init( RunContext& ctx, const scnXml::Scenario& scenario ){
     if (scenario.getPharmacology().present()) {
-        LSTMDrugType::init(scenario.getPharmacology().get().getDrugs());
-        LSTMTreatments::init(scenario.getPharmacology().get().getTreatments());
+        LSTMDrugType::init(ctx, scenario.getPharmacology().get().getDrugs());
+        LSTMTreatments::init(ctx, scenario.getPharmacology().get().getTreatments());
     }
 }
 

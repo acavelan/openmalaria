@@ -28,6 +28,7 @@
 #include "Global.h"
 #include "util/ModelOptions.h"
 
+#include "core/RunExtensions.h"
 #include "Clinical/ClinicalModel.h"
 #include "Host/Human.h"
 #include "PkPd/LSTMModel.h"
@@ -257,6 +258,7 @@ public:
     static const SimClock& clock() { return ctx().clock; }
 
     static void initTime(int daysPerStep){
+        ensure_extensions( ctx() );
         dummyXML::model.setModelOptions(dummyXML::modelOpts);
         dummyXML::modelParams.setInterval( daysPerStep );
         dummyXML::model.setParameters(dummyXML::modelParams);
@@ -313,12 +315,12 @@ public:
         dummyXML::surveys.setDetectionLimit(numeric_limits<double>::quiet_NaN());
         dummyXML::monitoring.setSurveys(dummyXML::surveys);
         dummyXML::scenario.setMonitoring(dummyXML::monitoring);
-        diagnostics::init( parameters, dummyXML::scenario );
+        diagnostics::init( ctx(), parameters, dummyXML::scenario );
     }
     
     static void PkPdSuiteSetup () {
         ModelOptions::reset();
-        WithinHost::Genotypes::initSingle();
+        ctx().genotypes.initSingle();
 
         //Note: we fudge this call since it's not so easy to falsely initialize scenario element.
         //PkPdModel::init ();
@@ -386,7 +388,7 @@ public:
                      0.9027777777777778 /*k13*/, 0.07948639559767655 /*k31*/),
                 PD(3.45 /* vmax */, 0.020831339 /* IC50 */, 6.0 /* slope */ )));
         
-        PkPd::LSTMDrugType::init (drugs);
+        PkPd::LSTMDrugType::init (ctx(), drugs);
         
         // Treatments
         scnXml::PKPDSchedule sched1("sched1");
@@ -409,7 +411,7 @@ public:
         treatments.getSchedule().push_back(sched1);
         treatments.getSchedule().push_back(sched2);
         treatments.getDosages().push_back(dosage1);
-        PkPd::LSTMTreatments::init(treatments);
+        PkPd::LSTMTreatments::init(ctx(), treatments);
     }
     
     // For when infection parameters shouldn't be used; enforce by setting to NaNs.
@@ -454,7 +456,7 @@ public:
         Parameters parameters( dummyXML::model.getParameters(), util::ModelNameProvider(dummyXML::model) );
         
         // This sets up the model based on parameters and options
-        WithinHost::MolineauxInfection::init(parameters);
+        WithinHost::MolineauxInfection::init(ctx(), parameters);
     }
     
     static void MosqLifeCycle_init() {
@@ -472,7 +474,7 @@ public:
     
     static void medicate(LocalRng& rng, PkPd::LSTMModel& pkpd, size_t typeIndex, double qty,
                          double time){
-        pkpd.medicateDrug(rng, typeIndex, qty, time);
+        pkpd.medicateDrug(ctx(), rng, typeIndex, qty, time);
     }
     
     static void clearMedicateQueue( PkPd::LSTMModel& pkpd ){

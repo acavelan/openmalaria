@@ -32,7 +32,7 @@ public:
   ///@brief Static methods
   //@{
   /// Static (shared) data initialisation
-  static void init();
+  static void init(RunContext& ctx);
   
   /// only for parameterisation?
   static void overrideInflationFactors(double inflationMean, double inflationVariance, double extinctionLevel, double overallMultiplier);

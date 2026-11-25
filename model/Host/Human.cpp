@@ -21,6 +21,7 @@
  */
 
 #include "core/RunContext.h"
+#include "core/RunExtensions.h"
 #include "Host/Human.h"
 #include "Host/InfectionIncidenceModel.h"
 #include "Clinical/ClinicalModel.h"
@@ -146,7 +147,7 @@ void Human::removeFromCohort(interventions::ComponentId id)
 
 void Human::removeFirstEvent(interventions::SubPopRemove::RemoveAtCode code )
 {
-    const vector<ComponentId>& removeAtList = interventions::removeAtIds[code];
+    const vector<ComponentId>& removeAtList = ctx->ext->removeAtIds[code];
     for( auto it = removeAtList.begin(), end = removeAtList.end(); it != end; ++it ){
         auto expIt = subPopExp.find( *it );
         if( expIt != subPopExp.end() ){
@@ -192,7 +193,7 @@ void Human::checkpoint(istream &stream)
     clinicalModel & stream;
     rng.checkpoint(stream);
     dateOfBirth & stream;
-    vaccine & stream;
+    vaccine.checkpoint(*ctx, stream);
     monitoringAgeGroup & stream;
     cohortSet & stream;
     nextCtsDist & stream;
@@ -207,7 +208,7 @@ void Human::checkpoint(ostream &stream)
     clinicalModel & stream;
     rng.checkpoint(stream);
     dateOfBirth & stream;
-    vaccine & stream;
+    vaccine.checkpoint(*ctx, stream);
     monitoringAgeGroup & stream;
     cohortSet & stream;
     nextCtsDist & stream;

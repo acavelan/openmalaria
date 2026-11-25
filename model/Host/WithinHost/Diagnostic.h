@@ -34,6 +34,7 @@ namespace scnXml {
 
 namespace OM {
     class Parameters;
+    class RunContext;
 namespace WithinHost {
 
 using util::LocalRng;
@@ -77,29 +78,23 @@ private:
  * objects. */
 class diagnostics {
 public:
-    /** Initialise from input data. */
-    static void init( const Parameters& parameters, const scnXml::Scenario& scenario );
+    /** Initialise from input data (registry: ctx.ext->diagnostic_set). */
+    static void init( RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario );
     
     /** Look up a diagnostic by name and get a reference to it.
      * 
      * @throws util::xml_scenario_error on failure
      */
-    static const Diagnostic& get( const std::string& name );
+    static const Diagnostic& get( RunContext& ctx, const std::string& name );
     
     /** Make a new diagnostic with deterministic density and return a reference. */
-    static const Diagnostic& make_deterministic( double minDens );
+    static const Diagnostic& make_deterministic( RunContext& ctx, double minDens );
 
-    /// Static access functions
-
-    static inline const Diagnostic& monitoringDiagnostic(){
-        assert( monitoring_diagnostic != 0 );
-        return *monitoring_diagnostic;
-    }
-
+    /** The diagnostic used for monitoring output (ext; Diagnostic.cpp). */
+    static const Diagnostic& monitoringDiagnostic( RunContext& ctx );
     
 private:
-    static void clear();        // for unit tests
-    static const Diagnostic* monitoring_diagnostic;
+    static void clear( RunContext& ctx );       // for unit tests
     friend class ::UnittestUtil;
 };
 

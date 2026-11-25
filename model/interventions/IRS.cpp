@@ -21,6 +21,7 @@
  */
 
 #include "Global.h"
+#include "core/RunExtensions.h"
 #include "core/RunContext.h"
 #include "interventions/IRS.h"
 #include "Host/Human.h"
@@ -31,7 +32,6 @@
 #include <cmath>
 
 namespace OM { namespace interventions {
-vector<IRSComponent*> IRSComponent::componentsByIndex;
 
 void IRSComponent::deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
     human.perHostTransmission.deployComponent(ctx, human.rng, *this);
@@ -117,27 +117,27 @@ void HumanIRS::update(Host::Human& human){
 }
 
 double HumanIRS::relativeAttractiveness(size_t speciesIndex) const{
-    const IRSComponent& params = *IRSComponent::componentsByIndex[m_id.id];
+    const IRSComponent& params = *ctx.ext->irsComponents[m_id.id];
     const IRSComponent::IRSAnopheles& anoph = params.species[speciesIndex];
     double effect = anoph.relativeAttractiveness( getInsecticideContent(params) );
     return anoph.byProtection( effect );
 }
 
 double HumanIRS::preprandialSurvivalFactor(size_t speciesIndex) const{
-    const IRSComponent& params = *IRSComponent::componentsByIndex[m_id.id];
+    const IRSComponent& params = *ctx.ext->irsComponents[m_id.id];
     const IRSComponent::IRSAnopheles& anoph = params.species[speciesIndex];
     double effect = anoph.preprandialSurvivalFactor( getInsecticideContent(params) );
     return anoph.byProtection( effect );
 }
 
 double HumanIRS::postprandialSurvivalFactor(size_t speciesIndex) const{
-    const IRSComponent& params = *IRSComponent::componentsByIndex[m_id.id];
+    const IRSComponent& params = *ctx.ext->irsComponents[m_id.id];
     const IRSComponent::IRSAnopheles& anoph = params.species[speciesIndex];
     double effect = anoph.postprandialSurvivalFactor( getInsecticideContent(params) );
     return anoph.byProtection( effect );
 }
 double HumanIRS::relFecundity(size_t speciesIndex) const{
-    const IRSComponent& params = *IRSComponent::componentsByIndex[m_id.id];
+    const IRSComponent& params = *ctx.ext->irsComponents[m_id.id];
     const IRSComponent::IRSAnopheles& anoph = params.species[speciesIndex];
     double effect = anoph.fecundityEffect( getInsecticideContent(params) );
     return anoph.byProtection( effect );
@@ -146,13 +146,13 @@ double HumanIRS::relFecundity(size_t speciesIndex) const{
 void HumanIRS::checkpoint( ostream& stream ){
     deployTime & stream;
     initialInsecticide & stream;
-    IRSComponent::componentsByIndex[m_id.id]->insecticideDecay->checkpointSample(insecticideDecayHet, stream);
+    ctx.ext->irsComponents[m_id.id]->insecticideDecay->checkpointSample(insecticideDecayHet, stream);
 }
 HumanIRS::HumanIRS( RunContext& ctx, istream& stream, ComponentId id ) : PerHostInterventionData( ctx, id )
 {
     deployTime & stream;
     initialInsecticide & stream;
-    IRSComponent::componentsByIndex[m_id.id]->insecticideDecay->checkpointSample(insecticideDecayHet, stream);
+    ctx.ext->irsComponents[m_id.id]->insecticideDecay->checkpointSample(insecticideDecayHet, stream);
 }
 
 } }

@@ -30,7 +30,8 @@ using namespace std;
 namespace scnXml{
     class Treatments;
 }
-namespace OM { namespace PkPd {
+namespace OM { class RunContext;
+namespace PkPd {
     
 /** Information about treatment courses: schedules and dosage tables.
  * 
@@ -40,18 +41,10 @@ namespace OM { namespace PkPd {
  * dosages are selected). */
 class LSTMTreatments {
 public:
-    /** Load treatment data from XML.
+    /** Load treatment data from XML into ctx.treatments.
      * 
      * Load drug data (LSTMDrugType::init()) first. */
-    static void init (const scnXml::Treatments& data);
-    /** Clear previous data. Only needed for testing. */
-    static void clear();
-    
-    /** Get the index of a named schedule. */
-    static size_t findSchedule( const string& name );
-    
-    /** Get the index of a named dosage table. */
-    static size_t findDosages( const string& name );
+    static void init (RunContext& ctx, const scnXml::Treatments& data);
     
 private:
     LSTMTreatments();  // not constructible

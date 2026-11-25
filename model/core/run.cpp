@@ -44,6 +44,7 @@
 
 #include "Host/NeonatalMortality.h"
 #include "checkpoint.h"
+#include "core/RunExtensions.h"
 
 #include <cerrno>
 
@@ -142,8 +143,12 @@ void run(RunContext& ctx, Population &population, TransmissionModel &transmissio
 } // namespace
 
 /// run_simulation() — loads scenario XML and runs the simulation (was main())
+RunContext::~RunContext() { delete ext; }
+
 void run_simulation(RunContext& ctx, const std::string& scenarioFile)
 {
+    ensure_extensions( ctx );
+
     bool startedFromCheckpoint;
 
     SimTime estEndTime, endTime;
@@ -155,7 +160,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
     util::XMLChecker().PerformPostValidationChecks(*scenario);
 
     // 1) elements with no dependencies on other elements initialised here:
-    WithinHost::Genotypes::init( *scenario );
+    WithinHost::Genotypes::init( ctx.genotypes, *scenario );
     {
         const int seedOverride = util::CommandLine::getSeedOverride();
         const unsigned iseed = seedOverride >= 0 ? unsigned (seedOverride) :
@@ -173,10 +178,10 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
     util::ModelOptions::init( ctx.clock, scenario->getModel().getModelOptions(), modelNameProvider ); // Depends on ModelNameProvider.
 
     // 4) elements depending on only elements initialised in (3).
-    WithinHost::diagnostics::init( parameters, *scenario ); // Depends on Parameters.
+    WithinHost::diagnostics::init( ctx, parameters, *scenario ); // Depends on Parameters.
 
     // 5) elements depending on only elements initialised in (4).
-    mon::initReporting( *scenario ); // Reporting init depends on diagnostics and monitoring
+    mon::initReporting( ctx, *scenario ); // Reporting init depends on diagnostics and monitoring
 
     // Init models used by humans
     Transmission::PerHost::init( ctx, scenario->getModel().getHuman().getAvailabilityToMosquitoes() );
@@ -202,7 +207,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
     // MDA1D may depend on health system (too complex to verify)
     interventions::InterventionManager::init(ctx, scenario->getInterventions(), *population, *transmission );
     Clinical::ClinicalModel::setHS( ctx, scenario->getHealthSystem() ); // Depends on interventions, PK/PD (from humanPop)
-    mon::initCohorts(ctx.clock,  scenario->getMonitoring() ); // Depends on interventions
+    mon::initCohorts(ctx,  scenario->getMonitoring() ); // Depends on interventions
 
     bool surveyOnlyNewEp = scenario->getMonitoring().getSurveyOptions().getOnlyNewEpisode();
 
@@ -284,7 +289,7 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile)
         ctx.clock.interv = sim::zero();
         Host::InfectionIncidenceModel::preMainSimInit();
         Clinical::InfantMortality::preMainSimInit();
-        WithinHost::Genotypes::preMainSimInit();
+        ctx.genotypes.preMainSimInit();
         population->resetRecentBirths();
         transmission->summarize(); // Only to reset TransmissionModel::inoculationsPerAgeGroup
         mon::initMainSim();

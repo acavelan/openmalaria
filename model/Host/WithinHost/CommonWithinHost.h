@@ -41,7 +41,7 @@ namespace OM { namespace WithinHost {
 class CommonWithinHost : public WHFalciparum
 {
 public:
-    static void init(const SimClock& clock, const scnXml::Scenario& scenario);
+    static void init(RunContext& ctx, const scnXml::Scenario& scenario);
     
     CommonWithinHost( RunContext& ctx, LocalRng& rng, double comorbidityFactor );
     virtual ~CommonWithinHost();
@@ -64,8 +64,6 @@ public:
      * The first variant is for creating a new infection, the second for loading
      * one from a checkpoint. */
     //@{
-    static CommonInfection* (* createInfection) (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin);
-    static CommonInfection* (* checkpointedInfection) (RunContext& ctx, istream& stream);
     //@}
 
     virtual InfectionOrigin getInfectionOrigin() const;

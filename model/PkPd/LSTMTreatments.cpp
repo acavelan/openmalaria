@@ -28,13 +28,7 @@
 namespace OM {
 namespace PkPd {
 
-vector<Schedule> schedules;
-map<string,size_t> scheduleNames;
-
-vector<DosageTable> dosages;
-map<string,size_t> dosagesNames;
-
-void LSTMTreatments::clear(){
+void TreatmentRegistry::clear(){
     schedules.clear();
     scheduleNames.clear();
     dosages.clear();
@@ -44,7 +38,7 @@ void LSTMTreatments::clear(){
 inline void invalidModel(){
     throw util::xml_scenario_error( "use of PK/PD treatment requires use of a compatible infection model and specification of pharmacology/treatments" );
 }
-size_t LSTMTreatments::findSchedule(const string& name){
+size_t TreatmentRegistry::findSchedule(const string& name){
     if( scheduleNames.size() == 0 ) invalidModel();
     auto iter = scheduleNames.find( name );
     if( iter == scheduleNames.end() ){
@@ -54,7 +48,7 @@ size_t LSTMTreatments::findSchedule(const string& name){
     return iter->second;
 }
 
-size_t LSTMTreatments::findDosages(const string& name){
+size_t TreatmentRegistry::findDosages(const string& name){
     if( dosagesNames.size() == 0 ) invalidModel();
     auto iter = dosagesNames.find( name );
     if( iter == dosagesNames.end() ){

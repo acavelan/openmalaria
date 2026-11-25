@@ -359,14 +359,14 @@ void AnophelesModel::init2(int nHumans, double meanPopAvail, double sum_avail, d
     vectors::scale(forcedS_v, initSvFromEIR);
 
     N_v.resize(N_v_length, numeric_limits<double>::quiet_NaN());
-    O_v_i.resize(N_v_length * Genotypes::N(), 0.0);
-    O_v_l.resize(N_v_length * Genotypes::N(), numeric_limits<double>::quiet_NaN());
-    S_v_i.resize(N_v_length * Genotypes::N(), 0.0);
-    S_v_l.resize(N_v_length * Genotypes::N(), numeric_limits<double>::quiet_NaN()); 
+    O_v_i.resize(N_v_length * ctx.genotypes.N(), 0.0);
+    O_v_l.resize(N_v_length * ctx.genotypes.N(), numeric_limits<double>::quiet_NaN());
+    S_v_i.resize(N_v_length * ctx.genotypes.N(), 0.0);
+    S_v_l.resize(N_v_length * ctx.genotypes.N(), numeric_limits<double>::quiet_NaN()); 
     P_A.resize(N_v_length, numeric_limits<double>::quiet_NaN());
     P_df.resize(N_v_length, numeric_limits<double>::quiet_NaN());
-    P_dif_i.resize(N_v_length * Genotypes::N(), 0.0); 
-    P_dif_l.resize(N_v_length * Genotypes::N(), 0.0);
+    P_dif_i.resize(N_v_length * ctx.genotypes.N(), 0.0); 
+    P_dif_l.resize(N_v_length * ctx.genotypes.N(), 0.0);
     P_dff.resize(N_v_length, numeric_limits<double>::quiet_NaN());
     P_Amu.resize(N_v_length, numeric_limits<double>::quiet_NaN());
     P_A1.resize(N_v_length, numeric_limits<double>::quiet_NaN());
@@ -383,10 +383,10 @@ void AnophelesModel::init2(int nHumans, double meanPopAvail, double sum_avail, d
         P_df[t] = tsP_df;
         P_dff[t] = tsP_dff;
         N_v[t] = forcedS_v[t] * initNvFromSv;
-        for (size_t genotype = 0; genotype < Genotypes::N(); ++genotype)
+        for (size_t genotype = 0; genotype < ctx.genotypes.N(); ++genotype)
         {
-            S_v_l[t * Genotypes::N() + genotype] = forcedS_v[t] * Genotypes::initialFreq(genotype);
-            O_v_l[t * Genotypes::N() + genotype] = S_v_l[t * Genotypes::N() + genotype] * initOvFromSv;
+            S_v_l[t * ctx.genotypes.N() + genotype] = forcedS_v[t] * ctx.genotypes.initialFreq(genotype);
+            O_v_l[t * ctx.genotypes.N() + genotype] = S_v_l[t * ctx.genotypes.N() + genotype] * initOvFromSv;
         }
     }
 
@@ -631,8 +631,8 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
     vectors::scale(sigma_dif_l, alphaE);
 
     // Summed per day:
-    partialEIR_i.assign(WithinHost::Genotypes::N(), 0.0);
-    partialEIR_l.assign(WithinHost::Genotypes::N(), 0.0);
+    partialEIR_i.assign(ctx.genotypes.N(), 0.0);
+    partialEIR_l.assign(ctx.genotypes.N(), 0.0);
 
     resetTSStats();
 
@@ -677,7 +677,7 @@ void AnophelesModel::update(SimTime d0, double tsP_A, double tsP_Amu, double tsP
     P_df[t1] = tsP_df;
     P_dff[t1] = tsP_dff;
 
-    const size_t n = Genotypes::N();
+    const size_t n = ctx.genotypes.N();
 
     for (size_t i = 0; i < n; ++i)
     {
@@ -789,7 +789,7 @@ void AnophelesModel::update(SimTime d0, double tsP_A, double tsP_Amu, double tsP
 
 void AnophelesModel::uninfectVectors()
 {
-    for(size_t i=0; i<N_v_length * Genotypes::N(); i++)
+    for(size_t i=0; i<N_v_length * ctx.genotypes.N(); i++)
     {
         O_v_i[i] = 0.0;
         O_v_l[i] = 0.0;
@@ -812,7 +812,7 @@ double sum1(const SimClock& clock, const std::vector<double> &arr, int end, int 
     return val / clock.one_TS();
 }
 
-double sum2(const SimClock& clock, const std::vector<double> &arr, int end, int N_v_length)
+double sum2(const SimClock& clock, const WithinHost::Genotypes& genotypes, const std::vector<double> &arr, int end, int N_v_length)
 {
     double val = 0.0;
     // Last time step ended at clock.now(). Values are stored per day, and for
@@ -820,22 +820,22 @@ double sum2(const SimClock& clock, const std::vector<double> &arr, int end, int 
     for (int d1 = end - clock.one_TS(); d1 < end; d1++)
     {
         int i1 = util::mod_nn(d1, N_v_length);
-        for (size_t g = 0; g < Genotypes::N(); ++g)
+        for (size_t g = 0; g < genotypes.N(); ++g)
         {
-            val += arr[i1 * Genotypes::N() + g]; //.at(i1, g);
+            val += arr[i1 * genotypes.N() + g]; //.at(i1, g);
         }
     }
     return val / clock.one_TS();
 }
 
-double sum3(const SimClock& clock, const std::vector<double> &arr, size_t g, int end, int N_v_length)
+double sum3(const SimClock& clock, const WithinHost::Genotypes& genotypes, const std::vector<double> &arr, size_t g, int end, int N_v_length)
 {
     double val = 0.0;
     // Last time step ended at clock.now(). Values are stored per day, and for
     // the last time step values at clock.now() and four previos were set.
     for (int d1 = end - clock.one_TS(); d1 < end; d1++)
     {
-        val += arr[util::mod_nn(d1, N_v_length) * Genotypes::N() + g];// .at(mod_nn(d1, N_v_length), g);
+        val += arr[util::mod_nn(d1, N_v_length) * genotypes.N() + g];// .at(mod_nn(d1, N_v_length), g);
     }
     return val / clock.one_TS();
 }
@@ -850,10 +850,10 @@ double AnophelesModel::getLastVecStat(VecStat vs) const
     {
         case PA: return sum1(ctx.clock, P_A, end, N_v_length);
         case PDF: return sum1(ctx.clock, P_df, end, N_v_length);
-        case PDIF: return sum2(ctx.clock, P_dif_i, end, N_v_length) + sum2(ctx.clock, P_dif_l, end, N_v_length);
+        case PDIF: return sum2(ctx.clock, ctx.genotypes, P_dif_i, end, N_v_length) + sum2(ctx.clock, ctx.genotypes, P_dif_l, end, N_v_length);
         case NV: return sum1(ctx.clock, N_v, end, N_v_length);
-        case OV: return sum2(ctx.clock, O_v_i, end, N_v_length) + sum2(ctx.clock, O_v_l, end, N_v_length);
-        case SV: return sum2(ctx.clock, S_v_i, end, N_v_length) + sum2(ctx.clock, S_v_l, end, N_v_length);
+        case OV: return sum2(ctx.clock, ctx.genotypes, O_v_i, end, N_v_length) + sum2(ctx.clock, ctx.genotypes, O_v_l, end, N_v_length);
+        case SV: return sum2(ctx.clock, ctx.genotypes, S_v_i, end, N_v_length) + sum2(ctx.clock, ctx.genotypes, S_v_l, end, N_v_length);
         case PAmu: return sum1(ctx.clock, P_Amu, end, N_v_length);
         case PA1: return sum1(ctx.clock, P_A1, end, N_v_length);
         case PAh: return sum1(ctx.clock, P_Ah, end, N_v_length);
@@ -869,10 +869,10 @@ void AnophelesModel::summarize(size_t species) const
     int end = ctx.clock.now() + 1 + N_v_length;
     mon::recordStat(mon::measure("Vector_Nv0"), getLastN_v0(), species);
     mon::recordStat(mon::measure("Vector_Nv"), sum1(ctx.clock, N_v, end, N_v_length), species);
-    for (size_t g = 0; g < Genotypes::N(); ++g)
+    for (size_t g = 0; g < ctx.genotypes.N(); ++g)
     {
-        mon::recordStat(mon::measure("Vector_Ov"), sum3(ctx.clock, O_v_i, g, end, N_v_length) + sum3(ctx.clock, O_v_l, g, end, N_v_length), species, g);
-        mon::recordStat(mon::measure("Vector_Sv"), sum3(ctx.clock, S_v_i, g, end, N_v_length) + sum3(ctx.clock, S_v_l, g, end, N_v_length), species, g);
+        mon::recordStat(mon::measure("Vector_Ov"), sum3(ctx.clock, ctx.genotypes, O_v_i, g, end, N_v_length) + sum3(ctx.clock, ctx.genotypes, O_v_l, g, end, N_v_length), species, g);
+        mon::recordStat(mon::measure("Vector_Sv"), sum3(ctx.clock, ctx.genotypes, S_v_i, g, end, N_v_length) + sum3(ctx.clock, ctx.genotypes, S_v_l, g, end, N_v_length), species, g);
     }
 }
 

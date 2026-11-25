@@ -290,7 +290,7 @@ WHVivax::~WHVivax(){
 
 
 double WHVivax::probTransmissionToMosquito(vector<double> &probTransGenotype_i, vector<double> &probTransGenotype_l)const{
-    assert( WithinHost::Genotypes::N() == 1 );
+    assert( ctx.genotypes.N() == 1 );
     for(auto inf = infections.begin();
          inf != infections.end(); ++inf)
     {
@@ -442,7 +442,7 @@ void WHVivax::clearImmunity(){
 }
 
 void WHVivax::treatment( Host::Human& human, TreatmentId treatId ){
-    const Treatments& treat = Treatments::select( treatId );
+    const Treatments& treat = Treatments::select( ctx, treatId );
     treatSimple( human, treat.liverEffect(), treat.bloodEffect() );
     
     // triggered intervention deployments:

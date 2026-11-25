@@ -20,6 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+#include "core/RunExtensions.h"
 #include "core/RunContext.h"
 #include "Clinical/ImmediateOutcomes.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -64,7 +65,7 @@ void ImmediateOutcomes::uncomplicatedEvent (RunContext& ctx,
         
         if( useDiagnosticUC ){
             mon::recordEvent(mon::measure("nTreatDiagnostics"), human);
-            auto diag = WithinHost::diagnostics::monitoringDiagnostic();
+            auto diag = WithinHost::diagnostics::monitoringDiagnostic( ctx );
             if( !human.withinHostModel->diagnosticResult(human.rng, diag) )
                 return; // negative outcome: no treatment
         }

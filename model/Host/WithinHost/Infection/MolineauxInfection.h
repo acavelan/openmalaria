@@ -41,7 +41,7 @@ class MolineauxInfection : public CommonInfection {
 public:
     ///@brief Static class members
     //@{
-    static void init(const OM::Parameters& parameters);
+    static void init(RunContext& ctx, const OM::Parameters& parameters);
     
     // Constants:
     // v: number of variants per clone (one infection = one new clone); 50 in paper

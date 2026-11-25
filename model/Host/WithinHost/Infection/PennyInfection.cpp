@@ -21,6 +21,7 @@
  */
 
 #include "Host/WithinHost/Infection/PennyInfection.h"
+#include "core/RunExtensions.h"
 #include "Host/WithinHost/CommonWithinHost.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -147,9 +148,9 @@ CommonInfection* checkpointedPennyInfection (RunContext& ctx, istream& stream) {
     return new PennyInfection (ctx, stream);
 }
 
-void PennyInfection::init() {
-    CommonWithinHost::createInfection = &createPennyInfection;
-    CommonWithinHost::checkpointedInfection = &checkpointedPennyInfection;
+void PennyInfection::init(RunContext& ctx) {
+    ctx.ext->createInfection = &createPennyInfection;
+    ctx.ext->checkpointedInfection = &checkpointedPennyInfection;
 
     if(util::ModelOptions::option (util::IMMUNE_THRESHOLD_GAMMA)) {
         immune_threshold_gamma = true;

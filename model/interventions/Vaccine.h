@@ -60,10 +60,9 @@ private:
      * @param numPrevDoses The number of prior vaccinations of the individual. */
     double getInitialEfficacy (LocalRng& rng, size_t numPrevDoses, uint32_t genotype ) const;
 
-    inline static const VaccineComponent& getParams( ComponentId component ){
-        assert( component.id < params.size() && params[component.id] != 0 );
-        return *params[component.id];
-    }
+    /** Look up a component's parameters (registry: ctx.ext->vaccineComponents;
+     * built while reading XML). */
+    static const VaccineComponent& getParams( RunContext& ctx, ComponentId component );
     
     /// Vaccine component type
     Vaccine::Types type;
@@ -87,12 +86,12 @@ private:
      * with the given component ID.
      *
      * No memory management (only leak is at exit which OS deals with). */
-    static vector<VaccineComponent*> params;
+
     
     //TODO(monitoring):
     /** Until the monitoring system is updated, only one type of vaccination
      * delivery can be reported. This is whichever is first configured. */
-    static ComponentId reportComponent;
+
 
     friend class PerHumanVaccine;
     friend class PerEffectPerHumanVaccine;

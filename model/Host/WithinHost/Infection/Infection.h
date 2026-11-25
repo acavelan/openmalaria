@@ -107,7 +107,7 @@ public:
     
     /// Get whether the infection is HRP2-deficient
     bool isHrp2Deficient() const {
-        return Genotypes::getGenotypes()[m_genotype].hrp2_deficient;
+        return ctx.genotypes.getGenotypes()[m_genotype].hrp2_deficient;
     }
     
     /** Get the infection's genotype. */

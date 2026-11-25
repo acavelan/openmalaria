@@ -26,6 +26,7 @@
 // mon/Continuous.cpp (Continuous::init). Declarations stay in the mon headers.
 
 #include "Global.h"
+#include "core/RunExtensions.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "interventions/InterventionManager.h"
 #include "mon/Continuous.h"
@@ -88,7 +89,7 @@ static void initAgeGroups(const SimClock& clock, const scnXml::Monitoring& monit
 
 } // namespace
 
-void initReporting(const scnXml::Scenario& scenario)
+void initReporting(RunContext& ctx, const scnXml::Scenario& scenario)
 {
     runtime.reportIMR = -1;
     const scnXml::MonitoringOptions& optsElt = scenario.getMonitoring().getSurveyOptions();
@@ -107,7 +108,7 @@ void initReporting(const scnXml::Scenario& scenario)
             throw util::xml_scenario_error("unrecognised survey option: " + std::string(optElt.getName()));
         }
         if ((om.measure == measure("sumlogDens") || om.measure == measure("logDensByGenotype")) &&
-            WithinHost::diagnostics::monitoringDiagnostic().allowsFalsePositives())
+            WithinHost::diagnostics::monitoringDiagnostic( ctx ).allowsFalsePositives())
         {
             throw util::xml_scenario_error("measure " + std::string(optElt.getName()) + " may not be used when monitoring diagnostic sensitivity < 1");
         }
@@ -144,7 +145,7 @@ void initReporting(const scnXml::Scenario& scenario)
         ? scenario.getEntomology().getVector().get().getAnopheles().size() : 1;
     const size_t nDrugs = scenario.getPharmacology().present()
         ? scenario.getPharmacology().get().getDrugs().getDrug().size() : 1;
-    internal::initStores(reportedMeasures, nSpecies, nDrugs);
+    internal::initStores(ctx, reportedMeasures, nSpecies, nDrugs);
 }
 
 SimTime readSurveyDates(const SimClock& clock, const scnXml::Monitoring& monitoring)
@@ -223,7 +224,7 @@ SimTime readSurveyDates(const SimClock& clock, const scnXml::Monitoring& monitor
     return runtime.surveyDates.back().date;
 }
 
-void initCohorts(const SimClock& clock, const scnXml::Monitoring& monitoring)
+void initCohorts(RunContext& ctx, const scnXml::Monitoring& monitoring)
 {
     runtime.cohortSubPopNumbers.clear();
     runtime.cohortSubPopIds.clear();
@@ -232,7 +233,7 @@ void initCohorts(const SimClock& clock, const scnXml::Monitoring& monitoring)
     const scnXml::Cohorts monCohorts = monitoring.getCohorts().get();
     uint32_t nextId = 0;
     for (auto it = monCohorts.getSubPop().begin(), end = monCohorts.getSubPop().end(); it != end; ++it) {
-        const interventions::ComponentId compId = interventions::InterventionManager::getComponentId(it->getId());
+        const interventions::ComponentId compId = interventions::InterventionManager::getComponentId(ctx, it->getId());
         const bool inserted = runtime.cohortSubPopIds.insert(std::make_pair(compId, nextId)).second;
         if (!inserted) {
             throw util::xml_scenario_error(

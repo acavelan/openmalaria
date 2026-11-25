@@ -21,6 +21,7 @@
  */
 
 #include "Global.h"
+#include "core/RunExtensions.h"
 #include "core/RunContext.h"
 #include "interventions/GVI.h"
 #include "Host/Human.h"
@@ -31,7 +32,6 @@
 
 namespace OM { namespace interventions {
 
-vector<GVIComponent*> GVIComponent::componentsByIndex;
 
 void GVIComponent::deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
     human.perHostTransmission.deployComponent(ctx, human.rng, *this);
@@ -69,27 +69,27 @@ void HumanGVI::update(Host::Human& human){
 }
 
 double HumanGVI::relativeAttractiveness(size_t speciesIndex) const{
-    const GVIComponent& params = *GVIComponent::componentsByIndex[m_id.id];
+    const GVIComponent& params = *ctx.ext->gviComponents[m_id.id];
     const GVIComponent::GVIAnopheles& anoph = params.species[speciesIndex];
     double effect = (1.0 - anoph.deterrency * getEffectSurvival(params));
     return anoph.byProtection( effect );
 }
 
 double HumanGVI::preprandialSurvivalFactor(size_t speciesIndex) const{
-    const GVIComponent& params = *GVIComponent::componentsByIndex[m_id.id];
+    const GVIComponent& params = *ctx.ext->gviComponents[m_id.id];
     const GVIComponent::GVIAnopheles& anoph = params.species[speciesIndex];
     double effect = (1.0 - anoph.preprandialKilling * getEffectSurvival(params));
     return anoph.byProtection( effect );
 }
 
 double HumanGVI::postprandialSurvivalFactor(size_t speciesIndex) const{
-    const GVIComponent& params = *GVIComponent::componentsByIndex[m_id.id];
+    const GVIComponent& params = *ctx.ext->gviComponents[m_id.id];
     const GVIComponent::GVIAnopheles& anoph = params.species[speciesIndex];
     double effect = (1.0 - anoph.postprandialKilling * getEffectSurvival(params));
     return anoph.byProtection( effect );
 }
 double HumanGVI::relFecundity(size_t speciesIndex) const{
-    const GVIComponent& params = *GVIComponent::componentsByIndex[m_id.id];
+    const GVIComponent& params = *ctx.ext->gviComponents[m_id.id];
     const GVIComponent::GVIAnopheles& anoph = params.species[speciesIndex];
     double effect = (1.0 - anoph.fecundityReduction * getEffectSurvival(params));
     return anoph.byProtection( effect );
@@ -97,12 +97,12 @@ double HumanGVI::relFecundity(size_t speciesIndex) const{
 
 void HumanGVI::checkpoint( ostream& stream ){
     deployTime & stream;
-    GVIComponent::componentsByIndex[m_id.id]->decay->checkpointSample(decayHet, stream);
+    ctx.ext->gviComponents[m_id.id]->decay->checkpointSample(decayHet, stream);
 }
 HumanGVI::HumanGVI( RunContext& ctx, istream& stream, ComponentId id ) : PerHostInterventionData( ctx, id )
 {
     deployTime & stream;
-    GVIComponent::componentsByIndex[m_id.id]->decay->checkpointSample(decayHet, stream);
+    ctx.ext->gviComponents[m_id.id]->decay->checkpointSample(decayHet, stream);
 }
 
 } }

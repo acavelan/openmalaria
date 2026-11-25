@@ -21,6 +21,7 @@
  */
 
 #include "Host/WithinHost/Treatments.h"
+#include "core/RunExtensions.h"
 #include "util/errors.h"
 #include "util/UnitParse.h"
 
@@ -29,7 +30,10 @@ namespace WithinHost {
 
 // ———  static  ———
 
-vector<Treatments> Treatments::treatments;
+const Treatments& Treatments::select( RunContext& ctx, TreatmentId treatId ){
+    assert( treatId.id < ctx.ext->whTreatments.size() );
+    return ctx.ext->whTreatments[treatId.id];
+}
 
 
 

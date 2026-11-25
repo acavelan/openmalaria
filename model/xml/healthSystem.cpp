@@ -28,6 +28,7 @@
 // Host/NeonatalMortality.cpp and Host/WithinHost/Treatments.cpp. State stays
 // defined in the original files (extern re-declared below).
 
+#include "core/RunExtensions.h"
 #include "Global.h"
 #include "core/RunContext.h"
 #include "Parameters.h"
@@ -113,8 +114,8 @@ void PathogenesisModel::init( RunContext& ctx, const Parameters& parameters, con
 
 TreatmentId Treatments::addTreatment( RunContext& ctx, const scnXml::TreatmentOption& desc ){
     Treatments treatment( ctx, desc );
-    TreatmentId id( treatments.size() );
-    treatments.push_back( std::move(treatment) );
+    TreatmentId id( ctx.ext->whTreatments.size() );
+    ctx.ext->whTreatments.push_back( std::move(treatment) );
     return id;
 }
 
@@ -167,7 +168,7 @@ void NeonatalMortality::init( RunContext& ctx, const scnXml::Clinical& clinical 
     prevByGestationalAge.assign( ctx.clock.inSteps(fiveMonths), 0.0 );
     
     if( clinical.getNeonatalMortality().present() ){
-        neonatalDiagnostic = &WithinHost::diagnostics::get(
+        neonatalDiagnostic = &WithinHost::diagnostics::get( ctx,
             clinical.getNeonatalMortality().get().getDiagnostic() );
     }else{
         //NOTE: this is a compatibility option for older scenarios
@@ -176,7 +177,7 @@ void NeonatalMortality::init( RunContext& ctx, const scnXml::Clinical& clinical 
                 "used by the Neonatal Mortality model is recommended "
                 "(model/clinical/neonatalMortality)" << endl;
         }
-        neonatalDiagnostic = &WithinHost::diagnostics::monitoringDiagnostic();
+        neonatalDiagnostic = &WithinHost::diagnostics::monitoringDiagnostic( ctx );
     }
 }
 }
@@ -595,10 +596,11 @@ protected:
  */
 class CMDTTreatPKPD : public CMDecisionTree {
 public:
-    CMDTTreatPKPD( const scnXml::DecisionTree::TreatPKPDSequence& seq ){
+    CMDTTreatPKPD( RunContext& ctx, const scnXml::DecisionTree::TreatPKPDSequence& seq ){
         treatments.reserve( seq.size() );
         for( const scnXml::DTTreatPKPD& treatElt : seq ){
             treatments.push_back( TreatInfo(
+                ctx.treatments,
                 treatElt.getSchedule(),
                 treatElt.getDosage(),
                 treatElt.getDelay_h()
@@ -630,9 +632,9 @@ protected:
     
 private:
     struct TreatInfo{
-        TreatInfo( const string& s, const string& d, double h ) :
-            schedule(PkPd::LSTMTreatments::findSchedule(s)),
-            dosage(PkPd::LSTMTreatments::findDosages(d)),
+        TreatInfo( PkPd::TreatmentRegistry& tr, const string& s, const string& d, double h ) :
+            schedule(tr.findSchedule(s)),
+            dosage(tr.findDosages(d)),
             delay_h(h) {}
         inline bool operator!=( const TreatInfo& that )const{
             return schedule != that.schedule ||
@@ -708,7 +710,7 @@ private:
 class CMDTDeploy : public CMDecisionTree, interventions::HumanIntervention {
 public:
     CMDTDeploy( RunContext& ctx, const scnXml::DecisionTree::DeploySequence& seq ) :
-        HumanIntervention(seq) {}
+        HumanIntervention(ctx, seq) {}
     
 protected:
     virtual bool operator==( const CMDecisionTree& that ) const{
@@ -767,10 +769,11 @@ protected:
     
 private:
     CMDTCohort(
+        RunContext& ctx,
         const std::string component,
         const CMDecisionTree& positive,
         const CMDecisionTree& negative ) :
-        component(interventions::InterventionManager::getComponentId(component)), positive(positive), negative(negative)
+        component(interventions::InterventionManager::getComponentId(ctx, component)), positive(positive), negative(negative)
     {
     }
     
@@ -781,13 +784,11 @@ private:
 
 // ———  static functions  ———
 
-// Memory management: lists all decisions and frees memory at program exit.
-// We store pointers into this list, so elements must not move.
-vector<unique_ptr<CMDecisionTree>> decision_library;
-
-// Saves a decision to decision_library, making it const.
-// Also optimises away duplicates
-const CMDecisionTree& save_decision( CMDecisionTree* decision ){
+// Saves a decision to the run's decision library (ctx.ext->decision_library;
+// frees memory at end of run). We store pointers into this list, so elements
+// must not move. Also optimises away duplicates.
+const CMDecisionTree& save_decision( RunContext& ctx, CMDecisionTree* decision ){
+    auto& decision_library = ctx.ext->decision_library;
     // We search the library for a duplicate, and delete this one if there is
     // a duplicate. Note that this is not implemented efficiently, but a little
     // wasted time at start up is hardly a concern.
@@ -815,15 +816,12 @@ const CMDecisionTree& CMDecisionTree::create( RunContext& ctx, const scnXml::Dec
     if( node.getCohort().present() ) return CMDTCohort::create( ctx, node.getCohort().get(), isUC);
 
     // action nodes
-    if( node.getNoTreatment().present() ) return save_decision( new CMDTNoTreatment() );
-    if( node.getReport().size() ) return save_decision( new CMDTReport(node.getReport()) );
-    if( node.getTreatFailure().present() ) return save_decision( new CMDTTreatFailure() );
-    if( node.getTreatPKPD().size() ) return save_decision(
-        new CMDTTreatPKPD( node.getTreatPKPD() ) );
-    if( node.getTreatSimple().size() ) return save_decision(
-        new CMDTTreatSimple( ctx, node.getTreatSimple() ) );
-    if( node.getDeploy().size() ) return save_decision(
-        new CMDTDeploy( ctx, node.getDeploy() ) );
+    if( node.getNoTreatment().present() ) return save_decision( ctx, new CMDTNoTreatment() );
+    if( node.getReport().size() ) return save_decision( ctx, new CMDTReport(node.getReport()) );
+    if( node.getTreatFailure().present() ) return save_decision( ctx, new CMDTTreatFailure() );
+    if( node.getTreatPKPD().size() ) return save_decision( ctx, new CMDTTreatPKPD( ctx, node.getTreatPKPD() ) );
+    if( node.getTreatSimple().size() ) return save_decision( ctx, new CMDTTreatSimple( ctx, node.getTreatSimple() ) );
+    if( node.getDeploy().size() ) return save_decision( ctx, new CMDTDeploy( ctx, node.getDeploy() ) );
     throw xml_scenario_error( "unterminated decision tree" );
 }
 
@@ -855,32 +853,32 @@ const CMDecisionTree& CMDTMultiple::create( RunContext& ctx, const scnXml::DTMul
         self->children.push_back( &CMDTCohort::create( ctx, sn, isUC) );
     }
     if( node.getTreatPKPD().size() ){
-        self->children.push_back( &save_decision(new CMDTTreatPKPD(node.getTreatPKPD())) );
+        self->children.push_back( &save_decision( ctx, new CMDTTreatPKPD(ctx, node.getTreatPKPD())) );
     }
     if( node.getTreatSimple().size() ){
-        self->children.push_back( &save_decision(new CMDTTreatSimple(ctx, node.getTreatSimple())) );
+        self->children.push_back( &save_decision( ctx, new CMDTTreatSimple(ctx, node.getTreatSimple())) );
     }
     if( node.getReport().size() ){
-        self->children.push_back( &save_decision(new CMDTReport(node.getReport())) );
+        self->children.push_back( &save_decision( ctx, new CMDTReport(node.getReport())) );
     }
     if( node.getDeploy().size() ){
-        self->children.push_back( &save_decision(new CMDTDeploy(ctx, node.getDeploy())) );
+        self->children.push_back( &save_decision( ctx, new CMDTDeploy(ctx, node.getDeploy())) );
     }
-    return save_decision( self );
+    return save_decision( ctx, self );
 }
 
 const CMDecisionTree& CMDTCaseType::create( RunContext& ctx, const scnXml::DTCaseType& node, bool isUC ){
     if( !isUC ){
         throw util::xml_scenario_error( "decision tree: caseType can only be used for uncomplicated cases" );
     }
-    return save_decision( new CMDTCaseType(
+    return save_decision( ctx, new CMDTCaseType(
         CMDecisionTree::create( ctx, node.getFirstLine(), isUC ),
         CMDecisionTree::create( ctx, node.getSecondLine(), isUC )
     ) );
 }
 
 const CMDecisionTree& CMDTInfectionOrigin::create( RunContext& ctx, const scnXml::DTInfectionOrigin& node, bool isUC ){
-    return save_decision( new CMDTInfectionOrigin(
+    return save_decision( ctx, new CMDTInfectionOrigin(
         CMDecisionTree::create( ctx, node.getImported(), isUC ),
         CMDecisionTree::create( ctx, node.getIntroduced(), isUC ),
         CMDecisionTree::create( ctx, node.getIndigenous(), isUC )
@@ -888,15 +886,15 @@ const CMDecisionTree& CMDTInfectionOrigin::create( RunContext& ctx, const scnXml
 }
 
 const CMDecisionTree& CMDTDiagnostic::create( RunContext& ctx, const scnXml::DTDiagnostic& node, bool isUC ){
-    return save_decision( new CMDTDiagnostic(
-        diagnostics::get( node.getDiagnostic() ),
+    return save_decision( ctx, new CMDTDiagnostic(
+        diagnostics::get( ctx, node.getDiagnostic() ),
         CMDecisionTree::create( ctx, node.getPositive(), isUC ),
         CMDecisionTree::create( ctx, node.getNegative(), isUC )
     ) );
 }
 
 const CMDecisionTree& CMDTUncomplicated::create( RunContext& ctx, const scnXml::DTUncomplicated& node, bool isUC ){
-    return save_decision( new CMDTUncomplicated(
+    return save_decision( ctx, new CMDTUncomplicated(
         UnitParse::readShortDuration(ctx.clock, node.getMemory(), UnitParse::STEPS),
         CMDecisionTree::create( ctx, node.getPositive(), isUC ),
         CMDecisionTree::create( ctx, node.getNegative(), isUC )
@@ -904,15 +902,15 @@ const CMDecisionTree& CMDTUncomplicated::create( RunContext& ctx, const scnXml::
 }
 
 const CMDecisionTree& CMDTSevere::create( RunContext& ctx, const scnXml::DTSevere& node, bool isUC ){
-    return save_decision( new CMDTSevere(
+    return save_decision( ctx, new CMDTSevere(
         CMDecisionTree::create( ctx, node.getPositive(), isUC ),
         CMDecisionTree::create( ctx, node.getNegative(), isUC )
     ) );
 }
 
 const CMDecisionTree& CMDTCohort::create( RunContext& ctx, const scnXml::DTCohort& node, bool isUC ){
-    return save_decision( new CMDTCohort(
-        node.getComponent(),
+    return save_decision( ctx, new CMDTCohort(
+        ctx, node.getComponent(),
         CMDecisionTree::create( ctx, node.getPositive(), isUC ),
         CMDecisionTree::create( ctx, node.getNegative(), isUC )
     ) );
@@ -939,7 +937,7 @@ const CMDecisionTree& CMDTRandom::create(RunContext& ctx,
             "decision tree (random node): expected probability sum to be 1.0 but found " + to_string(cum_p));
     }
     
-    return save_decision( result );
+    return save_decision( ctx, result );
 }
 
 const CMDecisionTree& CMDTAge::create(RunContext& ctx, const scnXml::DTAge& node, bool isUC){
@@ -964,7 +962,7 @@ const CMDecisionTree& CMDTAge::create(RunContext& ctx, const scnXml::DTAge& node
     double noLb = numeric_limits<double>::infinity();
     result->branches.insert( make_pair(noLb, lastNode) );
     
-    return save_decision( result );
+    return save_decision( ctx, result );
 }
 void ClinicalEventScheduler::init( RunContext& ctx, const Parameters& parameters, const scnXml::Clinical& clinical )
 {

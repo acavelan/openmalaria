@@ -21,6 +21,7 @@
  */
 
 #include "Host/WithinHost/Infection/EmpiricalInfection.h"
+#include "core/RunExtensions.h"
 #include "Host/WithinHost/CommonWithinHost.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -68,9 +69,9 @@ CommonInfection* checkpointedEmpiricalInfection (RunContext& ctx, istream& strea
 }
 
 
-void EmpiricalInfection::init(){
-    CommonWithinHost::createInfection = &createEmpiricalInfection;
-    CommonWithinHost::checkpointedInfection = &checkpointedEmpiricalInfection;
+void EmpiricalInfection::init(RunContext& ctx){
+    ctx.ext->createInfection = &createEmpiricalInfection;
+    ctx.ext->checkpointedInfection = &checkpointedEmpiricalInfection;
     
   // alpha1 corresponds to 1 day before first patent, alpha2 2 days before first patent etc.
   _alpha1=0.2647;
