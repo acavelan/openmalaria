@@ -65,6 +65,8 @@ double EstarInv;
 // model options:
 bool opt_neg_bin_mass_action = false, opt_lognormal_mass_action = false, opt_no_pre_erythrocytic = false,
      opt_any_het = false, opt_vaccine_genotype = false;
+enum class Kind { Default, HetWorkaround, NegBinom, LogNormal };
+Kind kind = Kind::Default;
 
 // ———  variables  ———
 int InfectionIncidenceModel::ctsNewInfections = 0;
@@ -122,6 +124,11 @@ void InfectionIncidenceModel::init(RunContext& ctx, const Parameters& parameters
         }
     }
 
+    kind = opt_neg_bin_mass_action   ? Kind::NegBinom
+           : opt_lognormal_mass_action ? Kind::LogNormal
+           : opt_any_het               ? Kind::HetWorkaround
+                                      : Kind::Default;
+
     Continuous::registerCallback(ctx, "new infections", "\tnew infections",
                                  &InfectionIncidenceModel::ctsReportNewInfections);
 }
@@ -131,19 +138,6 @@ void InfectionIncidenceModel::init(RunContext& ctx, const Parameters& parameters
 void InfectionIncidenceModel::ctsReportNewInfections(const vector<Human>&, ostream& stream) {
     stream << '\t' << ctsNewInfections;
     ctsNewInfections = 0;
-}
-
-// -----  non-static non-checkpointing constructors  -----
-
-InfectionIncidenceModel* InfectionIncidenceModel::createModel(RunContext& ctx) {
-    // Kind from model options (read once in init; same dispatch as old factory)
-    if (opt_neg_bin_mass_action)
-        return new InfectionIncidenceModel(ctx, Kind::NegBinom);
-    if (opt_lognormal_mass_action)
-        return new InfectionIncidenceModel(ctx, Kind::LogNormal);
-    if (opt_any_het)
-        return new InfectionIncidenceModel(ctx, Kind::HetWorkaround);
-    return new InfectionIncidenceModel(ctx, Kind::Default);
 }
 
 // -----  non-static methods  -----
@@ -167,33 +161,38 @@ double InfectionIncidenceModel::getAvailabilityFactor(LocalRng& rng, double base
     }
 }
 
-void InfectionIncidenceModel::summarize(const Human& human) { recordStat(measure("nExpectd"), human, m_pInfected); }
+void InfectionIncidenceModel::summarize(const Human& human) {
+    recordStat(measure("nExpectd"), human, human.p_infected);
+}
 
-double InfectionIncidenceModel::getModelExpectedInfections(LocalRng& rng, double effectiveEIR, const PerHost& phTrans) {
+double InfectionIncidenceModel::getModelExpectedInfections(Human& human, double effectiveEIR) {
+    LocalRng& rng = human.rng();
+    RunContext& ctx = *human.ctx;
+    const PerHost& phTrans = human.perHostTransmission;
     switch (kind) {
     case Kind::HetWorkaround: // parity: old HeterogeneityWorkaroundII formula
         return (Sinf + (1 - Sinf) / (1 + effectiveEIR / (ctx.clock.one_TS() * phTrans.rel_avail_het()) * EstarInv)) *
-               susceptibility() * effectiveEIR;
+               susceptibility(human) * effectiveEIR;
     case Kind::NegBinom: // parity: old NegBinomMAII formula
         // Documentation: http://www.plosmedicine.org/article/fetchSingleRepresentation.action?uri=info:doi/10.1371/journal.pmed.1001157.s009
         // parity: order — local RNG stream: draw call order fixes stream state
-        return rng.gamma(inf_rate_shape_param, effectiveEIR * susceptibility() / inf_rate_shape_param);
+        return rng.gamma(inf_rate_shape_param, effectiveEIR * susceptibility(human) / inf_rate_shape_param);
     case Kind::LogNormal: { // parity: old LogNormalMAII formula
         // Documentation: http://www.plosmedicine.org/article/fetchSingleRepresentation.action?uri=info:doi/10.1371/journal.pmed.1001157.s009
         if (effectiveEIR < 1e-10)
             return 0.0;
-        double meanlog = log(effectiveEIR * susceptibility()) - inf_rate_offset;
+        double meanlog = log(effectiveEIR * susceptibility(human)) - inf_rate_offset;
         return rng.log_normal(meanlog, inf_rate_shape_param);
     }
     default:
         // First two lines are availability adjustment: S_1(i,t) from AJTMH 75 (suppl 2) p12 eqn. (5)
         // Note that NegBinom and LogNormal supercede this model; see above
-        return (Sinf + (1 - Sinf) / (1 + effectiveEIR / ctx.clock.one_TS() * EstarInv)) * susceptibility() *
+        return (Sinf + (1 - Sinf) / (1 + effectiveEIR / ctx.clock.one_TS() * EstarInv)) * susceptibility(human) *
                effectiveEIR;
     }
 }
 
-double InfectionIncidenceModel::susceptibility() {
+double InfectionIncidenceModel::susceptibility(const Human& human) {
     if (opt_no_pre_erythrocytic) {
         //! The average proportion of bites from sporozoite positive mosquitoes resulting in infection.
         /*! 
@@ -205,7 +204,7 @@ double InfectionIncidenceModel::susceptibility() {
         return 0.702;
     } else {
         // S_2(i,t) from AJTMH 75 (suppl 2) p12 eqn. (7)
-        return Simm + (1.0 - Simm) / (1.0 + pow(m_cumulativeEIRa * Xstar_pInv, gamma_p));
+        return Simm + (1.0 - Simm) / (1.0 + pow(human.cumulative_eir_a * Xstar_pInv, gamma_p));
     }
 }
 
@@ -217,7 +216,7 @@ double InfectionIncidenceModel::expectedNumNewInfections(Human& human, double ef
         throw TRACED_EXCEPTION(out.str(), Error::EffectiveEIR);
     }
 
-    double expectedNumInfections = getModelExpectedInfections(human.rng(), effectiveEIR, human.perHostTransmission);
+    double expectedNumInfections = getModelExpectedInfections(human, effectiveEIR);
 
     // Only to be consistent with old simulation runs when set to false
     // Setting this option to true will only affect reporting
@@ -226,13 +225,13 @@ double InfectionIncidenceModel::expectedNumNewInfections(Human& human, double ef
         expectedNumInfections *= human.vaccine_factor(Vaccine::PEV);
 
     //Update pre-erythrocytic immunity
-    m_cumulativeEIRa += effectiveEIR;
+    human.cumulative_eir_a += effectiveEIR;
 
-    m_pInfected = 1.0 - exp(-expectedNumInfections) * (1.0 - m_pInfected);
-    if (m_pInfected < 0.0)
-        m_pInfected = 0.0;
-    else if (m_pInfected > 1.0)
-        m_pInfected = 1.0;
+    human.p_infected = 1.0 - exp(-expectedNumInfections) * (1.0 - human.p_infected);
+    if (human.p_infected < 0.0)
+        human.p_infected = 0.0;
+    else if (human.p_infected > 1.0)
+        human.p_infected = 1.0;
 
     return expectedNumInfections;
 }

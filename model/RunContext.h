@@ -46,11 +46,8 @@ class Scenario;
 namespace OpenMalaria {
 
 // Forward declarations for the registry members below: their defining headers
-// need a complete RunContext (they would cycle through RunContext.h), so this
-// header only ever sees pointers to them. gcc instantiates member deleters at
-// class scope, so any member whose type is incomplete here is a raw pointer
-// created by RunContext's out-of-line ctor and deleted by its out-of-line
-// dtor (model/run.cpp).
+// need a complete RunContext (they would cycle through RunContext.h). The
+// unique_ptrs therefore use an out-of-line ctor/dtor (model/run.cpp).
 struct FlatTree;
 class ImportedInfections;
 class PerHostAnophParams;
@@ -77,8 +74,8 @@ struct Infection;
  * run_simulation(); never a global. */
 class RunContext {
   public:
-    RunContext();  // out-of-line: news the pointer members (run.cpp)
-    ~RunContext(); // out-of-line: deletes them (incomplete types here)
+    RunContext();  // out-of-line: creates the pointer members (run.cpp)
+    ~RunContext(); // out-of-line: complete types for unique_ptr destructors
 
     SimClock clock;
     /** Master RNG. // parity: order — constructed here (0, 0), matching the
@@ -105,23 +102,11 @@ class RunContext {
     /// Compiled decision trees (frees memory at end of run; was:
     /// decision_library of polymorphic trees with equality dedup — the dedup
     /// only saved memory, identical trees behave identically).
-    std::vector<std::unique_ptr<FlatTree>>* decision_trees;
+    std::unique_ptr<std::vector<std::unique_ptr<FlatTree>>> decision_trees;
     /// Treatments option registry (built while reading XML).
-    std::vector<Treatments>* whTreatments;
+    std::unique_ptr<std::vector<Treatments>> whTreatments;
     /// Within-host infection factory, set by the active model's init.
     Infection* (*createInfection)(RunContext&, LocalRng&, uint32_t, int) = nullptr;
-    /// Unittest backend for WHInterface Kind::Mock (installed by
-    /// unittest/WHMock.cpp; null in production, where Kind::Mock is never
-    /// created). Same fn-pointer-table idiom as createInfection above.
-    struct WHMockHooks {
-        void* state = nullptr;
-        void (*treatment)(void* state);
-        bool (*treatSimple)(void* state, SimTime timeLiver, SimTime timeBlood);
-        void (*treatPkPd)(void* state, RunContext& ctx, size_t schedule, size_t dosages, double age, double delay_d);
-        double (*getTotalDensity)(const void* state);
-        bool (*diagnosticResult)(const void* state, LocalRng& rng, const Diagnostic& diagnostic);
-    };
-    const WHMockHooks* whMock = nullptr;
     /// Diagnostics registry (built while reading XML / from defaults).
     std::map<std::string, Diagnostic> diagnostic_set;
     const Diagnostic* monitoring_diagnostic = nullptr;
@@ -132,17 +117,16 @@ class RunContext {
     std::map<std::string, ComponentId> identifierMap;
     /// All human intervention components, indexed by ComponentId; owns them
     /// (append-only: registries below hold stable payload pointers).
-    std::vector<ComponentConfig>* humanComponents;
+    std::unique_ptr<std::vector<ComponentConfig>> humanComponents;
     /// Continuous interventions, sorted by deployment age (weakly increasing).
-    std::vector<ContinuousHumanDeployment>* continuous;
+    std::unique_ptr<std::vector<ContinuousHumanDeployment>> continuous;
     /// All timed interventions, sorted (time weakly increasing), sentinel last.
-    std::vector<TimedDeployment>* timed;
+    std::unique_ptr<std::vector<TimedDeployment>> timed;
     uint32_t nextTimed = 0;
     /// Imported infections (not really an intervention; schema association).
-    ImportedInfections* importedInfections;
-    /// Sub-population removal component lists: array of
-    /// SubPopRemove::NUM lists (new[]ed in run.cpp).
-    std::vector<ComponentId>* removeAtIds;
+    std::unique_ptr<ImportedInfections> importedInfections;
+    /// Sub-population removal component lists: array of SubPopRemove::NUM lists.
+    std::unique_ptr<std::vector<ComponentId>[]> removeAtIds;
     /// Per-type component parameter look-ups by id (not owning: components
     /// are owned by humanComponents).
     std::vector<const ITNParams*> itnComponents;
@@ -154,7 +138,7 @@ class RunContext {
 
     // ——— entomology parameters (was: PerHostAnophParams statics) ———
     /// Per-species host-availability/biting parameters (XML read).
-    std::vector<PerHostAnophParams>* anophParams;
+    std::unique_ptr<std::vector<PerHostAnophParams>> anophParams;
     std::vector<double> entoAvailabilityPercentiles;
 
     // ——— continuous output (was: mon/Continuous.cpp statics) ———
@@ -169,7 +153,7 @@ class RunContext {
     /// Monitoring runtime state (survey numbers, stores, conditions; mon/).
     /// (Pointer member: its map keys need ComponentId from the heavy
     /// intervention headers, which need a complete RunContext.)
-    RuntimeState* monitoring;
+    std::unique_ptr<RuntimeState> monitoring;
 };
 
 /** Load a scenario and run the complete simulation (init, warmup, EIR

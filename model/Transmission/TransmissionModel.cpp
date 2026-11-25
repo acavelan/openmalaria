@@ -25,7 +25,7 @@
 #include "Population.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Genotypes.h"
-#include "interventions/IvState.h" // iv_rel_* (E5 hoisted getter bodies)
+#include "interventions/IvState.h" // history-ordered iv folds (E5 hoisted rows)
 #include "mon/Continuous.h"
 #include "util/vectors.h"
 #include "util/ModelOptions.h"
@@ -57,39 +57,22 @@ template <typename Term> double meanOver(const vector<Human>& population, Term t
 }
 
 /** E5: per-host view of the transmission row containers, bound once per host.
- * Bodies are the PerHost getter bodies (PerHost.cpp) verbatim, reading rows
- * already resolved — same value per species, but the out-of-line calls and
- * their per-(host,species) cols->col[row]/cols->iv[row] walks are gone.
- * Bind after any iv-deploying call (e.g. PerHost::update). */
+ * Rows stay hoisted; the history-ordered folds are shared with PerHost via
+ * IvState.h (parity: c). Bind after any iv-deploying call (e.g. PerHost::update). */
 struct IvRows {
     explicit IvRows(const PerHost& host)
         : ctx(*host.ctx), iv(host.cols->iv[host.row]), avail(host.anoph_ento_avail()),
           bite(host.anoph_prob_biting()), rest(host.anoph_prob_resting()) {}
-    // parity: c — history-ordered iv-record FP product — multiply in vector order, not reassociated
     double entoAvailabilityHetVecItv(size_t species) const {
-        double alpha_i = avail[species];
-        for (const IvRecord& r : iv)
-            alpha_i *= iv_rel_attractiveness(ctx, r, species);
-        return alpha_i;
+        return iv_rel_attractiveness(ctx, iv, avail[species], species);
     }
     double probMosqBiting(size_t species) const {
-        double P_B_i = bite[species];
-        for (const IvRecord& r : iv)
-            P_B_i *= iv_preprandial_survival(ctx, r, species);
-        return P_B_i;
+        return iv_preprandial_survival(ctx, iv, bite[species], species);
     }
     double probMosqResting(size_t species) const {
-        double pRest = rest[species];
-        for (const IvRecord& r : iv)
-            pRest *= iv_postprandial_survival(ctx, r, species);
-        return pRest;
+        return iv_postprandial_survival(ctx, iv, rest[species], species);
     }
-    double relMosqFecundity(size_t species) const {
-        double relFecundity = 1.0;
-        for (const IvRecord& r : iv)
-            relFecundity *= iv_rel_fecundity(ctx, r, species);
-        return relFecundity;
-    }
+    double relMosqFecundity(size_t species) const { return iv_rel_fecundity(ctx, iv, 1.0, species); }
 
     RunContext& ctx;
     const std::vector<IvRecord>& iv;

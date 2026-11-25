@@ -110,6 +110,7 @@ void run(RunContext& ctx, Population& population, TransmissionModel& transmissio
     if (CommandLine::option(CommandLine::VERBOSE))
         cout << "Starting " << phase << "..." << endl;
 
+    HostScratch scratch; // EIR out-vectors, reused across humans and ticks
     while (ctx.clock.now() < endTime) {
         maybe_save(ctx, population, transmission, mainPhase, endTime, estEndTime);
 
@@ -142,7 +143,6 @@ void run(RunContext& ctx, Population& population, TransmissionModel& transmissio
         // (until humans old enough to be pregnate get updated and can be infected).
         NeonatalMortality::update(ctx, population.humans);
 
-        HostScratch scratch; // EIR out-vectors, reused across humans/ticks
         for (Human& human : population.humans) {
             if (human.cols->dob[human.row] + ctx.clock.max_human_age >=
                 humanWarmupLength) // this is last time of possible update
@@ -174,25 +174,16 @@ void run(RunContext& ctx, Population& population, TransmissionModel& transmissio
 /// member-init order (declaration order of RunContext.h); registries and
 /// unittest backend installers depend on it.
 RunContext::RunContext()
-    : decision_trees(new std::vector<std::unique_ptr<FlatTree>>), whTreatments(new std::vector<Treatments>),
-      humanComponents(new std::vector<ComponentConfig>), continuous(new std::vector<ContinuousHumanDeployment>),
-      timed(new std::vector<TimedDeployment>), importedInfections(new ImportedInfections),
-      removeAtIds(new std::vector<ComponentId>[SubPopRemove::NUM]), anophParams(new std::vector<PerHostAnophParams>),
-      monitoring(new RuntimeState) {}
+    : decision_trees(std::make_unique<std::vector<std::unique_ptr<FlatTree>>>()),
+      whTreatments(std::make_unique<std::vector<Treatments>>()),
+      humanComponents(std::make_unique<std::vector<ComponentConfig>>()),
+      continuous(std::make_unique<std::vector<ContinuousHumanDeployment>>()),
+      timed(std::make_unique<std::vector<TimedDeployment>>()),
+      importedInfections(std::make_unique<ImportedInfections>()),
+      removeAtIds(std::make_unique<std::vector<ComponentId>[]>(SubPopRemove::NUM)),
+      anophParams(std::make_unique<std::vector<PerHostAnophParams>>()), monitoring(std::make_unique<RuntimeState>()) {}
 
-// (was: delete ext; destroys the old RunExtensions members in the same
-// reverse-declaration order)
-RunContext::~RunContext() {
-    delete monitoring;
-    delete anophParams;
-    delete importedInfections;
-    delete timed;
-    delete continuous;
-    delete humanComponents;
-    delete[] removeAtIds;
-    delete whTreatments;
-    delete decision_trees;
-}
+RunContext::~RunContext() = default;
 
 // The one accessor for a TreatmentId (plain struct now; needs whTreatments).
 const Treatments& Treatments::select(RunContext& ctx, TreatmentId treatId) {

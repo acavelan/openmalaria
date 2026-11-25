@@ -24,7 +24,7 @@
 // HumanInterventionComponent class tree is replaced by ComponentConfig: an id, a
 // Component::Type kind and a variant payload (plan §5 tag+switch idiom).
 // Deployment and detail-printing are the deploy_component/print_component
-// switches (model/xml/HumanInterventionComponents.h, one-TU pattern).
+// switches (model/interventions/Components.cpp).
 
 #pragma once
 
