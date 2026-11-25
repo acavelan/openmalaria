@@ -146,7 +146,15 @@ public:
 
 void summarize(RunContext& ctx, Human &human, bool surveyOnlyNewEp);
 
-void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& transmission);
+/** Per-sweep scratch reused across humans within a time step (owned by the
+ * sweep caller — the run loop). Holds the EIR-per-genotype out-vectors that
+ * getEIR overwrites via assign() each host, so the buffer allocates once per
+ * run instead of once per host per tick. Folded into HostView at phase 6.4. */
+struct HostScratch {
+    std::vector<double> EIR_per_genotype_i, EIR_per_genotype_l;
+};
+
+void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& transmission, HostScratch& scratch);
 
 inline SimTime Human::age( SimTime time ) const { 
     return time - cols->dob[row]; 

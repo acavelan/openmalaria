@@ -130,15 +130,23 @@ Human::Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns) :
 
     HumanHet het = hetSample(rng());
     withinHostModel = WithinHost::WHInterface::createWithinHostModel( ctx, rng(), het.comorbidityFactor );
+    withinHostModel->bind_columns( columns, row );
     double iiFactor = infIncidence->getAvailabilityFactor(rng(), 1.0);
     perHostTransmission.ctx = &ctx;
     vaccine.ctx = &ctx;
+    perHostTransmission.bind_columns( columns, row );
     perHostTransmission.initialise (ctx, rng(), het.availabilityFactor * iiFactor);
     clinicalModel = Clinical::ClinicalModel::createClinicalModel(ctx, het.treatmentSeekingFactor);
+    clinicalModel->bind_columns( columns, row );
 }
 
 void Human::set_row( size_t r ) {
     row = r;
+    // Rebind every submodel caching (cols,row): a stale mirror reads/writes
+    // another host's columns after compaction (WHInterface immunity, Clinical).
+    if( withinHostModel ) withinHostModel->bind_columns( *cols, r );
+    if( clinicalModel ) clinicalModel->bind_columns( *cols, r );
+    perHostTransmission.bind_columns( *cols, r );
 }
 
 namespace {
@@ -278,7 +286,7 @@ void summarize(RunContext& ctx, Human &human, bool surveyOnlyNewEp) {
     }
 }
 
-void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& transmission)
+void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& transmission, HostScratch& scratch)
 {
     // For integer age checks we use age0 to e.g. get 73 steps comparing less than 1 year old
     SimTime age0 = human.age(ctx.clock.ts0());
@@ -301,8 +309,9 @@ void update(RunContext& ctx, Human &human, Transmission::TransmissionModel& tran
     double age1 = sim::inYears(human.age(ctx.clock.ts1()));
 
     // age1 used only in PerHost::relativeAvailabilityAge(); difference to age0 should be minor
-    vector<double> EIR_per_genotype_i, EIR_per_genotype_l;
-    transmission.getEIR(human, age0, age1, EIR_per_genotype_i, EIR_per_genotype_l);
+    transmission.getEIR(human, age0, age1, scratch.EIR_per_genotype_i, scratch.EIR_per_genotype_l);
+    vector<double> &EIR_per_genotype_i = scratch.EIR_per_genotype_i;
+    vector<double> &EIR_per_genotype_l = scratch.EIR_per_genotype_l;
 
     double EIR_i = util::vectors::sum(EIR_per_genotype_i);
     double EIR_l = util::vectors::sum(EIR_per_genotype_l);

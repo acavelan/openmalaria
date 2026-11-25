@@ -104,12 +104,12 @@ void WHInterface::clearImmunity_falciparum() {
     for(auto inf = infections.begin(); inf != infections.end(); ++inf) {
         (*inf)->clearImmunity();
     }
-    m_cumulative_h = 0.0;
-    m_cumulative_Y_lag = 0.0;
+    imm_h_ref() = 0.0;
+    imm_Y_lag_ref() = 0.0;
 }
 void WHInterface::importInfection_common(LocalRng& rng){
     if( SlotAllocator::try_import(numInfs) ){   // mode A: at the cap, no draw at all
-        m_cumulative_h += 1;
+        imm_h_ref() += 1;
         numInfs += 1;
         // This is a hook, used by interventions. The newly imported infections
         // should use initial frequencies to select genotypes.
@@ -232,8 +232,8 @@ void WHInterface::update_common(Host::Human &human, LocalRng& rng, int &nNewInfs
     // As in AJTMH p22, cumulative_h (X_h + 1) doesn't include infections added
     // this time-step and cumulative_Y only includes past densities, thus we
     // increment these after the update.
-    m_cumulative_h += nNewInfs_i + nNewInfs_l;
-    m_cumulative_Y += totalDensity;
+    imm_h_ref() += nNewInfs_i + nNewInfs_l;
+    imm_Y_ref() += totalDensity;
     
     util::streamValidate(totalDensity);
     util::streamValidate(hrp2Density);

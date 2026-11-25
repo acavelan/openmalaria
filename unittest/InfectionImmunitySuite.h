@@ -25,6 +25,7 @@
 
 #include <cxxtest/TestSuite.h>
 #include "Host/WithinHost/WHInterface.h"
+#include "util/random.h"
 #include <limits>
 
 using namespace OM::WithinHost;
@@ -45,6 +46,9 @@ public:
         // Any falciparum kind will do:
         LocalRng rng(0, 721347520444481703);
 	wh = new WHInterface{ UnittestUtil::ctx(), rng, numeric_limits<double>::quiet_NaN(), WHInterface::Kind::Descriptive };
+        // immunity state lives in columns now: bind a private mini-column
+        util::MasterRng master(0, 1);
+        wh->bind_columns(cols, cols.append_row(sim::zero(), master));
     }
     void tearDown () {
 	delete wh;
@@ -52,8 +56,8 @@ public:
     
     void testImmunity () {
 	// Base case: virtually no immunity due to mother's immunity or past infections
-        wh->m_cumulative_h = 0.0;
-        wh->m_cumulative_Y = 0.0;
+        wh->imm_h_ref() = 0.0;
+        wh->imm_Y_ref() = 0.0;
         double cumExposureJ = 0.0;
 	TS_ASSERT_APPROX (wh->immunitySurvivalFactor (100., cumExposureJ), 1.0);
         
@@ -61,16 +65,17 @@ public:
 	TS_ASSERT_APPROX (wh->immunitySurvivalFactor (0.1, cumExposureJ), 0.30631938551881299);
         
 	// past infections, no density
-        wh->m_cumulative_h = 100.0;
+        wh->imm_h_ref() = 100.0;
 	TS_ASSERT_APPROX (wh->immunitySurvivalFactor (100., cumExposureJ), 0.41995608739475931);
         
 	// previous with cum. density of 1e8 (but none from current infection)
-        wh->m_cumulative_Y = 1e8;
+        wh->imm_Y_ref() = 1e8;
 	TS_ASSERT_APPROX (wh->immunitySurvivalFactor (100., cumExposureJ), 0.17081918453312689);
     }
     
 private:
     WHInterface* wh;
+    HumanColumns cols;
 };
 
 #endif

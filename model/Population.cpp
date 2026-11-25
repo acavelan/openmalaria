@@ -234,7 +234,7 @@ void ctsMeanAgeAvailEffect (RunContext& ctx, Population &population, ostream& st
     int nHumans = 0;
     double avail = 0.0;
     for(Host::Human &human : population.humans) {
-        if( !human.perHostTransmission.outsideTransmission ){
+        if( !human.perHostTransmission.outside_trans() ){
             ++nHumans;
             avail += human.perHostTransmission.relativeAvailabilityAge(sim::inYears(human.age(ctx.clock.now())));
         }

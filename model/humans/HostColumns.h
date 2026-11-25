@@ -26,6 +26,7 @@
 #include "Global.h"
 #include "interventions/ComponentId.h"
 #include "util/random.h"
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -60,6 +61,26 @@ struct HumanColumns {
     std::vector<uint16_t> mon_age_group;
     /// Next continuous-distribution index (old Human::nextCtsDist).
     std::vector<uint32_t> next_cts_dist;
+    /// Immunity accumulators (old WHInterface m_cumulative_h/_Y/_Y_lag, f64).
+    std::vector<double> imm_h, imm_Y, imm_Y_lag;
+    /// Primary blood-stage infection count (old WHInterface cumPrimInf, u32).
+    std::vector<uint32_t> cum_prim_inf;
+    /// Clinical timestamps (old ClinicalModel m_tLastTreatment + ES-kind
+    /// esCaseStartTime/esTimeOfRecovery/esTimeLastTreatment, SimTime).
+    std::vector<SimTime> t_last_treatment, es_case_start, es_time_recovery,
+                         es_time_treatment;
+    /// ES total density last time step (old ClinicalModel esPreviousDensity).
+    std::vector<double> es_prev_density;
+    /// Per-species transmission params (old PerHost anoph* vectors; nested:
+    /// one vector<double> per row, resized by PerHost::initialise).
+    std::vector<std::vector<double>> anoph_ento_raw, anoph_ento_avail,
+                                     anoph_prob_biting, anoph_prob_resting;
+    /// Availability heterogeneity factor (old relativeAvailabilityHet;
+    /// signaling_NaN until PerHost::initialise, like the old member).
+    std::vector<double> rel_avail_het;
+    /// Outside-transmission flag (old bool PerHost::outsideTransmission;
+    /// u8 keeps the 1-byte wire shape).
+    std::vector<uint8_t> outside_trans;
 
     /** Add a row for a newly constructed Human, at the exact moment of its old
      * member inits: rng is copy-seeded from `master` HERE (RNG RULE); dob set;
@@ -72,6 +93,21 @@ struct HumanColumns {
         cohorts.emplace_back();
         mon_age_group.push_back( 0u );
         next_cts_dist.push_back( 0u );
+        imm_h.push_back( 0.0 );
+        imm_Y.push_back( 0.0 );
+        imm_Y_lag.push_back( 0.0 );
+        cum_prim_inf.push_back( 0u );
+        t_last_treatment.push_back( sim::never() );
+        es_case_start.push_back( sim::never() );
+        es_time_recovery.push_back( sim::never() );
+        es_time_treatment.push_back( sim::never() );
+        es_prev_density.push_back( std::numeric_limits<double>::quiet_NaN() );
+        anoph_ento_raw.emplace_back();
+        anoph_ento_avail.emplace_back();
+        anoph_prob_biting.emplace_back();
+        anoph_prob_resting.emplace_back();
+        rel_avail_het.push_back( std::numeric_limits<double>::signaling_NaN() );
+        outside_trans.push_back( 0u );
         return rng.size() - 1;
     }
 
@@ -84,6 +120,21 @@ struct HumanColumns {
         cohorts.erase( cohorts.begin() + r );
         mon_age_group.erase( mon_age_group.begin() + r );
         next_cts_dist.erase( next_cts_dist.begin() + r );
+        imm_h.erase( imm_h.begin() + r );
+        imm_Y.erase( imm_Y.begin() + r );
+        imm_Y_lag.erase( imm_Y_lag.begin() + r );
+        cum_prim_inf.erase( cum_prim_inf.begin() + r );
+        t_last_treatment.erase( t_last_treatment.begin() + r );
+        es_case_start.erase( es_case_start.begin() + r );
+        es_time_recovery.erase( es_time_recovery.begin() + r );
+        es_time_treatment.erase( es_time_treatment.begin() + r );
+        es_prev_density.erase( es_prev_density.begin() + r );
+        anoph_ento_raw.erase( anoph_ento_raw.begin() + r );
+        anoph_ento_avail.erase( anoph_ento_avail.begin() + r );
+        anoph_prob_biting.erase( anoph_prob_biting.begin() + r );
+        anoph_prob_resting.erase( anoph_prob_resting.begin() + r );
+        rel_avail_het.erase( rel_avail_het.begin() + r );
+        outside_trans.erase( outside_trans.begin() + r );
     }
 };
 

@@ -53,12 +53,12 @@ double sigma_i;
 double immPenalty_22;
 
 // Remaining immunity against asexual parasites(after time step, each of 2 components y and h)
-// This variable decays the effectors m_cumulative_h and m_cumulative_Y in a way that their
+// This variable decays the effectors imm_h/imm_Y columns in a way that their
 // effects on densities (1-Dh and 1-Dy) decay exponentially.
 double asexImmRemain;
 
 // Remaining immunity against asexual parasites(after each time step, each of 2 components y and h)
-// This variable decays the effectors m_cumulative_h and m_cumulative_Y exponentially.
+// This variable decays the imm_h/imm_Y columns exponentially.
 double immEffectorRemain;
 
 /// Critical value for immunity trigger (cumulative densities)
@@ -107,8 +107,11 @@ void WHInterface::ctorFalciparum( LocalRng& rng, double comorbidityFactor )
 }
 
 double WHInterface::immunitySurvivalFactor (double ageInYears, double cumulativeExposureJ) {
+    // Row reads hoisted to locals: one cols->deref per call instead of four
+    // (nothing mutates them in here, so the values are bit-identical).
+    const double imm_h = imm_h_ref(), imm_Y = imm_Y_ref();
     if (std::isnan(ageInYears) || std::isnan(cumulativeExposureJ) ||
-        std::isnan(m_cumulative_h) || std::isnan(m_cumulative_Y)) {
+        std::isnan(imm_h) || std::isnan(imm_Y)) {
         throw base_exception("nan in immunitySurvivalFactor");
     }
     
@@ -118,9 +121,9 @@ double WHInterface::immunitySurvivalFactor (double ageInYears, double cumulative
     double dY = 1.0;
     // Effect of number of infections experienced since birth (named Dh in AJTM)
     double dH = 1.0;
-    if (m_cumulative_h > 1.0) {
-        dH = 1.0 / (1.0 + (m_cumulative_h - 1.0) * invCumulativeHstar);
-        dY = 1.0 / (1.0 + (m_cumulative_Y - cumulativeExposureJ) * invCumulativeYstar);
+    if (imm_h > 1.0) {
+        dH = 1.0 / (1.0 + (imm_h - 1.0) * invCumulativeHstar);
+        dY = 1.0 / (1.0 + (imm_Y - cumulativeExposureJ) * invCumulativeYstar);
     }
     
     // Effect of age-dependent maternal immunity (named Dm in AJTM)
@@ -243,9 +246,9 @@ Pathogenesis::StatePair WHInterface::determineMorbidity_falciparum( Host::Human&
     /* Note: this model can easily be re-enabled, but is not used and not considered to be a good model.
     if( (result.state & Pathogenesis::MALARIA) && util::ModelOptions::option( util::PENALISATION_EPISODES ) ){
         // This does immunity penalisation:
-        m_cumulative_Y = m_cumulative_Y_lag - immPenalty_22*(m_cumulative_Y-m_cumulative_Y_lag);
-        if (m_cumulative_Y < 0) {
-            m_cumulative_Y=0.0;
+        imm_Y_ref() = imm_Y_lag_ref() - immPenalty_22*(imm_Y_ref()-imm_Y_lag_ref());
+        if (imm_Y_ref() < 0) {
+            imm_Y_ref()=0.0;
         }
     }*/
     
@@ -256,17 +259,21 @@ Pathogenesis::StatePair WHInterface::determineMorbidity_falciparum( Host::Human&
 // -----  immunity  -----
 
 void WHInterface::updateImmuneStatus() {
+    // Same sequential updates on row-locals (bit-identical), one deref each side.
+    double h = imm_h_ref(), Y = imm_Y_ref();
     if (immEffectorRemain < 1) {
-        m_cumulative_h *= immEffectorRemain;
-        m_cumulative_Y *= immEffectorRemain;
+        h *= immEffectorRemain;
+        Y *= immEffectorRemain;
     }
     if (asexImmRemain < 1) {
-        m_cumulative_h *= asexImmRemain /
-                      (1+(m_cumulative_h*(1-asexImmRemain) * invCumulativeHstar));
-        m_cumulative_Y *= asexImmRemain /
-                      (1+(m_cumulative_Y*(1-asexImmRemain) * invCumulativeYstar));
+        h *= asexImmRemain /
+                      (1+(h*(1-asexImmRemain) * invCumulativeHstar));
+        Y *= asexImmRemain /
+                      (1+(Y*(1-asexImmRemain) * invCumulativeYstar));
     }
-    m_cumulative_Y_lag = m_cumulative_Y;
+    imm_h_ref() = h;
+    imm_Y_ref() = Y;
+    imm_Y_lag_ref() = Y;
 }
 
 
@@ -274,9 +281,9 @@ void WHInterface::updateImmuneStatus() {
 
 void WHInterface::checkpoint_falciparum (istream& stream) {
     _innateImmSurvFact & stream;
-    m_cumulative_h & stream;
-    m_cumulative_Y & stream;
-    m_cumulative_Y_lag & stream;
+    imm_h_ref() & stream;
+    imm_Y_ref() & stream;
+    imm_Y_lag_ref() & stream;
     totalDensity & stream;
     hrp2Density & stream;
     timeStepMaxDensity & stream;
@@ -288,9 +295,9 @@ void WHInterface::checkpoint_falciparum (istream& stream) {
 }
 void WHInterface::checkpoint_falciparum (ostream& stream) {
     _innateImmSurvFact & stream;
-    m_cumulative_h & stream;
-    m_cumulative_Y & stream;
-    m_cumulative_Y_lag & stream;
+    imm_h_ref() & stream;
+    imm_Y_ref() & stream;
+    imm_Y_lag_ref() & stream;
     totalDensity & stream;
     hrp2Density & stream;
     timeStepMaxDensity & stream;

@@ -336,7 +336,7 @@ void WHInterface::update_vivax(Host::Human &human, LocalRng& rng, int &nNewInfs_
     // update vivaxInfections
     // NOTE: currently no BSV model
     morbidity = Pathogenesis::NONE;
-    uint32_t oldCumInf = cumPrimInf;
+    uint32_t oldCumInf = cum_prim_inf_ref();
     bool treatmentLiver = treatExpiryLiverVivax > ctx.clock.ts0();
     bool treatmentBlood = treatExpiryBloodVivax > ctx.clock.ts0();
     double matImmClin = 1 - (0.90 * exp(-2.53*ageInYears));
@@ -346,7 +346,7 @@ void WHInterface::update_vivax(Host::Human &human, LocalRng& rng, int &nNewInfs_
         if( treatmentLiver ) inf->treatmentLS();
         if( treatmentBlood ) inf->treatmentBS();        // clearance due to treatment; no protection against reemergence
         VivaxBrood::UpdResult result = inf->update(rng);
-        if( result.newPrimaryBS ) cumPrimInf += 1;
+        if( result.newPrimaryBS ) cum_prim_inf_ref() += 1;
         
         if( result.newBS ){
             // Sample for each new blood stage infection: the chance of some clinical event.
@@ -503,7 +503,7 @@ void WHInterface::checkpoint_vivax(istream& stream){
     int morbidity_i;
     morbidity_i & stream;
     morbidity = static_cast<Pathogenesis::State>( morbidity_i );
-    cumPrimInf & stream;
+    cum_prim_inf_ref() & stream;
     treatExpiryLiverVivax & stream;
     treatExpiryBloodVivax & stream;
     pEvent & stream;
@@ -516,7 +516,7 @@ void WHInterface::checkpoint_vivax(ostream& stream){
     }
     noPQ & stream;
     static_cast<int>( morbidity ) & stream;
-    cumPrimInf & stream;
+    cum_prim_inf_ref() & stream;
     treatExpiryLiverVivax & stream;
     treatExpiryBloodVivax & stream;
     pEvent & stream;

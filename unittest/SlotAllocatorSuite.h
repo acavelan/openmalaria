@@ -113,6 +113,8 @@ public:
         
         LocalRng rng(3, 4);
         WHInterface wh( UnittestUtil::ctx(), rng, 1.0, WHInterface::Kind::Descriptive );
+        HumanColumns cols; util::MasterRng master(0, 1);
+        wh.bind_columns( cols, cols.append_row( sim::zero(), master ) );
         
         // ctor consumption pinned too (any change here shifts every word below)
         static const uint64_t GOLD_CTOR[4] = {

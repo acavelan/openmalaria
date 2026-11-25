@@ -335,6 +335,11 @@ public:
         double sumWeight = 0.0;
         numTransmittingHumans = 0;
 
+        // Scratch hoisted out of the per-human loop (one allocation for the
+        // sweep; assign() re-zeroes each row — same bytes as the old fresh
+        // vector(N), same pattern as vectorUpdate).
+        vector<double> probTransGenotype_i, probTransGenotype_l;
+
         for (const Host::Human &human : population)
         {
             // NOTE: calculate availability relative to age at end of time step;
@@ -342,8 +347,8 @@ public:
             const double avail = human.perHostTransmission.relativeAvailabilityHetAge(sim::inYears(human.age(ctx.clock.ts1())));
             sumWeight += avail;
 
-            vector<double> probTransGenotype_i(ctx.genotypes.N());
-            vector<double> probTransGenotype_l(ctx.genotypes.N());
+            probTransGenotype_i.assign(ctx.genotypes.N(), 0.0);
+            probTransGenotype_l.assign(ctx.genotypes.N(), 0.0);
             const double pTransmit = human.withinHostModel->probTransmissionToMosquito(probTransGenotype_i, probTransGenotype_l);
 
             double riskTrans = 0.0;

@@ -72,10 +72,6 @@ ClinicalModel::ClinicalModel (RunContext& ctx, double tSF, const Kind kind) :
     m_treatmentSeekingFactor (tSF),
     latestReport(ctx),
     esPgState (Episode::NONE),
-    esCaseStartTime (sim::never()),
-    esTimeOfRecovery (sim::never()),
-    esTimeLastTreatment (sim::never()),
-    esPreviousDensity (numeric_limits<double>::quiet_NaN()),
     doomed(NOT_DOOMED)
 {
     if (kind == Kind::EventScheduler && tSF != 1.0) {
@@ -87,7 +83,7 @@ ClinicalModel::ClinicalModel (RunContext& ctx, double tSF, const Kind kind) :
 
 bool ClinicalModel::isExistingCase() {
     // If treated in the recent past:
-    const SimTime t = kind == Kind::EventScheduler ? esTimeLastTreatment : m_tLastTreatment;
+    const SimTime t = kind == Kind::EventScheduler ? es_time_treatment() : t_last_treatment();
     return ctx.clock.now() > t && ctx.clock.now() <= t + healthSystemMemory;
 }
 
@@ -152,13 +148,13 @@ void ClinicalModel::checkpoint (istream& stream) {
         int s;
         s & stream;
         esPgState = Episode::State(s);
-        esCaseStartTime & stream;
-        esTimeOfRecovery & stream;
-        esTimeLastTreatment & stream;
-        esPreviousDensity & stream;
+        es_case_start() & stream;
+        es_time_recovery() & stream;
+        es_time_treatment() & stream;
+        es_prev_density() & stream;
     } else {
         // wire bytes parity: old CM5DayCommon::checkpoint
-        m_tLastTreatment & stream;
+        t_last_treatment() & stream;
         m_treatmentSeekingFactor & stream;
     }
 }
@@ -167,12 +163,12 @@ void ClinicalModel::checkpoint (ostream& stream) {
     doomed & stream;
     if (kind == Kind::EventScheduler) {
         esPgState & stream;
-        esCaseStartTime & stream;
-        esTimeOfRecovery & stream;
-        esTimeLastTreatment & stream;
-        esPreviousDensity & stream;
+        es_case_start() & stream;
+        es_time_recovery() & stream;
+        es_time_treatment() & stream;
+        es_prev_density() & stream;
     } else {
-        m_tLastTreatment & stream;
+        t_last_treatment() & stream;
         m_treatmentSeekingFactor & stream;
     }
 }

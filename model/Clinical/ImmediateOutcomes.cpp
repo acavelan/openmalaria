@@ -49,7 +49,7 @@ void immOutUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx,
 ) {
     // If last treatment prescribed was in recent memory, consider second line.
     CM5DayCommon::CaseType regimen = CM5DayCommon::FirstLine;
-    if (cm.m_tLastTreatment + ClinicalModel::healthSystemMemory > ctx.clock.ts0()){
+    if (cm.t_last_treatment() + ClinicalModel::healthSystemMemory > ctx.clock.ts0()){
         pgState = Episode::State (pgState | Episode::SECOND_CASE);
         regimen = CM5DayCommon::SecondLine;
     }
@@ -69,7 +69,7 @@ void immOutUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx,
                 return; // negative outcome: no treatment
         }
         
-        cm.m_tLastTreatment = ctx.clock.ts0();
+        cm.t_last_treatment() = ctx.clock.ts0();
         mon::recordEvent(CM5DayCommon::measures[regimen], human);
         
         double p = ( x < CM5DayCommon::accessUCSelfTreat[regimen] * cm.m_treatmentSeekingFactor ) ?
