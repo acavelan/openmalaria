@@ -333,11 +333,15 @@ void TransmissionModel::vectorUpdate_vector(const vector<Human>& population) {
         for (size_t g = 0; g < nGenotypes; ++g)
             s_tbv[h * nGenotypes + g] = anyVac ? human.vaccine_factor(Vaccine::TBV, opt_vaccine_genotype ? g : 0) : 1.0;
 
+        // NOTE: calculate availability relative to age at end of time step;
+        // not my preference but consistent with TransmissionModel::getEIR().
+        // TODO: even stranger since probTransmission comes from the previous time step
+        // PR-480 hoist: the age factor is species-independent (was re-evaluated per
+        // species inside entoAvailabilityFull). Operand order kept (PerHost.h:167:
+        // entoAvailabilityHetVecItv(s) * relativeAvailabilityAge(ageYears)) ⇒ FP-exact.
+        const double ageFactor = host.relativeAvailabilityAge(inYears(human.age(ctx.clock.ts1())));
         for (size_t s = 0; s < nSpec; ++s) {
-            // NOTE: calculate availability relative to age at end of time step;
-            // not my preference but consistent with TransmissionModel::getEIR().
-            // TODO: even stranger since probTransmission comes from the previous time step
-            const double avail = host.entoAvailabilityFull(s, inYears(human.age(ctx.clock.ts1())));
+            const double avail = host.entoAvailabilityHetVecItv(s) * ageFactor;
             const double df = avail * host.probMosqBiting(s) * host.probMosqResting(s);
             s_avail[h * nSpec + s] = avail;
             s_df[h * nSpec + s] = df;
