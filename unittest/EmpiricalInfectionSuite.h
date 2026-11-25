@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_EmpiricalInfectionSuite
-#define Hmod_EmpiricalInfectionSuite
+#pragma once
 
 #include <cxxtest/TestSuite.h>
 #include <iomanip>
@@ -130,4 +129,3 @@ private:
     LocalRng m_rng;
 };
 
-#endif

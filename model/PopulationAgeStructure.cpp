@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+// p8-files: PopulationAgeStructure.h rides the RunContext.h cone; demography
+// spline/parse bodies stay here (wide-cone rule).
 #include "PopulationAgeStructure.h"
 #include "Clock.h"
 #include "RunContext.h"

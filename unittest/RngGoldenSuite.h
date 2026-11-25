@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_RngGoldenSuite
-#define Hmod_RngGoldenSuite
+#pragma once
 
 /* T2 fixture: replays unittest/goldens/rng_dist_v50.csv through the same calls
  * that produced it (golden-gen/RngGoldenAdapter.h — a verbatim mirror of
@@ -148,4 +147,3 @@ public:
 
 const char* RngGoldenSuite::CSV_FILE = "rng_dist_v50.csv";
 
-#endif

@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_EmergenceRateEstimator
-#define Hmod_EmergenceRateEstimator
+#pragma once
 
 #include "Clock.h"
 #include "Transmission/PerHost.h"
@@ -36,7 +35,6 @@
 #include <limits>
 
 namespace OM {
-namespace checkpoint { class Archive; }
 namespace Transmission {
 namespace Anopheles {
     using std::numeric_limits;
@@ -184,9 +182,6 @@ public:
         return !(scaled && rotated);
     }
 
-    /// Run-state save/restore (model/checkpoint/transmission.cpp): fitting
-    /// state only; kind/populationSize come from the scenario.
-    void checkpoint (checkpoint::Archive& a);
 
 private:
     bool estimateSolver(AnophelesModel &m, const std::vector<double> &laggedKappa, double meanAvail)
@@ -267,6 +262,7 @@ private:
         return false;
     }
 
+public:  // run state; wire in checkpoint/transmission.cpp
     Kind kind;
     // AdaptiveFitter-kind state:
     double scaleFactor, shiftAngle;
@@ -278,4 +274,3 @@ private:
 }
 }
 }
-#endif

@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_Transmission
-#define Hmod_Transmission
+#pragma once
 
 #include "Transmission/TransmissionModel.h"
 #include "Transmission/Anopheles/AnophelesModel.h"
@@ -64,4 +63,3 @@ TransmissionModel *createTransmissionModel(RunContext& ctx, const scnXml::Entomo
 } // namespace Transmission
 } // namespace OM
 
-#endif

@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+// p8-files: header fold rejected — this TU reads Human/WHInterface, so inlining
+// into Episode.h would drag that chain into the whole clinical cone.
 #include "RunContext.h"
 #include "Clinical/Episode.h"
 #include "Clinical/ClinicalModel.h"

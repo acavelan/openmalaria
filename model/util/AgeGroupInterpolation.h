@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_AgeDistribution
-#define Hmod_AgeDistribution
+#pragma once
 
 #include <fstream>
 #include <limits>
@@ -139,4 +138,3 @@ private:
 };
 
 } }
-#endif

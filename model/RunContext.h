@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_RunContext
-#define Hmod_RunContext
+#pragma once
 
 #include "Clock.h"
 #include "util/mod.h"
@@ -185,5 +184,14 @@ public:
     mon::internal::RuntimeState* monitoring;
 };
 
+/** Load a scenario and run the complete simulation (init, warmup, EIR
+ * calibration, main phase, survey output) — the whole of the old main()
+ * body after command-line parsing, in the frozen order (plan §3).
+ *
+ * All state lives in ctx, owned by the caller, so one process can run the
+ * model any number of times independently. Exceptions are not caught:
+ * main() (and TwoRunsSuite) own the error reporting. Assumes
+ * util::CommandLine::parse() has already been called. */
+void run_simulation(RunContext& ctx, const std::string& scenarioFile);
+
 }
-#endif

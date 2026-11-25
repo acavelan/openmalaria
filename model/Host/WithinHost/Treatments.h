@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_WithinHost_Treatments
-#define Hmod_WithinHost_Treatments
+#pragma once
 
 #include "Clock.h"
 #include "RunContext.h"
@@ -99,4 +98,3 @@ private:
 
 }
 }
-#endif

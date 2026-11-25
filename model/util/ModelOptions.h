@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_util_ModelOptions
-#define Hmod_util_ModelOptions
+#pragma once
 
 #include "Clock.h"
 #include "util/ModelNameProvider.h"
@@ -337,4 +336,3 @@ namespace OM { namespace util {
 	inline static std::bitset<NUM_OPTIONS> options;
     };
 } }
-#endif

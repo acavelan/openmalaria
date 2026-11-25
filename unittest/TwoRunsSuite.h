@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_TwoRunsSuite
-#define Hmod_TwoRunsSuite
+#pragma once
 
 // Phase-3 acceptance test (plan §7 row 3): run the full engine twice, in one
 // process, through the same code path main() uses (OM::run_simulation).
@@ -37,7 +36,7 @@
 
 #include "configured/TestPaths.h"
 
-#include "run.h"
+#include "RunContext.h"
 #include "util/CommandLine.h"
 #include "mon/Monitoring.h"
 
@@ -157,4 +156,3 @@ public:
     }
 };
 
-#endif

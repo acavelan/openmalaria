@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+// p8-files: Diagnostic.h rides the RunContext.h cone (modelwide); RDT/PCR
+// drawing bodies stay here (wide-cone rule).
 #include "Host/WithinHost/Diagnostic.h"
 #include "RunContext.h"
 #include "Parameters.h"

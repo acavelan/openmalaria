@@ -23,8 +23,7 @@
 // Leaf vocabulary header: no OM includes beyond Clock.h. Transmission/PerHost.h
 // may include this without pulling in the interventions module (phase-5 cycle
 // break); everything else should keep using interventions/Interfaces.h.
-#ifndef Hmod_interventions_ComponentId
-#define Hmod_interventions_ComponentId
+#pragma once
 
 #include "Clock.h"
 #include <limits>
@@ -67,4 +66,3 @@ struct ComponentId{
 };
 
 } }
-#endif

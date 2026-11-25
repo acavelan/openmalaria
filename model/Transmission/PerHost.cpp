@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+// p8-files: PerHost.h is read by interventions + WH + checkpoint paths; the
+// bit-vector deploy/restore bodies stay here (wide-cone rule).
 #include "Transmission/PerHost.h"
 #include "Transmission/TransmissionModel.h"
 #include "Host/Human.h"

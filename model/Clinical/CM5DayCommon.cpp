@@ -1,5 +1,7 @@
+
+
 /* This file is part of OpenMalaria.
- * 
+ *
  * Copyright (C) 2005-2026 Swiss Tropical and Public Health Institute
  * Copyright (C) 2005-2015 Liverpool School Of Tropical Medicine
  * Copyright (C) 2020-2026 University of Basel
@@ -9,20 +11,23 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or (at
  * your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+// The 5-day case-management chain: shared config (CM5DayCommon) plus the two
+// health-system kinds, DecisionTree5Day and ImmediateOutcomes (one file each
+// before this merge; bodies verbatim).
+
 #include "RunContext.h"
-#include "Clinical/DecisionTree5Day.h"
-#include "Clinical/ImmediateOutcomes.h"
+#include "Clinical/CM5DayCommon.h"
 #include "Clinical/CMDecisionTree.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/errors.h"
@@ -188,6 +193,110 @@ void severeMalaria (ClinicalModel& cm, RunContext& ctx,
         }else /*prandom < q[2]*/{       // outcome 2: full recovery from episode in community
             cm.latestReport.update (ctx, human, pgState);
         }
+    }
+}
+
+// ———  DecisionTree5Day kind (old DecisionTree5Day.cpp)  ———
+
+// These parameters are set by setHealthSystem() and do not need checkpointing.
+const FlatTree *treeUCOfficial = 0, *treeUCSelfTreat = 0;
+
+// ———  static, init  ———
+
+
+
+// ———  per-human, update  ———
+
+void treeUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState ){    
+    // If last treatment prescribed was in recent memory, consider second line.
+    CM5DayCommon::CaseType regimen = CM5DayCommon::FirstLine;
+    if (cm.t_last_treatment() + ClinicalModel::healthSystemMemory > ctx.clock.ts0()){
+        pgState = Episode::State (pgState | Episode::SECOND_CASE);
+        regimen = CM5DayCommon::SecondLine;
+    }
+
+    cm.latestReport.update (ctx, human, Episode::State( pgState ) );
+
+    // parity: d — clinical decision fraction draw order (plan §3d)
+    double x = human.rng().uniform_01();
+    if( x < CM5DayCommon::accessUCAny[regimen] * cm.m_treatmentSeekingFactor ){
+        // Run tree (which may deploy treatment)
+        DTExecCtx ec( ctx, human, sim::inYears( human.age( ctx.clock.ts0() ) ),
+                      pgState );
+        CMDTOut output = exec_decision_tree(
+            x < CM5DayCommon::accessUCSelfTreat[regimen] * cm.m_treatmentSeekingFactor ?
+                *treeUCSelfTreat : *treeUCOfficial, ec );
+        
+        if( output.treated ){   // if any treatment or intervention deployed
+            cm.t_last_treatment() = ctx.clock.ts0();
+            mon::recordEvent(CM5DayCommon::measures[regimen], human);
+        }
+        if( output.screened ){
+            mon::recordEvent(mon::measure("nTreatDiagnostics"), human);
+        }
+        
+        human.withinHostModel->optionalPqTreatment(human);
+    } else {
+        // No care sought
+    }
+}
+
+// ———  ImmediateOutcomes kind (old ImmediateOutcomes.cpp)  ———
+
+// ImmediateOutcomes parameters are set by setHealthSystem() and do not need checkpointing.
+double ImmediateOutcomes::cureRateUCOfficial[CM5DayCommon::NumCaseTypes];
+double ImmediateOutcomes::cureRateUCSelfTreat[CM5DayCommon::NumCaseTypes];
+WithinHost::TreatmentId ImmediateOutcomes::treatmentUC[CM5DayCommon::NumCaseTypes];
+bool ImmediateOutcomes::useDiagnosticUC = false;
+
+
+
+
+// ———  per-human, update  ———
+
+void immOutUncomplicatedEvent (ClinicalModel& cm, RunContext& ctx,
+    Human& human,
+    Episode::State pgState
+) {
+    // If last treatment prescribed was in recent memory, consider second line.
+    CM5DayCommon::CaseType regimen = CM5DayCommon::FirstLine;
+    if (cm.t_last_treatment() + ClinicalModel::healthSystemMemory > ctx.clock.ts0()){
+        pgState = Episode::State (pgState | Episode::SECOND_CASE);
+        regimen = CM5DayCommon::SecondLine;
+    }
+
+    cm.latestReport.update (ctx, human, Episode::State( pgState ) );
+
+    // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
+    double x = human.rng().uniform_01();
+    if( x < CM5DayCommon::accessUCAny[regimen] * cm.m_treatmentSeekingFactor ){
+        // UC1: official care OR self treatment
+        // UC2: official care only
+        
+        if( ImmediateOutcomes::useDiagnosticUC ){
+            mon::recordEvent(mon::measure("nTreatDiagnostics"), human);
+            auto diag = WithinHost::diagnostics::monitoringDiagnostic( ctx );
+            if( !human.withinHostModel->diagnosticResult(human.rng(), diag) )
+                return; // negative outcome: no treatment
+        }
+        
+        cm.t_last_treatment() = ctx.clock.ts0();
+        mon::recordEvent(CM5DayCommon::measures[regimen], human);
+        
+        double p = ( x < CM5DayCommon::accessUCSelfTreat[regimen] * cm.m_treatmentSeekingFactor ) ?
+            ImmediateOutcomes::cureRateUCSelfTreat[regimen] : ImmediateOutcomes::cureRateUCOfficial[regimen];
+        // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
+        if( human.rng().bernoulli(p) ){
+            // Could report Episode::RECOVERY to cm.latestReport,
+            // but we don't report out-of-hospital recoveries anyway.
+            human.withinHostModel->treatment( human, ImmediateOutcomes::treatmentUC[regimen] );
+        } else {
+            // No change in parasitological status: treated outside of hospital
+        }
+        
+        human.withinHostModel->optionalPqTreatment(human);
+    } else {
+        // No change in parasitological status: non-treated
     }
 }
 

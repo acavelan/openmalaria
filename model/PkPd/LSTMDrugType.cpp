@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+// p8-files: LSTMDrugType.h rides the RunContext.h cone; the type-registry XML
+// init + parameter sampling stay here (wide-cone rule).
 #include "PkPd/LSTMDrugType.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/Infection.h"

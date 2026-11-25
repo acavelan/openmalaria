@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_SamplerBatterySuite
-#define Hmod_SamplerBatterySuite
+#pragma once
 
 /* T2/T3 sampler battery: for every distribution in model/util/random.h's API
  * (plus the direct-GSL binomial/exponential the RNG layer pins), draw 50k
@@ -295,4 +294,3 @@ public:
     }
 };
 
-#endif

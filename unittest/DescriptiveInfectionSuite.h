@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_DescriptiveInfectionSuite
-#define Hmod_DescriptiveInfectionSuite
+#pragma once
 
 /* Revived 2026-11-19. The previous version of this file was a test-less
  * skeleton (only setUp/tearDown) and no longer compiled: it called
@@ -78,7 +77,7 @@ public:
         {189, 0xb3f77f74d5a3da5cULL, 0xe939c8204ac54026ULL, 0x17adf51af9e1e435ULL, 0x654aca7b5daace42ULL},
         };
         
-        LocalRng rng(3, 4);  // Xoshiro256P(3, 4, default, default) — util/xoshiro.h:38
+        LocalRng rng(3, 4);  // Xoshiro256P(3, 4, default, default) — engine seed defaults in util/random.h
         for (size_t i = 0; i < sizeof(GOLDEN)/sizeof(GOLDEN[0]); ++i) {
             SimTime dur = infection_duration_descriptive( UnittestUtil::ctx(), rng );
             TS_ASSERT_EQUALS( dur, sim::fromDays(GOLDEN[i].days) - UnittestUtil::clock().one_TS() );
@@ -100,4 +99,3 @@ public:
     }
 };
 
-#endif

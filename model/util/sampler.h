@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef UTIL_SAMPLER
-#define UTIL_SAMPLER
+#pragma once
 
 #include <limits>
 #include <memory>
@@ -237,4 +236,3 @@ namespace OM { namespace util {
     };
     
 } }
-#endif

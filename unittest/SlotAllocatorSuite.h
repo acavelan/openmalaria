@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_SlotAllocatorSuite
-#define Hmod_SlotAllocatorSuite
+#pragma once
 
 /* T2 fixture: pins the per-host infection-slot clamp (phase-6 SlotAllocator,
  * census fact 2 / latent-bug #4) BEFORE the refactor and forever after.
@@ -38,7 +37,7 @@
  */
 
 #include <cxxtest/TestSuite.h>
-#include "Host/WithinHost/SlotAllocator.h"
+#include "Host/WithinHost/WHInterface.h"  // SlotAllocator (merged)
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "util/ModelOptions.h"
@@ -146,4 +145,3 @@ public:
     }
 };
 
-#endif

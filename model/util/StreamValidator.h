@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_StreamValidator
-#define Hmod_StreamValidator
+#pragma once
 
 #include <cstdint>
 // Compile-time optional
@@ -125,4 +124,3 @@ namespace OM { namespace util {
     }
     
 } }
-#endif	//Hmod_StreamValidator

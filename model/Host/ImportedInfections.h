@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef OM_IMPORTED_INFECTIONS
-#define OM_IMPORTED_INFECTIONS
+#pragma once
 
 #include "Clock.h"
 #include "RunContext.h"
@@ -34,7 +33,6 @@ namespace scnXml { class ImportedInfections; }
 
 namespace OM {
     class Population;
-namespace checkpoint { class Archive; }
 
 namespace Host {
 
@@ -48,9 +46,6 @@ namespace Host {
          * @returns True if any infections are imported
          */
         void init( RunContext& ctx, const scnXml::ImportedInfections& iiElt );
-        
-        /// Checkpoint the rate-table cursor (model/checkpoint/statics.cpp).
-        void checkpoint (checkpoint::Archive& a);
         
         /** Import this time-step's imported infections, according to initialised rates
          * 
@@ -92,9 +87,11 @@ namespace Host {
             }
         }
         
-    private:
+    public:  // run state; wire in checkpoint/statics.cpp
         SimTime period = sim::never();
         uint32_t lastIndex;
+
+    private:
         struct Rate {
             Rate( SimTime t, double v ): time(t), value(v) {}
             SimTime time = sim::never();
@@ -107,4 +104,3 @@ namespace Host {
     };
 } }
 
-#endif

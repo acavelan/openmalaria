@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_util_ModelNameProvider
-#define Hmod_util_ModelNameProvider
+#pragma once
 
 namespace scnXml { class Model; }
 #include "util/errors.h"
@@ -56,4 +55,3 @@ namespace OM
     }
 }
 
-#endif

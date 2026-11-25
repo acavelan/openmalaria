@@ -22,8 +22,7 @@
 
 // Unittest for the EventScheduler case management
 
-#ifndef Hmod_CMDecisionTreeSuite
-#define Hmod_CMDecisionTreeSuite
+#pragma once
 
 #include <cxxtest/TestSuite.h>
 #include "Clinical/CMDecisionTree.h"
@@ -409,4 +408,3 @@ private:
     Episode::State pgState;
 };
 
-#endif

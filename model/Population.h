@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_Population
-#define Hmod_Population
+#pragma once
 
 #include "Clock.h"
 #include "PopulationAgeStructure.h"
@@ -45,10 +44,6 @@ public:
     /** Remove dead humans, outmigrate others and introduce babies to
      * while keeping the population size and demography distirbution unchanged. */
     void update();
-
-    /** Checkpoint (read) */
-
-    /** Checkpoint (write) */
 
     /** The simulated human hosts */
 RunContext& ctx;
@@ -87,4 +82,3 @@ void ctsIRSCoverage (Population &population, ostream& stream);
 void ctsGVICoverage (Population &population, ostream& stream);
 
 }
-#endif

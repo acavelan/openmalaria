@@ -46,76 +46,78 @@ namespace OM {
 
 namespace Host {
 
-void InfectionIncidenceModel::checkpoint (checkpoint::Archive& a) {
-    a.value (m_pInfected);
-    a.value (m_cumulativeEIRa);
+void checkpoint (checkpoint::Archive& a, InfectionIncidenceModel& m) {
+    a.value (m.m_pInfected);
+    a.value (m.m_cumulativeEIRa);
 }
 
 } // namespace Host
 
 namespace WithinHost {
 
-void VivaxBrood::checkpoint (checkpoint::Archive& a) {
-    a.vector (releaseDates);
-    a.value (bloodStageClearDate);
-    a.boolean (primaryHasStarted);
-    a.boolean (relapseHasStarted);
-    a.boolean (relapsebHasStarted);
-    a.boolean (hadEvent);
-    a.boolean (hadRelapse);
-    a.value (origin);
+void checkpoint (checkpoint::Archive& a, VivaxBrood& b) {
+    a.vector (b.releaseDates);
+    a.value (b.bloodStageClearDate);
+    a.boolean (b.primaryHasStarted);
+    a.boolean (b.relapseHasStarted);
+    a.boolean (b.relapsebHasStarted);
+    a.boolean (b.hadEvent);
+    a.boolean (b.hadRelapse);
+    a.value (b.origin);
 }
 
-void Pathogenesis::PathogenesisModel::checkpoint (checkpoint::Archive& a) {
-    a.value (_comorbidityFactor);
-    a.value (_pyrogenThres);
+namespace Pathogenesis {
+void checkpoint (checkpoint::Archive& a, PathogenesisModel& pm) {
+    a.value (pm._comorbidityFactor);
+    a.value (pm._pyrogenThres);
 }
+} // namespace Pathogenesis
 
-void Infection::checkpoint (checkpoint::Archive& a) {
-    a.value (m_startDate);
-    a.value (m_density);
-    a.value (m_cumulativeExposureJ);
-    a.value (m_genotype);
-    a.value (m_origin);
-    switch (kind) {
-    case Kind::Descriptive:
-        a.value (descriptive.duration);
-        a.boolean (descriptive.notPrintedMDWarning);
+void checkpoint (checkpoint::Archive& a, Infection& inf) {
+    a.value (inf.m_startDate);
+    a.value (inf.m_density);
+    a.value (inf.m_cumulativeExposureJ);
+    a.value (inf.m_genotype);
+    a.value (inf.m_origin);
+    switch (inf.kind) {
+    case Infection::Kind::Descriptive:
+        a.value (inf.descriptive.duration);
+        a.boolean (inf.descriptive.notPrintedMDWarning);
         break;
-    case Kind::Empirical:
-        for (double& d : empirical->_laggedLogDensities) a.value (d);
-        a.value (empirical->_patentGrowthRateMultiplier);
+    case Infection::Kind::Empirical:
+        for (double& d : inf.empirical->_laggedLogDensities) a.value (d);
+        a.value (inf.empirical->_patentGrowthRateMultiplier);
         break;
-    case Kind::Molineaux:
-        for (float& f : molineaux->mi) a.value (f);   // mi: plain float array
-        a.value (molineaux->Sm_summation);
-        for (float& f : molineaux->lagged_Pc) a.value (f);
-        a.value (molineaux->Pc_star);
-        a.value (molineaux->Pm_star);
+    case Infection::Kind::Molineaux:
+        for (float& f : inf.molineaux->mi) a.value (f);   // mi: plain float array
+        a.value (inf.molineaux->Sm_summation);
+        for (float& f : inf.molineaux->lagged_Pc) a.value (f);
+        a.value (inf.molineaux->Pc_star);
+        a.value (inf.molineaux->Pm_star);
         {   // variants grow with infection age (clone per relapse), so the
             // count goes on the wire; Variant has a user default ctor (not
             // trivially copyable) hence field-by-field.
-            uint64_t nv = molineaux->variants.size();
+            uint64_t nv = inf.molineaux->variants.size();
             a.value (nv);
             if (a.reading()) {
                 if (nv > uint64_t (a.remaining()) / 64u)
                     throw OM::checkpoint::checkpoint_error ("variant count too large");
-                molineaux->variants.resize (size_t (nv));
+                inf.molineaux->variants.resize (size_t (nv));
             }
-            for (auto& v : molineaux->variants) {
+            for (auto& v : inf.molineaux->variants) {
                 a.value (v.Pi1); a.value (v.Pi2); a.value (v.Si_summation);
                 for (float& f : v.lagged_Pi) a.value (f);
             }
         }
         break;
-    case Kind::Penny:
-        for (double& d : penny->cirDensities) a.value (d);
-        for (double& d : penny->seqDensities) a.value (d);
-        a.value (penny->threshold_N);
-        a.value (penny->threshold_V);
-        a.value (penny->threshold_C);
-        a.value (penny->variantSpecificSummation);
-        a.value (penny->clonalSummation);
+    case Infection::Kind::Penny:
+        for (double& d : inf.penny->cirDensities) a.value (d);
+        for (double& d : inf.penny->seqDensities) a.value (d);
+        a.value (inf.penny->threshold_N);
+        a.value (inf.penny->threshold_V);
+        a.value (inf.penny->threshold_C);
+        a.value (inf.penny->variantSpecificSummation);
+        a.value (inf.penny->clonalSummation);
         break;
     }
 }
@@ -124,44 +126,44 @@ void Infection::checkpoint (checkpoint::Archive& a) {
 
 namespace PkPd {
 
-void LSTMDrug::checkpoint (checkpoint::Archive& a) {
-    a.enumerated (kind);
+void checkpoint (checkpoint::Archive& a, LSTMDrug& drug) {
+    a.enumerated (drug.kind);
     {   // pair isn't trivially copyable: element-wise
-        uint64_t n = doses.size();
+        uint64_t n = drug.doses.size();
         a.value (n);
         if (a.reading()) {
-            doses.clear();
+            drug.doses.clear();
             for (uint64_t i = 0; i < n; ++i) {
-                DoseVec::value_type d;
+                LSTMDrug::DoseVec::value_type d;
                 a.value (d.first);
                 a.value (d.second);
-                doses.push_back (d);
+                drug.doses.push_back (d);
             }
         } else {
-            for (auto& d : doses) { a.value (d.first); a.value (d.second); }
+            for (auto& d : drug.doses) { a.value (d.first); a.value (d.second); }
         }
     }
-    a.value (vol_dist);
-    switch (kind) {
-    case Kind::OneComp:
-        a.value (concentration);
-        a.value (neg_elim_sample);
+    a.value (drug.vol_dist);
+    switch (drug.kind) {
+    case LSTMDrug::Kind::OneComp:
+        a.value (drug.concentration);
+        a.value (drug.neg_elim_sample);
         break;
-    case Kind::ThreeComp:
-        a.value (concA); a.value (concB); a.value (concC); a.value (concABC);
-        a.value (elim_sample);
-        a.value (k12); a.value (k21); a.value (k13); a.value (k31);
-        a.value (nka);
-        a.value (last_bm);
-        a.value (na); a.value (nb); a.value (ng);
-        a.value (A); a.value (B); a.value (C);
+    case LSTMDrug::Kind::ThreeComp:
+        a.value (drug.concA); a.value (drug.concB); a.value (drug.concC); a.value (drug.concABC);
+        a.value (drug.elim_sample);
+        a.value (drug.k12); a.value (drug.k21); a.value (drug.k13); a.value (drug.k31);
+        a.value (drug.nka);
+        a.value (drug.last_bm);
+        a.value (drug.na); a.value (drug.nb); a.value (drug.ng);
+        a.value (drug.A); a.value (drug.B); a.value (drug.C);
         break;
-    case Kind::Conversion:
-        a.value (qtyG); a.value (qtyP); a.value (qtyM);
-        a.value (nkP_sample); a.value (nconv_sample); a.value (nkM_sample);
-        a.value (vol_dist_metabolite);
-        a.value (nka);
-        a.value (last_bm);
+    case LSTMDrug::Kind::Conversion:
+        a.value (drug.qtyG); a.value (drug.qtyP); a.value (drug.qtyM);
+        a.value (drug.nkP_sample); a.value (drug.nconv_sample); a.value (drug.nkM_sample);
+        a.value (drug.vol_dist_metabolite);
+        a.value (drug.nka);
+        a.value (drug.last_bm);
         break;
     }
 }
@@ -178,13 +180,13 @@ void ckLSTM (checkpoint::Archive& a, RunContext& ctx, LSTMModel& m,
             // Fresh instance from the drug type config (kind + metabolite
             // structure); its sampled parameters come from the wire next.
             m.m_drugs.push_back (ctx.drugs.createInstance (hostRng, typeIndex));
-            m.m_drugs.back()->checkpoint (a);
+            checkpoint (a, *m.m_drugs.back());
         }
     } else {
         for (auto& drug : m.m_drugs) {
             size_t typeIndex = drug->getIndex();
             a.value (typeIndex);
-            drug->checkpoint (a);
+            checkpoint (a, *drug);
         }
     }
     // Pending medications (queue order matters: medicate() consumes front).
@@ -232,17 +234,17 @@ void ckEpisode (checkpoint::Archive& a, Episode& ep) {
 }
 } // namespace
 
-void ClinicalModel::checkpoint (checkpoint::Archive& a) {
-    a.value (m_treatmentSeekingFactor);
-    a.value (doomed);
-    ckEpisode (a, latestReport);
+void checkpoint (checkpoint::Archive& a, ClinicalModel& cm) {
+    a.value (cm.m_treatmentSeekingFactor);
+    a.value (cm.doomed);
+    ckEpisode (a, cm.latestReport);
     {
-        int32_t s = latestState;
+        int32_t s = cm.latestState;
         a.value (s);
-        latestState = Episode::State (s);
-        s = esPgState;
+        cm.latestState = Episode::State (s);
+        s = cm.esPgState;
         a.value (s);
-        esPgState = Episode::State (s);
+        cm.esPgState = Episode::State (s);
     }
 }
 
@@ -271,7 +273,7 @@ void ckWH (Archive& a, RunContext& ctx, WHInterface& wh, util::LocalRng& rng) {
         a.boolean (pm);
         if (a.reading() && pm && !wh.pathogenesisModel)
             throw checkpoint_error ("pathogenesis model kind mismatch");
-        if (pm) wh.pathogenesisModel->checkpoint (a);
+        if (pm) WithinHost::Pathogenesis::checkpoint (a, *wh.pathogenesisModel);
     }
     switch (wh.m_kind) {
     case WHInterface::Kind::Common:
@@ -292,13 +294,13 @@ void ckWH (Archive& a, RunContext& ctx, WHInterface& wh, util::LocalRng& rng) {
                     WithinHost::infection_new (ctx, rng, 0, 0,
                         WithinHost::Infection::Kind::Descriptive) :
                     ctx.createInfection (ctx, rng, 0, 0);
-                inf->checkpoint (a);
+                WithinHost::checkpoint (a, *inf);
                 wh.infections.push_back (inf);
             }
             if (uint64_t(wh.infections.size()) != n)
                 throw checkpoint_error ("internal: infection restore count");
         } else {
-            for (WithinHost::Infection* inf : wh.infections) inf->checkpoint (a);
+            for (WithinHost::Infection* inf : wh.infections) WithinHost::checkpoint (a, *inf);
         }
         break;
     }
@@ -321,10 +323,10 @@ void ckWH (Archive& a, RunContext& ctx, WHInterface& wh, util::LocalRng& rng) {
             for (uint64_t i = 0; i < n; ++i) {
                 // Ctor samples a fresh brood (draws overwritten below).
                 wh.vivaxInfections.emplace_back (ctx, rng, 0, &wh);
-                wh.vivaxInfections.back().checkpoint (a);
+                WithinHost::checkpoint (a, wh.vivaxInfections.back());
             }
         } else {
-            for (auto& brood : wh.vivaxInfections) brood.checkpoint (a);
+            for (auto& brood : wh.vivaxInfections) WithinHost::checkpoint (a, brood);
         }
         break;
     }
@@ -355,9 +357,9 @@ void ckHuman (Archive& a, RunContext& ctx, Host::Human& h) {
     a.vector (c.anoph_prob_resting[r]);
     a.value (c.rel_avail_het[r]);
     a.value (c.outside_trans[r]);
-    h.infIncidence->checkpoint (a);
+    Host::checkpoint (a, *h.infIncidence);
     ckWH (a, ctx, *h.withinHostModel, h.rng());
-    h.clinicalModel->checkpoint (a);
+    Clinical::checkpoint (a, *h.clinicalModel);
     // parity: order — this human's RNG last: everything above may create
     // objects drawing from the fresh copy-seeded stream; the wire restores
     // the real state after those draws.

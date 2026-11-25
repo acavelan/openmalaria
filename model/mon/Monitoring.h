@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef H_OM_mon_Monitoring
-#define H_OM_mon_Monitoring
+#pragma once
 
 #include "Clock.h"
 #include "mon/OutMeasures.h"
@@ -134,4 +133,3 @@ bool isUsed(RunContext& ctx, Measure measure);
 } // namespace mon
 } // namespace OM
 
-#endif

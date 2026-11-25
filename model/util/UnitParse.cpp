@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
+// p8-files: UnitParse.h has a 39-TU cone and deliberately no schema include
+// (G14 reject); its parse bodies must stay out of every merged xml header.
 #include "Clock.h"
 #include "util/errors.h"
 #include "util/ModelOptions.h"

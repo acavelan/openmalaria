@@ -22,8 +22,7 @@
 
 // Unittest for the LSTM drug model
 
-#ifndef Hmod_LSTMPkPdSuite
-#define Hmod_LSTMPkPdSuite
+#pragma once
 
 #include <cxxtest/TestSuite.h>
 #include "PkPd/LSTMModel.h"
@@ -103,4 +102,3 @@ private:
     size_t MQ_index;
 };
 
-#endif

@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_ClinicalModel
-#define Hmod_ClinicalModel
+#pragma once
 
 #include "Host/Human.h"
 #include "Episode.h"
@@ -32,7 +31,6 @@ namespace scnXml{
     class HealthSystem;
 }
 namespace OM {
-namespace checkpoint { class Archive; }
 namespace Clinical {
 
 /// Positive values of doomed (codes). (parity: old ClinicalModel members)
@@ -67,9 +65,6 @@ protected:
 public:
     /// Which case-management behaviour this instance runs (XML-selected).
     enum class Kind { DecisionTree5Day, ImmediateOutcomes, EventScheduler };
-
-    /// Save/restore wire state (model/checkpoint/humans.cpp).
-    void checkpoint (checkpoint::Archive& a);
 
     /// @brief Static functions
     //@{
@@ -207,10 +202,6 @@ public:
 
     static void reportRisk(size_t index, bool isDoomed);
     
-    /// Checkpoint the run-modified death/risk summaries
-    /// (model/checkpoint/statics.cpp).
-    static void staticCheckpoint (checkpoint::Archive& a);
-    
     /// Calculate infant mortality as deaths/1000 livebirths for the whole main-
     /// simulation period (not as deaths/1000 years-at-risk per survey).
     /// 
@@ -224,4 +215,3 @@ public:
 
 
 } }
-#endif

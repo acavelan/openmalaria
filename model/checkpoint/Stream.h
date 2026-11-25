@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_checkpoint_Stream
-#define Hmod_checkpoint_Stream
+#pragma once
 
 // The one stream helper of the checkpoint module (model/checkpoint/): one
 // Archive class covering both directions, typed primitives only — no
@@ -177,4 +176,3 @@ private:
 
 } // namespace checkpoint
 } // namespace OM
-#endif

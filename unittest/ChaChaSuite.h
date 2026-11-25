@@ -20,8 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_ChaChaSuite
-#define Hmod_ChaChaSuite
+#pragma once
 
 #include <cxxtest/TestSuite.h>
 #include <chacha.h>
@@ -178,4 +177,3 @@ public:
     }
 };
 
-#endif

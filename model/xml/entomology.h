@@ -24,8 +24,7 @@
 // model/xml/entomology.cpp (moved from VectorModel). Include from
 // conversion-layer code only (schema types are required here).
 
-#ifndef Hmod_xml_entomology
-#define Hmod_xml_entomology
+#pragma once
 
 #include "Clock.h"
 #include "schema/interventions.h"
@@ -42,4 +41,3 @@ namespace Transmission {
     void initVectorTrap(TransmissionModel &vm, const scnXml::VectorTrap::DescriptionSequence list, size_t instance, const scnXml::VectorTrap::NameOptional name_opt);
 }
 }
-#endif

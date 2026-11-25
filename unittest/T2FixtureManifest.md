@@ -67,7 +67,7 @@ the compiled legacy C++ binary `build/openMalaria` and parses its `output.txt` /
 
 New files:
 
-- `unittest/golden-gen/RngGoldenAdapter.h` — minimal adapter around `util/xoshiro.h` + GSL
+- `unittest/golden-gen/RngGoldenAdapter.h` — minimal adapter around the `util/random.h` engine + GSL
   plumbing mirroring `model/util/random.h` verbatim (file:line cites in comments); seeds
   Xoshiro256P(1,2,3,4) and exposes post-draw state via the model's own public
   `Xoshiro256P::binary_checkpoint`.
