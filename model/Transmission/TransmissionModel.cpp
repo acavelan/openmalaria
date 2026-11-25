@@ -61,24 +61,21 @@ template <typename Term> double meanOver(const vector<Human>& population, Term t
  * IvState.h (parity: c). Bind after any iv-deploying call (e.g. PerHost::update). */
 struct IvRows {
     explicit IvRows(const PerHost& host)
-        : ctx(*host.ctx), iv(host.cols->iv[host.row]), avail(host.anoph_ento_avail()),
-          bite(host.anoph_prob_biting()), rest(host.anoph_prob_resting()) {}
+        : ctx(*host.ctx), iv(host.cols->iv[host.row]), anoph(host.anoph()) {}
     double entoAvailabilityHetVecItv(size_t species) const {
-        return iv_rel_attractiveness(ctx, iv, avail[species], species);
+        return iv_rel_attractiveness(ctx, iv, anoph[species].ento_avail, species);
     }
     double probMosqBiting(size_t species) const {
-        return iv_preprandial_survival(ctx, iv, bite[species], species);
+        return iv_preprandial_survival(ctx, iv, anoph[species].prob_biting, species);
     }
     double probMosqResting(size_t species) const {
-        return iv_postprandial_survival(ctx, iv, rest[species], species);
+        return iv_postprandial_survival(ctx, iv, anoph[species].prob_resting, species);
     }
     double relMosqFecundity(size_t species) const { return iv_rel_fecundity(ctx, iv, 1.0, species); }
 
     RunContext& ctx;
     const std::vector<IvRecord>& iv;
-    const std::vector<double>& avail;
-    const std::vector<double>& bite;
-    const std::vector<double>& rest;
+    std::span<const HostSpecies> anoph;
 };
 }
 

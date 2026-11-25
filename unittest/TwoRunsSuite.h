@@ -24,8 +24,8 @@
 
 // Phase-3 acceptance test (plan §7 row 3): run the full engine twice, in one
 // process, through the same code path main() uses (run_simulation).
-// Run 2 must be bit-identical to run 1 — any per-run state that survives run
-// 1 (i.e. any static that should live in RunContext) makes this red.
+// Repeat the baseline after different pathogenesis/NMF configurations as well:
+// running the same scenario twice alone cannot expose sticky option flags.
 //
 // Capture: the monitoring MeasureStore report values (exact IEEE-754 bit
 // comparison, NaN included) plus the survey-output bytes written by
@@ -134,6 +134,12 @@ class TwoRunsSuite : public CxxTest::TestSuite {
         std::string err;
         for (int run = 1; run <= 2 && ok; ++run) {
             try {
+                if (run == 2) {
+                    for (const char* name : {"9", "10", "NonHumanHosts", "Vivax", "Penny"}) {
+                        RunContext other;
+                        run_simulation(other, src + "../test/scenario" + name + ".xml");
+                    }
+                }
                 RunContext ctx; // each run gets a fresh context: runs must not share state
                 std::filesystem::remove("tworuns.bin"); // each run must create its own output
                 run_simulation(ctx, scenarioFile);

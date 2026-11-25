@@ -76,6 +76,7 @@ extern bool reportInfectedOrPatentInfected;
 extern map<string, Diagnostic> diagnostic_set;
 
 void WHInterface::init(RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario) {
+    opt_vivax_simple = opt_dummy_whm = opt_empirical_whm = opt_molineaux_whm = opt_penny_whm = opt_common_whm = false;
     reportInfectionsByGenotype = isUsed(ctx, measure("nInfectByGenotype")) ||
                                  isUsed(ctx, measure("nPatentByGenotype")) || isUsed(ctx, measure("logDensByGenotype"));
 

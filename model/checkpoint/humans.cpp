@@ -328,10 +328,6 @@ void ckHuman(Archive& a, RunContext& ctx, Human& h) {
     a.value(c.es_time_recovery[r]);
     a.value(c.es_time_treatment[r]);
     a.value(c.es_prev_density[r]);
-    a.vector(c.anoph_ento_raw[r]);
-    a.vector(c.anoph_ento_avail[r]);
-    a.vector(c.anoph_prob_biting[r]);
-    a.vector(c.anoph_prob_resting[r]);
     a.value(c.rel_avail_het[r]);
     a.value(c.outside_trans[r]);
     a.value(h.p_infected);
@@ -366,6 +362,9 @@ void ckHumans(Archive& a, RunContext& ctx, Population& population) {
         for (auto& h : population.humans)
             ckHuman(a, ctx, h);
     }
+    a.vector(population.cols.anoph);
+    if (population.cols.anoph.size() != n * population.cols.num_species)
+        throw checkpoint_error("host/species table size mismatch");
 }
 
 } // namespace OpenMalaria

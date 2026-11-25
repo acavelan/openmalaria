@@ -30,6 +30,7 @@
 #include "util/sampler.h"
 
 #include "util/random.h"
+#include <span>
 
 namespace scnXml {
 class Mosq;
@@ -209,12 +210,10 @@ class PerHost {
 
     //@}
 
-    /** Species availability rate of human to mosquitoes: per-species
-     * vector at this row (old anoph* members; refs keep the old syntax). */
-    std::vector<double>& anoph_ento_raw() const { return cols->anoph_ento_raw[row]; }
-    std::vector<double>& anoph_ento_avail() const { return cols->anoph_ento_avail[row]; }
-    std::vector<double>& anoph_prob_biting() const { return cols->anoph_prob_biting[row]; }
-    std::vector<double>& anoph_prob_resting() const { return cols->anoph_prob_resting[row]; }
+    /// This host's contiguous species records; reacquire after population changes.
+    std::span<HostSpecies> anoph() const {
+        return std::span(cols->anoph).subspan(row * cols->num_species, cols->num_species);
+    }
     /// Heterogeneity factor in availability (old relativeAvailabilityHet;
     /// already multiplied into the entoAvailability HostMosquitoInteraction uses).
     double& rel_avail_het() const { return cols->rel_avail_het[row]; }

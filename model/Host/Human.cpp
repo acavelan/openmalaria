@@ -115,7 +115,7 @@ Human::Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns)
     // construction (append_row builds the rng column row; same ctor point as
     // the old member init): human-creation order == master consumption order;
     // never reorder Human ctor.
-    row = columns.append_row(dateOfBirth, ctx.master_RNG);
+    row = columns.append_row(dateOfBirth, ctx.master_RNG, PerHostAnophParams::numSpecies(ctx));
 
     // Initial humans are created at time 0 and may have dateOfBirth in past. Otherwise dateOfBirth must be now.
     assert(dateOfBirth == ctx.clock.nowOrTs1() || (ctx.clock.now() == zero() && dateOfBirth < ctx.clock.now()));

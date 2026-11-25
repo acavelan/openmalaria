@@ -115,6 +115,11 @@ struct VacRecord {
     double decay_factor = 0.0;            // per-human het sample (sampled once)
 };
 
+/// Sampled together and consumed together for one host/species feeding cycle.
+struct HostSpecies {
+    double ento_raw, ento_avail, prob_biting, prob_resting;
+};
+
 /** Persistent per-host SoA columns (plan §7 row 6 pinned list; owner module,
  * passed by reference, never global).
  *
@@ -154,9 +159,10 @@ struct HumanColumns {
     std::vector<SimTime> t_last_treatment, es_case_start, es_time_recovery, es_time_treatment;
     /// ES total density last time step (old ClinicalModel esPreviousDensity).
     std::vector<double> es_prev_density;
-    /// Per-species transmission params (old PerHost anoph* vectors; nested:
-    /// one vector<double> per row, resized by PerHost::initialise).
-    std::vector<std::vector<double>> anoph_ento_raw, anoph_ento_avail, anoph_prob_biting, anoph_prob_resting;
+    /// Host-major table: row r occupies [r*num_species, (r+1)*num_species).
+    /// The species count is fixed for the run; non-vector models have zero.
+    size_t num_species = 0;
+    std::vector<HostSpecies> anoph;
     /// Availability heterogeneity factor (old relativeAvailabilityHet;
     /// signaling_NaN until PerHost::initialise, like the old member).
     std::vector<double> rel_avail_het;
@@ -177,7 +183,9 @@ struct HumanColumns {
     /** Add a row for a newly constructed Human, at the exact moment of its old
      * member inits: rng is copy-seeded from `master` HERE (RNG RULE); dob set;
      * everything else at construction defaults (alive, no cohorts). */
-    size_t append_row(SimTime dateOfBirth, MasterRng& master) {
+    size_t append_row(SimTime dateOfBirth, MasterRng& master, size_t species = 0) {
+        assert(rng.empty() || num_species == species);
+        num_species = species;
         rng.emplace_back(master);
         dob.push_back(dateOfBirth);
         death.push_back(never());
@@ -194,10 +202,7 @@ struct HumanColumns {
         es_time_recovery.push_back(never());
         es_time_treatment.push_back(never());
         es_prev_density.push_back(std::numeric_limits<double>::quiet_NaN());
-        anoph_ento_raw.emplace_back();
-        anoph_ento_avail.emplace_back();
-        anoph_prob_biting.emplace_back();
-        anoph_prob_resting.emplace_back();
+        anoph.resize(rng.size() * num_species);
         rel_avail_het.push_back(std::numeric_limits<double>::signaling_NaN());
         outside_trans.push_back(0u);
         iv.emplace_back();
@@ -211,8 +216,8 @@ struct HumanColumns {
      * `keep` is a sorted index list, so it decomposes into few contiguous
      * runs; between runs are the removals. Only rows in a non-leading run
      * move, and the leading run (src == dst) is skipped, so the cost is
-     * O(removals · tail) — the rows after the first removal per segment —
-     * not O(rows). Trivially-copyable columns memmove each whole run (left
+     * proportional to survivors after the first removal, not all rows.
+     * Trivially-copyable columns memmove each whole run (left
      * shifts can make one run's src/dst ranges adjacent ⇒ memmove, not
      * memcpy); nested columns (LocalRng, vector/map element types) move
      * element-wise — a self-move is impossible because a run is listed only
@@ -234,12 +239,12 @@ struct HumanColumns {
             dst += len;
             i += len;
         }
-        const auto e = [&keep](auto& col) {
+        const auto e = [&keep](auto& col, size_t stride = 1) {
             using T = typename std::decay_t<decltype(col)>::value_type;
             for (const Run r : runs) {
                 if constexpr (std::is_trivially_copyable_v<T>) {
-                    std::memmove(col.data() + r.dst, col.data() + r.src,
-                                 sizeof(T) * r.len);
+                    if (stride) std::memmove(col.data() + r.dst * stride, col.data() + r.src * stride,
+                                             sizeof(T) * r.len * stride);
                 } else {
                     for (uint32_t k = 0; k < r.len; ++k)
                         col[r.dst + k] = std::move(col[r.src + k]);
@@ -247,7 +252,7 @@ struct HumanColumns {
             }
             // range-erase, not resize: resize needs a default ctor which
             // LocalRng/nested columns deliberately don't have
-            col.erase(col.begin() + keep.size(), col.end());
+            col.erase(col.begin() + keep.size() * stride, col.end());
         };
         e(rng);
         e(dob);
@@ -265,10 +270,7 @@ struct HumanColumns {
         e(es_time_recovery);
         e(es_time_treatment);
         e(es_prev_density);
-        e(anoph_ento_raw);
-        e(anoph_ento_avail);
-        e(anoph_prob_biting);
-        e(anoph_prob_resting);
+        e(anoph, num_species);
         e(rel_avail_het);
         e(outside_trans);
         e(iv);

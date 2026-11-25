@@ -176,7 +176,7 @@ inline void timed_human_deploy(RunContext& ctx, std::vector<Human>& population, 
         if (age >= th.minAge && age < th.maxAge) {
             double availability = 0.0;
             for (size_t i = 0; i < PerHostAnophParams::numSpecies(ctx); ++i)
-                availability += human.perHostTransmission.anoph_ento_avail()[i];
+                availability += human.perHostTransmission.anoph()[i].ento_avail;
 
             double probability = d.coverage;
 
@@ -192,7 +192,7 @@ inline void timed_human_deploy(RunContext& ctx, std::vector<Human>& population, 
                         throw std::runtime_error("only supports one mosquito species");
 
                     const double ux = PerHostAnophParams::get(ctx, 0).entoAvailability->cdf(
-                        human.perHostTransmission.anoph_ento_raw()[0]);
+                        human.perHostTransmission.anoph()[0].ento_raw);
                     if (ux < 1) {
                         // parity: a — per-human heterogeneity lognormal/beta draws (gsl_cdf pure quantiles, no stream cost) then bernoulli-last; per-candidate draw order/count frozen (plan §3a)
                         double xx = gsl_cdf_ugaussian_Pinv(ux); // Unit interval to Normal
@@ -256,7 +256,7 @@ inline void timed_cumulative_deploy(RunContext& ctx, std::vector<Human>& populat
         if (age >= th.minAge && age < th.maxAge) {
             double availability = 0.0;
             for (size_t i = 0; i < PerHostAnophParams::numSpecies(ctx); ++i)
-                availability += human.perHostTransmission.anoph_ento_avail()[i];
+                availability += human.perHostTransmission.anoph()[i].ento_avail;
             if (availability >= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, th.minAvailability) &&
                 availability <= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, th.maxAvailability)) {
                 if (d.subPop == ComponentId::wholePop() || (human.isInSubPop(d.subPop) != d.complement)) {
@@ -434,7 +434,7 @@ struct ContinuousHumanDeployment {
         } else if (deployAge == age) {
             double availability = 0.0;
             for (size_t i = 0; i < PerHostAnophParams::numSpecies(ctx); ++i)
-                availability += human.perHostTransmission.anoph_ento_raw()[i];
+                availability += human.perHostTransmission.anoph()[i].ento_raw;
 
             if (availability >= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, minAvailability) &&
                 availability <= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, maxAvailability)) {
