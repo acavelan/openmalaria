@@ -23,6 +23,8 @@
 #ifndef Hmod_AgeDistribution
 #define Hmod_AgeDistribution
 
+#include <map>
+
 #include "Global.h"
 
 namespace scnXml {
@@ -31,66 +33,80 @@ namespace scnXml {
 namespace OM { class SimClock; }
 namespace OM { namespace util {
 
-/** This struct is not for external use. Use AgeGroupInterpolator instead.
- * 
- * It is here to allow the trivial functions below to be inlined. */
-struct AgeGroupInterpolation{
-    virtual ~AgeGroupInterpolation() {}
-    
-    virtual double eval (double ageYears) const =0;
-    virtual void scale( double factor ) =0;
-    virtual double firstGlobalMaximum() =0;
-    
-protected:
-    /** Sample interpolator between 0 and max age, outputting to a csv file
-     * called name.csv. */
-    void outputSamples( const SimClock& clock, const string name );
-};
-
-/** A class representing deterministic interpolation of data collected
- * according to age groups. Derived classes implement the actual interpolation.
- * 
+/** Deterministic interpolation of data collected by age groups: one
+ * enum-tagged value type (Kind switch picks the formula — the old
+ * PiecewiseConstant / InterpolationPoints / PiecewiseLinear / Dummy class
+ * hierarchy is gone). `data` stays a std::map<double,double>: numeric key
+ * order is load-bearing (§3 caveat), insertion order is only an optimisation.
+ *
  * Current version does not store an age index, thus an order log(n) lookup
  * must occur each time a value is looked up.
  ********************************************/
 struct AgeGroupInterpolator
 {
-    /** Create. set() must be called before further use to avoid exceptions. */
-    AgeGroupInterpolator();
-    ~AgeGroupInterpolator(){ reset(); }
-    
-    /** Set age-group interpolation data from an XML fragment.
-     * 
+    enum class Kind { Dummy, PiecewiseConstant, Linear };
+
+    /** Create (Dummy: set() must be called before further use). */
+    AgeGroupInterpolator() : kind(Kind::Dummy) {}
+
+    /** Set age-group interpolation data from an XML fragment
+     * (definition: model/xml/util.cpp — the only code reading the schema).
+     *
      * @param ageGroups XML element of per-age-group values
      * @param eltName Name of XML element (for reasonable error reporting)
      */
     void set( const SimClock& clock, const scnXml::AgeGroupValues& ageGroups, const char* eltName );
-    
+
     /** Set back to initial state. */
-    void reset();
-    
+    void reset(){ kind = Kind::Dummy; data.clear(); }
+
     /// Return true if set() was ever called.
-    bool isSet();
-    
+    bool isSet(){ return kind != Kind::Dummy; }
+
     /** Return a value interpolated for age ageYears. */
-    inline double eval( double ageYears )const{
-        return obj->eval( ageYears );
+    inline double eval( double ageYears ) const {
+        switch(kind) {
+        case Kind::PiecewiseConstant: {  // parity: AgeGroupPiecewiseConstant::eval (xml/util.cpp:531)
+            assert ( ageYears >= 0.0 );
+            auto it = data.upper_bound( ageYears );
+            --it;   // previous point when ordered by age (it->first <= ageYears < (it+1)->first)
+            return it->second; }
+        case Kind::Linear: {  // parity: AgeGroupPiecewiseLinear::eval (xml/util.cpp:633)
+            assert ( ageYears >= 0.0 );
+            // Get the first point with age greater than ageYears:
+            auto it = data.upper_bound( ageYears );
+            assert( it != data.end() );
+            double a1 = it->first;  // a1 > ageYears
+            double f1 = it->second;
+            --it;   // previous point when ordered by age
+            double a0 = it->first;  // a0 ≤ ageYears
+            double f0 = it->second;
+            return (ageYears - a0) / (a1 - a0) * (f1 - f0) + f0; }
+        default:
+            dummyThrow();
+        }
+        return 0.0;  // unreachable
     }
-    
+
     /** Scale function by factor. */
-    inline void scale( double factor ){
-        obj->scale( factor );
-    }
+    void scale( double factor );
 
     /** Find the youngest age which is the global maximum (i.e. the age at
      * which individuals are considered adults where all adults have the same
      * same value). */
-    inline double firstGlobalMaximum() const{
-        return obj->firstGlobalMaximum();
-    }
-    
+    double firstGlobalMaximum() const;
+
 private:
-    AgeGroupInterpolation *obj;
+    /** Cold path: old AgeGroupDummy methods threw; keep one throw site. */
+    [[noreturn]] void dummyThrow() const;
+
+    /** Sample interpolator between 0 and max age, outputting to a csv file
+     * called name.csv. */
+    void outputSamples( const SimClock& clock, const string name );
+
+    Kind kind;
+    /// Breakpoints (lower-age-bound or interpolation points) in numeric key order.
+    map<double,double> data;
 };
 
 } }

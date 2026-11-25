@@ -139,38 +139,35 @@ void InfectionIncidenceModel::ctsReportNewInfections (const vector<Host::Human> 
 // -----  non-static non-checkpointing constructors  -----
 
 InfectionIncidenceModel* InfectionIncidenceModel::createModel (RunContext& ctx) {
-    if (opt_neg_bin_mass_action) return new NegBinomMAII (ctx);
-    if(opt_lognormal_mass_action) return new LogNormalMAII (ctx);
-    if (opt_any_het) return new HeterogeneityWorkaroundII(ctx);
-    return new InfectionIncidenceModel(ctx);
+    // Kind from model options (read once in init; same dispatch as old factory)
+    if (opt_neg_bin_mass_action) return new InfectionIncidenceModel (ctx, Kind::NegBinom);
+    if(opt_lognormal_mass_action) return new InfectionIncidenceModel (ctx, Kind::LogNormal);
+    if (opt_any_het) return new InfectionIncidenceModel (ctx, Kind::HetWorkaround);
+    return new InfectionIncidenceModel (ctx, Kind::Default);
 }
-
-InfectionIncidenceModel::InfectionIncidenceModel (RunContext& ctx) :
-  ctx(ctx),
-  m_pInfected(0.0), m_cumulativeEIRa(0.0)
-{}
 
 
 // -----  non-static methods  -----
 
 double InfectionIncidenceModel::getAvailabilityFactor(LocalRng& rng, double baseAvailability) {
-  return baseAvailability;
-}
-double NegBinomMAII::getAvailabilityFactor(LocalRng& rng, double baseAvailability) {
+  switch(kind) {
+  case Kind::NegBinom:
     // Gamma sample with k=BaselineAvailabilityShapeParam; mean is baseAvailability
-  // parity: order — local RNG stream: draw call order fixes stream state
-  return rng.gamma(baseline_avail_shape_param,
-		 baseAvailability/baseline_avail_shape_param);
-}
-double LogNormalMAII::getAvailabilityFactor(LocalRng& rng, double baseAvailability) {
+    // parity: order — local RNG stream: draw call order fixes stream state
+    return rng.gamma(baseline_avail_shape_param,
+         baseAvailability/baseline_avail_shape_param);
+  case Kind::LogNormal:
     // given BaselineAvailabilityShapeParam = sqrt (log (1 + variance/mean²))
     // and baseAvailability = mean, this is a draw from the log-normal distribution.
     if( baseAvailability != 1.0 ){
         // NOTE: shouldn't the normal_mean parameter be adjusted when baseAvailability != 1.0?
         throw TRACED_EXCEPTION_DEFAULT("LogNormalMAII::getAvailabilityFactor");
     }
-  return rng.log_normal (log(baseAvailability) - baseline_avail_offset,
-		     baseline_avail_shape_param);
+    return rng.log_normal (log(baseAvailability) - baseline_avail_offset,
+             baseline_avail_shape_param);
+  default:  // Default and HetWorkaround have no availability adjustment
+    return baseAvailability;
+  }
 }
 
 void InfectionIncidenceModel::summarize (const Host::Human& human) {
@@ -179,29 +176,30 @@ void InfectionIncidenceModel::summarize (const Host::Human& human) {
 
 
 double InfectionIncidenceModel::getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost& phTrans) {
-  // First two lines are availability adjustment: S_1(i,t) from AJTMH 75 (suppl 2) p12 eqn. (5)
-  // Note that NegBinomMAII and LogNormalMAII supercede this model; see below
-  return (Sinf+(1-Sinf) / 
-    (1 + effectiveEIR/ctx.clock.one_TS()*EstarInv)) *
-    susceptibility() * effectiveEIR;
-}
-double HeterogeneityWorkaroundII::getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost& phTrans) {
-  return (Sinf+(1-Sinf) / 
-    (1 + effectiveEIR/(ctx.clock.one_TS()*phTrans.relativeAvailabilityHet)*EstarInv)) *
-    susceptibility() * effectiveEIR;
-}
-double NegBinomMAII::getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost&) {
-  // Documentation: http://www.plosmedicine.org/article/fetchSingleRepresentation.action?uri=info:doi/10.1371/journal.pmed.1001157.s009
-  // parity: order — local RNG stream: draw call order fixes stream state
-  return rng.gamma(inf_rate_shape_param,
-      effectiveEIR * susceptibility() / inf_rate_shape_param);
-}
-double LogNormalMAII::getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost&) {
+  switch(kind) {
+  case Kind::HetWorkaround:  // parity: old HeterogeneityWorkaroundII formula
+    return (Sinf+(1-Sinf) / 
+      (1 + effectiveEIR/(ctx.clock.one_TS()*phTrans.relativeAvailabilityHet)*EstarInv)) *
+      susceptibility() * effectiveEIR;
+  case Kind::NegBinom:  // parity: old NegBinomMAII formula
+    // Documentation: http://www.plosmedicine.org/article/fetchSingleRepresentation.action?uri=info:doi/10.1371/journal.pmed.1001157.s009
+    // parity: order — local RNG stream: draw call order fixes stream state
+    return rng.gamma(inf_rate_shape_param,
+        effectiveEIR * susceptibility() / inf_rate_shape_param);
+  case Kind::LogNormal: {  // parity: old LogNormalMAII formula
     // Documentation: http://www.plosmedicine.org/article/fetchSingleRepresentation.action?uri=info:doi/10.1371/journal.pmed.1001157.s009
     if (effectiveEIR < 1e-10)
         return 0.0;
     double meanlog = log(effectiveEIR * susceptibility()) - inf_rate_offset;
     return rng.log_normal(meanlog, inf_rate_shape_param);
+  }
+  default:
+    // First two lines are availability adjustment: S_1(i,t) from AJTMH 75 (suppl 2) p12 eqn. (5)
+    // Note that NegBinom and LogNormal supercede this model; see above
+    return (Sinf+(1-Sinf) / 
+      (1 + effectiveEIR/ctx.clock.one_TS()*EstarInv)) *
+      susceptibility() * effectiveEIR;
+  }
 }
 
 double InfectionIncidenceModel::susceptibility () {
