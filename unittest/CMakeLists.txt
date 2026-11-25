@@ -37,7 +37,7 @@ set (OM_CXXTEST_HEADERS
   DummyInfectionSuite.h
   EmpiricalInfectionSuite.h
   InfectionImmunitySuite.h
-  #DescriptiveInfectionSuite.h
+  DescriptiveInfectionSuite.h
   #ESCaseManagementSuite.h
   CMDecisionTreeSuite.h
   AgeGroupInterpolationSuite.h
@@ -49,6 +49,9 @@ set (OM_CXXTEST_HEADERS
   PkPdComplianceSuite.h
   ChaChaSuite.h
   XoshiroSuite.h
+  RngGoldenSuite.h
+  SamplerBatterySuite.h
+  PercentileCFRSuite.h
 )
 
 add_custom_command (OUTPUT tests.cpp
@@ -61,6 +64,7 @@ add_custom_command (OUTPUT tests.cpp
 
 # These files are needed to run various infection model tests:
 configure_file (${CMAKE_SOURCE_DIR}/test/autoRegressionParameters.csv ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
+configure_file (${CMAKE_CURRENT_SOURCE_DIR}/goldens/rng_dist_v50.csv ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
 configure_file (${CMAKE_CURRENT_SOURCE_DIR}/PennyCirDens.txt ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
 configure_file (${CMAKE_CURRENT_SOURCE_DIR}/PennySeqDens.txt ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
 configure_file (${CMAKE_CURRENT_SOURCE_DIR}/MolineauxCirDens.txt ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)

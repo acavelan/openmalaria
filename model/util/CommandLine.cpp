@@ -40,6 +40,7 @@ namespace OM { namespace util {
 	CommandLine::OutputFormat CommandLine::outputFormat = CommandLine::OutputFormat::TXT;
 	string CommandLine::ctsoutName;
 	string CommandLine::checkpointFileName;
+	int CommandLine::seedOverride = -1;
 
 	string parseNextArg (int argc, char* argv[], int& i) {
 		++i;
@@ -136,6 +137,17 @@ namespace OM { namespace util {
 					(scenarioFile = "scenario").append(name).append(".xml");
 					(outputName = "output").append(name);
 					(ctsoutName = "ctsout").append(name).append(".txt");
+				} else if (clo == "seed") {
+					if (seedOverride >= 0)
+						throw cmd_exception ("--seed may only be given once");
+					string s = parseNextArg (argc, argv, i);
+					try {
+						seedOverride = stoi (s);
+					} catch (...) {
+						seedOverride = -1;
+					}
+					if (seedOverride < 0)
+						throw cmd_exception ("--seed must be a non-negative integer");
 				} else if (clo == "validate-only") {
 					options.set (SKIP_SIMULATION);
 				} else if (clo == "no-deprecation-warnings") {
@@ -273,6 +285,7 @@ namespace OM { namespace util {
 		<< endl
 		<< "Debugging options:"<<endl
 		<< " -m --print-model	Print all model options with a non-default value and exit." << endl
+		<< " --seed N		Override <computationParameters iseed> with N." << endl
 		<< "    --print-EIR		Print the annual EIR (of each species in vector mode) and exit." << endl
 		<< "    --print-interventions" << endl
 		<< "			Print intervention deployment details and exit." << endl

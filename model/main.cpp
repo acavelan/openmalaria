@@ -151,7 +151,12 @@ int main(int argc, char* argv[])
 
         // 1) elements with no dependencies on other elements initialised here:
         WithinHost::Genotypes::init( *scenario );
-        util::master_RNG.seed( scenario->getModel().getComputationParameters().getIseed(), 0 ); // Init RNG with Iseed
+        {
+            const int seedOverride = util::CommandLine::getSeedOverride();
+            const unsigned iseed = seedOverride >= 0 ? unsigned (seedOverride) :
+                scenario->getModel().getComputationParameters().getIseed();
+            util::master_RNG.seed( iseed, 0 ); // Init RNG with Iseed (--seed overrides)
+        }
         util::ModelNameProvider modelNameProvider(scenario->getModel());
 
         // 2) elements depending on only elements initialised in (1):

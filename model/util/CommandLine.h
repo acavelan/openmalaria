@@ -102,6 +102,12 @@ namespace OM { namespace util {
 			return checkpointFileName;
 		}
 
+    /** RNG seed override from --seed (>=0), or -1 when the scenario's
+     * <computationParameters iseed> should be used. */
+		static inline int getSeedOverride (){
+			return seedOverride;
+		}
+
 	/** Looks through all command line options.
 	*
 	* @returns The name of the scenario XML file to use.
@@ -129,6 +135,7 @@ private:
 	static OutputFormat outputFormat;
 	static string ctsoutName;
 	static string checkpointFileName;
+	static int seedOverride;
 };
 } }
 #endif
