@@ -1,9 +1,10 @@
 # OpenMalaria rewrite — full status, change report, and recovery guide
 
 Branch: `rewrite` (pushed to this repo's `origin` fork).
-Written: 2026-11-24. This file is the single entry point to understand or
-rebuild everything from another machine. `PERF.md` and `HANDOFF.md` hold the
-raw ledgers; this is the plain-language version.
+Written: 2026-11-24; updated 2026-11-25 (§11, post-audit checkpoint). This
+file is the single entry point to understand or rebuild everything from
+another machine. `PERF.md` and `HANDOFF.md` hold the raw ledgers; this is the
+plain-language version.
 
 ---
 
@@ -226,3 +227,61 @@ codegen-level — not the layout — and at larger populations, where the memory
 lead grows and the instruction surplus doesn't, the layout is the side to be
 on. That the layout also cut per-column code is why it survived every phase of
 the LOC rewrite.
+
+## 11. Status 2026-11-25 — post-audit checkpoint (perf parity, XML boundary, LOC)
+
+**No new timing number is quotable yet.** The ladder in §5 stands at 10.68 s @2k /
+45.82 s @10k (2.0 / 1.9 % behind the patched baseline). A fresh same-recipe
+reproduction is in flight in `/tmp/opencode/om-perf/`: A0 = `main@cfc3c8e0` plain,
+B = `eval/bs-all` + LTO/PGO on its own training corpus, R = `rewrite@c7ee853d` +
+`util/pgo-build.sh`, R2 = rewrite trained on B's corpus (recipe parity). T1 63/63
+must pass before any of it is quoted.
+
+Two ordered hypotheses for the residual:
+
+1. **Recipe parity — likely the larger lever.** `util/pgo-build.sh:60` trains only
+   on `util/example/example_scenario.xml`; the comparison's B profile came from a
+   multi-scenario mix. A mismatched profile can mis-order branches and hurt. If
+   R2 ≈ B, the cheapest fix is the shipping script's corpus, not code.
+2. **Source instruction surplus.** The residual is already known to be instruction
+   count (+1.9 % retired, +2.1 % cycles; IPC/cache/TLB lead is ours), named as
+   per-host `ctx->subobject` re-materialisation plus row-major address arithmetic.
+   Statically verified flag levers: `-fno-plt` (not default; removes a PLT jump per
+   `log`/`gsl_cdf_ugaussian_P` call in the hot transmission path) and `-fipa-pta`
+   (off by default; lets LTO prove `ctx.monitoring`/`ctx.genotypes` loads do not
+   alias monitoring stores so loop invariants can hoist). Both are bit-exact;
+   `-freorder-blocks-and-partition` and `-falign-loops` are already active at `-O3`.
+   No `-march`/`-mtune=native`, no fast-math, `-ffp-contract=off` stays in both PGO
+   phases.
+
+**XML boundary (PROMPT task 1).** Parsing is physically in `model/xml/` (12 files,
+~3.8k code lines) and **zero** `<schema/...>` includes remain outside it. The
+boundary is still incomplete by *type*: ~97 `scnXml::` reference lines outside
+`xml/` (135 tokens incl. forward declarations/xsd, 47 files); 38 headers carry
+130 lines of forward-declaration boilerplate (111 pure); four parse bodies remain
+outside (`WHInterface.cpp:19`, `PerHost.cpp:115`, `PopulationAgeStructure.cpp:39`,
+and the top-level `run.cpp:218-287` accessor chains); two payload structs own
+schema pointers (`Deployments.h:156,159`). Roughly 85 % moved by body, 40 % by
+type. Migration order (smallest gate first): util readers → `ModelNameProvider`/
+`Parameters`/`ModelOptions` → `ClockConfig` → monitoring → per-model small configs
+→ PkPd → `EirSeries`/`MosqParams`/`EntomologyConfig` → `HealthSystemConfig`/
+`ClinicalConfig` → intervention `ComponentIdList` → shrink `run.cpp`. The real
+per-step cost is `unittest/UnittestUtil.h` (205 scnXml refs): fixtures must be
+converted in the same commit as each signature.
+
+**LOC (PROMPT priority 2) — arithmetic, not aspiration.** Canonical KPI is 16,317
+code lines; a comment-stripped re-scan puts `model/xml/` at ~3.8k and non-xml at
+~12.5k. Against the hard cap: `xml/` 2.6k ⇒ ~+1.2k over; non-xml 11.4k ⇒ ~+1.1k
+over. Dead-code and dedup sweeps re-run: **0** real dead functions (7 hits were
+destructors called implicitly), 2 exact duplicate 10-line blocks (both `#include`),
+74 near-duplicate windows (all boilerplate) — the 7c-D "tree already clean"
+conclusion holds. Safe organic wins total ≈300 lines (boundary boilerplate −114,
+reader declarations −25, two single-consumer headers −55, table-driven CLI/compile/
+sampler −100…150). **The 14.0k cap cannot be reached by tidying**: it needs
+300–600 lines of XML-reader compression or an explicit user sign-off. Do not
+code-golf science code to hit the number.
+
+**Next order:** (1) parity verdict; (2) hot-path queue, one gated change at a
+time; (3) behaviour-free boundary cleanup; (4) XML compression; (5) remaining
+de-static clusters (clinical config, `ModelOptions`/`CommandLine`/`UnitParse`,
+GSL workspaces) — keep `consteval` tables and immutable constants.

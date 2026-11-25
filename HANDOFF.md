@@ -1,4 +1,54 @@
-# MAIN-SESSION STATUS (2026-11-24, authoritative — everything below is per-agent history)
+# MAIN-SESSION STATUS (2026-11-25, authoritative)
+**Branch `rewrite`, HEAD `c7ee853d` + this docs commit. Baxter-parity pass is IN FLIGHT — no new
+timing number in this tree is quotable yet.** Read with `RECOVERY.md` §11 and `PERF.md` Round 7.
+
+- **Perf parity (open).** Fresh worktrees `/tmp/opencode/om-perf/{A0,B,R}`: A0 = `main@cfc3c8e0` plain
+  `-O3`; B = `origin/eval/bs-all` + LTO/PGO on its own corpus; R = `rewrite@c7ee853d` +
+  `util/pgo-build.sh` (trains on example@2000); R2 = rewrite trained on B's corpus (recipe parity).
+  Same harness, pinned, interleaved, 2k/10k/7-scenario; T1 63/63 required before any number is
+  quoted. The question is how much of the 2.0/1.9 % residual is PGO training-corpus mismatch vs
+  source codegen. Until it lands, the published ladder is unchanged.
+- **XML boundary (audited 2026-11-25).** Parsing is in `model/xml/` (12 files, ~3.8k code lines);
+  **zero** `<schema/...>` includes outside it. The boundary is incomplete by TYPE, not location:
+  ~97 `scnXml::` reference lines outside `xml/` (135 tokens incl. fwd decls/xsd, 47 files); 38 headers
+  carry 130 lines of fwd-decl boilerplate (111 pure); 4 parse bodies remain outside
+  (`Host/WithinHost/WHInterface.cpp:19`, `Transmission/PerHost.cpp:115`,
+  `PopulationAgeStructure.cpp:39`, and the top-level accessor chains `run.cpp:218-287`); 2 payload
+  structs own schema pointers (`interventions/Deployments.h:156,159`). ~85 % moved by body, ~40 % by
+  type. Migration order (smallest gate first): util readers → ModelNameProvider/Parameters/
+  ModelOptions → ClockConfig → monitoring → per-model small configs → PkPd → EirSeries/MosqParams/
+  EntomologyConfig → HealthSystemConfig/ClinicalConfig → intervention ComponentIdList → shrink
+  `run.cpp`. Real per-step cost is `unittest/UnittestUtil.h` (205 scnXml refs): convert fixtures in
+  the same commit as each signature.
+- **LOC census.** Canonical cloc KPI is still 16,317. Stripped re-scan: `xml/` ≈3.8k, non-xml
+  ≈12.5k. Budget math vs the hard cap: `xml/` 2.6k ⇒ ~+1.2k over; non-xml 11.4k ⇒ ~+1.1k over.
+  Dead-code and dedup sweeps re-run (linker/token + exact/normalised windows): **0** real dead
+  functions (7 hits = destructors called implicitly), 2 exact duplicate 10-line blocks (both
+  `#include`), 74 near-dup windows (all boilerplate). 7c-D's "tree already clean" stands. Safe
+  organic wins ≈300 LOC: boundary boilerplate −114, reader declarations −25, two single-consumer
+  headers (`xml/HumanInterventionComponents.h`, `CalcNvO.h`) −55, table-driven CLI/compile/sampler
+  −100…150. **The 14.0k cap is not reachable by tidying** — it needs 300–600 LOC of XML-reader
+  compression or a user sign-off.
+- **Hot-path audit (static, 2026-11-25).** Four flag/PGO levers checked: `-freorder-blocks-and-
+  partition` and `-falign-loops` are already active at `-O3` (nothing to add); `-fno-plt` is **not**
+  default and removes one PLT jump per `log`/`gsl_cdf_ugaussian_P` call in
+  `probTransmissionToMosquito` (bit-exact); `-fipa-pta` is **off** and is the flag that attacks the
+  `ctx->subobject` aliasing that blocks hoisting `statSurveyNumber`/`nGenotypes` out of host loops
+  (bit-exact, costs compile time/memory). **PGO training-corpus parity is judged the largest lever
+  of all** — `util/pgo-build.sh:60` trains only on `util/example`, not on the comparison corpus;
+  a mismatched profile can mis-order branches and hurt. Test `-fno-plt` → `-fipa-pta` → corpus
+  parity, each behind its own ship-form perf gate; `-flto-partition=one` only if needed.
+  **Do not** reuse `probTransGenotype_*` as `y_lag` scratch without zeroing on the
+  `pTransmit<=0` early return: `updateKappa` reads them unguarded when genotype tracking is on.
+- **Open non-KPI perf finds** (not in the benchmark's paths): `Infection::Kn()` does 3–4
+  `std::map` lookups per call (single `find` is bit-exact); `AnophelesModel::advancePeriod` copies
+  the full `nhhInstances` map every step (empty in the example scenario).
+
+Next: land the parity verdict → apply the hot-path queue one gated change at a time → behaviour-free
+boundary cleanup → XML compression → remaining de-static clusters (clinical config,
+`ModelOptions`/`CommandLine`/`UnitParse`, GSL workspaces; keep consteval tables and constants).
+
+# MAIN-SESSION STATUS (2026-11-24 — superseded by the block above; per-agent history follows)
 **→ START AT `RECOVERY.md`: full change report, branch map, recovery-from-zero recipe. Branch pushed to origin 2026-11-24 (`rewrite`, `eval/bs-all`, `eval/e6-pyrogen`, `eval/e9-humans`, `eval/instr-counters`, tag `rewrite-status-2026-11-24`). Final: model 16,317 code LOC (baseline 18,813, −13.3%), 10.68s @2k / 45.82s @10k = 1.146×/1.214× vs A0, gap 2.0/1.9pct vs patched-baseline, all gates green at HEAD.**
 `rewrite` HEAD = p8-collapse merged onto p8-poly (merge 488ec0ea + PERF rows). ALL phase-8
 waves 1–2 merged & verified: structure, checkpoint-redo, files, Q2-polymorphism, collapse+reflow.

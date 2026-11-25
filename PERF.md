@@ -338,3 +338,44 @@ Tax arc: 9.4/20.4 → 4.7/7.7 → 3.2/3.2 → **2.0/1.9**. Shipping binary:
 Residual ~2 % is the ctx-indirection class (named above) + inlining luck; below it, the recipe's
 own cross-window reproducibility (~0.5 %) starts to bite. LOC budget of the hunt: E1 −29, E4 +23,
 E5 +59, E7 +76, E8 +23, E6/E9 rejected ⇒ +152 net against the −2,580 rewrite (−13.6 % intact).
+
+### Round 7 — Baxter-parity pass (IN FLIGHT, 2026-11-25)
+
+**No result yet — do not quote a new number until this row is closed.** Measurements run in fresh
+worktrees `/tmp/opencode/om-perf/{A0,B,R}` (A0 = `main@cfc3c8e0` plain; B = `eval/bs-all` +
+LTO/PGO on its own corpus; R = `rewrite@c7ee853d` + `util/pgo-build.sh`; R2 = rewrite trained on
+B's corpus). Same harness: pinned, interleaved, 2k/10k/7-scenario, T1 63/63 before any claim.
+
+Two hypotheses, ordered:
+
+1. **Recipe parity — likely the larger lever.** `util/pgo-build.sh:60` trains only on
+   `util/example/example_scenario.xml`; the comparison's B profile came from a multi-scenario mix,
+   and a mismatched profile can mis-order branches and *hurt*. If R2 ≈ B, the fix is the shipping
+   script's corpus, not code.
+2. **Source instruction surplus.** Then attack the named `ctx->`/row-major class with the static
+   audit queue, one gated change at a time (per-host invariant hoists, flat reusable scratch,
+   row-pointer binding, TBV factor hoists). Expected recovery without the flag/PGO work is roughly
+   half the gap; the rest is structural indirection.
+
+Statically verified, bit-exact build levers (no `-march`/`-mtune=native`, no fast-math;
+`-ffp-contract=off` in both PGO phases):
+
+- `-freorder-blocks-and-partition`, `-falign-loops`: already active at `-O3`; nothing to add.
+- `-fno-plt`: **not** default; `probTransmissionToMosquito` calls `log`/`gsl_cdf_ugaussian_P` per
+  host-tick, so this removes a PLT jump per call. Cheap; gate with T1.
+- `-fipa-pta`: **off** by default; under LTO it lets the optimiser prove `ctx.monitoring`/
+  `ctx.genotypes` loads do not alias monitoring stores, so `statSurveyNumber`/`nGenotypes` can hoist
+  out of per-host loops. Bit-exact; costs compile time/memory.
+- `-flto-partition=one`: only if the above is insufficient (peak memory).
+- `-fno-math-errno`: optional, skip unless measured (libm-selection risk on some glibc).
+
+**Known trap (do not do):** reusing `probTransGenotype_*` as the `y_lag` scratch without zeroing on
+the `pTransmit<=0` early return — `updateKappa` reads those vectors unguarded when genotype
+tracking is on. Any such change also needs a genotype-tracking scenario in T1, not just tiers a,b.
+
+**Non-KPI code finds:** `Infection::Kn()` does 3–4 `std::map` lookups per call (collapse to one
+`find`, bit-exact); `AnophelesModel::advancePeriod` copies the full `nhhInstances` map every step
+(empty in the benchmark scenario).
+
+**Close criteria:** R/B ≤ 1.005 @2k and @10k, ≤0.5 % on the 7-scenario total, no >1 % regression
+@5k, T1 63/63, `ctest` 64/64, `unittest` `.OK!`, resume suite green.
