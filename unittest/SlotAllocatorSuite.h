@@ -107,9 +107,6 @@ class SlotAllocatorSuite : public CxxTest::TestSuite {
 
         LocalRng rng(3, 4);
         WHDescriptive wh(UnittestUtil::ctx(), rng, 1.0);
-        HumanColumns cols;
-        MasterRng master(0, 1);
-        wh.bind_columns(cols, cols.append_row(zero(), master));
 
         // ctor consumption pinned too (any change here shifts every word below)
         static const uint64_t GOLD_CTOR[4] = {0x0000626c286e5305ULL, 0x01c42b2629420000ULL, 0x0e7989b244225680ULL,

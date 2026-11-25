@@ -120,8 +120,8 @@ struct HostSpecies {
     double ento_raw, ento_avail, prob_biting, prob_resting;
 };
 
-/** Persistent per-host SoA columns (plan §7 row 6 pinned list; owner module,
- * passed by reference, never global).
+/** Population columns plus a flat host/species table. Row-local immunity and
+ * clinical state live with their consuming models (hybrid layout).
  *
  * Row i of every column belongs to Population::humans[i]. Only Population
  * changes the row count (create/checkpoint-read append; update compacts dead/
@@ -150,15 +150,6 @@ struct HumanColumns {
     std::vector<uint16_t> mon_age_group;
     /// Next continuous-distribution index (old Human::nextCtsDist).
     std::vector<uint32_t> next_cts_dist;
-    /// Immunity accumulators (old WHInterface m_cumulative_h/_Y/_Y_lag, f64).
-    std::vector<double> imm_h, imm_Y, imm_Y_lag;
-    /// Primary blood-stage infection count (old WHInterface cumPrimInf, u32).
-    std::vector<uint32_t> cum_prim_inf;
-    /// Clinical timestamps (old ClinicalModel m_tLastTreatment + ES-kind
-    /// esCaseStartTime/esTimeOfRecovery/esTimeLastTreatment, SimTime).
-    std::vector<SimTime> t_last_treatment, es_case_start, es_time_recovery, es_time_treatment;
-    /// ES total density last time step (old ClinicalModel esPreviousDensity).
-    std::vector<double> es_prev_density;
     /// Host-major table: row r occupies [r*num_species, (r+1)*num_species).
     /// The species count is fixed for the run; non-vector models have zero.
     size_t num_species = 0;
@@ -193,15 +184,6 @@ struct HumanColumns {
         cohorts.emplace_back();
         mon_age_group.push_back(0u);
         next_cts_dist.push_back(0u);
-        imm_h.push_back(0.0);
-        imm_Y.push_back(0.0);
-        imm_Y_lag.push_back(0.0);
-        cum_prim_inf.push_back(0u);
-        t_last_treatment.push_back(never());
-        es_case_start.push_back(never());
-        es_time_recovery.push_back(never());
-        es_time_treatment.push_back(never());
-        es_prev_density.push_back(std::numeric_limits<double>::quiet_NaN());
         anoph.resize(rng.size() * num_species);
         rel_avail_het.push_back(std::numeric_limits<double>::signaling_NaN());
         outside_trans.push_back(0u);
@@ -261,15 +243,6 @@ struct HumanColumns {
         e(cohorts);
         e(mon_age_group);
         e(next_cts_dist);
-        e(imm_h);
-        e(imm_Y);
-        e(imm_Y_lag);
-        e(cum_prim_inf);
-        e(t_last_treatment);
-        e(es_case_start);
-        e(es_time_recovery);
-        e(es_time_treatment);
-        e(es_prev_density);
         e(anoph, num_species);
         e(rel_avail_het);
         e(outside_trans);

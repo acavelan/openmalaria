@@ -60,7 +60,7 @@ WHDescriptive::WHDescriptive(RunContext& ctx, LocalRng& rng, double comorbidityF
 
 void WHDescriptive::importInfection(LocalRng& rng) {
     if (SlotAllocator::try_import(numInfs)) { // mode A: at the cap, no draw at all
-        imm_h_ref() += 1;
+        imm_h += 1;
         numInfs += 1;
         // This is a hook, used by interventions. The newly imported infections
         // should use initial frequencies to select genotypes.
@@ -157,7 +157,7 @@ void WHDescriptive::update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nN
         double bsvFactor =
             anyVac ? human.vaccine_factor(Vaccine::BSV, opt_vaccine_genotype ? (*inf)->genotype() : 0) : 1.0;
 
-        static_cast<DescriptiveInfection*>(*inf)->determine_densities(rng, imm_h_ref(), infStepMaxDens, immSurvFact,
+        static_cast<DescriptiveInfection*>(*inf)->determine_densities(rng, imm_h, infStepMaxDens, immSurvFact,
                                                                       _innateImmSurvFact, bsvFactor);
 
         if (bugfix_max_dens) infStepMaxDens = std::max(infStepMaxDens, timeStepMaxDensity);
@@ -172,8 +172,8 @@ void WHDescriptive::update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nN
 
     // As in AJTMH p22, cumulative_h (X_h + 1) doesn't include infections added
     // this time-step and cumulative_Y only includes past densities.
-    imm_h_ref() += nNewInfs_i + nNewInfs_l;
-    imm_Y_ref() += ctx.clock.one_TS() * totalDensity;
+    imm_h += nNewInfs_i + nNewInfs_l;
+    imm_Y += ctx.clock.one_TS() * totalDensity;
 
     streamValidate(totalDensity);
     streamValidate(hrp2Density);

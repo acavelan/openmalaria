@@ -105,7 +105,7 @@ void CMEventScheduler::doClinicalUpdate(Human& human, double ageYears, StatePair
     esClinicalUpdate(*this, ctx, human, ageYears, pg);
 }
 
-SimTime CMEventScheduler::timeOfLastTreatment() const { return es_time_treatment(); }
+SimTime CMEventScheduler::timeOfLastTreatment() const { return es_time_treatment; }
 
 bool ClinicalModel::isExistingCase() {
     // If treated in the recent past:

@@ -107,9 +107,6 @@ WHFalciparum::~WHFalciparum() {
 InfectionOrigin WHFalciparum::getInfectionOrigin() const { return get_infection_origin(infections); }
 
 double WHFalciparum::immunitySurvivalFactor(double ageInYears, double cumulativeExposureJ) {
-    // Row reads hoisted to locals: one cols->deref per call instead of four
-    // (nothing mutates them in here, so the values are bit-identical).
-    const double imm_h = imm_h_ref(), imm_Y = imm_Y_ref();
     if (std::isnan(ageInYears) || std::isnan(cumulativeExposureJ) || std::isnan(imm_h) || std::isnan(imm_Y)) {
         throw base_exception("nan in immunitySurvivalFactor");
     }
@@ -134,7 +131,6 @@ double WHFalciparum::immunitySurvivalFactor(double ageInYears, double cumulative
 WHFalciparum::ImmSurvTick WHFalciparum::immSurvivalTick(double ageInYears) {
     // p7c-C3: hoisted host part of immunitySurvivalFactor (see WHInterface.h).
     // Each value below equals the per-infection call's operand bit-for-bit.
-    const double imm_h = imm_h_ref(), imm_Y = imm_Y_ref();
     if (std::isnan(ageInYears) || std::isnan(imm_h) || std::isnan(imm_Y))
         throw base_exception("nan in immunitySurvivalFactor");
     ImmSurvTick t;
@@ -260,8 +256,8 @@ StatePair WHFalciparum::determineMorbidity(Human& human, double ageYears, bool i
     /* Note: this model can easily be re-enabled, but is not used and not considered to be a good model.
     if( (result.state & MALARIA) && ModelOptions::option( PENALISATION_EPISODES ) ){
         // This does immunity penalisation:
-        imm_Y_ref() = imm_Y_lag_ref() - immPenalty_22*(imm_Y_ref()-imm_Y_lag_ref());
-        if (imm_Y_ref() < 0) imm_Y_ref()=0.0;
+        imm_Y = imm_Y_lag - immPenalty_22*(imm_Y-imm_Y_lag);
+        if (imm_Y < 0) imm_Y=0.0;
     }*/
 
     return result;
@@ -270,8 +266,8 @@ StatePair WHFalciparum::determineMorbidity(Human& human, double ageYears, bool i
 // -----  immunity  -----
 
 void WHFalciparum::updateImmuneStatus() {
-    // Same sequential updates on row-locals (bit-identical), one deref each side.
-    double h = imm_h_ref(), Y = imm_Y_ref();
+    // parity: sequential updates, with the original lag assignment last.
+    double h = imm_h, Y = imm_Y;
     if (immEffectorRemain < 1) {
         h *= immEffectorRemain;
         Y *= immEffectorRemain;
@@ -280,9 +276,9 @@ void WHFalciparum::updateImmuneStatus() {
         h *= asexImmRemain / (1 + (h * (1 - asexImmRemain) * invCumulativeHstar));
         Y *= asexImmRemain / (1 + (Y * (1 - asexImmRemain) * invCumulativeYstar));
     }
-    imm_h_ref() = h;
-    imm_Y_ref() = Y;
-    imm_Y_lag_ref() = Y;
+    imm_h = h;
+    imm_Y = Y;
+    imm_Y_lag = Y;
 }
 
 // -----  Checkpointing  -----

@@ -42,16 +42,13 @@ class InfectionImmunitySuite : public CxxTest::TestSuite {
         // Any falciparum kind will do:
         LocalRng rng(0, 721347520444481703);
         wh = new WHDescriptive{UnittestUtil::ctx(), rng, numeric_limits<double>::quiet_NaN()};
-        // immunity state lives in columns now: bind a private mini-column
-        MasterRng master(0, 1);
-        wh->bind_columns(cols, cols.append_row(zero(), master));
     }
     void tearDown() { delete wh; }
 
     void testImmunity() {
         // Base case: virtually no immunity due to mother's immunity or past infections
-        wh->imm_h_ref() = 0.0;
-        wh->imm_Y_ref() = 0.0;
+        wh->imm_h = 0.0;
+        wh->imm_Y = 0.0;
         double cumExposureJ = 0.0;
         TS_ASSERT_APPROX(wh->immunitySurvivalFactor(100., cumExposureJ), 1.0);
 
@@ -59,15 +56,24 @@ class InfectionImmunitySuite : public CxxTest::TestSuite {
         TS_ASSERT_APPROX(wh->immunitySurvivalFactor(0.1, cumExposureJ), 0.30631938551881299);
 
         // past infections, no density
-        wh->imm_h_ref() = 100.0;
+        wh->imm_h = 100.0;
         TS_ASSERT_APPROX(wh->immunitySurvivalFactor(100., cumExposureJ), 0.41995608739475931);
 
         // previous with cum. density of 1e8 (but none from current infection)
-        wh->imm_Y_ref() = 1e8;
+        wh->imm_Y = 1e8;
         TS_ASSERT_APPROX(wh->immunitySurvivalFactor(100., cumExposureJ), 0.17081918453312689);
+    }
+
+    void testIndependentImmunity() {
+        LocalRng rng(3, 4);
+        WHDescriptive other(UnittestUtil::ctx(), rng, 1.0);
+        wh->imm_h = 100.0;
+        wh->imm_Y = 1e8;
+        TS_ASSERT_EQUALS(other.imm_h, 0.0);
+        TS_ASSERT_EQUALS(other.imm_Y, 0.0);
+        TS_ASSERT_EQUALS(other.imm_Y_lag, 0.0);
     }
 
   private:
     WHDescriptive* wh;
-    HumanColumns cols;
 };

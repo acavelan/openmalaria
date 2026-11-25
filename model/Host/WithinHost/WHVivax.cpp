@@ -288,7 +288,7 @@ void WHVivax::update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs
     // update vivaxInfections
     // NOTE: currently no BSV model
     morbidity = NONE;
-    uint32_t oldCumInf = cum_prim_inf_ref();
+    uint32_t oldCumInf = cum_prim_inf;
     bool treatmentLiver = treatExpiryLiverVivax > ctx.clock.ts0();
     bool treatmentBlood = treatExpiryBloodVivax > ctx.clock.ts0();
     double matImmClin = 1 - (0.90 * exp(-2.53 * ageInYears));
@@ -299,7 +299,7 @@ void WHVivax::update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs
         if (treatmentBlood)
             inf->treatmentBS(); // clearance due to treatment; no protection against reemergence
         VivaxBrood::UpdResult result = inf->update(rng);
-        if (result.newPrimaryBS) cum_prim_inf_ref() += 1;
+        if (result.newPrimaryBS) cum_prim_inf += 1;
 
         if (result.newBS) {
             // Sample for each new blood stage infection: the chance of some clinical event.
