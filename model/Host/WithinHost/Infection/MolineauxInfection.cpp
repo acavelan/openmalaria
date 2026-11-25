@@ -209,6 +209,7 @@ MolineauxInfection::MolineauxInfection(LocalRng& rng, uint32_t genotype, int ori
         // Molineaux paper, equation 11
         if( multi_factor_gamma ){
             do{
+                // parity: order — local RNG stream: draw call order fixes stream state
                 mi[i] = static_cast<float>(rng.gamma(shape_m,scale_m));
             }while( mi[i]<1.0 );
         }else{

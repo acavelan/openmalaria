@@ -156,6 +156,7 @@ double InfectionIncidenceModel::getAvailabilityFactor(LocalRng& rng, double base
 }
 double NegBinomMAII::getAvailabilityFactor(LocalRng& rng, double baseAvailability) {
     // Gamma sample with k=BaselineAvailabilityShapeParam; mean is baseAvailability
+  // parity: order — local RNG stream: draw call order fixes stream state
   return rng.gamma(baseline_avail_shape_param,
 		 baseAvailability/baseline_avail_shape_param);
 }
@@ -189,6 +190,7 @@ double HeterogeneityWorkaroundII::getModelExpectedInfections (LocalRng& rng, dou
 }
 double NegBinomMAII::getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost&) {
   // Documentation: http://www.plosmedicine.org/article/fetchSingleRepresentation.action?uri=info:doi/10.1371/journal.pmed.1001157.s009
+  // parity: order — local RNG stream: draw call order fixes stream state
   return rng.gamma(inf_rate_shape_param,
       effectiveEIR * susceptibility() / inf_rate_shape_param);
 }
@@ -249,6 +251,7 @@ double InfectionIncidenceModel::expectedNumNewInfections(OM::Host::Human& human,
 int InfectionIncidenceModel::numNewInfections (Human& human, double expectedNumInfections)
 { 
   if (expectedNumInfections > 0.0000001){
+    // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
     int n = human.rng.poisson(expectedNumInfections);
 
     if( n > WithinHost::WHInterface::MAX_INFECTIONS )

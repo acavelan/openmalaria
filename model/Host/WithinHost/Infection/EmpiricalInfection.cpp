@@ -176,6 +176,7 @@ bool EmpiricalInfection::updateDensity( LocalRng& rng, double survivalFactor, Si
   for(int tries0 = 0; tries0 < EI_MAX_SAMPLES; ++tries0) {
     double logDensity;
     for(int tries1 = 0; tries1 < EI_MAX_SAMPLES; ++tries1) {
+      // parity: order — local RNG stream: draw call order fixes stream state
       double b_1=rng.gauss(_mu_beta1[ageDays],_sigma_beta1[ageDays]);
       double b_2=rng.gauss(_mu_beta2[ageDays],_sigma_beta2[ageDays]);
       double b_3=rng.gauss(_mu_beta3[ageDays],_sigma_beta3[ageDays]);
@@ -227,6 +228,7 @@ bool EmpiricalInfection::updateDensity( LocalRng& rng, double survivalFactor, Si
 
 double EmpiricalInfection::sampleSubPatentValue(LocalRng& rng, double alpha, double mu, double upperBound){
     double beta = alpha * (1.0-mu) / mu;
+    // parity: order — local RNG stream: draw call order fixes stream state
     double nonInflatedValue = upperBound + log(rng.beta(alpha, beta));
     double inflatedValue;
     int tries=0;
@@ -243,6 +245,7 @@ double EmpiricalInfection::sampleSubPatentValue(LocalRng& rng, double alpha, dou
 double EmpiricalInfection::samplePatentValue(LocalRng& rng, double mu, double sigma, double lowerBound){
   double returnValue;
   do {
+    // parity: order — local RNG stream: draw call order fixes stream state
     double nonInflatedValue=rng.gauss(mu, sigma);
     returnValue=getInflatedDensity(rng, nonInflatedValue);
   } while (returnValue<lowerBound);
@@ -254,6 +257,7 @@ double EmpiricalInfection::sigma_noise(int ageDays) {
 }
 
 double EmpiricalInfection::getInflatedDensity(LocalRng& rng, double nonInflatedDensity){
+  // parity: order — local RNG stream: draw call order fixes stream state
   double inflatedLogDensity = log(_inflationMean) + rng.gauss(nonInflatedDensity, sqrt(_inflationVariance));
   return exp(inflatedLogDensity);
 }

@@ -88,6 +88,7 @@ void DecisionTree5Day::uncomplicatedEvent ( Human& human, Episode::State pgState
 
     latestReport.update (human, Episode::State( pgState ) );
 
+    // parity: d — clinical decision fraction draw order (plan §3d)
     double x = human.rng.uniform_01();
     if( x < accessUCAny[regimen] * m_treatmentSeekingFactor ){
         CMHostData hostData( human, sim::inYears(human.age(sim::ts0())), pgState );

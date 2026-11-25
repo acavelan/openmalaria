@@ -106,6 +106,7 @@ public:
     
     SimTime sampleAgeOfDecay (LocalRng& rng) const{
         // Note: rounds to nearest. Object may decay instantly or at time L.
+        // parity: order — local RNG stream: draw call order fixes stream state
         return sim::roundToTSFromDays(rng.uniform_01() / invL);
     }
 
@@ -130,6 +131,7 @@ public:
     }
     
     SimTime sampleAgeOfDecay (LocalRng& rng) const{
+        // parity: order — local RNG stream: draw call order fixes stream state
         return sim::roundToTSFromDays( -log(rng.uniform_01()) / invL );
     }
 
@@ -159,6 +161,7 @@ public:
     }
     
     SimTime sampleAgeOfDecay (LocalRng& rng) const{
+        // parity: order — local RNG stream: draw call order fixes stream state
         return sim::roundToTSFromDays( pow( -log(rng.uniform_01()), 1.0/k ) / constOverLambda );
     }
 
@@ -184,6 +187,7 @@ public:
     }
     
     SimTime sampleAgeOfDecay (LocalRng& rng) const{
+        // parity: order — local RNG stream: draw call order fixes stream state
         return sim::roundToTSFromDays( pow( 1.0 / rng.uniform_01() - 1.0, 1.0/k ) / invL );
     }
 
@@ -212,6 +216,7 @@ public:
     }
     
     SimTime sampleAgeOfDecay (LocalRng& rng) const{
+        // parity: order — local RNG stream: draw call order fixes stream state
         return sim::roundToTSFromDays( sqrt( 1.0 - k / (k - log( rng.uniform_01() )) ) / invL );
     }
 

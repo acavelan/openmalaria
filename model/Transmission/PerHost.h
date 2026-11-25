@@ -85,6 +85,7 @@ public:
 
         // Using a different seed to make sure old results will not change
         // Does it really matter? 
+        // parity: order — MasterRng(0,0) availability-percentile seed is load-bearing for goldens — do not “clean up” (PerHost.h:86-89)
         util::MasterRng seed(0, 0);
         seed.seed(0, 0);
         

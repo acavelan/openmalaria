@@ -129,6 +129,7 @@ SimTime DescriptiveInfection::infectionDuration(LocalRng& rng) {
     // Forgive the excess precision; it just avoids having to update all expected results
     double dur_mean = 5.1300001144409179688;
     double dur_sigma = 0.80000001192092895508;
+    // parity: order — local RNG stream: draw call order fixes stream state
     double dur=rng.log_normal(dur_mean, dur_sigma);
     
     //TODO:
@@ -179,6 +180,7 @@ void DescriptiveInfection::determineDensities(
         if (stdlog > 0.0000001) {
             // Calculate the expected density on the day of sampling:
             double meanlog = m_density - stdlog*stdlog / 2.0;
+            // parity: order — local RNG stream: draw call order fixes stream state
             m_density = rng.log_normal(meanlog, stdlog);
             // Calculate additional samples for T-1 days (T=days per step):
             if( true /*sim::oneTS() > 1, always true for this model*/ ){

@@ -141,6 +141,7 @@ WHFalciparum::WHFalciparum( LocalRng& rng, double comorbidityFactor ):
     // the individual samples change. In any case the overhead is negligible.
     //FIXME: Should this be allowed to be greater than 1?
     // Oldest code on GoogleCode: _innateImmunity=(double)(W_GAUSS((0), (sigma_i)));
+    // parity: order — local RNG stream: draw call order fixes stream state
     _innateImmSurvFact = exp(-rng.gauss(0.0, sigma_i));
     
     m_y_lag_i.resize(y_lag_len * Genotypes::N());
@@ -226,6 +227,7 @@ double WHFalciparum::probTransmissionToMosquito(vector<double> &probTransGenotyp
     
     // Get a zval, convert to equivalent Normal sample:
     const double zval = (log(y_lag_sum) + PTM_mu) * PTM_tau_prime;
+    // parity: order — pure GSL CDF/quantile call (no stream consumption); keep the identical GSL function (F2)
     const double pone = gsl_cdf_ugaussian_P(zval);
     double pTransmit = pone*pone;
 

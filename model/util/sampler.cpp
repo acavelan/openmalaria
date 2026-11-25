@@ -36,12 +36,14 @@ double NormalSample::asLognormal( double mu, double sigma )const{
 }
 
 NormalSample NormalSample::generate(LocalRng& rng) {
+    // parity: order — local RNG stream: draw call order fixes stream state
     return NormalSample( rng.gauss(0.0, 1.0) );
 }
 
 NormalSample NormalSample::generate_correlated(NormalSample base, double correlation, double factor, LocalRng& rng) {
     if( correlation == 1.0 ) { return base; }
     
+    // parity: order — local RNG stream: draw call order fixes stream state
     double e = rng.gauss(0.0, factor);
     return NormalSample( base.x * correlation + e );
 }
@@ -74,6 +76,7 @@ double NormalSampler::sample(LocalRng& rng) const{
     if( sigma == 0.0 ){
         return mu;
     }
+    // parity: order — local RNG stream: draw call order fixes stream state
     return rng.gauss( mu, sigma );
 }
 
@@ -164,6 +167,7 @@ double LognormalSampler::sample(LocalRng& rng) const{
     if( sigma == 0.0 )
         value = exp( mu );
     else
+        // parity: order — local RNG stream: draw call order fixes stream state
         value = rng.log_normal( mu, sigma );
 
     if (truncate && value > *truncate)
@@ -183,6 +187,7 @@ double LognormalSampler::cdf(double x) const {
         if(log(x) >= mu) return 1.0;
         else return 0.0;
     }
+    // parity: order — pure GSL CDF/quantile call (no stream consumption); keep the identical GSL function (F2)
     return gsl_cdf_lognormal_P(x, mu, sigma);
 }
 
@@ -248,6 +253,7 @@ double GammaSampler::sample(LocalRng& rng) const{
     if (std::isnan(theta)) // CV=0
         value = mu;
     else
+        // parity: order — local RNG stream: draw call order fixes stream state
         value = rng.gamma(k, theta);
 
     if (truncate && value > *truncate)
@@ -268,6 +274,7 @@ double GammaSampler::cdf(double x) const {
         else return 0.0;
     }
 
+    // parity: order — pure GSL CDF/quantile call (no stream consumption); keep the identical GSL function (F2)
     return gsl_cdf_gamma_P(x, k, theta);
 }
         
@@ -303,6 +310,7 @@ double BetaSampler::sample(LocalRng& rng) const{
         return a;
     }else{
         assert( a>0.0 && b>0.0 );
+        // parity: order — local RNG stream: draw call order fixes stream state
         return rng.beta( a, b );
     }
 }

@@ -111,6 +111,7 @@ bool Diagnostic::isPositive( LocalRng& rng, double dens, double densHRP2 ) const
         // dens_lim is dens_50 in this case
         double pPositive = 1.0 + specificity * (dens / (dens + dens_lim) - 1.0);
 //         double pPositive = (dens + dens_lim - dens_lim * specificity) / (dens + dens_lim);       // equivalent
+        // parity: order — local RNG stream: draw call order fixes stream state
         return rng.bernoulli( pPositive );
     }
 }

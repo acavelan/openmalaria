@@ -81,6 +81,7 @@ void checkpoint (istream& stream, SimTime &endTime, SimTime &estEndTime, Populat
         // to be negative
         sim::s_t0 & stream;
         sim::s_t1 & stream;
+        // parity: order — checkpoint serialises master RNG state; v2 stream format frozen (do not reorder with other state)
         util::master_RNG.checkpoint(stream);
     } catch (const util::checkpoint_error& e) { // append " (pos X of Y bytes)"
         ostringstream pos;
@@ -125,6 +126,7 @@ void checkpoint (ostream& stream, SimTime &endTime, SimTime &estEndTime, Populat
     
     sim::s_t0 & stream;
     sim::s_t1 & stream;
+    // parity: order — checkpoint serialises master RNG state; v2 stream format frozen (do not reorder with other state)
     util::master_RNG.checkpoint(stream);
     
     if (stream.fail())

@@ -311,6 +311,7 @@ protected:
     }
     
     virtual CMDTOut exec( CMHostData hostData ) const{
+        // parity: d — decision-tree contract: child order = XSD sequence, cumulative keys, one uniform_01 per Random node (plan §3d)
         auto it = branches.upper_bound( hostData.human.rng.uniform_01() );
         assert( it != branches.end() );
         return it->second->exec( hostData );
@@ -666,6 +667,7 @@ const CMDecisionTree& CMDecisionTree::create( const scnXml::DecisionTree& node, 
 const CMDecisionTree& CMDTMultiple::create( const scnXml::DTMultiple& node, bool isUC ){
     CMDTMultiple* self = new CMDTMultiple();
     for( const scnXml::DTCaseType& sn : node.getCaseType() ){
+        // parity: d — child chain built in XSD element-sequence order (plan §3d)
         self->children.push_back( &CMDTCaseType::create(sn, isUC) );
     }
     for( const scnXml::DTInfectionOrigin& sn : node.getInfectionOrigin() ){
@@ -761,6 +763,7 @@ const CMDecisionTree& CMDTRandom::create(
     
     double cum_p = 0.0;
     for( const scnXml::Outcome& outcome : node.getOutcome() ){
+        // parity: d — cumulative keys summed in XSD outcome order; map<double> numeric key order; last key must be 1 (plan §3d)
         cum_p += outcome.getP();
         result->branches.insert( make_pair(cum_p, &CMDecisionTree::create( outcome, isUC )) );
     }

@@ -134,6 +134,7 @@ void initNHypnozoites(){
 
 
 int sampleNHypnozoites(LocalRng& rng){
+    // parity: order — local RNG stream: draw call order fixes stream state
     double x = rng.uniform_01();
     // upper_bound finds the first key (cumulative probability) greater than x:
     auto it = nHypnozoitesProbMap.upper_bound( x );
@@ -146,6 +147,7 @@ int sampleNHypnozoites(LocalRng& rng){
 SimTime sampleReleaseDelay(LocalRng& rng){
     bool isFirstRelease = true;
     if( pSecondRelease == 1.0 ||
+        // parity: order — local RNG stream: draw call order fixes stream state
         (pSecondRelease > 0.0 && rng.bernoulli(pSecondRelease)) ){
         isFirstRelease = false;
     }
@@ -288,6 +290,7 @@ void VivaxBrood::treatmentLS(){
     vector<SimTime> survivingZoites;
     survivingZoites.reserve( releaseDates.size() );   // maximum size we need
     for( auto it = releaseDates.begin(); it != releaseDates.end(); ++it ){
+        // parity: order — local RNG stream: draw call order fixes stream state
         if( !rng.bernoulli( pClearEachHypnozoite ) ){
             survivingZoites.push_back( *it );    // copy            
         }
@@ -315,6 +318,7 @@ WHVivax::WHVivax( LocalRng& rng, double comorbidityFactor ) :
         cout << "New host" << endl;
     }
 #endif
+    // parity: order — local RNG stream: draw call order fixes stream state
     noPQ = ( pHetNoPQ > 0.0 && rng.bernoulli(pHetNoPQ) );
 }
 
@@ -403,6 +407,7 @@ void WHVivax::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nN
                 // Blood stage is primary. oldCumInf wasn't updated yet.
                 //double pPrimaryInfEvent = matImmClin * pPrimaryA * pPrimaryB / (pPrimaryB+oldCumInf);
 				double pPrimaryInfEvent = matImmClin * pPrimaryA * exp(-pPrimaryB * oldCumInf);
+                // parity: order — local RNG stream: draw call order fixes stream state
                 clinicalEvent = rng.bernoulli( pPrimaryInfEvent );
                 inf->setHadEvent( clinicalEvent );
 					
@@ -411,6 +416,7 @@ void WHVivax::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nN
                     // to count the current brood in the number of cumulative primary infections 
 					
                     double pFirstRelapseEvent = matImmClin * pRelapseOneA * exp(-pRelapseOneB * (oldCumInf-1));
+                    // parity: order — local RNG stream: draw call order fixes stream state
                     clinicalEvent = rng.bernoulli( pFirstRelapseEvent );     
                     inf->setHadRelapse( clinicalEvent );
       
@@ -418,23 +424,27 @@ void WHVivax::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nN
                              
 				    if (vivaxClinOption=="A1j" || vivaxClinOption=="A2j"){			 
                        double pFirstRelapseEvent = matImmClin * pRelapseOneA * exp(-pRelapseOneB * (oldCumInf-1));
+                       // parity: order — local RNG stream: draw call order fixes stream state
                        clinicalEvent = rng.bernoulli( pFirstRelapseEvent );     
                        inf->setHadRelapse( clinicalEvent );
 				    }
 				    if (vivaxClinOption=="B1j" || vivaxClinOption=="B2j"){			 
                        double pSecondRelapseEvent = matImmClin * pRelapseTwoA * exp(-pRelapseTwoB * (oldCumInf-1));
+                       // parity: order — local RNG stream: draw call order fixes stream state
                        clinicalEvent = rng.bernoulli( pSecondRelapseEvent );
 					   inf->setHadRelapse( clinicalEvent );
 			        }
 				                    
             } else {
                      double pSecondRelapseEvent = matImmClin * pRelapseTwoA * exp(-pRelapseTwoB * (oldCumInf-1));
+                     // parity: order — local RNG stream: draw call order fixes stream state
                      clinicalEvent = rng.bernoulli( pSecondRelapseEvent );
                     }
              
 
             if( clinicalEvent ){
                 pSevere = pSevere + (1.0 - pSevere) * pEventIsSevere;
+                // parity: order — local RNG stream: draw call order fixes stream state
                 if( rng.bernoulli( pEventIsSevere ) )
                     morbidity = static_cast<Pathogenesis::State>( morbidity | Pathogenesis::STATE_SEVERE );
                 else
@@ -488,7 +498,9 @@ void WHVivax::optionalPqTreatment( Host::Human& human ){
     // PQ clears liver stages. We don't worry about the effect of PQ on
     // gametocytes, because these are always cleared by blood-stage drugs with
     // Vivax, and PQ is not given without BS drugs. NOTE: this ignores drug failure.
+    // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
     if (pReceivePQ > 0.0 && (ignoreNoPQ || !noPQ) && human.rng.bernoulli(pReceivePQ)){
+        // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
         if( human.rng.bernoulli(effectivenessPQ) ){
             for( auto it = infections.begin(); it != infections.end(); ++it ){
                 it->treatmentLS();
@@ -509,6 +521,7 @@ bool WHVivax::treatSimple( Host::Human& human, SimTime timeLiver, SimTime timeBl
             "stages is incompatible with case-management pUseUncomplicated "
             "(liverStageDrug) option; it is suggested to use the former over the latter");
         }
+        // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
         if( (ignoreNoPQ || !noPQ) && (effectivenessPQ == 1.0 || human.rng.bernoulli(effectivenessPQ)) ){
             if( timeLiver >= sim::zero() ){
                 treatExpiryLiver = max( int(treatExpiryLiver), sim::nowOrTs1() + timeLiver );

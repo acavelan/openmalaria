@@ -172,6 +172,7 @@ double VaccineComponent::getInitialEfficacy (LocalRng& rng, size_t numPrevDoses,
     if (ime == 0.0){
         return 0.0;
     } else if (ime < 1.0) {
+        // parity: order — local RNG stream: draw call order fixes stream state
         double result = rng.betaWithMean (ime, efficacyB);
         //NOTE(validation):: Without extra validation in random, the first difference is noticed here:
         util::streamValidate(result);

@@ -192,6 +192,7 @@ VectorModel::VectorModel(vector<double> initEIR, int interventionMode, vector<st
                          vector<std::unique_ptr<Anopheles::EmergenceRateEstimator>> emergenceRateEstimatorsList, map<string, size_t> speciesIndexList,
                          int populationSize)
     : TransmissionModel(std::move(initEIR), interventionMode, WithinHost::Genotypes::N())
+    // parity: order — vector-model LocalRng copy-seeded from master at construction; construction order frozen
     , m_rng(util::master_RNG)
     , initIterations(0)
     , species(std::move(speciesList))
