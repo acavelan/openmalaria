@@ -119,8 +119,6 @@ class Sampler final {
     Sampler() = default;
     Sampler& operator=(const Sampler&) = default;
 
-    std::unique_ptr<Sampler> clone() const { return std::make_unique<Sampler>(*this); }
-
     static unique_ptr<Sampler> fromMeanCV(Kind kind, double mean, double CV,
                                           std::optional<double> truncate = std::nullopt);
     static unique_ptr<Sampler> fromMeanVariance(Kind kind, double mean, double variance,
@@ -149,13 +147,10 @@ class Sampler final {
   private:
     Kind kind = Kind::Lognormal;
     // Lognormal kind: log-space mu, sigma. Gamma kind: mean mu, k, theta.
-    // CV / variance are the configuring inputs; truncate caps samples.
     double mu = std::numeric_limits<double>::signaling_NaN();
     double sigma = std::numeric_limits<double>::signaling_NaN();
     double k = std::numeric_limits<double>::signaling_NaN();
     double theta = std::numeric_limits<double>::signaling_NaN();
-    double variance = std::numeric_limits<double>::signaling_NaN();
-    double CV = std::numeric_limits<double>::signaling_NaN();
     std::optional<double> truncate = std::nullopt;
 };
 

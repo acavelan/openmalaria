@@ -406,13 +406,13 @@ class OptionCodeMap {
     }
 };
 
-void ModelOptions::init(const SimClock& clock, scnXml::Model::ModelOptionsOptional& optionsElt, ModelNameProvider mnp) {
+void ModelOptions::init(const SimClock& clock, scnXml::Model::ModelOptionsOptional& optionsElt, ModelNames modelName) {
     OptionCodeMap codeMap;
 
     // Set options to legacy defaults, then override any given in the XML file:
     options = getLegacyDefaultModelOptions();
 
-    const ModelNames namedModelToUse = mnp.modelInUse;
+    const ModelNames namedModelToUse = modelName;
     const bool useNamedModel = namedModelToUse != ModelNames::none;
     if (useNamedModel) {
         if (namedModelToUse == ModelNames::base) {

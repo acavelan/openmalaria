@@ -30,6 +30,7 @@
 #include "util/CommandLine.h"
 #include "util/errors.h"
 
+#include <list>
 #include <vector>
 #include <limits>
 
@@ -170,7 +171,7 @@ struct TrapParams {
 struct TrapData {
     size_t instance;                    // index in trapParams
     double initialAvail;                // initial availability (avail per trap * num traps)
-    unique_ptr<DecayFunction> availHet; // parameter for decay of availability
+    double availHet = 0.0;              // sampled heterogeneity factor
     SimTime deployTime = never();       // deploy time (for decay function)
     SimTime expiry = never();           // date at which this intervention should be deleted
 };

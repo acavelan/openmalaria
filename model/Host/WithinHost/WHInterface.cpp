@@ -14,12 +14,6 @@ bool reportInfectionsByGenotype = false;
 bool opt_vivax_simple = false, opt_dummy_whm = false, opt_empirical_whm = false, opt_molineaux_whm = false,
      opt_penny_whm = false, opt_common_whm = false;
 
-// -----  static functions  -----
-
-TreatmentId WHInterface::addTreatment(RunContext& ctx, const scnXml::TreatmentOption& desc) {
-    return Treatments::addTreatment(ctx, desc);
-}
-
 // Variant selection (ModelOptions flags set by WHInterface::init): one line
 // per derived class; the Mock variant is created only by unittest/WHMock.cpp.
 unique_ptr<WHInterface> WHInterface::createWithinHostModel(RunContext& ctx, LocalRng& rng, double comorbidityFactor) {

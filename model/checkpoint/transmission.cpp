@@ -35,13 +35,13 @@ namespace OpenMalaria {
 
 void checkpoint(Archive& a, SimpleDecayingValue& sdv) {
     a.value(sdv.deploy_t);
-    // het = per-deployment RNG sample of the decay curve. Deployments are
-    // replayed by interventions at restore; sampled clones aren't on the
-    // wire yet (ponytail: extend with a hetFactor payload when a species
-    // intervention needs round-tripping, see HANDOFF limits).
-    bool hasSample = sdv.het != nullptr;
+    // decay_factor is the per-deployment RNG sample. Deployments are
+    // replayed by interventions at restore; sampled factors aren't on the
+    // wire yet (extend with a factor payload when a species intervention
+    // needs round-tripping, see HANDOFF limits).
+    bool hasSample = sdv.decay_factor.has_value();
     a.boolean(hasSample);
-    if (a.reading() && hasSample && sdv.het == nullptr)
+    if (a.reading() && hasSample && !sdv.decay_factor)
         throw checkpoint_error("checkpoint: sampled decay deployment not yet supported");
 }
 

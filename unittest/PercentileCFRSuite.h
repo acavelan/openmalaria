@@ -71,7 +71,7 @@ class PercentileCFRSuite : public CxxTest::TestSuite {
             scnXml::DoubleValue oviposit(0.0), bloodIndex(0.9);
             scnXml::Mosq mosq(rest, eip, laidEggs, seeking, survFeed, avail, biting, restSite, resting, oviposit,
                               bloodIndex);
-            PerHostAnophParams::init(UnittestUtil::ctx(), mosq);
+            UnittestUtil::ctx().anophParams->emplace_back(mosq);
             PerHostAnophParams::setEntoAvailabilityFactor(UnittestUtil::ctx(), 0, 1.0);
         }
         PerHostAnophParams::calcAvailabilityPercentiles(UnittestUtil::ctx());

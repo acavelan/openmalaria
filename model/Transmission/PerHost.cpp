@@ -100,8 +100,6 @@ bool PerHost::hasActiveInterv(Component::Type type) const {
 
 namespace OpenMalaria {
 
-void PerHostAnophParams::init(RunContext& ctx, const scnXml::Mosq& mosq) { ctx.anophParams->emplace_back(mosq); }
-
 size_t PerHostAnophParams::numSpecies(RunContext& ctx) { return ctx.anophParams->size(); }
 
 const PerHostAnophParams& PerHostAnophParams::get(RunContext& ctx, size_t species) {

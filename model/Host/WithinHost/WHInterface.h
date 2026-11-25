@@ -46,7 +46,6 @@ using namespace std;
 namespace scnXml {
 class Scenario;
 class Model;
-class TreatmentOption;
 class LiverStageDrug;
 }
 class UnittestUtil;
@@ -245,10 +244,6 @@ class WHInterface {
     /// Initialise static parameters (all model variants; selects the variant
     /// via ModelOptions, xml/scenario.cpp).
     static void init(RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario);
-
-    /** Configure a new treatment option, and return the code used to select
-     * that option later. */
-    static TreatmentId addTreatment(RunContext& ctx, const scnXml::TreatmentOption& desc);
 
     /// Create an instance using the appropriate model (one line per variant).
     static unique_ptr<WHInterface> createWithinHostModel(RunContext& ctx, LocalRng& rng, double comorbidityFactor);

@@ -262,11 +262,8 @@ void update(RunContext& ctx, Human& human, TransmissionModel& transmission, Host
     const double age1 = inYears(human.age(ctx.clock.ts1()));
 
     // age1 used only in PerHost::relativeAvailabilityAge(); difference to age0 should be minor
-    transmission.getEIR(human, age0, age1, scratch.EIR_per_genotype_i, scratch.EIR_per_genotype_l);
-
-    const double eir_i = vectors::sum(scratch.EIR_per_genotype_i);
-    const double eir_l = vectors::sum(scratch.EIR_per_genotype_l);
-    const double eir = eir_i + eir_l;
+    const auto [eir_i, eir_l, eir] =
+        transmission.getEIR(human, age0, age1, scratch.EIR_per_genotype_i, scratch.EIR_per_genotype_l);
 
     double x = 0.0;
     if (eir > 0)

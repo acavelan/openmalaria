@@ -210,15 +210,14 @@ void run_simulation(RunContext& ctx, const std::string& scenarioFile) {
         // parity: f — validation completes BEFORE ctx.master_RNG.seed(): load->check->seed (plan §3f); never seed before checks
         ctx.master_RNG.seed(iseed, 0); // Init RNG with Iseed (--seed overrides)
     }
-    ModelNameProvider modelNameProvider(scenario->getModel());
+    const ModelNames modelName = read_model_name(scenario->getModel());
 
     // 2) elements depending on only elements initialised in (1):
-    ctx.clock.init(ctx, *scenario, modelNameProvider); // Also reads survey dates.
+    ctx.clock.init(ctx, *scenario, modelName); // Also reads survey dates.
 
     // 3) elements depending on only elements initialised in (2).
-    Parameters parameters(scenario->getModel().getParameters(), modelNameProvider); // Depends on ModelNameProvider.
-    ModelOptions::init(ctx.clock, scenario->getModel().getModelOptions(),
-                       modelNameProvider); // Depends on ModelNameProvider.
+    Parameters parameters(scenario->getModel().getParameters(), modelName);
+    ModelOptions::init(ctx.clock, scenario->getModel().getModelOptions(), modelName);
 
     // 4) elements depending on only elements initialised in (3).
     diagnostics::init(ctx, parameters, *scenario); // Depends on Parameters.

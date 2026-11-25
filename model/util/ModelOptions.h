@@ -306,7 +306,7 @@ class ModelOptions {
     * Initialize the set of model options to use, based on input XML contents.
     */
     static void init(const SimClock& clock, xsd::cxx::tree::optional<scnXml::OptionSet, false>& optionsElt,
-                     ModelNameProvider mnp);
+                     ModelNames modelName);
 
   public:
     /*

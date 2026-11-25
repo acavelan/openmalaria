@@ -51,9 +51,6 @@ class PerHostAnophParams {
     PerHostAnophParams(const PerHostAnophParams&) = delete;
     PerHostAnophParams& operator=(const PerHostAnophParams&) = delete;
 
-    /// Register one species' parameters (registry: (*ctx.anophParams)).
-    static void init(RunContext& ctx, const scnXml::Mosq& mosq);
-
     /// Get the number of vector species
     static size_t numSpecies(RunContext& ctx);
 

@@ -51,7 +51,7 @@ size_t LSTMDrug::getIndex() const {
     return typeData->index; // Conversion: parent drug's index
 }
 
-bool comp(pair<double, double> lhs, pair<double, double> rhs) { return lhs.first < rhs.first; }
+bool comp(LSTMDrug::Dose lhs, LSTMDrug::Dose rhs) { return lhs.first < rhs.first; }
 
 // Create our list of doses. Optimise for the case where we only have 1 or less
 // per day, but be able to handle more.
@@ -59,7 +59,7 @@ bool comp(pair<double, double> lhs, pair<double, double> rhs) { return lhs.first
 
 void LSTMDrug::medicate(double time, double qty) {
     // Insert in the right position to maintain sorting:
-    auto elt = make_pair(time, qty);
+    LSTMDrug::Dose elt{time, qty};
     auto pos = lower_bound(doses.begin(), doses.end(), elt, comp);
     doses.insert(pos, std::move(elt));
     assert(is_sorted(doses.begin(), doses.end(), comp));
@@ -95,7 +95,7 @@ double LSTMDrugOneComp::calculateDrugFactor(LocalRng& rng, Infection* inf, doubl
     const double Kn = drugPD.IC50_pow_slope(rng, typeData->index, inf);
 
     double time = 0.0;
-    typedef pair<double, double> TimeConc;
+    typedef LSTMDrug::Dose TimeConc;
     for (TimeConc time_conc : doses) {
         // we iteratate through doses in time order (since doses are sorted)
         if (time_conc.first < 1.0 /*i.e. today*/) {
@@ -128,7 +128,7 @@ void LSTMDrugOneComp::updateConcentration(double body_mass) {
     double neg_elim_rate = neg_elim_sample * pow(body_mass, typeData->neg_m_exp);
     concentration *= exp(neg_elim_rate);
     size_t doses_taken = 0;
-    typedef pair<double, double> TimeConc;
+    typedef LSTMDrug::Dose TimeConc;
     for (TimeConc& time_conc : doses) {
         // we iteratate through doses in time order (since doses are sorted)
         if (time_conc.first < 1.0 /*i.e. today*/) {
@@ -296,7 +296,7 @@ double LSTMDrugThreeComp::calculateDrugFactor(LocalRng& rng, Infection* inf, dou
     double time = 0.0;        // time since start of day
     double totalFactor = 1.0; // survival factor for whole day
 
-    typedef pair<double, double> TimeConc;
+    typedef LSTMDrug::Dose TimeConc;
     for (const TimeConc& time_conc : doses) {
         // we iteratate through doses in time order (since doses are sorted)
         if (time_conc.first < 1.0 /*i.e. today*/) {
@@ -341,7 +341,7 @@ void LSTMDrugThreeComp::updateConcentration(double body_mass) {
     concABC *= exp(nka);
 
     size_t doses_taken = 0;
-    typedef pair<double, double> TimeConc;
+    typedef LSTMDrug::Dose TimeConc;
     for (TimeConc& time_conc : doses) {
         // we iteratate through doses in time order (since doses are sorted)
         if (time_conc.first < 1.0 /*i.e. today*/) {
@@ -552,7 +552,7 @@ double LSTMDrugConversion::calculateDrugFactor(LocalRng& rng, Infection* inf, do
     double time = 0.0;        // time since start of day
     double totalFactor = 1.0; // survival factor for whole day
 
-    typedef pair<double, double> TimeConc;
+    typedef LSTMDrug::Dose TimeConc;
     for (const TimeConc& time_conc : doses) {
         // we iterate through doses in time order (since doses are sorted)
         if (time_conc.first < 1.0 /*i.e. today*/) {
@@ -591,7 +591,7 @@ void LSTMDrugConversion::updateConcentration(double body_mass) {
 
     double time = 0.0, duration;
     size_t doses_taken = 0;
-    typedef pair<double, double> TimeConc;
+    typedef LSTMDrug::Dose TimeConc;
     for (TimeConc& time_conc : doses) {
         // we iteratate through doses in time order (since doses are sorted)
         if (time_conc.first < 1.0 /*i.e. today*/) {

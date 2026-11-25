@@ -71,7 +71,6 @@ unique_ptr<Sampler> Sampler::fromMeanCV(Kind kind, double mean, double CV, std::
             throw xml_scenario_error("gamma: required CV >= 0");
 
         sampler->mu = mean;
-        sampler->CV = CV;
 
         if (CV == 0.0)
             return sampler;
@@ -108,7 +107,6 @@ unique_ptr<Sampler> Sampler::fromMeanCV(Kind kind, double mean, double CV, std::
     // Var = (CV * mean)²
     const double a = 1 + (CV * CV);
 
-    sampler->CV = CV;
     sampler->mu = log(mean / sqrt(a));
     sampler->sigma = sqrt(log(a));
 
@@ -127,13 +125,12 @@ unique_ptr<Sampler> Sampler::fromMeanVariance(Kind kind, double mean, double var
             throw xml_scenario_error("gamma: required variance >= 0");
 
         sampler->mu = mean;
-        sampler->variance = variance;
 
         if (variance == 0.0)
             return sampler;
 
         // k = mu^2 / variance; k * theta = mean:
-        sampler->k = (sampler->mu * sampler->mu) / sampler->variance;
+        sampler->k = (sampler->mu * sampler->mu) / variance;
         sampler->theta = sampler->mu / sampler->k;
         return sampler;
     }
@@ -241,9 +238,6 @@ void BetaSampler::setParamsMV(double mean, double variance) {
         b = c - a;
     } else if (variance == 0.0) {
         // Not using the Beta distirbution, we simply return the mean when sampling
-        if (variance != 0.0) {
-            throw xml_scenario_error("BetaSampler::setParamsMV: require variance ≥ 0");
-        }
         a = mean;
         b = 0.0;
     } else

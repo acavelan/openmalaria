@@ -347,7 +347,7 @@ TransmissionModel* createVectorModel(RunContext& ctx, const scnXml::Entomology& 
     for (size_t i = 0; i < numSpecies; ++i) {
         auto anoph = anophelesList[i];
 
-        PerHostAnophParams::init(ctx, anoph.getMosq());
+        ctx.anophParams->emplace_back(anoph.getMosq());
 
         AnophelesModel* anophModel =
             createAnophelesModel(ctx, i, anoph, initialisationEIR, populationSize, interventionMode);

@@ -23,6 +23,7 @@
 #pragma once
 
 #include <string.h>
+#include <array>
 #include <fstream>
 
 #include "Clock.h"
@@ -272,9 +273,9 @@ class TransmissionModel {
      * @param EIR Out-vector of EIR per parasite genotype. The length is also set
      *    by the called function. Where genotype tracking is not supported (e.g.
      *    the non-vector model), the length is set to one.
-     * @returns the sum of EIR across genotypes
+     * @returns imported EIR, local EIR, and their sum across genotypes
      */
-    double getEIR(Human& human, SimTime age, double ageYears, vector<double>& EIR_i, vector<double>& EIR_l) {
+    std::array<double, 3> getEIR(Human& human, SimTime age, double ageYears, vector<double>& EIR_i, vector<double>& EIR_l) {
         /* For the NonVector model, the EIR should just be multiplied by the
          * availability. For the Vector model, the availability is also required
          * for internal calculations, but again the EIR should be multiplied by the
@@ -291,7 +292,7 @@ class TransmissionModel {
             tsAdultEntoInocs += allEIR;
             tsNumAdults += 1;
         }
-        return allEIR;
+        return {sum_EIR_i, sum_EIR_l, allEIR};
     }
 
     /** Remove all current infections to mosquitoes, such that without re-
