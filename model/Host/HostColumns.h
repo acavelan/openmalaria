@@ -25,14 +25,55 @@
 #include "Clock.h"
 #include "interventions/ComponentId.h"
 #include "util/random.h"
+#include <cstdint>
+#include <cstdio>
 #include <limits>
 #include <map>
 #include <utility>
 #include <vector>
+#ifdef __linux__
+#include <sys/mman.h>
+#endif
 
 namespace OpenMalaria {
 
 class DecayFunction;
+
+/** Best-effort perf hint only, never a correctness path: madvise(MADV_HUGEPAGE)
+ * every writable anonymous mapping >= 2 MB of this process, found by walking
+ * /proc/self/maps. That covers the glibc heap segments the per-host column
+ * buffers actually live in — the in-code equivalent of
+ * GLIBC_TUNABLES=glibc.malloc.hugetlb=1 (measured -6.1% on the pop-10000
+ * benchmark), which pays off by flagging whole arena segments: a hint on an
+ * individual <2 MB malloc chunk buys nothing, since only a VMA spanning a
+ * 2 MB-aligned window can host a transparent huge page (THP defrag here is
+ * `madvise`, so even with THP=always only flagged regions get huge faults).
+ * Values are untouched (bit-exact); errors are ignored; no-op off Linux.
+ * Timing matters: this kernel gives fault-time THP to heap pages only while
+ * they live in one >= 2 MB VMA (brk's ~128 KB growth steps never do), so
+ * main() pads the heap with 64 MB single-step extensions, disables trim and
+ * flags it while it is still small. The later calls (after initial population
+ * setup, after checkpoint load, yearly in Population::update) pick up fresh
+ * mmap'd segments; re-flagging is idempotent. minSize filters which mappings
+ * to flag — main() passes 0, since at that point the heap is <2 MB. */
+inline void advise_heap_huge(std::size_t minSize = std::size_t(2) << 20) {
+#ifdef __linux__
+    if (FILE* f = fopen("/proc/self/maps", "r")) {
+        char line[512];
+        while (fgets(line, sizeof line, f)) {
+            unsigned long long lo, hi, off, inode;
+            char perms[8];
+            if (sscanf(line, "%llx-%llx %7s %llx %*x:%*x %llu",
+                       &lo, &hi, perms, &off, &inode) == 5
+                && perms[0] == 'r' && perms[1] == 'w' && off == 0 && inode == 0
+                && hi - lo >= minSize)
+                madvise(reinterpret_cast<void*>(static_cast<std::uintptr_t>(lo)), hi - lo,
+                        MADV_HUGEPAGE);
+        }
+        fclose(f);
+    }
+#endif
+}
 
 /** Per-host vector-intervention record (ITN/IRS/GVI), stored in DEPLOY-HISTORY
  * order (parity: c — the effect FP products multiply in this exact order;

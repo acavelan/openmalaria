@@ -416,6 +416,9 @@ void ckHumans(Archive& a, RunContext& ctx, Population& population) {
             population.humans.emplace_back(ctx, ctx.clock.nowOrTs1(), population.cols);
             ckHuman(a, ctx, population.humans.back());
         }
+        // Huge-page hint for the heap segments these appends grew (best-effort,
+        // see Host/HostColumns.h; the simulation proper starts right after).
+        advise_heap_huge();
     } else {
         for (auto& h : population.humans)
             ckHuman(a, ctx, h);

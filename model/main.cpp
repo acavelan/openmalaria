@@ -23,16 +23,38 @@
 #include "Clock.h"
 
 #include "RunContext.h"
+#include "Host/HostColumns.h" // advise_heap_huge() only
 
 #include "util/errors.h"
 #include "util/CommandLine.h"
 #include "xml/DocumentLoader.h" // facade: xsd tree exception types for the catch chain below
+
+#include <limits>
+#ifdef __linux__
+#include <malloc.h>
+#endif
 
 using namespace OpenMalaria;
 
 /// main() — parses the command line, runs the simulation (run.cpp),
 /// reports errors (error texts and order unchanged from the old main()).
 int main(int argc, char* argv[]) {
+#ifdef __linux__
+    // Heap huge-page setup (best-effort perf hints only, see Host/HostColumns.h;
+    // values untouched, bit-exact). Equivalent of
+    // GLIBC_TUNABLES=glibc.malloc.hugetlb=1 (measured -6.1% on the pop-10000
+    // benchmark). This kernel gives fault-time THP to a heap VMA >= 2 MB whose
+    // pages are first touched while it is flagged; brk grows it in ~128 KB
+    // steps, and each step lands in a fresh sub-2 MB VMA that never sees a
+    // huge page. So: single-step 64 MB extensions (TOP_PAD), no trim shrinking
+    // (a re-grow after trim also creates a fresh unflagged VMA), then flag the
+    // still-small heap — every page of the extension faults huge from then on.
+    // mallopt() on non-glibc is a no-op returning 0; ignore the result.
+    mallopt(M_TOP_PAD, 64 << 20);
+    mallopt(M_TRIM_THRESHOLD, std::numeric_limits<int>::max() / 8);
+#endif
+    advise_heap_huge(/*minSize=*/0);
+
     int exitStatus = EXIT_SUCCESS;
 
     string scenarioFile;
