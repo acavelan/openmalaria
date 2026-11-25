@@ -35,14 +35,13 @@
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/Infection.h"
-#include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "mon/Monitoring.h"
 #include "util/AgeGroupInterpolation.h"
 #include "util/CommandLine.h"
 #include "util/ModelOptions.h"
 #include "util/ModelNameProvider.h"
-#include "mon/init.h"
 #include "util/UnitParse.h"
 #include "util/errors.h"
 #include "xml/latentP.h"
@@ -522,7 +521,7 @@ void SimClock::initInterval(const scnXml::Scenario& scenario, util::ModelNamePro
     // that named model here.  It may possibly get overwritten later in this method if
     // the scenario also states an explicit interval value - a behaviour that exists so
     // that users have the ability to override the time step duration if they need to.
-    const util::ModelNames namedModelToUse = mnp.GetModelName();
+    const util::ModelNames namedModelToUse = mnp.modelInUse;
     const bool useNamedModel = namedModelToUse != util::ModelNames::none;
     if (useNamedModel)
     {
@@ -584,7 +583,7 @@ Parameters::Parameters( const scnXml::Model::ParametersOptional& xmlParameterVal
         nameToValueMap[name] = std::nullopt;
     }
 
-    const util::ModelNames namedModelToUse = mnp.GetModelName();
+    const util::ModelNames namedModelToUse = mnp.modelInUse;
     const bool useNamedModel = namedModelToUse != util::ModelNames::none;
     if (useNamedModel)
     {

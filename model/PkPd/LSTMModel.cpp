@@ -20,9 +20,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "PkPd/Drug/LSTMDrugType.h"
+#include "PkPd/LSTMDrugType.h"
 #include "util/checkpoint.h"
-#include "PkPd/Drug/LSTMDrug.h"
+#include "PkPd/LSTMDrug.h"
 #include "PkPd/LSTMModel.h"
 #include "PkPd/LSTMMedicate.h"
 #include "PkPd/LSTMTreatments.h"

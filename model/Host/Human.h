@@ -24,7 +24,7 @@
 #define Hmod_human
 #include "Clock.h"
 #include "core/RunContext.h"
-#include "humans/HostColumns.h"
+#include "Host/HostColumns.h"
 #include "Transmission/PerHost.h"
 #include "InfectionIncidenceModel.h"
 #include "interventions/HumanComponents.h"

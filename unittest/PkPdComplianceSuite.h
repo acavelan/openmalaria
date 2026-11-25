@@ -105,10 +105,6 @@ public:
         schedule.insert(make_pair(2, make_pair(0, dosage/2)));
     }
     
-    struct debugDrugSimulations {
-        double factor, f_error, f_rel_error;
-    };
-    
     string drugDebugOutputHeader(bool hasSecondDrug, string drugName){
         // title extension
         if ( hasSecondDrug ){

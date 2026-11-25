@@ -134,8 +134,6 @@ public:
     inline double getNegligibleConcentration() const{
         return negligible_concentration;
     }
-    inline double neg_m_exponent() const{ return neg_m_exp; }
-    inline double molecular_weight_ratio() const{ return mwr; }
     
     /// Generate IC50 sample of metabolite
     inline NormalSample IC50_correlated_sample(NormalSample parent, LocalRng& rng) const {
@@ -217,9 +215,6 @@ public:	// DrugRegistry (LSTMDrugType.cpp) and LSTMDrugPD read these directly
 struct DrugRegistry {
     /** Clear previous data. Only needed for testing. */
     void clear();
-    
-    /** Get the number of drug types. */
-    size_t numDrugTypes() const;
     
     /** Find a DrugType by its abbreviation, and returns its index.
      *

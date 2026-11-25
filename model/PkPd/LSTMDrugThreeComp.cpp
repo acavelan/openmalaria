@@ -24,9 +24,9 @@
 // "Mathematical Expressions of the Pharmacokinetic and Pharmacodynamic Models
 // implemented in the Monolix software", Julie Bertrand and France Mentré, Sept
 // 2008. From page 37, in particular equation (1.72) p44.
-#include "PkPd/Drug/LSTMDrug.h"
+#include "PkPd/LSTMDrug.h"
 #include "util/checkpoint.h"
-#include "PkPd/Drug/LSTMDrugType.h"
+#include "PkPd/LSTMDrugType.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/errors.h"
 #include "util/StreamValidator.h"
@@ -41,7 +41,7 @@ namespace OM { namespace PkPd {
 void LSTMDrug::updateCached(double body_mass) const{
     if( last_bm == body_mass ) return;
     
-    double k = elim_sample * pow(body_mass, typeData->neg_m_exponent());
+    double k = elim_sample * pow(body_mass, typeData->neg_m_exp);
     
     const double a0 = k*k21*k31;
     const double a1 = k*k31 + k21*k31 + k21*k13 + k*k21 + k31*k12;

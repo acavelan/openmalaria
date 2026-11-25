@@ -27,7 +27,7 @@
 #include "util/mod.h"
 #include "util/random.h"
 #include "Host/WithinHost/Genotypes.h"
-#include "PkPd/Drug/LSTMDrugType.h"
+#include "PkPd/LSTMDrugType.h"
 #include "PkPd/LSTMMedicate.h"
 #include "PopulationAgeStructure.h"
 #include <memory>

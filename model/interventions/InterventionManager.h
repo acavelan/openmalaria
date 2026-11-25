@@ -40,7 +40,7 @@ namespace interventions {
 class InterventionManager {
 public:
     /** Read XML descriptions. */
-    static void init (RunContext& ctx, const scnXml::Interventions& intervElt, const Population &population, Transmission::TransmissionModel& transmission);
+    static void init (RunContext& ctx, const scnXml::Interventions& intervElt, Transmission::TransmissionModel& transmission);
     
     /// Checkpointing: most members are only set from XML,
     /// nextTimed varies but is re-set by loadFromCheckpoint; only

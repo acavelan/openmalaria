@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/Human.h"
 #include "mon/Monitoring.h"
 #include "util/random.h"

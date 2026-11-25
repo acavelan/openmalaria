@@ -26,7 +26,7 @@
 #include "Clock.h"
 #include "util/checkpoint.h"
 #include "core/RunContext.h"
-#include "humans/HostColumns.h"  // leaf: SoA columns owned by Population (IvRecord)
+#include "Host/HostColumns.h"  // leaf: SoA columns owned by Population (IvRecord)
 #include "interventions/ComponentId.h"  // leaf: Component::Type + ComponentId only
 #include "util/AgeGroupInterpolation.h"
 #include "util/sampler.h"

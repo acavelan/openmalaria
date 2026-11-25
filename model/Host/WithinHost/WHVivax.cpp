@@ -23,7 +23,7 @@
 #include "core/RunContext.h"
 #include "util/checkpoint.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/Infection.h"
@@ -360,7 +360,7 @@ void WHInterface::update_vivax(Host::Human &human, LocalRng& rng, int &nNewInfs_
 				double pPrimaryInfEvent = matImmClin * pPrimaryA * exp(-pPrimaryB * oldCumInf);
                 // parity: order — local RNG stream: draw call order fixes stream state
                 clinicalEvent = rng.bernoulli( pPrimaryInfEvent );
-                inf->setHadEvent( clinicalEvent );
+                inf->hadEvent = clinicalEvent;
 					
 			} else if ( result.newRelapseBS ){
                     // Blood stage is a relapse. oldCumInf wasn't updated yet. Subtract 1 from oldCumInf not
@@ -369,7 +369,7 @@ void WHInterface::update_vivax(Host::Human &human, LocalRng& rng, int &nNewInfs_
                     double pFirstRelapseEvent = matImmClin * pRelapseOneA * exp(-pRelapseOneB * (oldCumInf-1));
                     // parity: order — local RNG stream: draw call order fixes stream state
                     clinicalEvent = rng.bernoulli( pFirstRelapseEvent );     
-                    inf->setHadRelapse( clinicalEvent );
+                    inf->hadRelapse = clinicalEvent;
       
             } else if ( result.newRelapsebBS ){
                              
@@ -377,13 +377,13 @@ void WHInterface::update_vivax(Host::Human &human, LocalRng& rng, int &nNewInfs_
                        double pFirstRelapseEvent = matImmClin * pRelapseOneA * exp(-pRelapseOneB * (oldCumInf-1));
                        // parity: order — local RNG stream: draw call order fixes stream state
                        clinicalEvent = rng.bernoulli( pFirstRelapseEvent );     
-                       inf->setHadRelapse( clinicalEvent );
+                       inf->hadRelapse = clinicalEvent;
 				    }
 				    if (vivaxClinOption=="B1j" || vivaxClinOption=="B2j"){			 
                        double pSecondRelapseEvent = matImmClin * pRelapseTwoA * exp(-pRelapseTwoB * (oldCumInf-1));
                        // parity: order — local RNG stream: draw call order fixes stream state
                        clinicalEvent = rng.bernoulli( pSecondRelapseEvent );
-					   inf->setHadRelapse( clinicalEvent );
+					   inf->hadRelapse = clinicalEvent;
 			        }
 				                    
             } else {

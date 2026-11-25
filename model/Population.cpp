@@ -166,7 +166,7 @@ void registerContinousPopulationCallbacks(RunContext& ctx)
 
 void ctsHosts (Population &population, ostream& stream){
     // this option is intended for debugging human initialization; normally this should equal size.
-    stream << '\t' << population.getSize();
+    stream << '\t' << population.size;
 }
 
 void ctsHostDemography (RunContext& ctx, Population &population, ostream& stream){
@@ -182,8 +182,8 @@ void ctsHostDemography (RunContext& ctx, Population &population, ostream& stream
 }
 
 void ctsRecentBirths (Population &population, ostream& stream){
-    stream << '\t' << population.getRecentBirths();
-    population.resetRecentBirths();
+    stream << '\t' << population.recentBirths;
+    population.recentBirths = 0;
 }
 
 void ctsPatentHosts (RunContext& ctx, Population &population, ostream& stream){
@@ -201,7 +201,7 @@ void ctsImmunityh (Population &population, ostream& stream){
     for(const Host::Human &human : population.humans) {
         x += human.withinHostModel->getCumulative_h();
     }
-    x /= population.getSize();
+    x /= population.size;
     stream << '\t' << x;
 }
 
@@ -210,23 +210,23 @@ void ctsImmunityY (Population &population, ostream& stream){
     for(const Host::Human &human : population.humans) {
         x += human.withinHostModel->getCumulative_Y();
     }
-    x /= population.getSize();
+    x /= population.size;
     stream << '\t' << x;
 }
 
 void ctsMedianImmunityY (Population &population, ostream& stream){
     vector<double> list;
-    list.reserve( population.getSize() );
+    list.reserve( population.size );
     for(const Host::Human &human : population.humans) {
         list.push_back( human.withinHostModel->getCumulative_Y() );
     }
     sort( list.begin(), list.end() );
     double x;
-    if( mod_nn(population.getSize(), 2) == 0 ){
-        size_t i = population.getSize() / 2;
+    if( mod_nn(population.size, 2) == 0 ){
+        size_t i = population.size / 2;
         x = (list[i-1]+list[i])/2.0;
     }else{
-        x = list[population.getSize() / 2];
+        x = list[population.size / 2];
     }
     stream << '\t' << x;
 }
@@ -248,7 +248,7 @@ void ctsITNCoverage (Population &population, ostream& stream){
     for(const Host::Human &human : population.humans) {
         nActive += human.perHostTransmission.hasActiveInterv( interventions::Component::ITN );
     }
-    double coverage = static_cast<double>(nActive) / population.getSize();
+    double coverage = static_cast<double>(nActive) / population.size;
     stream << '\t' << coverage;
 }
 
@@ -257,7 +257,7 @@ void ctsIRSCoverage (Population &population, ostream& stream){
     for(const Host::Human &human : population.humans) {
         nActive += human.perHostTransmission.hasActiveInterv( interventions::Component::IRS );
     }
-    double coverage = static_cast<double>(nActive) / population.getSize();
+    double coverage = static_cast<double>(nActive) / population.size;
     stream << '\t' << coverage;
 }
 
@@ -266,7 +266,7 @@ void ctsGVICoverage (Population &population, ostream& stream){
     for(const Host::Human &human : population.humans) {
         nActive += human.perHostTransmission.hasActiveInterv( interventions::Component::GVI );
     }
-    double coverage = static_cast<double>(nActive) / population.getSize();
+    double coverage = static_cast<double>(nActive) / population.size;
     stream << '\t' << coverage;
 }
 

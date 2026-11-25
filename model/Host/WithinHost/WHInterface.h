@@ -25,14 +25,14 @@
 
 #include "Clock.h"
 #include "core/RunContext.h"
-#include "humans/HostColumns.h"
-#include "infections/SlotAllocator.h"
+#include "Host/HostColumns.h"
+#include "Host/SlotAllocator.h"
 #include "util/random.h"
 #include "util/sampler.h"
 #include "util/errors.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Treatments.h"
-#include "Host/WithinHost/Pathogenesis/State.h"
+#include "Host/WithinHost/State.h"
 #include "Host/WithinHost/Infection/Infection.h"
 
 #include "Parameters.h"
@@ -143,9 +143,11 @@ public:
      *  update cum_prim_inf_ref())
      */
     UpdResult update(LocalRng& rng);
-    
-    inline void setHadEvent( bool hadEvent ){ this->hadEvent = hadEvent; }
-    inline void setHadRelapse( bool hadRelapse ){ this->hadRelapse = hadRelapse; }
+
+    // Whether a clinical / relapse event has been triggered by this brood.
+    // Written by update_vivax; no in-model reader — kept for the checkpoint wire.
+    bool hadEvent;
+    bool hadRelapse;
     
     /** Equivalent to a blood stage existing. We do not model incidence of
      * gametocytes independently, thus this also tests existance of
@@ -179,11 +181,6 @@ private:
 	//Whether the later category of relapses has started
 	bool relapsebHasStarted;
 
-    // Whether any clinical event has been triggered by this brood
-    bool hadEvent;
-
-    // Whether a relapse event has been triggered by this brood
-    bool hadRelapse;
 	
 	// Infection origin
 	int origin;
@@ -356,7 +353,7 @@ public:
     InfectionOrigin getInfectionOrigin() const;
 
     /** The maximum number of infections a human can have: owned by
-     * SlotAllocator (model/infections/SlotAllocator.h), the single clamp
+     * SlotAllocator (model/Host/SlotAllocator.h), the single clamp
      * owner; see its comment for the two RNG-visible modes. */
 
 public:	// simple data + per-kind fragments (test suites and WH models touch these directly)

@@ -26,7 +26,7 @@
 #include "Clock.h"
 #include "util/checkpoint.h"
 #include "Parameters.h"
-#include "Host/WithinHost/Pathogenesis/State.h"
+#include "Host/WithinHost/State.h"
 #include "util/random.h"
 
 namespace scnXml{

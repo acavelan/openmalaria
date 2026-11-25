@@ -199,7 +199,6 @@ private:
         std::vector<double> PDi{m.mosq.probResting};
         std::vector<double> PEi{m.mosq.probOvipositing};
         std::vector<double> &svInit = m.forcedS_v;
-        std::vector<double> NvOguess(m.mosqEmergeRate.begin(), m.mosqEmergeRate.end());
 
         // Append active NHH host types (malaria-non-susceptible)
         for (const auto &[name, nhh] : m.nhhInstances) {

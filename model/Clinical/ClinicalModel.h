@@ -37,7 +37,6 @@ namespace OM { namespace Clinical {
 enum DoomedCause {
         DOOMED_EXPIRED = -35,   // codes less than or equal to this mean "dead now"
         DOOMED_NEXT_TS = -30,   // will expire on next time step
-        DOOMED_START_TIMER = -1,        // set on start of doomed timer
         NOT_DOOMED = 0, // all codes greater than this mean "already dead"; codes less than this mean a count-down to death has started
         DOOMED_TOO_OLD = 1,		///< died because reached age limit
         DOOMED_COMPLICATED = 4,	///< died from severe malaria or malaria with a coinfection

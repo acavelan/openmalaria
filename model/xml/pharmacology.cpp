@@ -22,7 +22,7 @@
 
 // model/xml/ conversion layer — pharmacology module: drug types/phenotypes,
 // treatment schedules and dosage tables from scnXml. Moved verbatim from
-// PkPd/Drug/LSTMDrugType.cpp, PkPd/LSTMTreatments.cpp and PkPd/LSTMModel.cpp
+// PkPd/LSTMDrugType.cpp, PkPd/LSTMTreatments.cpp and PkPd/LSTMModel.cpp
 // (the *.load() members became file-local read_* functions; all their
 // callers live in this file). Declarations for the member entry points stay
 // in the PkPd headers (scnXml forward-declared).
@@ -30,8 +30,8 @@
 #include "Clock.h"
 #include "Host/WithinHost/Genotypes.h"
 #include "Host/WithinHost/Infection/Infection.h"
-#include "PkPd/Drug/LSTMDrugType.h"
-#include "PkPd/Drug/LSTMDrug.h"
+#include "PkPd/LSTMDrugType.h"
+#include "PkPd/LSTMDrug.h"
 #include "PkPd/LSTMMedicate.h"
 #include "PkPd/LSTMTreatments.h"
 #include "util/errors.h"
@@ -214,10 +214,10 @@ LSTMDrugType::LSTMDrugType (RunContext& ctx, size_t index, const scnXml::PKPDDru
                 " restrictions required when num. phenotypes > 1" );
         }else{
             // All genotypes map to phenotype 0
-            genotype_mapping.assign( ctx.genotypes.getGenotypes().size(), 0 );
+            genotype_mapping.assign( ctx.genotypes.genotypes.size(), 0 );
         }
     }else{
-        const vector<Genotypes::Genotype>& genotypes = ctx.genotypes.getGenotypes();
+        const vector<Genotypes::Genotype>& genotypes = ctx.genotypes.genotypes;
         genotype_mapping.assign( genotypes.size(), 0 );
         for( size_t j = 0; j < genotypes.size(); ++j ){
             uint32_t phenotype = numeric_limits<uint32_t>::max();

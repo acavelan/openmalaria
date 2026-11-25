@@ -33,7 +33,6 @@ namespace Host {
     class Human;
 }
 namespace interventions {
-    class VaccineComponent;
     using util::LocalRng;
 
 // ———  sub-population removal  ———
@@ -69,7 +68,7 @@ namespace Vaccine{
 
 /** Per vaccine effect (type), per human details.
  * Phase 7.2a-ii: PerEffectPerHumanVaccine and PerHumanVaccine are gone —
- * per-human state is the VacRecord column (humans/HostColumns.h), read by
+ * per-human state is the VacRecord column (Host/HostColumns.h), read by
  * Human::vaccine_factor and written by interventions::vaccinate
  * (interventions/Vaccine.cpp). */
 

@@ -217,14 +217,8 @@ public:
     /** Called to initialise variables instead of a constructor. At this point,
      * the size of the human population is known but that population has not
      * yet been constructed. Called whether data is loaded from a check-point
-     * or not.
-     *
-     * @param anoph Data structure from XML to use
-     * @param initialisationEIR In/out parameter: TransmissionModel::initialisationEIR
-     * @param nonHumanHostPopulations Size of each non-human population
-     * @param populationSize Size of human population (assumed constant)
-     */
-    void initialise ( size_t species, MosquitoParams mosqParams);
+     * or not. */
+    void initialise (MosquitoParams mosqParams);
     
     ///@brief Initialisation helper functions
     //@{
@@ -303,11 +297,6 @@ public:
 
     /// Intermediatary from vector model equations used to calculate EIR
     inline double getInitPartialEIR() const{ return partialInitEIR[ctx.clock.moduloYearSteps(ctx.clock.ts0())] / initAvail; }
-    //@}
-
-    /// Intermediatary from vector model equations used to calculate EIR
-    inline const vector<double>& getPartialEIRImported() const{ return partialEIR_i; }
-    inline const vector<double>& getPartialEIRLocal() const{ return partialEIR_l; }
     //@}
 
 

@@ -67,11 +67,6 @@ void AgeStructure::estimateRemovalRates( RunContext& ctx, const scnXml::Demograp
 	ageGroupPercent[i]  = ageGroupPercent[i] * sumperc;
     }
 
-    /* NOTE: unused --- why?
-    double tol = 0.00000000001;
-    int maxcal = 500000;
-    int npar = 2;
-    int iw = 3; */
     double p1 = 0.371626412;
     double p2 = 0.841209593;
     // returns "double rss":

@@ -24,7 +24,7 @@
 // modules: non-malaria fevers (PathogenesisModel), neonatal mortality,
 // diagnostic selection, within-host treatment options and the whole
 // decision-tree / case-management construction from scnXml.
-// Moved verbatim from Host/WithinHost/Pathogenesis/PathogenesisModel.cpp,
+// Moved verbatim from Host/WithinHost/PathogenesisModel.cpp,
 // Host/NeonatalMortality.cpp and Host/WithinHost/Treatments.cpp. State stays
 // defined in the original files (extern re-declared below).
 
@@ -34,7 +34,7 @@
 #include "Parameters.h"
 #include "Host/NeonatalMortality.h"
 #include "Host/WithinHost/Diagnostic.h"
-#include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
+#include "Host/WithinHost/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Clinical/CM5DayCommon.h"
@@ -728,7 +728,7 @@ static void set_access_probabilities(const HS& hsDescription){
     }
 }
 // liverStageDrug handling was identical in both setHealthSystem paths:
-static void set_liver_stage(RunContext& ctx, const xsd::cxx::tree::optional<scnXml::LiverStageDrug>& elt){
+static void set_liver_stage(const xsd::cxx::tree::optional<scnXml::LiverStageDrug>& elt){
     if( ModelOptions::option(util::VIVAX_SIMPLE_MODEL) ){
         WithinHost::WHInterface::setHSParametersVivax( elt.present() ? &elt.get() : 0 );
     }else if( elt.present() ){
@@ -787,7 +787,7 @@ void ImmediateOutcomes::setHealthSystem (RunContext& ctx, const scnXml::HSImmedi
     
     useDiagnosticUC = hsDescription.getUseDiagnosticUC();
     
-    set_liver_stage(ctx, hsDescription.getLiverStageDrug());
+    set_liver_stage(hsDescription.getLiverStageDrug());
 }
 void DecisionTree5Day::setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& hsDescription){
     set_access_probabilities(hsDescription);
@@ -798,7 +798,7 @@ void DecisionTree5Day::setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& 
     CM5DayCommon::cureRateSevere = hsDescription.getCureRateSevere().getValue();
     CM5DayCommon::treatmentSevere = WHInterface::addTreatment( ctx, hsDescription.getTreatmentSevere() );
     
-    set_liver_stage(ctx, hsDescription.getLiverStageDrug());
+    set_liver_stage(hsDescription.getLiverStageDrug());
 }
 void ClinicalModel::init( RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario ) {
     const scnXml::Clinical& clinical = scenario.getModel().getClinical();
