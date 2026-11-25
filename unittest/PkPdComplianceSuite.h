@@ -27,7 +27,7 @@
 
 #include <cxxtest/TestSuite.h>
 #include "PkPd/LSTMModel.h"
-#include "Host/WithinHost/Infection/DummyInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "UnittestUtil.h"
 #include "ExtraAsserts.h"
 #include <limits>
@@ -339,7 +339,7 @@ public:
 private:
     LocalRng m_rng;
     LSTMModel *proxy;
-    CommonInfection *inf;
+    Infection *inf;
     double bodymass;
     std::multimap<size_t, pair<double, double> > schedule; // < day, pair < part of day, dosage > >
 };

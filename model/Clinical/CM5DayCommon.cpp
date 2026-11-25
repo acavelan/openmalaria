@@ -25,7 +25,6 @@
 #include "Clinical/ImmediateOutcomes.h""
 #include "Clinical/CMDecisionTree.h"
 #include "Host/WithinHost/WHInterface.h"
-#include "Host/WithinHost/WHVivax.h"
 #include "util/errors.h"
 #include "util/ModelOptions.h"
 #include "util/random.h"

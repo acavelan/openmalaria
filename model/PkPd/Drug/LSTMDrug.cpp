@@ -96,7 +96,7 @@ double LSTMDrug::getConcentration(size_t index) const {
     return 0.0;
 }
 
-double LSTMDrug::calculateDrugFactor(LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const {
+double LSTMDrug::calculateDrugFactor(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const {
     switch (kind) {
     case Kind::OneComp: return drugFactor_oneComp (rng, inf, body_mass);
     case Kind::ThreeComp: return drugFactor_threeComp (rng, inf, body_mass);

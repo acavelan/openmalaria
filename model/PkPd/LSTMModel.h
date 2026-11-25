@@ -34,7 +34,7 @@ namespace Host{
     class Human;
 }
 namespace WithinHost {
-    class CommonInfection;
+    class Infection;
 }
 namespace PkPd {
 
@@ -127,7 +127,7 @@ public:
      * Each time step, on each infection, the parasite density is multiplied by
      * the return value of this infection. The WithinHostModels are responsible
      * for clearing infections once the parasite density is negligible. */
-    double getDrugFactor (LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const;
+    double getDrugFactor (LocalRng& rng, WithinHost::Infection *inf, double body_mass) const;
     
     /** After any resident infections have been reduced by getDrugFactor(),
      * this function is called to update drug levels to their effective level

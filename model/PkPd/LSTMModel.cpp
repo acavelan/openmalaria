@@ -125,7 +125,7 @@ double LSTMModel::getDrugConc (size_t drug_index) const{
     return c;
 }
 
-double LSTMModel::getDrugFactor (LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const{
+double LSTMModel::getDrugFactor (LocalRng& rng, WithinHost::Infection *inf, double body_mass) const{
     double factor = 1.0; //no effect
     
     for( auto drug = m_drugs.begin(), end = m_drugs.end(); drug != end; ++drug ){

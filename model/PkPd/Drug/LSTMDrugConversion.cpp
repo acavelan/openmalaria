@@ -24,7 +24,7 @@
 // two 1-compartment models with conversion (parent typeData, metaboliteData).
 #include "PkPd/Drug/LSTMDrug.h"
 #include "PkPd/Drug/LSTMDrugType.h"
-#include "Host/WithinHost/Infection/CommonInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "util/errors.h"
 #include "util/StreamValidator.h"
 #include "util/vectors.h"
@@ -159,7 +159,7 @@ void LSTMDrug::setConversionParameters(Params_convFactor& p,
 }
 
 void LSTMDrug::setKillingParameters(LocalRng& rng, Params_convFactor& p,
-        WithinHost::CommonInfection *inf) const
+        WithinHost::Infection *inf) const
 {
     uint32_t genotype = inf->genotype();
     const LSTMDrugPD& pdP = typeData->getPD(genotype), &pdM =
@@ -189,7 +189,7 @@ void LSTMDrug::setKillingParameters(LocalRng& rng, Params_convFactor& p,
 
 // TODO: in high transmission, is this going to get called more often than updateConcentration?
 // When does it make sense to try to optimise (avoid doing decay calcuations here)?
-double LSTMDrug::drugFactor_conversion(LocalRng& rng, WithinHost::CommonInfection *inf, double body_mass) const {
+double LSTMDrug::drugFactor_conversion(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const {
     if( qtyG == 0.0 && qtyP == 0.0 && qtyM == 0.0 && doses.size() == 0 ){
         return 1.0; // nothing to do
     }

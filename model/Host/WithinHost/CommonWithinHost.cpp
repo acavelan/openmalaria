@@ -22,7 +22,7 @@
 
 #include "core/RunContext.h"
 #include "Host/Human.h"
-#include "Host/WithinHost/CommonWithinHost.h"
+#include "Host/WithinHost/WHInterface.h"
 #include "core/RunExtensions.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Genotypes.h"
@@ -48,9 +48,10 @@ bool reportInfectedOrPatentInfected = false;
 // -----  Initialization  -----
 
 
-CommonWithinHost::CommonWithinHost( RunContext& ctx, LocalRng& rng, double comorbidityFactor ) :
-        WHFalciparum( ctx, rng, comorbidityFactor )
+void WHInterface::ctorCommon( LocalRng& rng, double comorbidityFactor )
 {
+    ctorFalciparum( rng, comorbidityFactor );
+    
     assert( ctx.clock.one_TS() == sim::fromDays(1) || ctx.clock.one_TS() == sim::fromDays(5) );
     
     opt_vaccine_genotype = util::ModelOptions::option (util::VACCINE_GENOTYPE);
@@ -69,7 +70,7 @@ CommonWithinHost::CommonWithinHost( RunContext& ctx, LocalRng& rng, double comor
     } while( hetMassMultiplier < minHetMassMult );
 }
 
-CommonWithinHost::~CommonWithinHost() {
+void WHInterface::dtorCommon() {
     for( auto inf = infections.begin(); inf != infections.end(); ++inf ){
         delete *inf;
     }
@@ -78,7 +79,7 @@ CommonWithinHost::~CommonWithinHost() {
 
 // -----  Simple infection adders/removers  -----
 
-void CommonWithinHost::clearInfections( Treatments::Stages stage ){
+void WHInterface::clearInfections( Treatments::Stages stage ){
     for(auto inf = infections.begin(); inf != infections.end();) {
         if( stage == Treatments::BOTH ||
             (stage == Treatments::LIVER && !(*inf)->bloodStage()) ||
@@ -95,18 +96,18 @@ void CommonWithinHost::clearInfections( Treatments::Stages stage ){
 
 // -----  interventions -----
 
-void CommonWithinHost::treatPkPd(size_t schedule, size_t dosage, double age, double delay_d){
+void WHInterface::treatPkPd_common(size_t schedule, size_t dosage, double age, double delay_d){
     double mass = massByAge.eval( age ) * hetMassMultiplier;
     pkpdModel.prescribe( ctx, schedule, dosage, age, mass, delay_d );
 }
-void CommonWithinHost::clearImmunity() {
+void WHInterface::clearImmunity_falciparum() {
     for(auto inf = infections.begin(); inf != infections.end(); ++inf) {
         (*inf)->clearImmunity();
     }
     m_cumulative_h = 0.0;
     m_cumulative_Y_lag = 0.0;
 }
-void CommonWithinHost::importInfection(LocalRng& rng){
+void WHInterface::importInfection_common(LocalRng& rng){
     if( numInfs < MAX_INFECTIONS ){
         m_cumulative_h += 1;
         numInfs += 1;
@@ -122,7 +123,7 @@ void CommonWithinHost::importInfection(LocalRng& rng){
 
 // -----  Density calculations  -----
 
-void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
+void WHInterface::update_common(Host::Human &human, LocalRng& rng, int &nNewInfs_i, int &nNewInfs_l, 
         vector<double>& genotype_weights_i, vector<double>& genotype_weights_l, double ageInYears)
 {
     // Note: adding infections at the beginning of the update instead of the end
@@ -260,27 +261,17 @@ void CommonWithinHost::update(Host::Human &human, LocalRng& rng, int &nNewInfs_i
         nNewInfs_l += nNewInfsIgnored;
 }
 
-void CommonWithinHost::addProphylacticEffects(const vector<double>& pClearanceByTime) {
-    // this should actually be easy; it just isn't needed yet
-    throw util::unimplemented_exception( "prophylactic effects on 1-day time step" );
-}
-
-InfectionOrigin CommonWithinHost::getInfectionOrigin()const
-{
-    return get_infection_origin(infections);
-}
-
 // -----  Summarize  -----
 
 // Used in summarizeInfs.
-vector<CommonInfection*> sortedInfs;
+vector<Infection*> sortedInfs;
 struct InfGenotypeSorter {
-    bool operator() (CommonInfection* i, CommonInfection* j){
+    bool operator() (Infection* i, Infection* j){
         return i->genotype() < j->genotype();
     }
 } infGenotypeSorter;
 
-bool CommonWithinHost::summarize( Host::Human& human )const{
+bool WHInterface::summarize_common( Host::Human& human )const{
     pathogenesisModel->summarize( human );
     pkpdModel.summarize( ctx, human );
     
@@ -368,8 +359,8 @@ bool CommonWithinHost::summarize( Host::Human& human )const{
 }
 
 
-void CommonWithinHost::checkpoint (istream& stream) {
-    WHFalciparum::checkpoint (stream);
+void WHInterface::checkpoint_common (istream& stream) {
+    checkpoint_falciparum (stream);
     hetMassMultiplier & stream;
     pkpdModel.checkpoint(ctx, stream);
     for(int i = 0; i < numInfs; ++i) {
@@ -378,8 +369,8 @@ void CommonWithinHost::checkpoint (istream& stream) {
     assert( numInfs == static_cast<int>(infections.size()) );
 }
 
-void CommonWithinHost::checkpoint (ostream& stream) {
-    WHFalciparum::checkpoint (stream);
+void WHInterface::checkpoint_common (ostream& stream) {
+    checkpoint_falciparum (stream);
     hetMassMultiplier & stream;
     pkpdModel.checkpoint(stream);
     for(auto inf = infections.begin(); inf != infections.end(); ++inf) {

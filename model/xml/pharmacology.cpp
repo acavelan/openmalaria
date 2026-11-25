@@ -29,7 +29,7 @@
 
 #include "Global.h"
 #include "Host/WithinHost/Genotypes.h"
-#include "Host/WithinHost/Infection/CommonInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "PkPd/Drug/LSTMDrugType.h"
 #include "PkPd/Drug/LSTMDrug.h"
 #include "PkPd/LSTMMedicate.h"

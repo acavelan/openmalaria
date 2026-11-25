@@ -36,8 +36,7 @@
 #include "PkPd/LSTMTreatments.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Infection/Infection.h"
-#include "Host/WithinHost/WHFalciparum.h"
-#include "Host/WithinHost/Infection/MolineauxInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "Host/WithinHost/Genotypes.h"
 
 #include "schema/scenario.h"
@@ -456,7 +455,7 @@ public:
         Parameters parameters( dummyXML::model.getParameters(), util::ModelNameProvider(dummyXML::model) );
         
         // This sets up the model based on parameters and options
-        WithinHost::MolineauxInfection::init(ctx(), parameters);
+        WithinHost::Infection::initMolineaux(ctx(), parameters);
     }
     
     static void MosqLifeCycle_init() {

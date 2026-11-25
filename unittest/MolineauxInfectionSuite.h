@@ -26,7 +26,7 @@
 #include <cxxtest/TestSuite.h>
 #include "UnittestUtil.h"
 #include "ExtraAsserts.h"
-#include "Host/WithinHost/Infection/MolineauxInfection.h"
+#include "Host/WithinHost/Infection/Infection.h"
 #include "util/random.h"
 #include <limits>
 #include <fstream>
@@ -70,7 +70,7 @@ public:
 //         out << setprecision(8);
         
         // pkpdID (value) isn't important since we're not using drug model here:
-        MolineauxInfection* infection = new MolineauxInfection (UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous);
+        Infection* infection = new Infection (UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous, Infection::Kind::Molineaux);
         bool extinct = false;
         size_t day=0;
         SimTime now = UnittestUtil::clock().ts0();
@@ -290,7 +290,7 @@ private:
             vector<double> dens;    // time series of density
             for( size_t run = 0; run < N; ++run ){
                 dens.resize( 0 );
-                MolineauxInfection* infection = new MolineauxInfection (UnittestUtil::ctx(), rng, 0xFFFFFFFF, InfectionOrigin::Indigenous);
+                Infection* infection = new Infection (UnittestUtil::ctx(), rng, 0xFFFFFFFF, InfectionOrigin::Indigenous, Infection::Kind::Molineaux);
                 SimTime now = UnittestUtil::clock().ts0();
                 
                 while( !infection->update(rng, 1.0 /*no external immunity*/, now, 71.43 /*adult body mass in kg to get 5l blood volume*/) ){
