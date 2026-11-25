@@ -28,7 +28,7 @@
 
 #include <vector>
 
-namespace OM {
+namespace OpenMalaria {
 class RunContext;
 
 /** The simulated human population. */
@@ -49,7 +49,7 @@ class Population {
     /** Persistent SoA columns; row i == humans[i] (model/Host/HostColumns.h) */
     HumanColumns cols;
 
-    vector<Host::Human> humans;
+    vector<Human> humans;
 
     /** Size of the human population (fixed; == humans.size()) */
     size_t size = 0;

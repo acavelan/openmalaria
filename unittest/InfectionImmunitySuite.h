@@ -27,8 +27,6 @@
 #include "util/random.h"
 #include <limits>
 
-using namespace OM::WithinHost;
-
 class InfectionImmunitySuite : public CxxTest::TestSuite {
   public:
     void setUp() {
@@ -45,8 +43,8 @@ class InfectionImmunitySuite : public CxxTest::TestSuite {
         LocalRng rng(0, 721347520444481703);
         wh = new WHDescriptive{UnittestUtil::ctx(), rng, numeric_limits<double>::quiet_NaN()};
         // immunity state lives in columns now: bind a private mini-column
-        util::MasterRng master(0, 1);
-        wh->bind_columns(cols, cols.append_row(sim::zero(), master));
+        MasterRng master(0, 1);
+        wh->bind_columns(cols, cols.append_row(zero(), master));
     }
     void tearDown() { delete wh; }
 

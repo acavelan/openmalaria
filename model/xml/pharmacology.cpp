@@ -43,14 +43,11 @@
 
 using namespace std;
 
-namespace OM {
-namespace PkPd {
-using namespace OM::util;
-using WithinHost::Genotypes;
+namespace OpenMalaria {
 
 LSTMDrugPD::LSTMDrugPD(const scnXml::Phenotype& phenotype) {
     n = phenotype.getSlope();
-    IC50 = util::createSampler(phenotype.getIC50());
+    IC50 = createSampler(phenotype.getIC50());
     V = phenotype.getMax_killing_rate();
 }
 
@@ -80,25 +77,24 @@ LSTMDrugType::LSTMDrugType(RunContext& ctx, size_t index, const scnXml::PKPDDrug
     negligible_concentration = pk.getNegligible_concentration();
     if (pk.getHalf_life().present()) {
         if (pk.getK().present() || pk.getM_exponent().present()) {
-            throw util::xml_scenario_error(
-                "PK data must specify one of half_life or (k, m_exponent); it specifies both");
+            throw xml_scenario_error("PK data must specify one of half_life or (k, m_exponent); it specifies both");
         }
         elimination_rate = Sampler::fromMeanCV(Sampler::Kind::Lognormal, log(2.0) / pk.getHalf_life().get(), 0.0);
         neg_m_exp = 0.0; // no dependence on body mass
     } else {
         if (!(pk.getK().present() && pk.getM_exponent().present())) {
-            throw util::xml_scenario_error("PK data must include either half_life or (k and m_exponent)");
+            throw xml_scenario_error("PK data must include either half_life or (k and m_exponent)");
         }
-        elimination_rate = util::createSampler(pk.getK().get());
+        elimination_rate = createSampler(pk.getK().get());
         neg_m_exp = -pk.getM_exponent().get();
     }
-    vol_dist = util::createSampler(pk.getVol_dist());
+    vol_dist = createSampler(pk.getVol_dist());
     if (pk.getCompartment2().present()) {
-        k12 = util::createSampler(pk.getCompartment2().get().getK12());
-        k21 = util::createSampler(pk.getCompartment2().get().getK21());
+        k12 = createSampler(pk.getCompartment2().get().getK12());
+        k21 = createSampler(pk.getCompartment2().get().getK21());
         if (pk.getCompartment3().present()) {
-            k13 = util::createSampler(pk.getCompartment3().get().getK13());
-            k31 = util::createSampler(pk.getCompartment3().get().getK31());
+            k13 = createSampler(pk.getCompartment3().get().getK13());
+            k31 = createSampler(pk.getCompartment3().get().getK31());
         } else {
             // 2-compartment model: use 3-compartment code with these parameters set to zero
             // lognormal Sampler supports 0,0 as a special case
@@ -106,40 +102,39 @@ LSTMDrugType::LSTMDrugType(RunContext& ctx, size_t index, const scnXml::PKPDDrug
             k31 = Sampler::fromMeanCV(Sampler::Kind::Lognormal, 0.0, 0.0);
         }
     } else if (pk.getCompartment3().present()) {
-        throw util::xml_scenario_error("PK model specifies parameters for "
-                                       "compartment3 without compartment2");
+        throw xml_scenario_error("PK model specifies parameters for "
+                                 "compartment3 without compartment2");
     }
     if (pk.getConversion().present()) {
         if (k12) {
-            throw util::xml_scenario_error("PK conversion model is incompatible with 2/3-compartment model");
+            throw xml_scenario_error("PK conversion model is incompatible with 2/3-compartment model");
         }
         const scnXml::Conversion& conv = pk.getConversion().get();
         try {
             metabolite = ctx.drugs.findDrug(conv.getMetabolite());
-        } catch (util::xml_scenario_error& e) {
-            throw util::xml_scenario_error(
-                "PK: metabolite drug not found; metabolite must be defined *before* parent drug!");
+        } catch (xml_scenario_error& e) {
+            throw xml_scenario_error("PK: metabolite drug not found; metabolite must be defined *before* parent drug!");
         }
-        conversion_rate = util::createSampler(conv.getRate());
+        conversion_rate = createSampler(conv.getRate());
         mwr = conv.getMolRatio();
         double correlation = conv.getIC50_log_correlation();
         if (correlation < 0.0 || correlation > 1.0) {
-            throw util::xml_scenario_error("PK conversion model: IC50 correlation must be between 0 and 1");
+            throw xml_scenario_error("PK conversion model: IC50 correlation must be between 0 and 1");
         }
         ic50_log_corr = correlation;
         ic50_corr_factor = sqrt(1.0 - correlation * correlation);
     }
     if (pk.getK_a().present()) {
         if (!k12 && !conversion_rate) {
-            throw util::xml_scenario_error("PK models only allow an "
-                                           "absorption rate parameter (k_a) when compartment2 or "
-                                           " conversion parameters are present");
+            throw xml_scenario_error("PK models only allow an "
+                                     "absorption rate parameter (k_a) when compartment2 or "
+                                     " conversion parameters are present");
         }
-        absorption_rate = util::createSampler(pk.getK_a().get());
+        absorption_rate = createSampler(pk.getK_a().get());
     } else {
         if (k12) {
-            throw util::xml_scenario_error("PK models require an absorption "
-                                           "rate parameter (k_a) when compartment2 is present");
+            throw xml_scenario_error("PK models require an absorption "
+                                     "rate parameter (k_a) when compartment2 is present");
         }
     }
 
@@ -176,22 +171,22 @@ LSTMDrugType::LSTMDrugType(RunContext& ctx, size_t index, const scnXml::PKPDDrug
             for (const scnXml::Restriction& restriction : phenotype.getRestriction()) {
                 size_t n = expected_loci.erase(restriction.getOnLocus());
                 if (n == 0)
-                    throw util::xml_scenario_error(mismatch(restriction.getOnLocus(), pheno_name(), first_phenotype_name));
+                    throw xml_scenario_error(mismatch(restriction.getOnLocus(), pheno_name(), first_phenotype_name));
             }
             if (!expected_loci.empty())
-                throw util::xml_scenario_error(mismatch(*expected_loci.begin(), first_phenotype_name, pheno_name()));
+                throw xml_scenario_error(mismatch(*expected_loci.begin(), first_phenotype_name, pheno_name()));
         }
         map<string, size_t> loci;
         vector<vector<uint32_t>> loc_alleles;
         for (const scnXml::Restriction& restriction : phenotype.getRestriction()) {
             uint32_t allele = ctx.genotypes.findAlleleCode(restriction.getOnLocus(), restriction.getToAllele());
             if (allele == numeric_limits<uint32_t>::max()) {
-                throw util::xml_scenario_error("phenotype has "
-                                               "restriction on locus " +
-                                               string(restriction.getOnLocus()) + " allele " +
-                                               string(restriction.getToAllele()) +
-                                               " but this locus/allele "
-                                               "has not been defined in parasiteGenetics section");
+                throw xml_scenario_error("phenotype has "
+                                         "restriction on locus " +
+                                         string(restriction.getOnLocus()) + " allele " +
+                                         string(restriction.getToAllele()) +
+                                         " but this locus/allele "
+                                         "has not been defined in parasiteGenetics section");
             }
             auto iter = loci.find(restriction.getOnLocus());
             if (iter == loci.end()) {
@@ -207,8 +202,8 @@ LSTMDrugType::LSTMDrugType(RunContext& ctx, size_t index, const scnXml::PKPDDrug
 
     if (loci_per_phenotype.size() == 0) {
         if (pd.size() > 1) {
-            throw util::xml_scenario_error("pharmacology/drugs/drug/pd/phenotype:"
-                                           " restrictions required when num. phenotypes > 1");
+            throw xml_scenario_error("pharmacology/drugs/drug/pd/phenotype:"
+                                     " restrictions required when num. phenotypes > 1");
         } else {
             // All genotypes map to phenotype 0
             genotype_mapping.assign(ctx.genotypes.genotypes.size(), 0);
@@ -242,22 +237,22 @@ LSTMDrugType::LSTMDrugType(RunContext& ctx, size_t index, const scnXml::PKPDDrug
                     } else {
                         // We could try to convert genotype's allele codes to
                         // locus/allele names, but requires several lookups
-                        throw util::xml_scenario_error("phenotype restrictions "
-                                                       "not restrictive enough: multiple phenotypes match "
-                                                       "some genotype");
+                        throw xml_scenario_error("phenotype restrictions "
+                                                 "not restrictive enough: multiple phenotypes match "
+                                                 "some genotype");
                     }
                 }
             }
             if (phenotype == numeric_limits<uint32_t>::max()) {
                 // We could try to convert genotype's allele codes to
                 // locus/allele names, but requires several lookups
-                throw util::xml_scenario_error("phenotype restrictions too"
-                                               "restrictive: no phenotype matching some genotype");
+                throw xml_scenario_error("phenotype restrictions too"
+                                         "restrictive: no phenotype matching some genotype");
             }
             genotype_mapping[j] = phenotype;
         }
 
-        if (util::CommandLine::option(util::CommandLine::PRINT_GENOTYPES)) {
+        if (CommandLine::option(CommandLine::PRINT_GENOTYPES)) {
             // Debug output to see which genotypes correspond to phenotypes
             cout << endl;
             cout << "Phenotype mapping: " << endl << "----------" << endl;
@@ -305,10 +300,10 @@ void read_dosage_table(DosageTable& out, const xsd::cxx::tree::sequence<scnXml::
     for (const scnXml::PKPDDosageRange& age : seq) {
         if (lastAge != lastAge) {
             if (age.getLowerbound() != 0.0)
-                throw util::xml_scenario_error("dosage table must have first lower bound equal 0");
+                throw xml_scenario_error("dosage table must have first lower bound equal 0");
         } else {
             if (age.getLowerbound() <= lastAge) {
-                throw util::xml_scenario_error("dosage table must list age groups in increasing order");
+                throw xml_scenario_error("dosage table must list age groups in increasing order");
             }
             out.table[age.getLowerbound()] = lastMult;
         }
@@ -341,12 +336,12 @@ void LSTMTreatments::init(RunContext& ctx, const scnXml::Treatments& data) {
             read_dosage_table(dosages[i], elt.getBodymass(), true);
         else {
             if (!elt.getMultiply().present()) {
-                throw util::xml_scenario_error("dosages table does not "
-                                               "include age, bodymass or multiply element");
+                throw xml_scenario_error("dosages table does not "
+                                         "include age, bodymass or multiply element");
             }
             if (elt.getMultiply().get().getBy() != "kg") {
-                throw util::xml_scenario_error("dosages table \"multipy by\" "
-                                               "option is not \"kg\"");
+                throw xml_scenario_error("dosages table \"multipy by\" "
+                                         "option is not \"kg\"");
             }
             dosages[i].useMass = true;
             dosages[i].multMassKg = true;
@@ -365,5 +360,4 @@ void LSTMModel::init(RunContext& ctx, const scnXml::Scenario& scenario) {
     }
 }
 
-} // namespace PkPd
-} // namespace OM
+} // namespace OpenMalaria

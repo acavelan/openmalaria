@@ -192,8 +192,7 @@ inline bool operator!=(const Xoshiro256P& lhs, const Xoshiro256P& rhs) { return 
 //     return is;
 // }
 
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 
 // Support functions
 // Note: GSL  doesn't really seem to be interested in RNGs producing more than
@@ -386,5 +385,4 @@ typedef RNG<ChaCha<8>> MasterRng;
 /// The master RNG, used only for seeding local RNGs
 // parity: order — single extern master stream declaration
 
-}
 }

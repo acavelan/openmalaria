@@ -7,10 +7,7 @@
 
 #include <cmath>
 
-namespace OM {
-namespace WithinHost {
-
-using namespace OM::util;
+namespace OpenMalaria {
 
 bool reportInfectionsByGenotype = false;
 
@@ -36,13 +33,12 @@ unique_ptr<WHInterface> WHInterface::createWithinHostModel(RunContext& ctx, Loca
 // -----  shared treatment (was treatment_falciparum; Vivax uses the same
 // code — treatSimple dispatches to the variant)  -----
 
-void WHInterface::treatment(Host::Human& human, TreatmentId treatId) {
+void WHInterface::treatment(Human& human, TreatmentId treatId) {
     const Treatments& treat = Treatments::select(ctx, treatId);
     treatSimple(human, treat.timeLiver, treat.timeBlood);
 
     // triggered intervention deployments:
-    treat.deploy(ctx, human, mon::Deploy::TREAT, interventions::VaccineLimits(/*default initialise: no limits*/));
+    treat.deploy(ctx, human, Deploy::TREAT, VaccineLimits(/*default initialise: no limits*/));
 }
 
-}
 }

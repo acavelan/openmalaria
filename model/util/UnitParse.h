@@ -25,7 +25,7 @@
 #include "Clock.h"
 #include "RunContext.h"
 
-namespace OM {
+namespace OpenMalaria {
 
 class SimClock;
 
@@ -73,7 +73,7 @@ SimTime readDuration(const SimClock& clock, const std::string& str, DefaultUnit 
      * Call ctx.clock.init() first. */
 double durationToDays(const SimClock& clock, const std::string& str, DefaultUnit defUnit);
 
-/** Returns sim::never() when it doesn't recognise a date. Throws when it does
+/** Returns never() when it doesn't recognise a date. Throws when it does
      * but encounters definite format errors. */
 SimTime parseDate(const SimClock& clock, const std::string& str);
 

@@ -39,8 +39,7 @@
 #include <schema/scenario.h>
 #include <schema/util.h>
 
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 
 // ---- sampler readers (origins: util/sampler.{h,cpp}) ----
 
@@ -48,18 +47,18 @@ void NormalSampler::setParams(const scnXml::SampledValueN& elt) {
     mu = elt.getMean();
     if (elt.getDistr() == "const") {
         if (elt.getSD().present() && elt.getSD().get() != 0.0) {
-            throw util::xml_scenario_error("attribute SD must be zero or omitted when distr=\"const\" or is omitted");
+            throw xml_scenario_error("attribute SD must be zero or omitted when distr=\"const\" or is omitted");
         }
         sigma = 0.0;
         return;
     }
 
     if (elt.getDistr() != "normal") {
-        throw util::xml_scenario_error(
+        throw xml_scenario_error(
             "expected distr to be one of \"const\", \"lognormal\" (note: not all distributions are supported here)");
     }
     if (!elt.getSD().present()) {
-        throw util::xml_scenario_error("attribute \"SD\" required for sampled normal value when distr is not const");
+        throw xml_scenario_error("attribute \"SD\" required for sampled normal value when distr is not const");
     }
     sigma = elt.getSD().get();
 }
@@ -74,13 +73,13 @@ inline unique_ptr<Sampler> createSampler(Sampler::Kind kind, double mean, const 
     // Special handling for the "const" alias (lognormal with CV = 0)
     if (d == "const") {
         if (!isLognormal) // only allowed for lognormal
-            throw util::xml_scenario_error("\"distr=\"const\": expected \"lognormal\"");
+            throw xml_scenario_error("\"distr=\"const\": expected \"lognormal\"");
 
         if (elt.getCV().present() && elt.getCV().get() != 0.0)
-            throw util::xml_scenario_error(
-                "\"distr=" + d + "\": attribute \"CV\" must be zero or omitted when distr=\"const\" or is omitted");
+            throw xml_scenario_error("\"distr=" + d +
+                                     "\": attribute \"CV\" must be zero or omitted when distr=\"const\" or is omitted");
         if (elt.getVariance().present() && elt.getVariance().get() != 0.0)
-            throw util::xml_scenario_error(
+            throw xml_scenario_error(
                 "\"distr=" + d +
                 "\": attribute \"variance\" must be zero or omitted when distr=\"const\" or is omitted");
 
@@ -89,15 +88,15 @@ inline unique_ptr<Sampler> createSampler(Sampler::Kind kind, double mean, const 
 
     // Check that XML 'distr' matches the sampler kind
     if (d != expectedDistr)
-        throw util::xml_scenario_error("\"distr=" + d + "\": expected \"" + expectedDistr + "\" or \"const\"");
+        throw xml_scenario_error("\"distr=" + d + "\": expected \"" + expectedDistr + "\" or \"const\"");
 
     // Exactly one of CV / variance must be supplied
     const bool hasCV = elt.getCV().present();
     const bool hasVar = elt.getVariance().present();
 
     if (hasCV == hasVar) // both present or both absent
-        throw util::xml_scenario_error("\"distr=" + d +
-                                       "\": exactly one of attributes \"CV\" or \"variance\" must be specified");
+        throw xml_scenario_error("\"distr=" + d +
+                                 "\": exactly one of attributes \"CV\" or \"variance\" must be specified");
 
     // The optional truncation parameter
     std::optional<double> truncate =
@@ -110,7 +109,7 @@ inline unique_ptr<Sampler> createSampler(Sampler::Kind kind, double mean, const 
 }
 
 /** Create a Sampler from a SampledValueCV xml snippet. */
-std::unique_ptr<util::Sampler> createSampler(double mean, const scnXml::SampledValueCV& elt) {
+std::unique_ptr<Sampler> createSampler(double mean, const scnXml::SampledValueCV& elt) {
     const std::string& d = elt.getDistr();
 
     if (d == "const" || d == "lognormal")
@@ -118,7 +117,7 @@ std::unique_ptr<util::Sampler> createSampler(double mean, const scnXml::SampledV
     else if (d == "gamma")
         return createSampler(Sampler::Kind::Gamma, mean, elt);
     else
-        throw util::xml_scenario_error("\"distr=" + d + "\": expected \"const\", \"lognormal\" or \"gamma\"");
+        throw xml_scenario_error("\"distr=" + d + "\": expected \"const\", \"lognormal\" or \"gamma\"");
 }
 
 /** Create a lognormal Sampler from a SampledValueLN xml snippet. */
@@ -215,11 +214,11 @@ unique_ptr<DecayFunction> DecayFunction::makeObject(const SimClock& clock, const
         // check order verbatim from the old EmaxFunction ctor (error priority):
         const scnXml::DecayFunction::DecaySequence& decaySequence = elt.getDecay();
         if (decaySequence.size() != 1)
-            throw util::xml_scenario_error("The Emax function expects exactly one user function, but " +
-                                           to_string(decaySequence.size()) + "  were given.");
+            throw xml_scenario_error("The Emax function expects exactly one user function, but " +
+                                     to_string(decaySequence.size()) + "  were given.");
         auto need = [](bool have, const char* msg) {
             if (!have)
-                throw util::xml_scenario_error(msg);
+                throw xml_scenario_error(msg);
         };
         need(elt.getEmax().present(), "Emax function: the Emax parameter is not declared");
         need(elt.getIC50().present(), "Emax function: the IC50 parameter is not declared");
@@ -233,7 +232,7 @@ unique_ptr<DecayFunction> DecayFunction::makeObject(const SimClock& clock, const
         o->initialConcentration = elt.getInitialConcentration().get();
         auto chk = [](bool bad, const string& msg) {
             if (bad)
-                throw util::xml_scenario_error(msg);
+                throw xml_scenario_error(msg);
         };
         chk(o->Emax < 0.0 || o->Emax > 1.0, "Emax function: Emax must be in [0, 1], got " + std::to_string(o->Emax));
         chk(rawIC50 <= 0.0, "Emax function: IC50 must be > 0, got " + std::to_string(rawIC50));
@@ -260,10 +259,10 @@ void AgeGroupInterpolator::set(const SimClock& clock, const scnXml::AgeGroupValu
         // parity: AgeGroupInterpolationPoints + AgeGroupPiecewiseLinear ctors
         auto it = ageGroups.getGroup().begin();
         if (it == ageGroups.getGroup().end())
-            throw util::xml_scenario_error(string(eltName) + ": at least one age group required");
+            throw xml_scenario_error(string(eltName) + ": at least one age group required");
         // first lower-bound must be 0
         if (it->getLowerbound() != 0.0)
-            throw util::xml_scenario_error(string(eltName) + ": first lower-bound must be 0");
+            throw xml_scenario_error(string(eltName) + ": first lower-bound must be 0");
 
         // Our insert iterator (used for performance)
         auto pos = data.begin();
@@ -277,11 +276,11 @@ void AgeGroupInterpolator::set(const SimClock& clock, const scnXml::AgeGroupValu
                 greatestLbound = lbound;
                 lastValue = it->getValue(); // always insert previous value
             } else
-                throw util::xml_scenario_error(string(eltName) + ": lower bound " + to_string(lbound) +
-                                               " less than previous " + to_string(greatestLbound));
+                throw xml_scenario_error(string(eltName) + ": lower bound " + to_string(lbound) +
+                                         " less than previous " + to_string(greatestLbound));
         }
         // add a point in middle of last age group (taking upper bound as max-age-years:
-        data[0.5 * (greatestLbound + sim::inYears(clock.max_human_age))] = lastValue;
+        data[0.5 * (greatestLbound + inYears(clock.max_human_age))] = lastValue;
         // Add first point at zero
         data[0.0] = data.begin()->second;
         // add a point at infinity to catch remaining values
@@ -292,7 +291,7 @@ void AgeGroupInterpolator::set(const SimClock& clock, const scnXml::AgeGroupValu
     } else if (interp.get() == "none") {
         // parity: AgeGroupPiecewiseConstant ctor
         if (ageGroups.getGroup().size() == 0) {
-            throw util::xml_scenario_error(string(eltName) + ": at least one age group required");
+            throw xml_scenario_error(string(eltName) + ": at least one age group required");
         }
         auto pos = data.begin();
         double greatestLbound = -1.0;
@@ -302,26 +301,24 @@ void AgeGroupInterpolator::set(const SimClock& clock, const scnXml::AgeGroupValu
                 greatestLbound = lbound;
                 pos = data.insert(pos, make_pair(lbound, group.getValue()));
             } else
-                throw util::xml_scenario_error(string(eltName) + ": lower bound " + to_string(lbound) +
-                                               " not greater than previous " + to_string(greatestLbound));
+                throw xml_scenario_error(string(eltName) + ": lower bound " + to_string(lbound) +
+                                         " not greater than previous " + to_string(greatestLbound));
         }
         // first lower-bound must be 0
         if (data.begin()->first != 0.0)
-            throw util::xml_scenario_error(string(eltName) + ": first lower-bound must be 0");
+            throw xml_scenario_error(string(eltName) + ": first lower-bound must be 0");
 
         kind = Kind::PiecewiseConstant;
         outputSamples(clock, eltName);
     } else
-        throw util::xml_scenario_error(string("age group interpolation ") + interp.get() + " not implemented");
+        throw xml_scenario_error(string("age group interpolation ") + interp.get() + " not implemented");
 }
 
-}
 }
 
 // ———  ModelOptions: XML option reading  ———
 
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 
 // Utility: converts option strings to codes and back
 class OptionCodeMap {
@@ -409,24 +406,23 @@ class OptionCodeMap {
     }
 };
 
-void ModelOptions::init(const SimClock& clock, scnXml::Model::ModelOptionsOptional& optionsElt,
-                        util::ModelNameProvider mnp) {
+void ModelOptions::init(const SimClock& clock, scnXml::Model::ModelOptionsOptional& optionsElt, ModelNameProvider mnp) {
     OptionCodeMap codeMap;
 
     // Set options to legacy defaults, then override any given in the XML file:
     options = getLegacyDefaultModelOptions();
 
-    const util::ModelNames namedModelToUse = mnp.modelInUse;
-    const bool useNamedModel = namedModelToUse != util::ModelNames::none;
+    const ModelNames namedModelToUse = mnp.modelInUse;
+    const bool useNamedModel = namedModelToUse != ModelNames::none;
     if (useNamedModel) {
-        if (namedModelToUse == util::ModelNames::base) {
+        if (namedModelToUse == ModelNames::base) {
             // This completely discards any legacy model options set above: the
             // named "base" model is all options off. (Note: the base model sets
             // values that are not "default" — defaults often undesired, but kept
             // on for legacy compatibility absent input to the contrary.)
             options.reset();
         } else {
-            throw util::xml_scenario_error("No pre-set model options are available for the specified model name.");
+            throw xml_scenario_error("No pre-set model options are available for the specified model name.");
         }
     }
 
@@ -514,12 +510,12 @@ void ModelOptions::init(const SimClock& clock, scnXml::Model::ModelOptionsOption
     if (!options[PENNY_WITHIN_HOST_MODEL] && (options[IMMUNE_THRESHOLD_GAMMA] || options[UPDATE_DENSITY_GAMMA]))
         throw xml_scenario_error("Penny model option used without PENNY_WITHIN_HOST_MODEL option");
 
-    if (clock.one_TS() == sim::fromDays(5)) {
+    if (clock.one_TS() == fromDays(5)) {
         // 5 day TS is okay; the only option with a 1-day-TS requirement:
         if (options[CLINICAL_EVENT_SCHEDULER])
             throw xml_scenario_error(
                 "Model option CLINICAL_EVENT_SCHEDULER is only compatible with a 1-day time step.");
-    } else if (clock.one_TS() != sim::fromDays(1)) {
+    } else if (clock.one_TS() != fromDays(1)) {
         // 1 day TS is also okay; anything else is not supported
         ostringstream msg;
         msg << "Time step set to " << clock.one_TS() << " days but only 1 and 5 days are supported.";
@@ -527,5 +523,4 @@ void ModelOptions::init(const SimClock& clock, scnXml::Model::ModelOptionsOption
     }
 }
 
-}
 }

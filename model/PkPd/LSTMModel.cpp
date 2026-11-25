@@ -32,8 +32,7 @@
 
 #include <cassert>
 
-namespace OM {
-namespace PkPd {
+namespace OpenMalaria {
 
 // ———  static  ———
 
@@ -102,7 +101,7 @@ double LSTMModel::getDrugConc(size_t drug_index) const {
     return c;
 }
 
-double LSTMModel::getDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const {
+double LSTMModel::getDrugFactor(LocalRng& rng, Infection* inf, double body_mass) const {
     double factor = 1.0; //no effect
 
     for (auto drug = m_drugs.begin(), end = m_drugs.end(); drug != end; ++drug) {
@@ -120,18 +119,17 @@ void LSTMModel::decayDrugs(double body_mass) {
     }
 }
 
-void LSTMModel::summarize(RunContext& ctx, const Host::Human& human) const {
+void LSTMModel::summarize(RunContext& ctx, const Human& human) const {
     const vector<size_t>& drugsInUse(ctx.drugs.getDrugsInUse());
     for (size_t index : drugsInUse) {
         for (auto& drug : m_drugs) {
             double conc = drug->getConcentration(index);
             if (conc > 0.0) {
-                mon::recordStat(mon::measure("nHostDrugConcNonZero"), human, 1, 0, 0, index);
-                mon::recordStat(mon::measure("sumLogDrugConcNonZero"), human, log(conc), 0, 0, index);
+                recordStat(measure("nHostDrugConcNonZero"), human, 1, 0, 0, index);
+                recordStat(measure("sumLogDrugConcNonZero"), human, log(conc), 0, 0, index);
             }
         }
     }
 }
 
-}
 }

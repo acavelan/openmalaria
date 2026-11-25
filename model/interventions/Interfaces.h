@@ -45,11 +45,8 @@ template <typename T, bool> class sequence;
 }
 }
 
-namespace OM {
-namespace Host {
+namespace OpenMalaria {
 class Human;
-}
-namespace interventions {
 
 /// Component::Type and ComponentId live in the leaf header ComponentId.h
 /// (included above) so Transmission/PerHost.h can use them without
@@ -87,7 +84,7 @@ class HumanIntervention {
     explicit HumanIntervention(RunContext& ctx, const xsd::cxx::tree::sequence<scnXml::DTDeploy, false>& componentList);
 
     /** Deploy all components to a pre-selected human. */
-    void deploy(RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const;
+    void deploy(RunContext& ctx, Human& human, Deploy::Method method, VaccineLimits vaccLimits) const;
 
     void print_details(std::ostream& out) const;
 
@@ -105,13 +102,13 @@ class TriggeredDeployments {
   public:
     TriggeredDeployments(RunContext& ctx, const scnXml::TriggeredDeployments& elt);
 
-    void deploy(RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const;
+    void deploy(RunContext& ctx, Human& human, Deploy::Method method, VaccineLimits vaccLimits) const;
 
   private:
     struct SubList : protected HumanIntervention {
         SubList(RunContext& ctx, const scnXml::Deploy& elt);
 
-        void deploy(RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const;
+        void deploy(RunContext& ctx, Human& human, Deploy::Method method, VaccineLimits vaccLimits) const;
 
         // Deployment restrictions:
         SimTime minAge, maxAge;
@@ -121,5 +118,4 @@ class TriggeredDeployments {
     vector<SubList> lists;
 };
 
-}
 }

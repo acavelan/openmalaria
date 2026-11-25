@@ -23,8 +23,7 @@
 #include "RunContext.h"
 #include "Host/WithinHost/Infection/Infection.h"
 
-namespace OM {
-namespace WithinHost {
+namespace OpenMalaria {
 
 // ———  Dummy variant (was DummyInfection.cpp; simplest density model)  ———
 
@@ -42,7 +41,7 @@ DummyInfection::DummyInfection(RunContext& ctx, uint32_t genotype, int origin)
 
 bool DummyInfection::update(LocalRng& rng, double survivalFactor, SimTime now, double) {
     SimTime bsAge = now - m_startDate - Infection::s_latentP; // age of post-latent-period blood stage
-    if (bsAge < sim::zero())
+    if (bsAge < zero())
         return false; // latent period (liver stage) — don't do anything
     const double GROWTH_RATE = 8.0;
     const double PARASITE_THRESHOLD = 1;
@@ -57,5 +56,4 @@ bool DummyInfection::update(LocalRng& rng, double survivalFactor, SimTime now, d
     }
 }
 
-}
 }

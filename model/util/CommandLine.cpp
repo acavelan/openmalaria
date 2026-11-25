@@ -33,8 +33,7 @@
 #include <iostream>
 #include <cassert>
 
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 bitset<CommandLine::NUM_OPTIONS> CommandLine::options;
 string CommandLine::resourcePath;
 string CommandLine::outputName;
@@ -268,7 +267,7 @@ string CommandLine::parse(int argc, char* argv[]) {
              << "For more information, see https://github.com/OpenMalaria-Org/openmalaria/wiki" << endl
              << endl
              << "\tschema version: \t" << SCHEMA_VERSION << endl
-             << "\tprogram version:\t" << util::semantic_version << endl
+             << "\tprogram version:\t" << semantic_version << endl
              << endl
              << "\tCopyright © 2005-2026 Swiss Tropical and Public Health Institute" << endl
              << "\tCopyright © 2005-2015 Liverpool School Of Tropical Medicine" << endl
@@ -290,25 +289,28 @@ string CommandLine::parse(int argc, char* argv[]) {
              << " -V --verbose		Verbose output" << endl
              << " -p --resource-path	Path to look up input resources with relative URLs (defaults to" << endl
              << "			working directory). Not used for output files." << endl
-             << " -s --scenario file.xml	Uses file.xml as the scenario. If not given, scenario.xml is used." << endl
+             << " -s --scenario file.xml	Uses file.xml as the scenario. If not given, scenario.xml is used."
+             << endl
              << "			If path is relative (doesn't start '/'), --resource-path is used." << endl
-             << " -o --output file	Uses file as output file name. The selected extension is added if omitted." << endl
+             << " -o --output file	Uses file as output file name. The selected extension is added if omitted."
+             << endl
              << "			An explicit extension must match the format and compression options." << endl
              << "    --output-format txt|bin" << endl
              << "			Select main survey output format." << endl
-             << "    --ctsout file.txt	Uses file.txt as ctsout file name. If not given, ctsout.txt is used."
-             << endl
+             << "    --ctsout file.txt	Uses file.txt as ctsout file name. If not given, ctsout.txt is used." << endl
              << "    --save-to FILE	Write a checkpoint to FILE, then exit successfully." << endl
              << "    --save-at DAY	Checkpoint at simulation day DAY, or at the start of" << endl
              << "			the main phase when DAY is 'main' (default: main)." << endl
              << "    --resume FILE	Restore from the checkpoint FILE and continue." << endl
-             << " -n --name NAME		Equivalent to --scenario scenarioNAME.xml --output outputNAME \\" << endl
+             << " -n --name NAME		Equivalent to --scenario scenarioNAME.xml --output outputNAME \\"
+             << endl
              << "			--ctsout ctsoutNAME.txt" << endl
              << " -z --compress-output	Compress output with gzip and use a .gz extension." << endl
              << "    --validate-only	Initialise and validate scenario, but don't run simulation." << endl
              << "    --no-deprecation-warnings" << endl
              << "			OpenMalaria warn about the use of features deemed error-prone and where" << endl
-             << "			more flexible alternatives are available. Use this option to silence it." << endl
+             << "			more flexible alternatives are available. Use this option to silence it."
+             << endl
              << endl
              << "Debugging options:" << endl
              << " -m --print-model	Print all model options with a non-default value and exit." << endl
@@ -358,5 +360,4 @@ string CommandLine::parse(int argc, char* argv[]) {
     return lookupResource(scenarioFile);
 }
 
-}
 }

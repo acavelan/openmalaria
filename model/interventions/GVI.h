@@ -31,10 +31,7 @@ class GVIDescription;
 class AnophelesParams11;
 }
 
-namespace OM {
-namespace interventions {
-using util::DecayFunction;
-using util::LocalRng;
+namespace OpenMalaria {
 
 /** Constant parameters for generic vector intervention model (phase 7.2b:
  * plain Component payload struct — cf. ITNParams; members public: read by
@@ -79,5 +76,4 @@ struct GVIParams {
     // No memory management
 };
 
-}
 }

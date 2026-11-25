@@ -40,11 +40,8 @@ namespace scnXml {
 class DecisionTree;
 }
 
-namespace OM {
-namespace WithinHost {
+namespace OpenMalaria {
 class Diagnostic;
-}
-namespace Clinical {
 
 /** All output data from the decision tree. */
 struct CMDTOut {
@@ -124,20 +121,20 @@ struct FlatTree {
      * runtime edges live in the xml load layer: DecisionTreeComponent in
      * xml/HumanInterventionComponents.h and changeHS setHS in
      * xml/interventions.cpp; phase 7 owns moving those behind ctx.ext). */
-    std::vector<interventions::HumanIntervention> deploys;
-    std::vector<const WithinHost::Diagnostic*> diagnostics;
+    std::vector<HumanIntervention> deploys;
+    std::vector<const Diagnostic*> diagnostics;
 };
 
 /** Per-execution state: one host, one walk, results accumulated in place.
  * Replaces the old CMHostData parameter-passing struct; the reference fields
  * must outlive the walk (they do: all call sites run it synchronously). */
 struct DTExecCtx {
-    DTExecCtx(RunContext& ctx_, Host::Human& human_, double ageYears_, Episode::State pgState_)
+    DTExecCtx(RunContext& ctx_, Human& human_, double ageYears_, Episode::State pgState_)
         : ctx(ctx_), human(human_), rng(human_.rng()), ageYears(ageYears_), pgState(pgState_) {}
     RunContext& ctx;
-    Host::Human& human;
-    util::LocalRng& rng; // the host's stream; Random nodes draw from here
-    double ageYears;     // human age at start of the time step
+    Human& human;
+    LocalRng& rng;   // the host's stream; Random nodes draw from here
+    double ageYears; // human age at start of the time step
     Episode::State pgState;
     bool treated = false; // accumulated outcome (see CMDTOut)
     bool screened = false;
@@ -158,8 +155,6 @@ const FlatTree& compile_decision_tree(RunContext& ctx, const scnXml::DecisionTre
  * Reporting: use of diagnostics is reported (CMDTOut::screened); treatment
  * is not, but CMDTOut::treated says whether any took place. */
 CMDTOut exec_decision_tree(const FlatTree& tree, DTExecCtx& e);
-
-using interventions::ComponentId;
 
 // ———  flat node-array interpreter (was: CMDecisionTree subclass exec())  ———
 
@@ -195,7 +190,7 @@ void walk(const FlatTree& t, DTExecCtx& e, uint32_t n) {
             // age is that of human at start of time step (i.e. may be 0)
             n = branch_select(t, nd, e.ageYears);
             if (n == UINT32_MAX)
-                throw TRACED_EXCEPTION("bad age-based decision tree switch", util::Error::PkPd);
+                throw TRACED_EXCEPTION("bad age-based decision tree switch", Error::PkPd);
             continue;
         case DTK_Multiple: {
             // parity: CMDTMultiple::exec quirk — treated ORs out of children
@@ -211,14 +206,12 @@ void walk(const FlatTree& t, DTExecCtx& e, uint32_t n) {
         case DTK_CaseType:
             // Uses of this in complicated cases trigger an exception during
             // initialisation (compile).
-            assert((e.pgState & Episode::SICK) && !(e.pgState & Episode::COMPLICATED));
-            n = (e.pgState & Episode::SECOND_CASE) ? nd.c1 : nd.c0;
+            assert((e.pgState & SICK) && !(e.pgState & COMPLICATED));
+            n = (e.pgState & SECOND_CASE) ? nd.c1 : nd.c0;
             continue;
         case DTK_InfectionOrigin: {
             auto o = e.human.withinHostModel->getInfectionOrigin();
-            n = o == WithinHost::InfectionOrigin::Imported     ? nd.c0
-                : o == WithinHost::InfectionOrigin::Introduced ? nd.c1
-                                                               : nd.c2;
+            n = o == InfectionOrigin::Imported ? nd.c0 : o == InfectionOrigin::Introduced ? nd.c1 : nd.c2;
             continue;
         }
         case DTK_Diagnostic: {
@@ -229,15 +222,14 @@ void walk(const FlatTree& t, DTExecCtx& e, uint32_t n) {
             return;
         }
         case DTK_Uncomplicated: {
-            const Clinical::Episode& latest = e.human.clinicalModel->latestReport;
+            const Episode& latest = e.human.clinicalModel->latestReport;
             const SimTime memory = static_cast<SimTime>(nd.aux);
-            const bool recent =
-                ((e.pgState & Episode::SICK) && !(e.pgState & Episode::COMPLICATED)) || (e.pgState & Episode::MALARIA);
+            const bool recent = ((e.pgState & SICK) && !(e.pgState & COMPLICATED)) || (e.pgState & MALARIA);
             n = (recent && latest.time + memory >= e.ctx.clock.nowOrTs0()) ? nd.c0 : nd.c1;
             continue;
         }
         case DTK_Severe:
-            n = (e.pgState & Episode::COMPLICATED) ? nd.c0 : nd.c1;
+            n = (e.pgState & COMPLICATED) ? nd.c0 : nd.c1;
             continue;
         case DTK_Cohort:
             // Rely on the health system memory to not count the same episode twice
@@ -250,7 +242,7 @@ void walk(const FlatTree& t, DTExecCtx& e, uint32_t n) {
             return;
         case DTK_Report:
             for (uint32_t i = nd.aux; i != nd.end; ++i)
-                mon::recordEvent(mon::measure("nCMDTReport"), e.human, 1, t.reports[i]);
+                recordEvent(measure("nCMDTReport"), e.human, 1, t.reports[i]);
             return;
         case DTK_TreatPKPD:
             for (uint32_t i = nd.aux; i != nd.end; ++i)
@@ -269,7 +261,7 @@ void walk(const FlatTree& t, DTExecCtx& e, uint32_t n) {
         case DTK_Deploy:
             //NOTE: it's not intuitively obvious what treated should mean for
             // intervention deployment; deploying reports nothing (CMDTOut(false)).
-            t.deploys[nd.aux].deploy(e.ctx, e.human, mon::Deploy::TREAT, interventions::VaccineLimits());
+            t.deploys[nd.aux].deploy(e.ctx, e.human, Deploy::TREAT, VaccineLimits());
             return;
         }
     }
@@ -284,5 +276,4 @@ inline CMDTOut exec_decision_tree(const FlatTree& tree, DTExecCtx& e) {
     return out;
 }
 
-}
 }

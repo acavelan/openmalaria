@@ -34,11 +34,8 @@
 namespace scnXml {
 class Clinical;
 }
-namespace OM {
+namespace OpenMalaria {
 class Population;
-namespace Host {
-
-using util::LocalRng;
 
 class NeonatalMortality {
   public:
@@ -76,18 +73,18 @@ inline double riskFromMaternalInfection = 0.0;
 inline std::vector<double> prevByGestationalAge;
 
 /// Lower and upper bounds for potential mothers (as in model description)
-inline SimTime ageLb = sim::fromYearsI(20), ageUb = sim::fromYearsI(25);
+inline SimTime ageLb = fromYearsI(20), ageUb = fromYearsI(25);
 
 // The model is parameterised based on patency levels; the diagnostic
 // used for this may be important.
-inline const WithinHost::Diagnostic* neonatalDiagnostic = 0;
+inline const Diagnostic* neonatalDiagnostic = 0;
 
 inline bool NeonatalMortality::eventNeonatalMortality(LocalRng& rng) {
     // parity: order — local RNG stream: draw call order fixes stream state
     return rng.uniform_01() <= riskFromMaternalInfection;
 }
 
-inline void NeonatalMortality::update(RunContext& ctx, vector<Host::Human>& population) {
+inline void NeonatalMortality::update(RunContext& ctx, vector<Human>& population) {
     // ———  find potential mothers and their prevalence  ———
     // For individuals in the age range 20-25, we sum:
     int nCounter = 0; // total number
@@ -131,5 +128,4 @@ inline void NeonatalMortality::update(RunContext& ctx, vector<Host::Human>& popu
     riskFromMaternalInfection = y * (1.0 - exp(prevPG * z));
 }
 
-}
 }

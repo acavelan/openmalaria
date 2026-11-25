@@ -30,12 +30,9 @@ namespace scnXml {
 class Diagnostic;
 }
 
-namespace OM {
+namespace OpenMalaria {
 class Parameters;
 class RunContext;
-namespace WithinHost {
-
-using util::LocalRng;
 
 class Diagnostic {
   public:
@@ -78,7 +75,7 @@ class diagnostics {
 
     /** Look up a diagnostic by name and get a reference to it.
      * 
-     * @throws util::xml_scenario_error on failure
+     * @throws xml_scenario_error on failure
      */
     static const Diagnostic& get(RunContext& ctx, const std::string& name);
 
@@ -91,5 +88,4 @@ class diagnostics {
     static void clear(RunContext& ctx); // for unit tests (UnittestUtil)
 };
 
-}
 }

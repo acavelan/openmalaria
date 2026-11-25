@@ -40,18 +40,14 @@
 
 #include "schema/scenario.h"
 
-using namespace OM;
-using namespace WithinHost;
+using namespace OpenMalaria;
 
-using ::OM::util::ModelOptions;
+using ::ModelOptions;
 
-namespace OM {
-namespace WithinHost {
+namespace OpenMalaria {
 extern bool opt_common_whm;
 }
-}
 
-namespace xml_helpers {
 /// Construct a helper for setting PK parameters (1-compartment model)
 ///@param Vd Volume of distribution (l/kg)
 ///@param negl_conc Negligible concentration of drug (mg/l)
@@ -190,7 +186,6 @@ scnXml::PKPDDrug drug(const char* abbrev, PK3C pk, PD pd) {
     xPD.getPhenotype().push_back(scnXml::Phenotype(pd.vmax, pd.ic50, pd.slope));
     return scnXml::PKPDDrug(xPD, xPK, abbrev);
 }
-}
 
 namespace dummyXML {
 scnXml::DemogAgeGroup demAgeGroup(numeric_limits<double>::quiet_NaN() /* lower bound */);
@@ -239,7 +234,7 @@ class UnittestUtil {
         dummyXML::surveys.getSurveyTime().push_back(scnXml::SurveyTime("1t"));
         dummyXML::monitoring.setSurveys(dummyXML::surveys);
         dummyXML::scenario.setMonitoring(dummyXML::monitoring);
-        util::ModelNameProvider modelNameProvider(dummyXML::scenario.getModel());
+        ModelNameProvider modelNameProvider(dummyXML::scenario.getModel());
         ctx().clock.init(ctx(), dummyXML::scenario, modelNameProvider);
 
         // we could just use zero, but we may spot more errors by using some weird number
@@ -282,7 +277,7 @@ class UnittestUtil {
         diagsElt.getDiagnostic().push_back(microscopy);
         diagsElt.getDiagnostic().push_back(rdt);
         dummyXML::model.setParameters(prepareParameters());
-        Parameters parameters(dummyXML::model.getParameters(), util::ModelNameProvider(dummyXML::model));
+        Parameters parameters(dummyXML::model.getParameters(), ModelNameProvider(dummyXML::model));
         dummyXML::scenario.setDiagnostics(diagsElt);
         dummyXML::surveys.setDetectionLimit(numeric_limits<double>::quiet_NaN());
         dummyXML::monitoring.setSurveys(dummyXML::surveys);
@@ -296,7 +291,6 @@ class UnittestUtil {
 
         //Note: we fudge this call since it's not so easy to falsely initialize scenario element.
         //PkPdModel::init ();
-        using namespace xml_helpers;
 
         // Drugs:
         scnXml::Drugs drugs;
@@ -353,7 +347,7 @@ class UnittestUtil {
                       0.07948639559767655 /*k31*/),
                  PD(3.45 /* vmax */, 0.020831339 /* IC50 */, 6.0 /* slope */)));
 
-        PkPd::LSTMDrugType::init(ctx(), drugs);
+        LSTMDrugType::init(ctx(), drugs);
 
         // Treatments
         scnXml::PKPDSchedule sched1("sched1");
@@ -372,68 +366,68 @@ class UnittestUtil {
         treatments.getSchedule().push_back(sched1);
         treatments.getSchedule().push_back(sched2);
         treatments.getDosages().push_back(dosage1);
-        PkPd::LSTMTreatments::init(ctx(), treatments);
+        LSTMTreatments::init(ctx(), treatments);
     }
 
     // For when infection parameters shouldn't be used; enforce by setting to NaNs.
     // But do set latentP.
-    static void Infection_init_latentP_and_NaN() { Infection::s_latentP = sim::fromDays(15); }
+    static void Infection_init_latentP_and_NaN() { Infection::s_latentP = fromDays(15); }
 
     static void DescriptiveInfection_init() { ModelOptions::reset(); }
 
     static void EmpiricalWHM_setup() {
         ModelOptions::reset();
-        ModelOptions::set(util::EMPIRICAL_WITHIN_HOST_MODEL);
-        OM::WithinHost::opt_common_whm = true;
+        ModelOptions::set(EMPIRICAL_WITHIN_HOST_MODEL);
+        opt_common_whm = true;
     }
 
     static void MolineauxWHM_setup(const std::string& mode, bool repl_gamma) {
         ModelOptions::reset();
-        ModelOptions::set(util::MOLINEAUX_WITHIN_HOST_MODEL);
-        OM::WithinHost::opt_common_whm = true;
+        ModelOptions::set(MOLINEAUX_WITHIN_HOST_MODEL);
+        opt_common_whm = true;
         if (mode == "original") {
         } else if (mode == "1st_max_gamma") {
-            ModelOptions::set(util::FIRST_LOCAL_MAXIMUM_GAMMA);
+            ModelOptions::set(FIRST_LOCAL_MAXIMUM_GAMMA);
         } else if (mode == "mean_dur_gamma") {
-            ModelOptions::set(util::MEAN_DURATION_GAMMA);
+            ModelOptions::set(MEAN_DURATION_GAMMA);
         } else if (mode == "1st_max_and_mean_dur_gamma") {
-            ModelOptions::set(util::FIRST_LOCAL_MAXIMUM_GAMMA);
-            ModelOptions::set(util::MEAN_DURATION_GAMMA);
+            ModelOptions::set(FIRST_LOCAL_MAXIMUM_GAMMA);
+            ModelOptions::set(MEAN_DURATION_GAMMA);
         } else if (mode == "pairwise") {
-            ModelOptions::set(util::MOLINEAUX_PAIRWISE_SAMPLE);
+            ModelOptions::set(MOLINEAUX_PAIRWISE_SAMPLE);
         } else {
             ETS_ASSERT(false); // stop this test
         }
         if (repl_gamma) {
-            ModelOptions::set(util::PARASITE_REPLICATION_GAMMA);
+            ModelOptions::set(PARASITE_REPLICATION_GAMMA);
         }
 
         // Set parameters; all of these were estimated externally from OpenMalaria
         dummyXML::model.setParameters(prepareParameters());
-        Parameters parameters(dummyXML::model.getParameters(), util::ModelNameProvider(dummyXML::model));
+        Parameters parameters(dummyXML::model.getParameters(), ModelNameProvider(dummyXML::model));
 
         // This sets up the model based on parameters and options
-        WithinHost::MolineauxInfection::init(ctx(), parameters);
+        MolineauxInfection::init(ctx(), parameters);
     }
 
     static void MosqLifeCycle_init() {
         ModelOptions::reset();
-        ModelOptions::set(util::VECTOR_LIFE_CYCLE_MODEL);
+        ModelOptions::set(VECTOR_LIFE_CYCLE_MODEL);
     }
 
-    static double getPrescribedMg(const PkPd::LSTMModel& pkpd) {
+    static double getPrescribedMg(const LSTMModel& pkpd) {
         double r = 0.0;
-        for (const PkPd::MedicateData& md : pkpd.medicateQueue) {
+        for (const MedicateData& md : pkpd.medicateQueue) {
             r += md.qty;
         }
         return r;
     }
 
-    static void medicate(LocalRng& rng, PkPd::LSTMModel& pkpd, size_t typeIndex, double qty, double time) {
+    static void medicate(LocalRng& rng, LSTMModel& pkpd, size_t typeIndex, double qty, double time) {
         pkpd.medicateDrug(ctx(), rng, typeIndex, qty, time);
     }
 
-    static void clearMedicateQueue(PkPd::LSTMModel& pkpd) { pkpd.medicateQueue.clear(); }
+    static void clearMedicateQueue(LSTMModel& pkpd) { pkpd.medicateQueue.clear(); }
 
     /// Shared SoA columns for stand-alone test humans (rows accumulate; the
     /// process is short and row identity is all that matters).
@@ -441,15 +435,15 @@ class UnittestUtil {
         static HumanColumns c;
         return c;
     }
-    static unique_ptr<Host::Human> createHuman(SimTime dateOfBirth) {
-        return unique_ptr<Host::Human>(new Host::Human(ctx(), dateOfBirth, testCols()));
+    static unique_ptr<Human> createHuman(SimTime dateOfBirth) {
+        return unique_ptr<Human>(new Human(ctx(), dateOfBirth, testCols()));
     }
     // Set the WithinHost model used by the human, and return a pointer to it. Do not delete this!
-    static WithinHost::WHInterface* setHumanWH(Host::Human& human, unique_ptr<WithinHost::WHInterface> wh) {
+    static WHInterface* setHumanWH(Human& human, unique_ptr<WHInterface> wh) {
         human.withinHostModel = std::move(wh);
         return &*human.withinHostModel;
     }
     /// Slot-capsule access for the slot clamp contract (SlotAllocatorSuite)
     /// One reset point for suites needing a clean slate (ModelOptions::reset is public).
-    static void resetModelOptions() { util::ModelOptions::reset(); }
+    static void resetModelOptions() { ModelOptions::reset(); }
 };

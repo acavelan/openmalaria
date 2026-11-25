@@ -42,14 +42,9 @@ class DTTreatPKPD;
 class DecisionTree;
 }
 
-namespace OM {
-namespace WithinHost {
+namespace OpenMalaria {
 class Diagnostic;
-}
-namespace Clinical {
 class FlatTree;
-}
-namespace interventions {
 
 /// No state: reports deployment, nothing else. Also the payload for
 /// CLEAR_IMMUNITY (its deploy reads no parameters either).
@@ -57,7 +52,7 @@ struct RecruitOnlyParams {};
 
 /// Screening: deploys one of two nested intervention lists.
 struct ScreenParams {
-    const WithinHost::Diagnostic& diagnostic;
+    const Diagnostic& diagnostic;
     HumanIntervention positive, negative;
     ScreenParams(RunContext&, const scnXml::Screen&);
 };
@@ -78,7 +73,7 @@ struct TreatPKPDParams {
 
 /// Execute a "case management" decision tree.
 struct DecisionTreeParams {
-    const Clinical::FlatTree& tree;
+    const FlatTree& tree;
     DecisionTreeParams(RunContext&, const scnXml::DecisionTree&);
 };
 
@@ -88,7 +83,7 @@ struct DecisionTreeParams {
 struct ComponentConfig {
     ComponentId id;
     Component::Type kind;
-    SimTime duration = sim::never(); ///< sub-pop removal expireAfter
+    SimTime duration = never(); ///< sub-pop removal expireAfter
     std::variant<RecruitOnlyParams, ScreenParams, TreatSimpleParams, TreatPKPDParams, DecisionTreeParams, VaccineParams,
                  ITNParams, IRSParams, GVIParams>
         data;
@@ -101,11 +96,10 @@ struct ComponentConfig {
 
 /// Deploy component c to human (replaces the old virtual deploy()).
 /// Draws/mon reports happen in the same order as the deleted class bodies.
-void deploy_component(RunContext& ctx, const ComponentConfig& c, Host::Human& human, mon::Deploy::Method method,
+void deploy_component(RunContext& ctx, const ComponentConfig& c, Human& human, Deploy::Method method,
                       VaccineLimits vaccLimits);
 
 /// One-line component description (PRINT_INTERVENTIONS; old print_details()).
 void print_component(std::ostream& out, const ComponentConfig& c);
 
-}
 }

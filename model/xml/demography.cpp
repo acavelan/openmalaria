@@ -32,8 +32,7 @@
 
 #include <cmath>
 
-namespace OM {
-using namespace OM::util;
+namespace OpenMalaria {
 
 // Free function defined in PopulationAgeStructure.cpp (external linkage):
 void minimizeCalc_rss(RunContext& ctx, double param1, double param2);
@@ -72,4 +71,4 @@ void AgeStructure::estimateRemovalRates(RunContext& ctx, const scnXml::Demograph
     // returns "double rss":
     minimizeCalc_rss(ctx, p1, p2);
 }
-} // namespace OM
+} // namespace OpenMalaria

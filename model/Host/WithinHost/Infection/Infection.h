@@ -29,10 +29,7 @@
 #include "util/random.h"
 #include <list>
 
-namespace OM {
-namespace WithinHost {
-
-using util::LocalRng;
+namespace OpenMalaria {
 
 enum InfectionOrigin {
     /** Imported infections are directly added to the human population dependent on the importation rate. **/
@@ -141,7 +138,7 @@ struct Infection {
      * effect), clearance of blood stage infections can only happen after their
      * first update (though due to the latent period densities will still be
      * low). */
-    inline bool bloodStage() const { return ctx.clock.latestTs0() - m_startDate > sim::fromDays(5); }
+    inline bool bloodStage() const { return ctx.clock.latestTs0() - m_startDate > fromDays(5); }
 
     /// Get the density of the infection as of the last update
     inline double getDensity() const { return m_density; }
@@ -172,7 +169,7 @@ struct Infection {
 
     /// Date of inoculation of infection (start of liver stage)
     /// This is the step of inoculation (ts0()).
-    SimTime m_startDate = sim::never();
+    SimTime m_startDate = never();
 
     /// Current density of the infection (Pc in the Molineaux/Penny papers)
     double m_density;
@@ -199,7 +196,7 @@ struct Infection {
  * variant has no daily update(). */
 struct DescriptiveInfection final : Infection {
     /// 5-day time step check; loads densities.csv matrix + parameters (per run)
-    static void init(RunContext& ctx, const OM::Parameters& parameters);
+    static void init(RunContext& ctx, const Parameters& parameters);
 
     /// Draws the duration — this variant's only RNG draw at construction time,
     /// at the slot the old infection_ctor_descriptive() held.
@@ -228,7 +225,7 @@ struct DescriptiveInfection final : Infection {
     static SimTime sample_duration(RunContext& ctx, LocalRng& rng);
 
     // Arbitrary predetermined maximum duration of the infection
-    SimTime duration = sim::never();
+    SimTime duration = never();
     bool notPrintedMDWarning = true;
 
     // Max duration of sample data for an infection in intervals. Simulated
@@ -280,7 +277,7 @@ struct EmpiricalInfection final : Infection {
  * 1-day step with 50 antigenic variants per clone, two-day density cycles
  * under innate/transcending/variant-specific immune functions. */
 struct MolineauxInfection final : Infection {
-    static void init(RunContext& ctx, const OM::Parameters& parameters);
+    static void init(RunContext& ctx, const Parameters& parameters);
 
     /// mi[] + Pc_star/Pm_star draws at the old infection_ctor_molineaux() slots.
     MolineauxInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin);
@@ -387,5 +384,4 @@ template <typename T> InfectionOrigin get_infection_origin(const std::list<T*>& 
         return InfectionOrigin::Imported;
 }
 
-}
 }

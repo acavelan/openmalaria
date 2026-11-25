@@ -12,7 +12,7 @@ using namespace GoldenRng;
 
 int main() {
     printf(
-        "# rng_dist_v50.csv — T2 goldens for the OM RNG primitive layer (Xoshiro256P + GSL-backed distributions).\n");
+        "# rng_dist_v50.csv — T2 goldens for the OpenMalaria RNG primitive layer (Xoshiro256P + GSL-backed distributions).\n");
     printf(
         "# Seed: Xoshiro256P(%llu,%llu,%llu,%llu); plumbing/distributions mirror model/util/random.h (see golden-gen/RngGoldenAdapter.h, file:line cites there).\n",
         (unsigned long long)SEED[0], (unsigned long long)SEED[1], (unsigned long long)SEED[2],

@@ -41,11 +41,7 @@
 #include <schema/healthSystem.h>
 #include <schema/interventions.h>
 
-namespace OM {
-namespace interventions {
-using Host::Human;
-using WithinHost::Diagnostic;
-using WithinHost::diagnostics;
+namespace OpenMalaria {
 
 // ———  HumanIntervention  ———
 
@@ -68,7 +64,7 @@ static void sort_components(RunContext& ctx, std::vector<ComponentId>& component
 static ComponentId component_id(RunContext& ctx, const std::string& textId) {
     ComponentId id = InterventionManager::getComponentId(ctx, textId);
     if (id.id >= ctx.humanComponents->size())
-        throw util::base_exception("invalid component id"); // used before defined
+        throw base_exception("invalid component id"); // used before defined
     return id;
 }
 HumanIntervention::HumanIntervention(RunContext& ctx,
@@ -84,7 +80,7 @@ HumanIntervention::HumanIntervention(RunContext& ctx, const xsd::cxx::tree::sequ
     for (auto it = conditionList.begin(), end = conditionList.end(); it != end; ++it) {
         double min = it->getMinValue().present() ? it->getMinValue().get() : -numeric_limits<double>::infinity();
         double max = it->getMaxValue().present() ? it->getMaxValue().get() : numeric_limits<double>::infinity();
-        conditions.push_back(mon::setupCondition(ctx, it->getMeasure(), min, max, it->getInitialState()));
+        conditions.push_back(setupCondition(ctx, it->getMeasure(), min, max, it->getInitialState()));
     }
 }
 HumanIntervention::HumanIntervention(RunContext& ctx, const xsd::cxx::tree::sequence<scnXml::DTDeploy>& componentList) {
@@ -94,11 +90,10 @@ HumanIntervention::HumanIntervention(RunContext& ctx, const xsd::cxx::tree::sequ
     sort_components(ctx, components);
 }
 
-void HumanIntervention::deploy(RunContext& ctx, Human& human, mon::Deploy::Method method,
-                               VaccineLimits vaccLimits) const {
+void HumanIntervention::deploy(RunContext& ctx, Human& human, Deploy::Method method, VaccineLimits vaccLimits) const {
     for (size_t cond : conditions) {
         // Abort deployment if any condition is false.
-        if (!mon::checkCondition(ctx, cond))
+        if (!checkCondition(ctx, cond))
             return;
     }
 
@@ -126,7 +121,7 @@ TriggeredDeployments::TriggeredDeployments(RunContext& ctx, const scnXml::Trigge
         lists.push_back(SubList(ctx, *it));
     }
 }
-void TriggeredDeployments::deploy(RunContext& ctx, Human& human, mon::Deploy::Method method,
+void TriggeredDeployments::deploy(RunContext& ctx, Human& human, Deploy::Method method,
                                   VaccineLimits vaccLimits) const {
     for (auto it = lists.begin(); it != lists.end(); ++it) {
         it->deploy(ctx, human, method, vaccLimits);
@@ -134,24 +129,24 @@ void TriggeredDeployments::deploy(RunContext& ctx, Human& human, mon::Deploy::Me
 }
 
 TriggeredDeployments::SubList::SubList(RunContext& ctx, const scnXml::Deploy& elt)
-    : HumanIntervention(ctx, elt.getComponent()), minAge(ctx.clock.from_years_n(elt.getMinAge())),
-      maxAge(sim::future()), coverage(elt.getP()) {
+    : HumanIntervention(ctx, elt.getComponent()), minAge(ctx.clock.from_years_n(elt.getMinAge())), maxAge(future()),
+      coverage(elt.getP()) {
     if (elt.getMaxAge().present())
         maxAge = ctx.clock.from_years_n(elt.getMaxAge().get());
 
-    if (minAge < sim::zero() || maxAge < minAge) {
-        throw util::xml_scenario_error("triggered intervention must have 0 <= minAge <= maxAge");
+    if (minAge < zero() || maxAge < minAge) {
+        throw xml_scenario_error("triggered intervention must have 0 <= minAge <= maxAge");
     }
 
     if (coverage < 0.0 || coverage > 1.0) {
-        throw util::xml_scenario_error("triggered intervention must have 0 <= coverage <= 1");
+        throw xml_scenario_error("triggered intervention must have 0 <= coverage <= 1");
     }
 
     // Zero coverage: optimise
     if (coverage <= 0.0 || minAge >= maxAge)
         components.clear();
 }
-void TriggeredDeployments::SubList::deploy(RunContext& ctx, Host::Human& human, mon::Deploy::Method method,
+void TriggeredDeployments::SubList::deploy(RunContext& ctx, Human& human, Deploy::Method method,
                                            VaccineLimits vaccLimits) const {
     // This may be used within a time step; in that case we use human age at
     // the beginning of the step since this gives the expected result with age
@@ -180,17 +175,17 @@ TreatSimpleParams::TreatSimpleParams(RunContext& ctx, const scnXml::DTTreatSimpl
                 durB = UnitParse::readShortDuration(ctx.clock, elt.getDurationBlood(), UnitParse::NONE);
         SimTime neg1 = -ctx.clock.one_TS();
         if (durL < neg1 || durB < neg1) {
-            throw util::xml_scenario_error("treatSimple: cannot have durationBlood or durationLiver less than -1");
+            throw xml_scenario_error("treatSimple: cannot have durationBlood or durationLiver less than -1");
         }
-        if (util::ModelOptions::option(util::VIVAX_SIMPLE_MODEL)) {
-            if (durL != sim::zero() || durB != neg1)
-                throw util::unimplemented_exception("vivax model only supports timestepsLiver=0, timestepsBlood=-1");
+        if (ModelOptions::option(VIVAX_SIMPLE_MODEL)) {
+            if (durL != zero() || durB != neg1)
+                throw unimplemented_exception("vivax model only supports timestepsLiver=0, timestepsBlood=-1");
             // Actually, the model ignores these parameters; we just don't want somebody thinking it doesn't.
         }
         timeLiver = durL;
         timeBlood = durB;
-    } catch (const util::format_error& e) {
-        throw util::xml_scenario_error(string("treatSimple: ").append(e.message()));
+    } catch (const format_error& e) {
+        throw xml_scenario_error(string("treatSimple: ").append(e.message()));
     }
 }
 
@@ -200,20 +195,20 @@ TreatPKPDParams::TreatPKPDParams(RunContext& ctx, const scnXml::DTTreatPKPD& elt
       delay_d(elt.getDelay_h() / 24.0 /* convert to days */) {}
 
 DecisionTreeParams::DecisionTreeParams(RunContext& ctx, const scnXml::DecisionTree& elt)
-    : tree(Clinical::compile_decision_tree(ctx, elt, false)) {}
+    : tree(compile_decision_tree(ctx, elt, false)) {}
 
 // ———  Component deployment / printing (replaces the class tree's virtuals;
 //      reports and draws happen in exactly the order of the deleted bodies)  ———
 
-void deploy_component(RunContext& ctx, const ComponentConfig& c, Human& human, mon::Deploy::Method method,
+void deploy_component(RunContext& ctx, const ComponentConfig& c, Human& human, Deploy::Method method,
                       VaccineLimits vaccLimits) {
     switch (c.kind) {
     case Component::RECRUIT_ONLY: // reports to monitoring, nothing else
-        mon::recordDeploy(mon::measure("nMassRecruitOnly"), mon::measure("nCtsRecruitOnly"), human, method);
+        recordDeploy(measure("nMassRecruitOnly"), measure("nCtsRecruitOnly"), human, method);
         break;
     case Component::SCREEN: {
         const ScreenParams& p = std::get<ScreenParams>(c.data);
-        mon::recordDeploy(mon::measure("nMassScreenings"), mon::measure("nCtsScreenings"), human, method);
+        recordDeploy(measure("nMassScreenings"), measure("nCtsScreenings"), human, method);
         if (human.withinHostModel->diagnosticResult(human.rng(), p.diagnostic))
             p.positive.deploy(ctx, human, method, vaccLimits);
         else
@@ -222,27 +217,26 @@ void deploy_component(RunContext& ctx, const ComponentConfig& c, Human& human, m
     }
     case Component::TREAT_SIMPLE: {
         const TreatSimpleParams& p = std::get<TreatSimpleParams>(c.data);
-        mon::recordDeploy(mon::measure("nMDAs"), mon::measure("nCtsMDA"), human, method);
+        recordDeploy(measure("nMDAs"), measure("nCtsMDA"), human, method);
         human.withinHostModel->treatSimple(human, p.timeLiver, p.timeBlood);
         break;
     }
     case Component::TREAT_PKPD: {
         const TreatPKPDParams& p = std::get<TreatPKPDParams>(c.data);
-        mon::recordDeploy(mon::measure("nMDAs"), mon::measure("nCtsMDA"), human, method);
-        double age = sim::inYears(human.age(ctx.clock.nowOrTs1()));
+        recordDeploy(measure("nMDAs"), measure("nCtsMDA"), human, method);
+        double age = inYears(human.age(ctx.clock.nowOrTs1()));
         human.withinHostModel->treatPkPd(p.schedule, p.dosage, age, p.delay_d);
         break;
     }
     case Component::CM_DT: {
         const DecisionTreeParams& p = std::get<DecisionTreeParams>(c.data);
-        Clinical::DTExecCtx ec(ctx, human, sim::inYears(human.age(ctx.clock.nowOrTs1())),
-                               human.clinicalModel->latestState);
-        Clinical::CMDTOut out = Clinical::exec_decision_tree(p.tree, ec);
+        DTExecCtx ec(ctx, human, inYears(human.age(ctx.clock.nowOrTs1())), human.clinicalModel->latestState);
+        CMDTOut out = exec_decision_tree(p.tree, ec);
         if (out.treated) {
-            mon::recordDeploy(mon::measure("nMDAs"), mon::measure("nCtsMDA"), human, method);
+            recordDeploy(measure("nMDAs"), measure("nCtsMDA"), human, method);
         }
         if (out.screened) {
-            mon::recordDeploy(mon::measure("nMassScreenings"), mon::measure("nCtsScreenings"), human, method);
+            recordDeploy(measure("nMassScreenings"), measure("nCtsScreenings"), human, method);
         }
         break;
     }
@@ -250,22 +244,22 @@ void deploy_component(RunContext& ctx, const ComponentConfig& c, Human& human, m
     case Component::BSV:
     case Component::TBV:
         if (vaccinate(ctx, human, c.id, vaccLimits) && ctx.vaccineReportComponent == c.id) {
-            mon::recordDeploy(mon::measure("nMassVaccinations"), mon::measure("nEPIVaccinations"), human, method);
+            recordDeploy(measure("nMassVaccinations"), measure("nEPIVaccinations"), human, method);
         }
-        if (method == mon::Deploy::TREAT)
-            mon::recordEvent(mon::measure("nTreatDeployments"), human);
+        if (method == Deploy::TREAT)
+            recordEvent(measure("nTreatDeployments"), human);
         break;
     case Component::ITN:
         iv_deploy(ctx, human, c);
-        mon::recordDeploy(mon::measure("nMassITNs"), mon::measure("nEPI_ITNs"), human, method);
+        recordDeploy(measure("nMassITNs"), measure("nEPI_ITNs"), human, method);
         break;
     case Component::IRS:
         iv_deploy(ctx, human, c);
-        mon::recordDeploy(mon::measure("nMassIRS"), mon::measure("nCtsIRS"), human, method);
+        recordDeploy(measure("nMassIRS"), measure("nCtsIRS"), human, method);
         break;
     case Component::GVI:
         iv_deploy(ctx, human, c);
-        mon::recordDeploy(mon::measure("nMassGVI"), mon::measure("nCtsGVI"), human, method);
+        recordDeploy(measure("nMassGVI"), measure("nCtsGVI"), human, method);
         break;
     case Component::CLEAR_IMMUNITY:
         human.withinHostModel->clearImmunity();
@@ -281,11 +275,11 @@ void print_component(std::ostream& out, const ComponentConfig& c) {
     // of that enum). IPT entry reproduces the former ternary's default:
     // "clear immunity" (Component::IPT has no implementation; the old chain
     // fell through to its last branch for it too).
-    static const char* const NAMES[] = {"Recruit only", "Screen", "treatSimple", "treatPKPD", "Decision tree",
-                                        "PEV", "BSV", "TBV", "clear immunity", // IPT: former default fall-through
-                                        "ITN", "IRS", "GVI", "clear immunity"};
+    static const char* const NAMES[] = {
+        "Recruit only", "Screen", "treatSimple", "treatPKPD",      "Decision tree",
+        "PEV",          "BSV",    "TBV",         "clear immunity", // IPT: former default fall-through
+        "ITN",          "IRS",    "GVI",         "clear immunity"};
     out << c.id.id << '\t' << NAMES[c.kind];
 }
 
-}
 }

@@ -25,8 +25,7 @@
 #include "Clock.h"
 #include "util/DecayFunction.h"
 
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 
 /** Parameters to for a decaying intervention whose effect can be described
  * by a single scalar output.
@@ -37,7 +36,7 @@ namespace util {
 class SimpleDecayingValue {
   public:
     /** Default construction: always return 0. */
-    SimpleDecayingValue() : initial(0.0), deploy_t(sim::never()) {}
+    SimpleDecayingValue() : initial(0.0), deploy_t(never()) {}
 
     /** Configure from an XML element. */
     inline void set(const SimClock& clock, double initial_value, const scnXml::DecayFunction& elt, const char* name) {
@@ -71,18 +70,17 @@ class SimpleDecayingValue {
 
   private:
     /** Description of decay of effects on emergence. */
-    unique_ptr<util::DecayFunction> decay;
+    unique_ptr<DecayFunction> decay;
 
     /** Initial value. Is initialised to 0. */
     double initial;
 
   public: // wire state (checkpoint/transmission.cpp)
     /** Description of larviciding decay. */
-    unique_ptr<util::DecayFunction> het;
+    unique_ptr<DecayFunction> het;
 
     /** Time of larviciding deployment. */
-    SimTime deploy_t = sim::never();
+    SimTime deploy_t = never();
 };
 
-}
 }

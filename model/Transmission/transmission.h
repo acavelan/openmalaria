@@ -35,9 +35,7 @@ class Entomology;
 class AnophelesParams;
 }
 
-namespace OM {
-namespace Transmission {
-using namespace OM::util;
+namespace OpenMalaria {
 
 inline SimulationMode readMode(const string& str) {
     if (str == "forced")
@@ -47,16 +45,14 @@ inline SimulationMode readMode(const string& str) {
     else
         // Note: originally 3 (transientEIRknown) could be specified; now it's
         // set automatically.
-        throw util::xml_scenario_error(string("mode attribute invalid: ").append(str));
+        throw xml_scenario_error(string("mode attribute invalid: ").append(str));
 }
 
 // Factory functions are defined in model/xml/entomology.cpp.
 TransmissionModel* createNonVectorModel(RunContext& ctx, const scnXml::Entomology& entoData);
 bool anophelesCompare(const scnXml::AnophelesParams& a1, const scnXml::AnophelesParams& a2);
-Anopheles::AnophelesModel* createAnophelesModel(RunContext& ctx, size_t i, const scnXml::AnophelesParams& anoph,
-                                                vector<double>& initialisationEIR, int populationSize,
-                                                int interventionMode);
+AnophelesModel* createAnophelesModel(RunContext& ctx, size_t i, const scnXml::AnophelesParams& anoph,
+                                     vector<double>& initialisationEIR, int populationSize, int interventionMode);
 TransmissionModel* createVectorModel(RunContext& ctx, const scnXml::Entomology& entoData, int populationSize);
 TransmissionModel* createTransmissionModel(RunContext& ctx, const scnXml::Entomology& entoData, int populationSize);
-} // namespace Transmission
-} // namespace OM
+} // namespace OpenMalaria

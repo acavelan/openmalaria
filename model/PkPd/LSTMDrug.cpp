@@ -43,8 +43,7 @@
 
 using namespace std;
 
-namespace OM {
-namespace PkPd {
+namespace OpenMalaria {
 
 // ———  LSTMDrug base (state every variant shares)  ———
 
@@ -75,13 +74,11 @@ LSTMDrugOneComp::LSTMDrugOneComp(const LSTMDrugType& type, LocalRng& rng) : LSTM
     neg_elim_sample = -type.sample_elim_rate(rng);
 }
 
-double LSTMDrugOneComp::getConcentration(size_t index) const {
-    return index == typeData->index ? concentration : 0.0;
-}
+double LSTMDrugOneComp::getConcentration(size_t index) const { return index == typeData->index ? concentration : 0.0; }
 
 // TODO: in high transmission, is this going to get called more often than updateConcentration?
 // When does it make sense to try to optimise (avoid doing decay calcuations here)?
-double LSTMDrugOneComp::calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const {
+double LSTMDrugOneComp::calculateDrugFactor(LocalRng& rng, Infection* inf, double body_mass) const {
     if (concentration == 0.0 && doses.size() == 0)
         return 1.0; // nothing to do
 
@@ -145,7 +142,7 @@ void LSTMDrugOneComp::updateConcentration(double body_mass) {
     //NOTE: would be faster if elements were stored in reverse order — though prescribing would probably be slower
     doses.erase(doses.begin(), doses.begin() + doses_taken);
 
-    util::streamValidate(concentration);
+    streamValidate(concentration);
     if (concentration < typeData->getNegligibleConcentration()) {
         // once negligible, try to optimise so that we don't have to do
         // anything next time step
@@ -177,9 +174,7 @@ LSTMDrugThreeComp::LSTMDrugThreeComp(const LSTMDrugType& type, LocalRng& rng) : 
     C = numeric_limits<double>::quiet_NaN();
 }
 
-double LSTMDrugThreeComp::getConcentration(size_t index) const {
-    return index == typeData->index ? conc() : 0.0;
-}
+double LSTMDrugThreeComp::getConcentration(size_t index) const { return index == typeData->index ? conc() : 0.0; }
 
 void LSTMDrugThreeComp::updateCached(double body_mass) const {
     if (last_bm == body_mass)
@@ -265,13 +260,13 @@ double LSTMDrugThreeComp::calculateFactor_fC(const Params_fC& p, double duration
     int r = gsl_integration_qag(&F, 0.0, duration, abs_eps, rel_eps, GSL_INTG_MAX_ITER, qag_rule, gsl_intgr_wksp,
                                 &intfC, &err_eps);
     if (r != 0) {
-        throw TRACED_EXCEPTION("calculateFactor: error from gsl_integration_qag", util::Error::GSL);
+        throw TRACED_EXCEPTION("calculateFactor: error from gsl_integration_qag", Error::GSL);
     }
     if (err_eps > 5e-2) {
         // This could be a warning, except that warnings tend to be ignored.
         ostringstream msg;
         msg << "calculateFactor: error epsilon is large: " << err_eps << " (integral is " << intfC << ")";
-        throw TRACED_EXCEPTION(msg.str(), util::Error::GSL);
+        throw TRACED_EXCEPTION(msg.str(), Error::GSL);
     }
 
     return 1.0 / exp(intfC); // drug factor
@@ -279,7 +274,7 @@ double LSTMDrugThreeComp::calculateFactor_fC(const Params_fC& p, double duration
 
 // TODO: in high transmission, is this going to get called more often than updateConcentration?
 // When does it make sense to try to optimise (avoid doing decay calcuations here)?
-double LSTMDrugThreeComp::calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const {
+double LSTMDrugThreeComp::calculateDrugFactor(LocalRng& rng, Infection* inf, double body_mass) const {
     if (conc() == 0.0 && doses.size() == 0)
         return 1.0; // nothing to do
     updateCached(body_mass);
@@ -364,7 +359,7 @@ void LSTMDrugThreeComp::updateConcentration(double body_mass) {
     //NOTE: would be faster if elements were stored in reverse order — though prescribing would probably be slower
     doses.erase(doses.begin(), doses.begin() + doses_taken);
 
-    util::streamValidate(conc());
+    streamValidate(conc());
     if (conc() < typeData->getNegligibleConcentration()) {
         // once negligible, try to optimise so that we don't have to do
         // anything next time step
@@ -485,7 +480,7 @@ double LSTMDrugConversion::calculateFactor_conv(const Params_convFactor& p, doub
     int r = gsl_integration_qag(&F, 0.0, duration, abs_eps, rel_eps, GSL_INTG_CONV_MAX_ITER, qag_rule,
                                 gsl_intgr_conv_wksp, &intfC, &err_eps);
     if (r != 0) {
-        throw TRACED_EXCEPTION("calculateFactor: error from gsl_integration_qag", util::Error::GSL);
+        throw TRACED_EXCEPTION("calculateFactor: error from gsl_integration_qag", Error::GSL);
     }
     // Testing err_eps is redundant with GSL's built-in tests
     //     cout << "integration steps: " << intg_steps << endl;
@@ -517,7 +512,7 @@ void LSTMDrugConversion::setConversionParameters(Params_convFactor& p, double bo
     p.invVdM = 1.0 / (vol_dist_metabolite * body_mass);
 }
 
-void LSTMDrugConversion::setKillingParameters(LocalRng& rng, Params_convFactor& p, WithinHost::Infection* inf) const {
+void LSTMDrugConversion::setKillingParameters(LocalRng& rng, Params_convFactor& p, Infection* inf) const {
     uint32_t genotype = inf->genotype();
     const LSTMDrugPD &pdP = typeData->getPD(genotype), &pdM = metaboliteData->getPD(genotype);
     p.nP = pdP.slope();
@@ -545,7 +540,7 @@ void LSTMDrugConversion::setKillingParameters(LocalRng& rng, Params_convFactor& 
 
 // TODO: in high transmission, is this going to get called more often than updateConcentration?
 // When does it make sense to try to optimise (avoid doing decay calcuations here)?
-double LSTMDrugConversion::calculateDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const {
+double LSTMDrugConversion::calculateDrugFactor(LocalRng& rng, Infection* inf, double body_mass) const {
     if (qtyG == 0.0 && qtyP == 0.0 && qtyM == 0.0 && doses.size() == 0) {
         return 1.0; // nothing to do
     }
@@ -630,7 +625,7 @@ void LSTMDrugConversion::updateConcentration(double body_mass) {
     qtyP = p.qtyP;
     qtyG = p.qtyG;
 
-    util::streamValidate(qtyM);
+    streamValidate(qtyM);
     if (qtyP < typeData->getNegligibleConcentration() * body_mass * vol_dist &&
         qtyM < metaboliteData->getNegligibleConcentration() * body_mass * vol_dist_metabolite) {
         // once negligible, try to optimise so that we don't have to do
@@ -639,5 +634,4 @@ void LSTMDrugConversion::updateConcentration(double body_mass) {
     }
 }
 
-}
 }

@@ -30,11 +30,9 @@
 #include <utility>
 #include <vector>
 
-namespace OM {
+namespace OpenMalaria {
 
-namespace util {
 class DecayFunction;
-}
 
 /** Per-host vector-intervention record (ITN/IRS/GVI), stored in DEPLOY-HISTORY
  * order (parity: c — the effect FP products multiply in this exact order;
@@ -47,17 +45,17 @@ struct IvRecord {
     /// ComponentId has no default ctor; max() = never-a-valid-id (records are
     /// filled field-by-field at deploy/checkpoint-read before use).
     IvRecord() : id(std::numeric_limits<size_t>::max()) {}
-    interventions::ComponentId id;
-    interventions::Component::Type kind;        // type-rank (ITN/IRS/GVI)
-    SimTime deploy = sim::never();              // time of last (re)deployment
-    SimTime disposal = sim::never();            // ITN attrition time
-    int n_holes = 0;                            // ITN: total holes
-    double hole_index = 0.0;                    // ITN: number+size measure
-    double initial_insecticide = 0.0;           // ITN/IRS mg/m² (resampled per deploy)
-    double hole_rate = 0.0;                     // ITN holes/step (sampled once per human)
-    double rip_rate = 0.0;                      // ITN rips/hole/step (ditto)
-    const util::DecayFunction* decay = nullptr; // component config (never owned)
-    double decay_factor = 0.0;                  // per-human het sample of decay
+    ComponentId id;
+    Component::Type kind;                 // type-rank (ITN/IRS/GVI)
+    SimTime deploy = never();             // time of last (re)deployment
+    SimTime disposal = never();           // ITN attrition time
+    int n_holes = 0;                      // ITN: total holes
+    double hole_index = 0.0;              // ITN: number+size measure
+    double initial_insecticide = 0.0;     // ITN/IRS mg/m² (resampled per deploy)
+    double hole_rate = 0.0;               // ITN holes/step (sampled once per human)
+    double rip_rate = 0.0;                // ITN rips/hole/step (ditto)
+    const DecayFunction* decay = nullptr; // component config (never owned)
+    double decay_factor = 0.0;            // per-human het sample of decay
 };
 
 /** Per-human vaccine dose record (old PerEffectPerHumanVaccine): one per
@@ -66,12 +64,12 @@ struct IvRecord {
  * matching record in place, never reorders). */
 struct VacRecord {
     VacRecord() : id(std::numeric_limits<size_t>::max()) {}
-    interventions::ComponentId id;
-    uint32_t num_doses = 0;                     // doses administered (EPI-schedule guard)
-    SimTime time_last = sim::never();           // time of last vaccination
-    std::vector<double> per_genotype_eff;       // efficacy at last deployment (undecayed)
-    const util::DecayFunction* decay = nullptr; // component config (never owned)
-    double decay_factor = 0.0;                  // per-human het sample (sampled once)
+    ComponentId id;
+    uint32_t num_doses = 0;               // doses administered (EPI-schedule guard)
+    SimTime time_last = never();          // time of last vaccination
+    std::vector<double> per_genotype_eff; // efficacy at last deployment (undecayed)
+    const DecayFunction* decay = nullptr; // component config (never owned)
+    double decay_factor = 0.0;            // per-human het sample (sampled once)
 };
 
 /** Persistent per-host SoA columns (plan §7 row 6 pinned list; owner module,
@@ -87,18 +85,18 @@ struct VacRecord {
 struct HumanColumns {
     /** Per-host RNG; 4×u64 Xoshiro256P state each (copy-seed ctor runs at the
      * Human's construction point — Human ctor body, old member-init slot). */
-    std::vector<util::LocalRng> rng;
+    std::vector<LocalRng> rng;
 
     /// Date of birth (old Human::dateOfBirth).
     std::vector<SimTime> dob;
-    /// Time of death; sim::never() while alive (old Human::dead bool — the
+    /// Time of death; never() while alive (old Human::dead bool — the
     /// wire never carried `dead`, so this column is deliberately not on it).
     std::vector<SimTime> death;
     /// Monitoring cohort-set bitmask (old Human::cohortSet).
     std::vector<uint32_t> cohort_set;
     /// Sub-population memberships (old Human::subPopExp): per row, (id,expiry)
     /// pairs sorted ascending by id — same iteration order as the old map.
-    std::vector<std::vector<std::pair<interventions::ComponentId, SimTime>>> cohorts;
+    std::vector<std::vector<std::pair<ComponentId, SimTime>>> cohorts;
     /// Monitoring age-group index (old Human::monitoringAgeGroup, size_t).
     std::vector<uint16_t> mon_age_group;
     /// Next continuous-distribution index (old Human::nextCtsDist).
@@ -130,15 +128,15 @@ struct HumanColumns {
     /// Gaussian-copula deployment samples (old PerHost::copulaGaussianSamples
     /// map, 7.4): one gaussian per (human, subPop component) the first time a
     /// correlated deployment attempts that sub-population; value never changes.
-    std::vector<std::map<interventions::ComponentId, double>> copula_g;
+    std::vector<std::map<ComponentId, double>> copula_g;
 
     /** Add a row for a newly constructed Human, at the exact moment of its old
      * member inits: rng is copy-seeded from `master` HERE (RNG RULE); dob set;
      * everything else at construction defaults (alive, no cohorts). */
-    size_t append_row(SimTime dateOfBirth, util::MasterRng& master) {
+    size_t append_row(SimTime dateOfBirth, MasterRng& master) {
         rng.emplace_back(master);
         dob.push_back(dateOfBirth);
-        death.push_back(sim::never());
+        death.push_back(never());
         cohort_set.push_back(0u);
         cohorts.emplace_back();
         mon_age_group.push_back(0u);
@@ -147,10 +145,10 @@ struct HumanColumns {
         imm_Y.push_back(0.0);
         imm_Y_lag.push_back(0.0);
         cum_prim_inf.push_back(0u);
-        t_last_treatment.push_back(sim::never());
-        es_case_start.push_back(sim::never());
-        es_time_recovery.push_back(sim::never());
-        es_time_treatment.push_back(sim::never());
+        t_last_treatment.push_back(never());
+        es_case_start.push_back(never());
+        es_time_recovery.push_back(never());
+        es_time_treatment.push_back(never());
         es_prev_density.push_back(std::numeric_limits<double>::quiet_NaN());
         anoph_ento_raw.emplace_back();
         anoph_ento_avail.emplace_back();

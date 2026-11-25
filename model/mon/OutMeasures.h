@@ -27,8 +27,7 @@
 #include <limits>
 #include <string_view>
 
-namespace OM {
-namespace mon {
+namespace OpenMalaria {
 
 using Measure = uint16_t;
 inline constexpr Measure invalidMeasure = std::numeric_limits<Measure>::max() - 2;
@@ -351,27 +350,26 @@ inline OutMeasure findOutMeasure(std::string_view name) {
     return {};
 }
 
-inline bool isValidCondition(Measure measure) {
-    static constexpr Measure invalid[] = {mon::measure("nSevere"),
-                                          mon::measure("nSevereWithoutComorbidities"),
-                                          mon::measure("nUncomp"),
-                                          mon::measure("nDirDeaths"),
-                                          mon::measure("nHospitalDeaths"),
-                                          mon::measure("Clinical_FirstDayDeaths"),
-                                          mon::measure("Clinical_HospitalFirstDayDeaths"),
-                                          mon::measure("nSeq"),
-                                          mon::measure("nHospitalSeqs"),
-                                          mon::measure("nHospitalRecovs"),
-                                          mon::measure("nNMFever"),
-                                          mon::measure("nNmfDeaths"),
-                                          mon::measure("nSubPopRemovalFirstEvent"),
-                                          mon::measure("innoculationsPerAgeGroup"),
-                                          mon::measure("innoculationsPerVector"),
-                                          mon::measure("inputEIR"),
-                                          mon::measure("simulatedEIR"),
+inline bool isValidCondition(Measure meas) {
+    static constexpr Measure invalid[] = {measure("nSevere"),
+                                          measure("nSevereWithoutComorbidities"),
+                                          measure("nUncomp"),
+                                          measure("nDirDeaths"),
+                                          measure("nHospitalDeaths"),
+                                          measure("Clinical_FirstDayDeaths"),
+                                          measure("Clinical_HospitalFirstDayDeaths"),
+                                          measure("nSeq"),
+                                          measure("nHospitalSeqs"),
+                                          measure("nHospitalRecovs"),
+                                          measure("nNMFever"),
+                                          measure("nNmfDeaths"),
+                                          measure("nSubPopRemovalFirstEvent"),
+                                          measure("innoculationsPerAgeGroup"),
+                                          measure("innoculationsPerVector"),
+                                          measure("inputEIR"),
+                                          measure("simulatedEIR"),
                                           allCauseIMR};
-    return !std::any_of(std::begin(invalid), std::end(invalid), [measure](Measure m) { return measure == m; });
+    return !std::any_of(std::begin(invalid), std::end(invalid), [meas](Measure m) { return meas == m; });
 }
 
-} // namespace mon
-} // namespace OM
+} // namespace OpenMalaria

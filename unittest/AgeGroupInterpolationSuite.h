@@ -27,8 +27,6 @@
 #include "ExtraAsserts.h"
 #include "util/AgeGroupInterpolation.h"
 
-using util::AgeGroupInterpolator;
-
 class AgeGroupInterpolationSuite : public CxxTest::TestSuite {
   public:
     AgeGroupInterpolationSuite() {

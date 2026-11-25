@@ -27,12 +27,8 @@
 #include "util/sampler.h"
 #include "util/DecayFunction.h"
 
-namespace OM {
-namespace Host {
+namespace OpenMalaria {
 class Human;
-}
-namespace interventions {
-using util::LocalRng;
 
 // ———  sub-population removal  ———
 
@@ -64,8 +60,7 @@ enum Types { PEV, BSV, TBV, NumVaccineTypes };
 /** Per vaccine effect (type), per human details.
  * Phase 7.2a-ii: PerEffectPerHumanVaccine and PerHumanVaccine are gone —
  * per-human state is the VacRecord column (Host/HostColumns.h), read by
- * Human::vaccine_factor and written by interventions::vaccinate
+ * Human::vaccine_factor and written by vaccinate
  * (interventions/Vaccine.cpp). */
 
-}
 }

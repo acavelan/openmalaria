@@ -39,9 +39,7 @@ namespace scnXml {
 class HSDT5Day;
 class HSImmediateOutcomes;
 }
-namespace OM {
-namespace Clinical {
-using Host::Human;
+namespace OpenMalaria {
 
 /**
  * Case-management CONFIG shared by the 5-day case management models
@@ -54,19 +52,18 @@ class CM5DayCommon {
     static void init();
 
     enum CaseType { FirstLine, SecondLine, NumCaseTypes };
-    static mon::Measure measures[NumCaseTypes];
+    static Measure measures[NumCaseTypes];
     static double accessUCAny[NumCaseTypes];
     static double accessUCSelfTreat[NumCaseTypes];
     static double accessSevere;
     static double cureRateSevere;
-    static WithinHost::TreatmentId treatmentSevere;
+    static TreatmentId treatmentSevere;
 };
 
 /** Common 5-day clinical update (old CM5DayCommon::doClinicalUpdate; the
  * variant selects the uncomplicatedEvent implementation via the virtual —
  * parity: the old virtual call). */
-void clinicalUpdate5Day(ClinicalModel& cm, RunContext& ctx, Human& human, double ageYears,
-                        WithinHost::Pathogenesis::StatePair& pg);
+void clinicalUpdate5Day(ClinicalModel& cm, RunContext& ctx, Human& human, double ageYears, StatePair& pg);
 
 /** Called when a severe/complicated (with co-infection) malaria sickness occurs.
  *
@@ -122,7 +119,7 @@ class ImmediateOutcomes {
 
     static double cureRateUCOfficial[CM5DayCommon::NumCaseTypes];
     static double cureRateUCSelfTreat[CM5DayCommon::NumCaseTypes];
-    static WithinHost::TreatmentId treatmentUC[CM5DayCommon::NumCaseTypes];
+    static TreatmentId treatmentUC[CM5DayCommon::NumCaseTypes];
     static bool useDiagnosticUC;
 };
 
@@ -130,5 +127,4 @@ class ImmediateOutcomes {
 /// ImmediateOutcomes::uncomplicatedEvent).
 void immOutUncomplicatedEvent(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState);
 
-}
 }

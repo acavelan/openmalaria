@@ -29,18 +29,10 @@
 #include "interventions/HumanComponents.h"
 #include <map>
 
-namespace OM {
-namespace Clinical {
+namespace OpenMalaria {
 class ClinicalModel;
-}
-namespace WithinHost {
 class WHInterface;
-}
-namespace Transmission {
 class TransmissionModel;
-}
-
-namespace Host {
 
 /** Interface to all sub-models storing data per-human individual.
  *
@@ -76,7 +68,7 @@ class Human {
     inline SimTime age(SimTime time) const;
 
     /** Return true if human is a member of the sub-population. */
-    inline bool isInSubPop(interventions::ComponentId id) const;
+    inline bool isInSubPop(ComponentId id) const;
 
     inline uint32_t getCohortSet() const;
 
@@ -88,23 +80,23 @@ class Human {
 
     /** Add the human to an intervention component's sub-population for the given duration. 
      * A duration of zero implies no effect. */
-    void addToCohort(interventions::ComponentId id, SimTime duration);
+    void addToCohort(ComponentId id, SimTime duration);
 
     /** Remove the human from an intervention component's sub-population */
-    void removeFromCohort(interventions::ComponentId id);
+    void removeFromCohort(ComponentId id);
 
     /** Act on "remove from sub-population on first ..." events.
      * This is only for use during a human update. */
-    void removeFirstEvent(interventions::SubPopRemove::RemoveAtCode code);
+    void removeFirstEvent(SubPopRemove::RemoveAtCode code);
 
     /** Remove host from expired cohorts */
     void updateCohortSet();
 
     /** Contains per-species vector data (VectorModel only). */
-    Transmission::PerHost perHostTransmission;
+    PerHost perHostTransmission;
 
     /** The WithinHostModel models parasite density and immunity */
-    unique_ptr<WithinHost::WHInterface> withinHostModel;
+    unique_ptr<WHInterface> withinHostModel;
 
     /** The InfectionIncidenceModel translates per-host EIR into new infections */
     unique_ptr<InfectionIncidenceModel> infIncidence;
@@ -112,11 +104,11 @@ class Human {
     /** The ClinicalModel encapsulates pathogenesis (sickness status),
     * case management (medicating drugs)
     * and clinical outcomes (morbidity, reporting). */
-    unique_ptr<Clinical::ClinicalModel> clinicalModel;
+    unique_ptr<ClinicalModel> clinicalModel;
 
     /** Per-host RNG: SoA column row, not a member (accessor below keeps the
      * old `human.rng()` call syntax; 4×u64 Xoshiro state per row). */
-    inline util::LocalRng& rng();
+    inline LocalRng& rng();
 
     /** Set the column row index (Population-only; see Population::update). */
     void set_row(size_t r);
@@ -124,7 +116,7 @@ class Human {
     /** Vaccine factor: one minus the (decayed) efficacy, multiplied over this
      * human's dose records of the given vaccine type in insertion order
      * (1 for no effect, 0 for full effect). Interventions/Vaccine.cpp. */
-    double vaccine_factor(interventions::Vaccine::Types type, uint32_t genotype = 0) const;
+    double vaccine_factor(Vaccine::Types type, uint32_t genotype = 0) const;
 
     /** True if this human has any vaccine dose record. vaccine_factor() returns
      * exactly 1.0 when false (empty product), so hot loops can hoist the call. */
@@ -160,12 +152,12 @@ struct HostScratch {
 struct HostView {
     RunContext& ctx;
     Human& human;
-    Transmission::TransmissionModel& transmission;
+    TransmissionModel& transmission;
     HostScratch& scratch;
 };
 
-/// The 7 §9 stages, in call order; Host::update is the driver. Bodies moved
-/// verbatim from the old Host::update (draw/FP order sacred).
+/// The 7 §9 stages, in call order; update is the driver. Bodies moved
+/// verbatim from the old update (draw/FP order sacred).
 bool host_is_dead(HostView& v);
 void host_update_mon_cohorts(HostView& v);
 void host_calculate_eir(HostView& v);
@@ -174,11 +166,11 @@ void host_within_host_update(HostView& v);
 void host_clinical_update(HostView& v);
 void host_update_infant_deaths(HostView& v);
 
-void update(RunContext& ctx, Human& human, Transmission::TransmissionModel& transmission, HostScratch& scratch);
+void update(RunContext& ctx, Human& human, TransmissionModel& transmission, HostScratch& scratch);
 
 inline SimTime Human::age(SimTime time) const { return time - cols->dob[row]; }
 
-inline util::LocalRng& Human::rng() { return cols->rng[row]; }
+inline LocalRng& Human::rng() { return cols->rng[row]; }
 
 inline uint16_t& Human::monitoringAgeGroup() { return cols->mon_age_group[row]; }
 
@@ -186,7 +178,7 @@ inline uint16_t& Human::monitoringAgeGroup() const { return cols->mon_age_group[
 
 inline uint32_t& Human::nextCtsDist() { return cols->next_cts_dist[row]; }
 
-inline bool Human::isInSubPop(interventions::ComponentId id) const {
+inline bool Human::isInSubPop(ComponentId id) const {
     // Definition (unchanged from the old std::map): member if (id,expiry) is
     // present with expiry >= nowOrTs0(). Few spans per host; linear is fine.
     for (auto const& span : cols->cohorts[row]) {
@@ -198,12 +190,11 @@ inline bool Human::isInSubPop(interventions::ComponentId id) const {
 
 inline uint32_t Human::getCohortSet() const { return cols->cohort_set[row]; }
 
-inline bool Human::isDead() const { return cols->death[row] != sim::never(); }
+inline bool Human::isDead() const { return cols->death[row] != never(); }
 
 inline void Human::kill() {
     // A human cannot be revived: only Population::update erases the row.
     cols->death[row] = ctx->clock.nowOrTs1();
 }
 
-}
 }

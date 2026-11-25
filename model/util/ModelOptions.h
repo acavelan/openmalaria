@@ -39,11 +39,10 @@ template <typename T, bool> class optional; // real template: bool fund defaults
 }
 }
 }
-namespace OM {
+namespace OpenMalaria {
 class SimClock;
 }
-namespace OM {
-namespace util {
+namespace OpenMalaria {
 
 /** Flags signalling which versions of some models to use. */
 enum OptionCodes {
@@ -307,7 +306,7 @@ class ModelOptions {
     * Initialize the set of model options to use, based on input XML contents.
     */
     static void init(const SimClock& clock, xsd::cxx::tree::optional<scnXml::OptionSet, false>& optionsElt,
-                     util::ModelNameProvider mnp);
+                     ModelNameProvider mnp);
 
   public:
     /*
@@ -337,5 +336,4 @@ class ModelOptions {
     // The model options
     inline static std::bitset<NUM_OPTIONS> options;
 };
-}
 }

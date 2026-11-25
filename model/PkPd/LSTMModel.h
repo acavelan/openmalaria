@@ -30,15 +30,10 @@ class UnittestUtil;
 namespace scnXml {
 class PKPDMedication;
 }
-namespace OM {
+namespace OpenMalaria {
 class RunContext;
-namespace Host {
 class Human;
-}
-namespace WithinHost {
 class Infection;
-}
-namespace PkPd {
 
 struct DrugRegistry;
 
@@ -109,7 +104,7 @@ class LSTMModel {
      * Each time step, on each infection, the parasite density is multiplied by
      * the return value of this infection. The WithinHostModels are responsible
      * for clearing infections once the parasite density is negligible. */
-    double getDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const;
+    double getDrugFactor(LocalRng& rng, Infection* inf, double body_mass) const;
 
     /** After any resident infections have been reduced by getDrugFactor(),
      * this function is called to update drug levels to their effective level
@@ -118,7 +113,7 @@ class LSTMModel {
     void decayDrugs(double body_mass);
 
     /** Make summaries of drug concentration data. */
-    void summarize(RunContext& ctx, const Host::Human& human) const;
+    void summarize(RunContext& ctx, const Human& human) const;
 
   public: // simple state record; test util reads the queue directly
     /** Medicate drugs to an individual, which act on infections the following
@@ -144,5 +139,4 @@ class LSTMModel {
     list<MedicateData> medicateQueue;
 };
 
-}
 }

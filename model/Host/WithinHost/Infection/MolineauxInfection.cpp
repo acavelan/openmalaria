@@ -32,10 +32,7 @@
 #include <fstream>
 #include <cmath>
 
-namespace OM {
-namespace WithinHost {
-
-using namespace OM::util;
+namespace OpenMalaria {
 
 // ———  model constants set from input parameters  ———
 
@@ -157,9 +154,9 @@ Infection* createMolineauxInfection(RunContext& ctx, LocalRng& rng, uint32_t pro
 void MolineauxInfection::init(RunContext& ctx, const Parameters& parameters) {
     ctx.createInfection = &createMolineauxInfection;
 
-    multi_factor_gamma = util::ModelOptions::option(util::PARASITE_REPLICATION_GAMMA);
+    multi_factor_gamma = ModelOptions::option(PARASITE_REPLICATION_GAMMA);
 
-    pairwise_P_star_sample = util::ModelOptions::option(util::MOLINEAUX_PAIRWISE_SAMPLE);
+    pairwise_P_star_sample = ModelOptions::option(MOLINEAUX_PAIRWISE_SAMPLE);
     if (!pairwise_P_star_sample) {
         mean_shape_first_local_max = parameters[Parameter::MEAN_LOCAL_MAX_DENSITY];
         sd_scale_first_local_max = parameters[Parameter::SD_LOCAL_MAX_DENSITY];
@@ -168,7 +165,7 @@ void MolineauxInfection::init(RunContext& ctx, const Parameters& parameters) {
         sd_scale_diff_pos_days = parameters[Parameter::SD_DIFF_POS_DAYS];
 
         // with gamma distribution shape and scale parameters has to be recalculated
-        if (util::ModelOptions::option(util::FIRST_LOCAL_MAXIMUM_GAMMA)) {
+        if (ModelOptions::option(FIRST_LOCAL_MAXIMUM_GAMMA)) {
             //NOTE: variant does not appear to work well (according to unit test stats)
             first_local_maximum_gamma = true;
             mean_shape_first_local_max = pow(mean_shape_first_local_max, 2) / pow(sd_scale_first_local_max, 2);
@@ -178,7 +175,7 @@ void MolineauxInfection::init(RunContext& ctx, const Parameters& parameters) {
         }
 
         // with gamma distribution shape and scale parameters has to be recalculated
-        if (util::ModelOptions::option(util::MEAN_DURATION_GAMMA)) {
+        if (ModelOptions::option(MEAN_DURATION_GAMMA)) {
             //NOTE: variant does not appear to work well (according to unit test stats)
             mean_duration_gamma = true;
             mean_shape_diff_pos_days = pow(mean_shape_diff_pos_days, 2) / pow(sd_scale_diff_pos_days, 2);
@@ -256,7 +253,7 @@ MolineauxInfection::Variant::Variant() : Pi1(0.0), Pi2(0.0), Si_summation(0.0) {
 
 bool MolineauxInfection::update(LocalRng&, double survival_factor, SimTime now, double body_mass) {
     SimTime age_BS = now - m_startDate - Infection::s_latentP; // age of post-latent-period blood stage
-    if (age_BS < sim::zero())
+    if (age_BS < zero())
         return false; // latent period (liver stage) — don't do anything
     // bsAge : age of blood stage; 0 implies initial density (0.1; time t=0 in
     // paper, t=1 in MP's Matlab code), age 2 days is after first update step
@@ -274,7 +271,7 @@ bool MolineauxInfection::update(LocalRng&, double survival_factor, SimTime now, 
     // ———  1. Update m_density (Pc), Pi and related  ———
     double Pi[v] = {0.0f};
 
-    if (age_BS == sim::zero()) {
+    if (age_BS == zero()) {
         // The first variant starts with a pre-set density (regardless of blood
         // volume; this is an assumption by DH; paper assumes fixed volume)
         molineaux->variants.resize(1);
@@ -395,5 +392,4 @@ bool MolineauxInfection::update(LocalRng&, double survival_factor, SimTime now, 
 
 // ———  Molineaux: checkpointing  ———
 
-}
 }

@@ -42,14 +42,12 @@
 #include <type_traits>
 #include <vector>
 
-namespace OM {
-
-namespace checkpoint {
+namespace OpenMalaria {
 
 /// Bad/incompatible checkpoint file (clean model error, exit code Checkpoint).
-class checkpoint_error : public util::cmd_exception {
+class checkpoint_error : public cmd_exception {
   public:
-    explicit checkpoint_error(const std::string& msg) : cmd_exception(msg, util::Error::Checkpoint) {}
+    explicit checkpoint_error(const std::string& msg) : cmd_exception(msg, Error::Checkpoint) {}
 };
 
 class Archive {
@@ -174,5 +172,4 @@ class Archive {
     std::streamoff end_ = 0;
 };
 
-} // namespace checkpoint
-} // namespace OM
+} // namespace OpenMalaria

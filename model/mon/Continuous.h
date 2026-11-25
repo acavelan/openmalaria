@@ -33,9 +33,8 @@
 namespace scnXml {
 class Monitoring;
 }
-namespace OM {
+namespace OpenMalaria {
 class Population;
-namespace mon {
 namespace Continuous {
 
 /** Functions dealing with continuous output data.
@@ -65,8 +64,7 @@ void init(RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoi
 	 */
 void registerCallback(RunContext& ctx, string optName, string titles, function<void(ostream&)> f);
 
-void registerCallback(RunContext& ctx, string optName, string titles,
-                      function<void(const vector<Host::Human>&, ostream&)> f);
+void registerCallback(RunContext& ctx, string optName, string titles, function<void(const vector<Human>&, ostream&)> f);
 
 void registerCallback(RunContext& ctx, string optName, string titles, function<void(Population&, ostream&)> f);
 
@@ -82,7 +80,7 @@ inline void registerCallback(RunContext& ctx, string optName, string titles, fun
 }
 
 inline void registerCallback(RunContext& ctx, string optName, string titles,
-                             function<void(const vector<Host::Human>&, ostream&)> f) {
+                             function<void(const vector<Human>&, ostream&)> f) {
     auto& registered = ctx.ctsRegistered;
     assert(registered.count(optName) == 0); // name clash/registered twice?
     function<void(const Population&, ostream&)> _f = [f](const Population& p, ostream& ostream) {
@@ -102,18 +100,18 @@ inline void update(RunContext& ctx, Population& population) {
     auto& toReport = ctx.ctsToReport;
     const SimTime ctsPeriod = ctx.ctsPeriod;
     const bool duringInit = ctx.ctsDuringInit;
-    if (ctsPeriod == sim::zero())
+    if (ctsPeriod == zero())
         return; // output disabled
     if (!duringInit) {
-        if (ctx.clock.interv < sim::zero() || mod_nn(ctx.clock.interv, ctsPeriod) != sim::zero())
+        if (ctx.clock.interv < zero() || mod_nn(ctx.clock.interv, ctsPeriod) != zero())
             return;
     } else {
-        if (mod_nn(ctx.clock.now(), ctsPeriod) != sim::zero())
+        if (mod_nn(ctx.clock.now(), ctsPeriod) != zero())
             return;
         ctsOStream << ctx.clock.inSteps(ctx.clock.now()) << '\t';
     }
 
-    if (duringInit && ctx.clock.interv < sim::zero()) {
+    if (duringInit && ctx.clock.interv < zero()) {
         ctsOStream << "nan";
     } else {
         // NOTE: we could switch this to output dates, but (1) it would be
@@ -131,5 +129,4 @@ inline void update(RunContext& ctx, Population& population) {
 }
 
 } // namespace Continuous
-} // namespace mon
-} // namespace OM
+} // namespace OpenMalaria

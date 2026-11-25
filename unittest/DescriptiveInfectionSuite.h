@@ -44,9 +44,6 @@
 #include <sstream>
 #include <string>
 
-using namespace OM::WithinHost;
-using util::LocalRng;
-
 class DescriptiveInfectionSuite : public CxxTest::TestSuite {
   public:
     void setUp() { UnittestUtil::initTime(5); }
@@ -80,7 +77,7 @@ class DescriptiveInfectionSuite : public CxxTest::TestSuite {
         LocalRng rng(3, 4); // Xoshiro256P(3, 4, default, default) — engine seed defaults in util/random.h
         for (size_t i = 0; i < sizeof(GOLDEN) / sizeof(GOLDEN[0]); ++i) {
             SimTime dur = DescriptiveInfection::sample_duration(UnittestUtil::ctx(), rng);
-            TS_ASSERT_EQUALS(dur, sim::fromDays(GOLDEN[i].days) - UnittestUtil::clock().one_TS());
+            TS_ASSERT_EQUALS(dur, fromDays(GOLDEN[i].days) - UnittestUtil::clock().one_TS());
 
             // state words after this draw, via the model's own checkpoint API
             std::ostringstream os;
