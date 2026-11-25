@@ -107,8 +107,7 @@ private:
     // ---- OneComp kind (behaviour defined in LSTMDrugOneComp.cpp) ----
     double drugFactor_oneComp(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const;
     void updateConcentration_oneComp(double body_mass);
-    void checkpoint_oneComp(istream& stream);
-    void checkpoint_oneComp(ostream& stream);
+    template<class S> void checkpoint_oneComp(S& stream);
 
     // ---- ThreeComp kind (LSTMDrugThreeComp.cpp) ----
     inline double conc() const{
@@ -118,8 +117,7 @@ private:
     double calculateFactor_fC(const Params_fC& p, double duration) const;
     double drugFactor_threeComp(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const;
     void updateConcentration_threeComp(double body_mass);
-    void checkpoint_threeComp(istream& stream);
-    void checkpoint_threeComp(ostream& stream);
+    template<class S> void checkpoint_threeComp(S& stream);
     friend double func_fC( double t, void* pp );        // function used in calculateFactor_fC
 
     // ---- Conversion kind (LSTMDrugConversion.cpp) ----
@@ -130,8 +128,7 @@ private:
     void setKillingParameters(LocalRng& rng, Params_convFactor& p, WithinHost::Infection *inf) const;
     double drugFactor_conversion(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const;
     void updateConcentration_conversion(double body_mass);
-    void checkpoint_conversion(istream& stream);
-    void checkpoint_conversion(ostream& stream);
+    template<class S> void checkpoint_conversion(S& stream);
     
     Kind kind;
     /// Always links a drug instance to its drug-type data (Conversion kind:

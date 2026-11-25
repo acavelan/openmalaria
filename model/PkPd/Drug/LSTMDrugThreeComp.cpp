@@ -219,7 +219,7 @@ void LSTMDrug::updateConcentration_threeComp (double body_mass) {
     }
 }
 
-void LSTMDrug::checkpoint_threeComp(ostream& stream){
+template<class S> void LSTMDrug::checkpoint_threeComp(S& stream){
     concA & stream;
     concB & stream;
     concC & stream;
@@ -238,25 +238,8 @@ void LSTMDrug::checkpoint_threeComp(ostream& stream){
     B & stream;
     C & stream;
 }
-void LSTMDrug::checkpoint_threeComp(istream& stream){
-    concA & stream;
-    concB & stream;
-    concC & stream;
-    concABC & stream;
-    elim_sample & stream;
-    k12 & stream;
-    k21 & stream;
-    k13 & stream;
-    k31 & stream;
-    nka & stream;
-    last_bm & stream;
-    na & stream;
-    nb & stream;
-    ng & stream;
-    A & stream;
-    B & stream;
-    C & stream;
-}
+template void LSTMDrug::checkpoint_threeComp(std::ostream&);
+template void LSTMDrug::checkpoint_threeComp(std::istream&);
 
 }
 }

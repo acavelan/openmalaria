@@ -36,13 +36,6 @@
 
 #include <vector>
 #include <algorithm>
-#include <cmath>
-
-constexpr int modp(int i, int n) noexcept {
-    int r = i % n;
-    return (r < 0) ? r + n : r;
-}
-
 struct SvDiffParams
 {
 	const gsl_vector* SvfromEIR;

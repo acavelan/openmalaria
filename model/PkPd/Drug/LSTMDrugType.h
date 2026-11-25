@@ -212,7 +212,6 @@ private:
     
     // Allow LSTMDrug to access private members
     friend class LSTMDrugPD;
-    friend inline double drugEffect (const LSTMDrugType& drugType, double& concentration, double duration, double weight_kg, double dose_mg);
 };
 
 

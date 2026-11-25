@@ -102,14 +102,12 @@ void LSTMDrug::updateConcentration_oneComp( double body_mass ){
     }
 }
 
-void LSTMDrug::checkpoint_oneComp(ostream& stream){
+template<class S> void LSTMDrug::checkpoint_oneComp(S& stream){
     concentration & stream;
     neg_elim_sample & stream;
 }
-void LSTMDrug::checkpoint_oneComp(istream& stream){
-    concentration & stream;
-    neg_elim_sample & stream;
-}
+template void LSTMDrug::checkpoint_oneComp(std::ostream&);
+template void LSTMDrug::checkpoint_oneComp(std::istream&);
 
 }
 }

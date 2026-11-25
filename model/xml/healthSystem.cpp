@@ -35,7 +35,6 @@
 #include "Host/NeonatalMortality.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
-#include "Host/WithinHost/Pathogenesis/PathogenesisModel.h"
 #include "Host/WithinHost/Treatments.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Clinical/CM5DayCommon.h"
