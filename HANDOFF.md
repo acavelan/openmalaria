@@ -1,6 +1,7 @@
 # MAIN-SESSION STATUS (2026-11-25, authoritative)
-**Branch `rewrite`, HEAD `c7ee853d` + this docs commit. Baxter-parity pass is IN FLIGHT — no new
-timing number in this tree is quotable yet.** Read with `RECOVERY.md` §11 and `PERF.md` Round 7.
+**Branch `rewrite`, HEAD `f6601671` + the current uncommitted follow-up. The Baxter-parity pass remains
+open; small follow-up A/B deltas below do not replace its headline comparison.** Read with `RECOVERY.md`
+and the latest `PERF.md` sections.
 
 - **Perf parity (open).** Fresh worktrees `/tmp/opencode/om-perf/{A0,B,R}`: A0 = `main@cfc3c8e0` plain
   `-O3`; B = `origin/eval/bs-all` + LTO/PGO on its own corpus; R = `rewrite@c7ee853d` +
@@ -20,24 +21,19 @@ timing number in this tree is quotable yet.** Read with `RECOVERY.md` §11 and `
   EntomologyConfig → HealthSystemConfig/ClinicalConfig → intervention ComponentIdList → shrink
   `run.cpp`. Real per-step cost is `unittest/UnittestUtil.h` (205 scnXml refs): convert fixtures in
   the same commit as each signature.
-- **LOC census.** Canonical cloc KPI is still 16,317. Stripped re-scan: `xml/` ≈3.8k, non-xml
-  ≈12.5k. Budget math vs the hard cap: `xml/` 2.6k ⇒ ~+1.2k over; non-xml 11.4k ⇒ ~+1.1k over.
-  Dead-code and dedup sweeps re-run (linker/token + exact/normalised windows): **0** real dead
-  functions (7 hits = destructors called implicitly), 2 exact duplicate 10-line blocks (both
-  `#include`), 74 near-dup windows (all boilerplate). 7c-D's "tree already clean" stands. Safe
-  organic wins ≈300 LOC: boundary boilerplate −114, reader declarations −25, two single-consumer
-  headers (`xml/HumanInterventionComponents.h`, `CalcNvO.h`) −55, table-driven CLI/compile/sampler
-  −100…150. **The 14.0k cap is not reachable by tidying** — it needs 300–600 LOC of XML-reader
-  compression or a user sign-off.
-- **Hot-path audit (static, 2026-11-25).** Four flag/PGO levers checked: `-freorder-blocks-and-
-  partition` and `-falign-loops` are already active at `-O3` (nothing to add); `-fno-plt` is **not**
-  default and removes one PLT jump per `log`/`gsl_cdf_ugaussian_P` call in
-  `probTransmissionToMosquito` (bit-exact); `-fipa-pta` is **off** and is the flag that attacks the
-  `ctx->subobject` aliasing that blocks hoisting `statSurveyNumber`/`nGenotypes` out of host loops
-  (bit-exact, costs compile time/memory). **PGO training-corpus parity is judged the largest lever
-  of all** — `util/pgo-build.sh:60` trains only on `util/example`, not on the comparison corpus;
-  a mismatched profile can mis-order branches and hurt. Test `-fno-plt` → `-fipa-pta` → corpus
-  parity, each behind its own ship-form perf gate; `-flto-partition=one` only if needed.
+- **LOC census (current worktree).** Canonical cloc KPI is **16,082**: `xml/` 3,713, non-xml
+  12,369. Budget math vs the hard cap: `xml/` 2.6k ⇒ ~+1.1k over; non-xml 11.4k ⇒ ~+1.0k over.
+  The latest cleanup removed 175 LOC through enum-indexed Parameters, shared CLI parsing, POD
+  checkpoint vectors, scalar decay samples, wrapper deletion and direct EIR sums. **The 14.0k cap is
+  not reachable by ordinary tidying** — it still needs roughly 2.1k LOC of substantive XML-reader
+  and runtime-boundary redesign or explicit user sign-off. CalcNvO is explicitly excluded.
+- **Hot-path follow-ups (measured).** Forced/transient age hoists and the non-survey EIR monitoring
+  guard were flat and reverted. `-fno-plt` was mixed sub-floor and `-fipa-pta` was ~0.4% slower at
+  both benchmark sizes; neither is shipped. Returning the EIR sums already computed by `getEIR`
+  removes duplicate reductions and one LOC, but its timing delta is below floor and is not claimed
+  as a speed win. PGO now trains on the generic six-scenario corpus. See `PERF.md` for medians/MAD
+  and raw logs. Final follow-up gates: clean build, CTest 65/65, unittest `.OK!`, plain and shipping
+  T1 63/63.
   **Do not** reuse `probTransGenotype_*` as `y_lag` scratch without zeroing on the
   `pTransmit<=0` early return: `updateKappa` reads them unguarded when genotype tracking is on.
 - **Open non-KPI perf finds** (not in the benchmark's paths): `Infection::Kn()` does 3–4

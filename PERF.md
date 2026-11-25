@@ -387,3 +387,31 @@ tracking is on. Any such change also needs a genotype-tracking scenario in T1, n
 | suggestions 3–8: fold the seven `HostView` stages back into `update` (explicit plan deviation); keep `HostScratch` EIR vectors but hoist them across ticks; dissolve per-host incidence ownership into two `Human` values + free equations; `RunContext` owning raw pointers → `unique_ptr`; remove global `WHMockHooks`; share the four history-ordered intervention folds; move intervention runtime code out of `xml/HumanInterventionComponents.h` into `interventions/Components.cpp` | **16,257 (−60 vs 16,317; baseline −13.6%)** | **3,593 (−16)** | same generic six-scenario PGO corpus + LTO, alternating A/B order, 2 warm + median-of-5: @2k **10.73 (MAD .020) → 10.64 (MAD .010) s**; @10k **45.23 (.040) → 44.87 (.110) s**. Both −0.8%, below the 1% structural-change floor; kept for LOC/uniformity, not claimed as a standalone optimization. First noisy 10k pass (base MAD 1.66 s) discarded, not used for a decision. | smaller ownership/dispatch surface and exact equation order retained; one new regression test proves independent mock state. Build 0 C++ warnings/errors, unittest `.OK!`, CTest **65/65**, strict A0 parity **63/63** in both plain and LTO+PGO forms. PGO consumption enforced with `-Werror=missing-profile` (and Clang equivalents). |
 
 Measurement tooling now trains on Genotypes/Penny/VecFullTest/NonHumanHosts/MSAT_HRP2/Vivax rather than the scored example; builds only the trained executable so untrained unit-test TUs cannot trigger false missing-profile failures. `bench-om.sh` starts a fresh log, alternates binary order, records binary SHA-256/scenario/core/allocator environment, and reports user median+MAD plus system/elapsed/RSS/page-fault medians. Before/after binaries: `/tmp/opencode/build-codex-base` and `build-codex-new`; raw logs `/tmp/opencode/bench-codex-{2k,10k}-repeat.log`.
+
+## LOC follow-up and isolated perf tests (2026-11-25, current worktree)
+
+The follow-up requested **no CalcNvO changes**; no CalcNvO file was touched. Structural cleanup reduced
+model LOC **16,257 → 16,082 (−175; 18,813 baseline → −14.5%)** while unittest LOC stayed **3,593**.
+Changes: replace `ModelNameProvider` with the enum plus an XML reader; replace Parameters' two maps
+with enum-indexed values and arithmetic XML-ID mapping; share duplicate command-line option/name/print
+handling; use trivially-copyable doses and a vector medication queue with the existing bounds-checked
+checkpoint vector archive (normal wire order preserved); replace per-deployment decay-tree clones with
+the same sampled scalar passed through `eval_with`; delete dead sampler/wrapper state; return the EIR
+imported/local sums already computed by `getEIR` instead of reducing both vectors again in `Human::update`.
+Final gates: **0 C++ warnings/errors, unittest `.OK!`, CTest 65/65, strict A0 parity 63/63 in plain and
+shipping LTO+PGO forms**, including all 12 resume tests.
+
+Shipping measurements used the same generic six-scenario corpus, alternating A/B order, 2 warmups and
+median-of-5. Compiler-flag candidates used the retained EIR-sum source unchanged.
+
+| candidate | user-CPU result | decision |
+|---|---|---|
+| forced/transient age-factor hoists | @2k 10.62 (MAD .000) → 10.61 (.010), −0.1% | **reverted**, pure micro-optimization below floor |
+| no-survey EIR monitoring guard | @2k 10.65 (.020) → 10.66 (.000), +0.1% | **reverted**, flat |
+| return precomputed EIR sums | @2k 10.64 (.020) → 10.62 (.010), −0.2%; @10k 44.70 (.060) → 44.64 (.130), −0.1% | **kept for structure and −1 LOC**, no optimization claim below floor |
+| `-fno-plt` | @2k 10.61 (.010) → 10.64 (.010), +0.3%; @10k 44.66 (.080) → 44.52 (.070), −0.3% | **rejected**, mixed and below floor |
+| `-fipa-pta` | @2k 10.62 (.000) → 10.66 (.010), +0.4%; @10k 44.59 (.060) → 44.77 (.010), +0.4% | **rejected**, slower at both sizes |
+
+Raw logs: `/tmp/opencode/bench-perf-{age,monitor,eir,fnoplt,ipapta}-{2k,10k}.log` where applicable;
+shipping controls `/tmp/opencode/build-loc-clean-pgo` and `/tmp/opencode/build-perf-eir-pgo`. These
+small deltas do not update the historical original-vs-rewrite headline without a fresh same-window A0 run.
