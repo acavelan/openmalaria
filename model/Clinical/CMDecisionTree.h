@@ -119,7 +119,7 @@ struct FlatTree {
      * hold interventions by value (the only sanctioned direction; the
      * interventions module must not include Clinical/ — the last two
      * runtime edges live in the xml load layer: DecisionTreeComponent in
-     * xml/HumanInterventionComponents.h and changeHS setHS in
+     * xml/interventions.cpp and changeHS setHS in
      * xml/interventions.cpp; phase 7 owns moving those behind ctx.ext). */
     std::vector<HumanIntervention> deploys;
     std::vector<const Diagnostic*> diagnostics;

@@ -20,99 +20,33 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-//parse the xml scenario file
-//
-
 #pragma once
 
 #include "Clock.h"
-#include "RunContext.h"
-#include "util/errors.h"
-#include <schema/scenario.h>
-#include <fstream>
+#include <exception>
 #include <string>
 #include <memory>
 
 namespace OpenMalaria {
-static const int SCHEMA_VERSION = 50;
+class RunContext;
+class Population;
+class TransmissionModel;
+inline constexpr int SCHEMA_VERSION = 50;
 
-inline std::unique_ptr<scnXml::Scenario> loadScenario(std::string lXmlFile) {
-    std::ifstream fileStream(lXmlFile.c_str(), ios::binary);
-    if (!fileStream.good()) {
-        std::string msg = "Error: unable to open " + lXmlFile;
-        throw xml_scenario_error(msg);
-    }
-    std::unique_ptr<scnXml::Scenario> scenario = scnXml::parseScenario(fileStream);
-    fileStream.close();
-    const int scenarioVersion = scenario->getSchemaVersion();
-    if (scenarioVersion < SCHEMA_VERSION) {
-        std::cerr << "Warning: " << lXmlFile << " uses an old schema version (latest is " << SCHEMA_VERSION << ")."
-                  << endl;
-    } else if (scenarioVersion > SCHEMA_VERSION)
-        throw xml_scenario_error("Error: new schema version unsupported");
-    return scenario;
-}
-}
-
-// ———  post-load checks (was xml/XMLChecker.h)  ———
-
-namespace OpenMalaria {
-class XMLChecker {
-  public:
-    XMLChecker() {}
-    ~XMLChecker() {}
-
-    /*
-            * Should be called after the input XML has been loaded and before all subsequent
-            * initialisation. I.e. well before the simulation starts running.
-            *
-            * Performs custom checks on the input XML which are not enforced in the schema itself.
-            *
-            * It would be better to handle as many such issues as possible in the schema itself
-            * However, some required checks are not possible to do using the version of the XSD
-            * spec supported by the XML validation library used by OpenMalaria.
-            *
-            * Throws iff a check fails.
-            *
-            * The purpose of these XML checks to:
-            *  - identify certain problems in the input XML as early as possible, and
-            *  - enable the user to obtain a more informative error message.
-            */
-    void PerformPostValidationChecks(const scnXml::Scenario& scenario) { CheckModelOptionsAndParams(scenario); }
-
-  private:
-    /*
-            * Verifies that, if no model name is written in input XML, then both parameters and
-            * model options and written explicitly.
-            */
-    void CheckModelOptionsAndParams(const scnXml::Scenario& scenario) {
-        // For each relevant element, determine whether it's specified explicitly in XML.
-        const bool modelName = scenario.getModel().getModelName().present();
-        const bool parameters = scenario.getModel().getParameters().present();
-        const bool modelOptions = scenario.getModel().getModelOptions().present();
-        if (!modelName && (!parameters || !modelOptions)) {
-            throw xml_scenario_error(
-                "If a model name is not specified then both <ModelOptions> and <parameters> must be specified");
-        }
-        if (parameters) {
-            // Same rule ModelOptions::compatCheck() applies later, checked before the
-            // clock is initialised (a bogus interval would divide by zero there).
-            const int interval = scenario.getModel().getParameters().get().getInterval();
-            if (interval != 1 && interval != 5) {
-                throw xml_scenario_error("Time step set to " + std::to_string(interval) +
-                                         " days but only 1 and 5 days are supported.");
-            }
-        }
-    }
+/// The engine receives runtime objects, never an XSD tree. Members are ordered
+/// to destroy transmission before population, as in the original driver.
+struct ScenarioRuntime {
+    std::unique_ptr<Population> population;
+    std::unique_ptr<TransmissionModel> transmission;
+    bool surveyOnlyNewEp;
+    SimTime humanWarmupLength, estEndTime;
 };
-}
 
-// ———  shared latentP read (was xml/latentP.h; defined in xml/scenario.cpp)  ———
+/// Parse, validate and initialise in the frozen dependency/RNG order.
+ScenarioRuntime initialiseScenario(RunContext& ctx, const std::string& path, bool resuming);
 
-namespace OpenMalaria {
-
-/// Default 15d, else model/parameters/latentP; wraps parse errors as
-/// "model/parameters/latentP: <msg>" exactly as both callers did.
-SimTime read_latentP(const SimClock& clock, const scnXml::Model& model);
+/// Report an XSD exception, if this is one. Keeps library types and their
+/// diagnostics inside xml/; main retains its existing exit-code handling.
+bool reportXmlException(std::exception_ptr error);
 
 } // namespace OpenMalaria

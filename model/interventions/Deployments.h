@@ -43,12 +43,11 @@
 #include <map>
 #include <string>
 #include <variant>
+#include <functional>
 namespace scnXml {
 class DeploymentBase;
 class MassDeployment;
 class ContinuousDeployment;
-class HealthSystem;
-class NonVector;
 }
 
 #include "util/SpeciesIndexChecker.h"
@@ -149,20 +148,18 @@ struct AddNhhDeployParams {
     SimTime lifespan = never();
     std::map<std::string, NhhSpec> bySpecies;
 };
-/// ChangeHS/ChangeEIR clones are consumed (deleted) on deploy. Raw pointers:
-/// never-deployed clones leak at exit — exactly the old classes' behaviour
-/// (their destructors never freed these).
+/// XML owns the captured health-system description. Both deployment and
+/// abandonment release it; the runtime never sees a schema object.
 struct ChangeHsDeployParams {
-    scnXml::HealthSystem* newHS = nullptr;
-};
-struct ChangeEirDeployParams {
-    scnXml::NonVector* newEIR = nullptr;
+    std::function<void(RunContext&)> apply;
+    void deploy(RunContext& ctx) {
+        apply(ctx);
+        apply = {};
+    }
 };
 
 // Definitions in xml/interventions.cpp (they need the schema/clinical includes
 // this header must not pull in):
-void timed_deploy_change_hs(RunContext&, TransmissionModel&, ChangeHsDeployParams&);
-void timed_deploy_change_eir(RunContext&, TransmissionModel&, ChangeEirDeployParams&);
 void timed_deploy_add_nhh(RunContext&, std::vector<Human>&, TransmissionModel&, AddNhhDeployParams&);
 void timed_deploy_nhh_mods(RunContext&, std::vector<Human>&, TransmissionModel&, const NhhModsDeployParams&);
 
@@ -176,7 +173,7 @@ inline void timed_human_deploy(RunContext& ctx, std::vector<Human>& population, 
         if (age >= th.minAge && age < th.maxAge) {
             double availability = 0.0;
             for (size_t i = 0; i < PerHostAnophParams::numSpecies(ctx); ++i)
-                availability += human.perHostTransmission.anoph_ento_avail()[i];
+                availability += human.perHostTransmission.anoph()[i].ento_avail;
 
             double probability = d.coverage;
 
@@ -192,7 +189,7 @@ inline void timed_human_deploy(RunContext& ctx, std::vector<Human>& population, 
                         throw std::runtime_error("only supports one mosquito species");
 
                     const double ux = PerHostAnophParams::get(ctx, 0).entoAvailability->cdf(
-                        human.perHostTransmission.anoph_ento_raw()[0]);
+                        human.perHostTransmission.anoph()[0].ento_raw);
                     if (ux < 1) {
                         // parity: a — per-human heterogeneity lognormal/beta draws (gsl_cdf pure quantiles, no stream cost) then bernoulli-last; per-candidate draw order/count frozen (plan §3a)
                         double xx = gsl_cdf_ugaussian_Pinv(ux); // Unit interval to Normal
@@ -256,7 +253,7 @@ inline void timed_cumulative_deploy(RunContext& ctx, std::vector<Human>& populat
         if (age >= th.minAge && age < th.maxAge) {
             double availability = 0.0;
             for (size_t i = 0; i < PerHostAnophParams::numSpecies(ctx); ++i)
-                availability += human.perHostTransmission.anoph_ento_avail()[i];
+                availability += human.perHostTransmission.anoph()[i].ento_avail;
             if (availability >= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, th.minAvailability) &&
                 availability <= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, th.maxAvailability)) {
                 if (d.subPop == ComponentId::wholePop() || (human.isInSubPop(d.subPop) != d.complement)) {
@@ -291,7 +288,7 @@ struct TimedDeployment {
     SimTime date = never();
     TimedDeploymentKind kind = TimedDeploymentKind::DUMMY;
     std::variant<std::monostate, TimedHumanParams, CumulativeHumanParams, VectorDeployParams, TrapDeployParams,
-                 AddNhhDeployParams, NhhModsDeployParams, ChangeHsDeployParams, ChangeEirDeployParams>
+                 AddNhhDeployParams, NhhModsDeployParams, ChangeHsDeployParams, EirSeries>
         p;
 
     TimedDeployment() = default;
@@ -335,10 +332,11 @@ inline void TimedDeployment::deploy(RunContext& ctx, std::vector<Human>& populat
         timed_deploy_nhh_mods(ctx, population, transmission, std::get<NhhModsDeployParams>(p));
         break;
     case TimedDeploymentKind::CHANGE_HS:
-        timed_deploy_change_hs(ctx, transmission, std::get<ChangeHsDeployParams>(p));
+        std::get<ChangeHsDeployParams>(p).deploy(ctx);
         break;
     case TimedDeploymentKind::CHANGE_EIR:
-        timed_deploy_change_eir(ctx, transmission, std::get<ChangeEirDeployParams>(p));
+        transmission.changeEIRIntervention(std::get<EirSeries>(p));
+        p = std::monostate{};
         break;
     default:
         throw SWITCH_DEFAULT_EXCEPTION;
@@ -434,7 +432,7 @@ struct ContinuousHumanDeployment {
         } else if (deployAge == age) {
             double availability = 0.0;
             for (size_t i = 0; i < PerHostAnophParams::numSpecies(ctx); ++i)
-                availability += human.perHostTransmission.anoph_ento_raw()[i];
+                availability += human.perHostTransmission.anoph()[i].ento_raw;
 
             if (availability >= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, minAvailability) &&
                 availability <= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, maxAvailability)) {

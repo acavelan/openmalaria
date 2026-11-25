@@ -115,28 +115,23 @@ Human::Human(RunContext& ctx, SimTime dateOfBirth, HumanColumns& columns)
     // construction (append_row builds the rng column row; same ctor point as
     // the old member init): human-creation order == master consumption order;
     // never reorder Human ctor.
-    row = columns.append_row(dateOfBirth, ctx.master_RNG);
+    row = columns.append_row(dateOfBirth, ctx.master_RNG, PerHostAnophParams::numSpecies(ctx));
 
     // Initial humans are created at time 0 and may have dateOfBirth in past. Otherwise dateOfBirth must be now.
     assert(dateOfBirth == ctx.clock.nowOrTs1() || (ctx.clock.now() == zero() && dateOfBirth < ctx.clock.now()));
 
     HumanHet het = hetSample(rng());
     withinHostModel = WHInterface::createWithinHostModel(ctx, rng(), het.comorbidityFactor);
-    withinHostModel->bind_columns(columns, row);
     double iiFactor = InfectionIncidenceModel::getAvailabilityFactor(rng(), 1.0);
     perHostTransmission.ctx = &ctx;
     perHostTransmission.bind_columns(columns, row);
     perHostTransmission.initialise(ctx, rng(), het.availabilityFactor * iiFactor);
     clinicalModel = ClinicalModel::createClinicalModel(ctx, het.treatmentSeekingFactor);
-    clinicalModel->bind_columns(columns, row);
 }
 
 void Human::set_row(size_t r) {
     row = r;
-    // Rebind every submodel caching (cols,row): a stale mirror reads/writes
-    // another host's columns after compaction (WHInterface immunity, Clinical).
-    if (withinHostModel) withinHostModel->bind_columns(*cols, r);
-    if (clinicalModel) clinicalModel->bind_columns(*cols, r);
+    // Transmission is the only submodel retaining a population-row view.
     perHostTransmission.bind_columns(*cols, r);
 }
 

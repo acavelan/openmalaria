@@ -513,19 +513,20 @@ void LSTMDrugConversion::setKillingParameters(LocalRng& rng, Params_convFactor& 
 
     // Use custom code here because we need to handle covariance
     auto pIndex = typeData->index;
-    if (inf->Kn().count(pIndex) != 0) {
+    auto& cache = inf->Kn();
+    if (const auto parent = cache.find(pIndex); parent != cache.end()) {
         // Read cached values: IC50 ^ n
-        p.KnP = inf->Kn().at(pIndex);
-        p.KnM = inf->Kn().at(metaboliteData->index);
+        p.KnP = parent->second;
+        p.KnM = cache.at(metaboliteData->index);
     } else {
         // First usage for this infection / treatment: sample, optionally with correlation.
         auto zscore = NormalSample::generate(rng);
         p.KnP = pdP.IC50_pow_slope(zscore);
-        inf->Kn()[pIndex] = p.KnP;
+        cache[pIndex] = p.KnP;
 
         auto metab_zscore = typeData->IC50_correlated_sample(zscore, rng);
         p.KnM = pdM.IC50_pow_slope(metab_zscore);
-        inf->Kn()[metaboliteData->index] = p.KnM;
+        cache[metaboliteData->index] = p.KnM;
     }
 }
 

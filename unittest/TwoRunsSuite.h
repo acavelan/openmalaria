@@ -24,8 +24,8 @@
 
 // Phase-3 acceptance test (plan §7 row 3): run the full engine twice, in one
 // process, through the same code path main() uses (run_simulation).
-// Run 2 must be bit-identical to run 1 — any per-run state that survives run
-// 1 (i.e. any static that should live in RunContext) makes this red.
+// Repeat the baseline after different pathogenesis/NMF configurations as well:
+// running the same scenario twice alone cannot expose sticky option flags.
 //
 // Capture: the monitoring MeasureStore report values (exact IEEE-754 bit
 // comparison, NaN included) plus the survey-output bytes written by
@@ -39,6 +39,7 @@
 #include "RunContext.h"
 #include "util/CommandLine.h"
 #include "mon/Monitoring.h"
+#include "interventions/Deployments.h"
 
 #include <cstdio>
 #include <cstring>
@@ -91,6 +92,28 @@ RunCapture captureRun(RunContext& ctx, const std::string& surveyFile) {
 
 class TwoRunsSuite : public CxxTest::TestSuite {
   public:
+    void testDeferredHealthSystemLifetime() {
+        RunContext ctx;
+        for (bool deploy : {false, true}) {
+            std::weak_ptr<int> lifetime;
+            ctx.nextTimed = 0;
+            {
+                auto state = std::make_shared<int>(7);
+                lifetime = state;
+                ChangeHsDeployParams change{[state](RunContext& run) { run.nextTimed = *state; }};
+                state.reset();
+                TS_ASSERT(!lifetime.expired());
+                TS_ASSERT_EQUALS(ctx.nextTimed, 0u);
+                if (deploy) {
+                    change.deploy(ctx);
+                    TS_ASSERT_EQUALS(ctx.nextTimed, 7u);
+                    TS_ASSERT(lifetime.expired());
+                }
+            }
+            TS_ASSERT(lifetime.expired()); // also when the event never occurs
+        }
+    }
+
     void testCaptureRejectsMissingOrEmptyOutput() {
         RunContext ctx;
         const auto path = std::filesystem::temp_directory_path() / "om-tworuns-empty.bin";
@@ -134,6 +157,12 @@ class TwoRunsSuite : public CxxTest::TestSuite {
         std::string err;
         for (int run = 1; run <= 2 && ok; ++run) {
             try {
+                if (run == 2) {
+                    for (const char* name : {"9", "10", "NonHumanHosts", "Vivax", "Penny"}) {
+                        RunContext other;
+                        run_simulation(other, src + "../test/scenario" + name + ".xml");
+                    }
+                }
                 RunContext ctx; // each run gets a fresh context: runs must not share state
                 std::filesystem::remove("tworuns.bin"); // each run must create its own output
                 run_simulation(ctx, scenarioFile);

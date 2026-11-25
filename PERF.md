@@ -339,16 +339,16 @@ Residual ~2 % is the ctx-indirection class (named above) + inlining luck; below 
 own cross-window reproducibility (~0.5 %) starts to bite. LOC budget of the hunt: E1 −29, E4 +23,
 E5 +59, E7 +76, E8 +23, E6/E9 rejected ⇒ +152 net against the −2,580 rewrite (−13.6 % intact).
 
-### Round 7 — Baxter-parity pass (IN FLIGHT, 2026-11-25)
+### Round 7 — Baxter-parity investigation (historical brief, superseded below)
 
-**No result yet — do not quote a new number until this row is closed.** Measurements run in fresh
+The initial brief proposed measurements in fresh
 worktrees `/tmp/opencode/om-perf/{A0,B,R}` (A0 = `main@cfc3c8e0` plain; B = `eval/bs-all` +
 LTO/PGO on its own corpus; R = `rewrite@c7ee853d` + `util/pgo-build.sh`; R2 = rewrite trained on
 B's corpus). Same harness: pinned, interleaved, 2k/10k/7-scenario, T1 63/63 before any claim.
 
-Two hypotheses, ordered:
+The following were hypotheses at the start of the investigation:
 
-1. **Recipe parity — likely the larger lever.** `util/pgo-build.sh:60` trains only on
+1. **Recipe parity.** At that time `util/pgo-build.sh` trained only on
    `util/example/example_scenario.xml`; the comparison's B profile came from a multi-scenario mix,
    and a mismatched profile can mis-order branches and *hurt*. If R2 ≈ B, the fix is the shipping
    script's corpus, not code.
@@ -373,12 +373,14 @@ Statically verified, bit-exact build levers (no `-march`/`-mtune=native`, no fas
 the `pTransmit<=0` early return — `updateKappa` reads those vectors unguarded when genotype
 tracking is on. Any such change also needs a genotype-tracking scenario in T1, not just tiers a,b.
 
-**Non-KPI code finds:** `Infection::Kn()` does 3–4 `std::map` lookups per call (collapse to one
-`find`, bit-exact); `AnophelesModel::advancePeriod` copies the full `nhhInstances` map every step
+**Non-KPI code finds:** the callers `LSTMDrugPD::IC50_pow_slope` and
+`LSTMDrugConversion::setKillingParameters` repeat `std::map` lookups; `Infection::Kn()` itself
+only creates/returns the cache. `AnophelesModel::advancePeriod` copies the full `nhhInstances` map every step
 (empty in the benchmark scenario).
 
 **Close criteria:** R/B ≤ 1.005 @2k and @10k, ≤0.5 % on the 7-scenario total, no >1 % regression
-@5k, T1 63/63, `ctest` 64/64, `unittest` `.OK!`, resume suite green.
+@5k, T1 63/63, `ctest` 65/65, `unittest` `.OK!`, resume suite green.
+The two-point comparison below does not close these broader criteria.
 
 ## Codex review follow-ups (2026-11-25)
 
@@ -426,3 +428,193 @@ WithoutElse` and short-block support so formatting preserves the requested style
 RNG call, FP operation, or condition was edited. Clean build, CTest **65/65**, strict A0 parity **63/63**
 in plain and shipping LTO+PGO forms. This is presentation-only and is not a claim of simpler ownership
 or faster execution.
+
+## Fresh Baxter comparison and selective rebinding (2026-11-25)
+
+Rebuilt `eval/bs-all@6603c79e` and current `rewrite` with the **same generic six-scenario PGO corpus,
+LTO and compiler**. Allocator environment variables matched, but heap policy did not:
+rewrite includes its own `mallopt`/THP hints and Baxter does not. These are **shipped-configuration
+comparisons**, not an equal-heap-policy layout experiment. Initial timings: @2k Baxter **10.49 (MAD .000)** vs
+rewrite **10.61 (.010)**; @10k Baxter **45.24 (.180)** vs rewrite **44.69 (.140)**. This supersedes the
+old residual comparison for these two points: the rewrite already led @10k but trailed @2k.
+
+**Selective post-compaction rebinding (retained):** call `Human::set_row(w)` only inside the existing
+`w != r` move branch, then delete the full-survivor rebind loop. Rows that did not move already had valid
+bindings; the moved row retains RNG, column and submodel identity and is rebound immediately. No new
+algorithmic Baxter content was found elsewhere—the remaining difference is diffuse context/row addressing.
+In the three-binary A/B: @2k Baxter **10.50 (.000)**, prior rewrite **10.64 (.010)**, selective **10.57
+(.010)**; @10k Baxter **45.23 (.030)**, prior **44.69 (.140)**, selective **44.59 (.030)**. The individual
+gain is below the 1% floor, but this removes a population-wide dependent-load/store pass and is retained
+for algorithmic structure, not as a proven standalone optimization. Final position: **rewrite
+0.67% slower @2k, 1.42% faster @10k**. Below the 1% decision floor does not establish a statistical
+tie; the 2k ratio 1.0067 also misses the 1.005 close criterion. Selective gates: CTest **65/65**, plain and shipping
+T1 **63/63**. Model LOC **15,717 → 15,718 (+1)**.
+
+Further candidates were reverted without altering the retained diff: contiguous age-group lookup storage
+(@2k 10.57 → 10.58, flat); persistent survivor `keep` scratch (10.56 → 10.61, slower); sweep-local
+`nGenotypes` (10.56 → 10.58, flat). Raw logs: `/tmp/opencode/bench-baxter-current-{2k,10k}.log`,
+`bench-selective-rebind-{2k,10k}.log`, `bench-age-vector-2k.log`, `bench-keep-reuse-2k.log`, and
+`bench-ngenotype-hoist-2k.log`. `/usr/bin/time %U`, core 5, alternating order, 2 warmups + median-of-5.
+
+### Review evidence corrections
+
+- Full CTest includes unittest in the plain build. `pgo-build.sh` builds the trained
+  `openMalaria` executable and schemas; a fresh PGO directory has 64 runnable
+  harness/box/resume tests and no unittest executable.
+  Historical “65/65 in shipping form” wording does not prove shipping-built unit coverage.
+- The 12 resume cases comprise nine intervention-free scenarios and three with health-system
+  changes. None proves restored per-host intervention deployment state. That state stays off-wire.
+- `RunContext` owns many registries, but mutable configuration globals remain. The original
+  two-runs test repeated only scenario1; it did not prove mixed-scenario isolation.
+- Historical A0 ladder: 12.24→10.68 s @2k and 55.6→45.82 s @10k: 1.146×/1.214×,
+  or 12.7%/17.6% less CPU. There is no fresh current-tree A0 timing headline.
+- Review logs/profiles: `/tmp/opencode/review-20261125/`. Fresh review CTest 65/65;
+  Baxter shipping T1 63/63. Rewrite cycle shares @2k/@10k: matrix multiplication
+  22.27%/4.69%, descriptive update 7.35%/17.49%, morbidity 9.64%/10.93%,
+   infectiousness 5.68%/10.31%. These shares do not establish layout causality.
+
+## Review follow-up: hybrid storage and runtime boundary (2026-11-25)
+
+Review follow-up to `a49f56ec`, including the retained selective-rebinding change.
+CalcNv0/CalcNvO are excluded; both existing `CalcNvO` files match the saved SHA-256 hashes.
+No solver changes, replacement, or caching. F16/F26 are inherited; F73/F100 remain separate.
+
+### Structure, LOC and readability
+
+Canonical `cloc --include-lang="C++,C/C++ Header"` code counts; XML is a subset of model:
+
+| stage | model LOC / files | XML LOC / files | unittest LOC / files |
+|---|---:|---:|---:|
+| review entry (selective rebinding) | 15,718 / 116 | 3,589 / 12 | 3,593 / 29 |
+| initialisation fixes + flat species | 15,716 / 116 | 3,593 / 12 | 3,645 / 30 |
+| hybrid host state | 15,674 / 116 | 3,593 / 12 | 3,648 / 30 |
+| XML/runtime boundary + three folds | 15,605 / 113 | 3,558 / 10 | 3,670 / 30 |
+| cache lookups + non-human-host map-copy removal | **15,598 / 113** | **3,558 / 10** | **3,683 / 30** |
+
+Net review follow-up: **−120 model LOC, −31 XML LOC, −3 model files; +90 unit-test LOC**.
+Against the original 18,813: **−3,215 (−17.1%)**. The hard caps are still unmet:
+**+1,598 total / +958 XML** (non-XML 12,040 versus 11,400). This is not cap completion.
+
+- **Initialisation:** the expanded mixed-scenario test failed before the fix. Reset clinical,
+  within-host, incidence and pathogenesis selection flags and the optional NMF interpolator.
+  The test runs scenario1, then 9/10/NonHumanHosts/Vivax/Penny, then scenario1 again.
+  It proves that sequence, not the isolation of every remaining mutable configuration global.
+- **Flat species:** four nested per-host vectors become one host-major `vector<HostSpecies>`
+  of four doubles per host/species. Construction preserves the original four draw sites and
+  arithmetic order. Compaction applies the same stable survivor runs with a species stride.
+  Spans are reacquired after population changes. A regression covers 0/1/3 species, overlapping
+  moves, gaps, births, all-dead compaction, and exact RNG-byte association.
+- **Hybrid:** immunity/infection counters live on `WHInterface`; clinical clocks live on their
+  clinical models, with ES-only state on `CMEventScheduler`. Nine population columns and two
+  row-rebinding paths disappear. Scan-oriented, RNG and intervention columns remain.
+  The independent-immunity check no longer needs artificial population columns.
+- **XML/runtime boundary:** `run.cpp` receives `ScenarioRuntime` from `initialiseScenario`.
+  Parsing, validation, dependency-ordered initialisation and XSD diagnostics stay in `xml/`.
+  The full schema tree is released before simulation. Compiler dependency files confirm no
+  generated-schema dependency for `run.cpp`, `main.cpp`, or `util/CommandLine.cpp`.
+  Schema-facing conversion declarations still exist in model headers; this is not full
+  plain-config conversion. Deferred change-EIR uses plain `EirSeries` data and validates at
+  deployment. A health-system action owns its XML clone through RAII and releases it on
+  deployment or abandonment. Its conversion remains late to preserve treatment/tree
+  registration and first-error order.
+- **File folds:** `Clinical/Episode.cpp` joins `ClinicalModel.cpp`; XML-only
+  `HumanInterventionComponents.h` and `entomology.h` join `xml/interventions.cpp`.
+- **Smaller follow-ups:** cache hits use one `find` and consume no RNG; correlated parent/
+  metabolite sampling order is unchanged. Non-human hosts use one local record at a time
+  instead of allocating a copy of the entire map each tick. Each field's ordered decay
+  product and each map-ordered sum are unchanged; decay evaluation is pure.
+
+### Correctness gates
+
+Final plain build: **0 C++ warnings/errors, CTest 65/65**, including unittest and all 12
+resume cases. Final shipping LTO+PGO: **64/64 runnable CTest cases**; unit tests are checked
+in the plain build. **Strict A0 parity 63/63 in both forms**, including example@2000 seeds
+1–10. The species, hybrid and XML stages also passed their plain/shipping parity gates.
+Six XML/error-path cases match the preserved pre-follow-up binary in stdout, stderr and
+exit status: missing file, malformed XML, absent schema, future version, bad interval,
+and deployment-time EIP mismatch. Ownership and PK/PD cache RNG checks pass.
+
+Checkpoint format is **3**, with model-owned hybrid state and a validated contiguous
+host/species table. Per-host intervention deployment state remains off-wire. The 12
+resume cases cover nine intervention-free and three health-system-change scenarios,
+not general per-host intervention restoration.
+
+`pgo-build.sh` now regenerates `inlined_xsd` in the final build, fixing missing-schema
+failures in a fresh shipping build. It still builds only the trained executable, not
+untrained unit-test translation units. The six-scenario corpus and frozen FP flags are unchanged.
+
+### Isolated layout measurements
+
+Quiet serialized alternating three-binary windows, core 5, `/usr/bin/time %U`,
+two warmups then five measurements; numbers are median (MAD), seconds. GCC/LTO/PGO
+corpus and built-in heap policy match across these three rewrite stages. `GLIBC_TUNABLES`
+was unset. CPU governor was `powersave`, `intel_pstate/no_turbo=0`, recorded unchanged;
+these are not fixed-frequency/turbo-disabled measurements.
+
+| population | selective baseline | flat species | hybrid |
+|---|---:|---:|---:|
+| 2,000 | 10.57 (.000) | 10.44 (.010) | **10.31 (.000)** |
+| 10,000 | 44.36 (.030) | 44.01 (.140) | **42.88 (.030)** |
+
+Flat species: −1.23% @2k, −0.79% @10k; the latter is below the 1% decision floor,
+retained for ownership/compaction simplification rather than a standalone speed claim.
+Hybrid versus flat: −1.25% / −2.57%. Combined versus selective: **−2.46% / −3.34%**.
+The allocator recipe is held fixed here; these timings still do not isolate the effects
+of allocation count, addressing, cache locality and PGO code generation from one another.
+Peak-RSS medians @10k: 50,352 / 49,336 / 48,212 KiB.
+
+Artifacts: `/tmp/opencode/rewrite-next-20261125/` holds stage source diffs, red/green gate
+logs, `*-counts.json`, `xml-errors.log`, and `bench-layout-{2k,10k}.log` plus its summary.
+Stage binaries: `build-{selective-rebind,flat-species,hybrid-host,xml-boundary,review-final}-pgo`
+under `/tmp/opencode/`; the latter four have immutable sibling source snapshots.
+
+### Final shipping measurements
+
+Same measurement recipe as the layout window; the final candidate includes the XML
+boundary, file folds and cache/NHH changes. Baxter is `eval/bs-all@6603c79e`, built with
+the same compiler, LTO and six-scenario PGO corpus. Built-in heap policy still differs,
+so these compare shipping configurations, not storage layouts in isolation.
+
+| population | Baxter CPU s (MAD) | hybrid stage CPU s (MAD) | final CPU s (MAD) | final/Baxter | CPU reduction |
+|---|---:|---:|---:|---:|---:|
+| 2,000 | 10.47 (.000) | 10.33 (.010) | **10.30 (.010)** | **0.9838** | **1.62%** |
+| 5,000 | 23.17 (.020) | — | **22.56 (.010)** | **0.9737** | **2.63%** |
+| 10,000 | 45.11 (.100) | 42.92 (.090) | **42.89 (.030)** | **0.9508** | **4.92%** |
+
+The 2k/10k points meet R/B ≤1.005, and the 5k point passes the ≤1% regression gate.
+Final versus hybrid @2k/10k is −0.29% / −0.07%, below the decision floor: the XML/file-fold
+cleanup is retained for structure/LOC, with no standalone speed claim.
+Final/Baxter peak-RSS medians: 34,820/33,364 KiB @2k, 41,068/37,136 KiB @5k and
+48,268/45,484 KiB @10k.
+MAD .000 reflects the timer's 0.01-second resolution, not proof of zero variance.
+
+The outer 1,200-second job limit interrupted the 5k window during warmup. Its partial
+log is preserved as `bench-final-5k-timeout.log`; no timing decision uses it. The complete
+5k and seven-scenario windows were then run with the same recipe and a longer limit.
+
+Small-population seven-scenario mix (original scenario populations), median (MAD) CPU seconds:
+
+| scenario | Baxter | XML stage (before cache/NHH edits) | final | final vs Baxter |
+|---|---:|---:|---:|---:|
+| Genotypes | 5.47 (.000) | 5.47 (.000) | 5.49 (.010) | +0.37% |
+| Penny | 2.43 (.000) | 2.54 (.000) | 2.53 (.010) | +4.12% |
+| MSAT_HRP2 | 2.50 (.000) | 2.53 (.000) | 2.54 (.000) | +1.60% |
+| TBV | 2.95 (.000) | 2.98 (.000) | 2.99 (.000) | +1.36% |
+| VecFullTest | 1.99 (.000) | 1.92 (.000) | 1.92 (.000) | −3.52% |
+| NonHumanHosts | 1.95 (.000) | 1.97 (.000) | 1.97 (.000) | +1.03% |
+| Molineaux | 1.55 (.000) | 1.60 (.000) | 1.60 (.000) | +3.23% |
+| **sum of scenario medians** | **18.84** | **19.01** | **19.04** | **+1.06%** |
+
+**Overall performance closure remains open:** the seven-scenario total misses the
+≤0.5% regression allowance. This is not a universal rewrite win. The larger residuals
+in Penny and Molineaux are observations, not attribution to the new layout: this window
+does not include the pre-follow-up selective build. Equal-heap-policy profiling is still
+needed before claiming a layout-specific cause.
+
+Cache/NHH changes versus the XML stage: +0.16% on the total, below the decision floor;
+NonHumanHosts is unchanged at timer resolution. Retained for simpler cache access,
+removal of the whole-map allocation/copy, and −7 model LOC; no standalone speed claim.
+
+Completed logs: `bench-final-{2k,5k,10k,Genotypes,Penny,MSAT_HRP2,TBV,VecFullTest,NonHumanHosts,Molineaux}.log`,
+`bench-final-summary.log`, `bench-final-rest-summary.log`. Machine-readable medians, MAD
+and all five retained samples are in `final-benchmark-results.json`, alongside the logs.

@@ -46,7 +46,7 @@ namespace OpenMalaria {
 
 namespace {
 constexpr uint32_t MAGIC = 0x4B634D4F; // "OMCk" little-endian bytes
-constexpr uint32_t FORMAT_VERSION = 1; // bump on any incompatible change
+constexpr uint32_t FORMAT_VERSION = 3; // hybrid host state + contiguous species table
 
 void ckHeader(Archive& a) {
     uint32_t magic = MAGIC, version = FORMAT_VERSION;

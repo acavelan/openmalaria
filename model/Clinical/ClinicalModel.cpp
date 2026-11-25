@@ -27,7 +27,6 @@
 #include "Clinical/CM5DayCommon.h"
 
 #include "Clinical/EventScheduler.h"
-#include "Clinical/CM5DayCommon.h"
 #include "Host/NeonatalMortality.h"
 #include "mon/Monitoring.h"
 #include "util/ModelOptions.h"
@@ -105,7 +104,7 @@ void CMEventScheduler::doClinicalUpdate(Human& human, double ageYears, StatePair
     esClinicalUpdate(*this, ctx, human, ageYears, pg);
 }
 
-SimTime CMEventScheduler::timeOfLastTreatment() const { return es_time_treatment(); }
+SimTime CMEventScheduler::timeOfLastTreatment() const { return es_time_treatment; }
 
 bool ClinicalModel::isExistingCase() {
     // If treated in the recent past:
@@ -194,6 +193,81 @@ double InfantMortality::allCause() {
     }
     // Child deaths due to malaria (per 1000), plus non-malaria child deaths. Deaths per 1000 births is the return unit.
     return (1.0 - infantPropSurviving) * 1000.0 + nonMalariaMortality;
+}
+
+// Episode reporting shares the clinical model's Human/WH include cone.
+Episode::~Episode() { report(); }
+
+void Episode::flush() {
+    report();
+    time = never();
+}
+
+void Episode::update(RunContext& ctx, const Human& human, Episode::State newState) {
+    bool toReport = false;
+    if (healthSystemMemoryFix && (time + ClinicalModel::hsMemory() <= ctx.clock.ts0()))
+        toReport = true;
+    else if (!healthSystemMemoryFix && (time + ClinicalModel::hsMemory() < ctx.clock.ts0()))
+        toReport = true;
+
+    if (toReport) {
+        infectionType = human.withinHostModel->getInfectionOrigin();
+        report();
+        time = ctx.clock.ts0();
+        surveyPeriod = eventSurveyNumber(ctx);
+        ageGroup = human.monitoringAgeGroup();
+        cohortSet = human.getCohortSet();
+        state = newState;
+    } else {
+        state = Episode::State(state | newState);
+    }
+}
+
+void Episode::report() {
+    if (time < zero()) return; // Nothing to report
+
+    // parity: Episode.cpp:67-115 — report order is the output column order.
+    if (state & MALARIA) {
+        if (state & COMPLICATED) {
+            recordEvent(*rctx, measure("nSevere"), surveyPeriod, ageGroup, cohortSet);
+            if (state & SEVERE)
+                recordEvent(*rctx, measure("nSevereWithoutComorbidities"), surveyPeriod, ageGroup, cohortSet);
+        } else {
+            recordEvent(*rctx, measure("nUncomp"), surveyPeriod, ageGroup, cohortSet);
+            if (infectionType == InfectionOrigin::Indigenous)
+                recordEvent(*rctx, measure("nUncomp_Indigenous"), surveyPeriod, ageGroup, cohortSet);
+            else if (infectionType == InfectionOrigin::Introduced)
+                recordEvent(*rctx, measure("nUncomp_Introduced"), surveyPeriod, ageGroup, cohortSet);
+            else
+                recordEvent(*rctx, measure("nUncomp_Imported"), surveyPeriod, ageGroup, cohortSet);
+        }
+        if (state & EVENT_IN_HOSPITAL) {
+            if (state & DIRECT_DEATH) {
+                recordEvent(*rctx, measure("nDirDeaths"), surveyPeriod, ageGroup, cohortSet);
+                recordEvent(*rctx, measure("nHospitalDeaths"), surveyPeriod, ageGroup, cohortSet);
+                if (state & EVENT_FIRST_DAY) {
+                    recordEvent(*rctx, measure("Clinical_FirstDayDeaths"), surveyPeriod, ageGroup, cohortSet);
+                    recordEvent(*rctx, measure("Clinical_HospitalFirstDayDeaths"), surveyPeriod, ageGroup, cohortSet);
+                }
+            } else if (state & SEQUELAE) {
+                recordEvent(*rctx, measure("nSeq"), surveyPeriod, ageGroup, cohortSet);
+                recordEvent(*rctx, measure("nHospitalSeqs"), surveyPeriod, ageGroup, cohortSet);
+            } else if (state & RECOVERY) {
+                recordEvent(*rctx, measure("nHospitalRecovs"), surveyPeriod, ageGroup, cohortSet);
+            }
+        } else {
+            if (state & DIRECT_DEATH) {
+                recordEvent(*rctx, measure("nDirDeaths"), surveyPeriod, ageGroup, cohortSet);
+                if (state & EVENT_FIRST_DAY)
+                    recordEvent(*rctx, measure("Clinical_FirstDayDeaths"), surveyPeriod, ageGroup, cohortSet);
+            } else if (state & SEQUELAE) {
+                recordEvent(*rctx, measure("nSeq"), surveyPeriod, ageGroup, cohortSet);
+            }
+        }
+    } else if (state & SICK) {
+        recordEvent(*rctx, measure("nNMFever"), surveyPeriod, ageGroup, cohortSet);
+        if (state & DIRECT_DEATH) recordEvent(*rctx, measure("nNmfDeaths"), surveyPeriod, ageGroup, cohortSet);
+    }
 }
 
 }

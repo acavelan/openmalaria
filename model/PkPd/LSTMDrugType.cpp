@@ -54,13 +54,11 @@ double LSTMDrugPD::calcFactor(double Kn, double neg_elim_rate, double* conc, dou
 }
 
 double LSTMDrugPD::IC50_pow_slope(LocalRng& rng, size_t index, Infection* inf) const {
-    double Kn; // gets sampled once per infection
-    if (inf->Kn().count(index) != 0) {
-        Kn = inf->Kn().at(index);
-    } else {
-        Kn = pow(IC50->sample(rng), n);
-        inf->Kn()[index] = Kn;
-    }
+    auto& cache = inf->Kn();
+    if (const auto it = cache.find(index); it != cache.end()) return it->second;
+    // parity: sample only on a miss, then store; a hit consumes no RNG.
+    double Kn = pow(IC50->sample(rng), n);
+    cache[index] = Kn;
     return Kn;
 }
 

@@ -74,6 +74,8 @@ extern bool opt_predetermined_episodes, opt_mueller_pres_model;
 
 void PathogenesisModel::init(RunContext& ctx, const Parameters& parameters, const scnXml::Clinical& clinical,
                              bool nmfOnly) {
+    pg_NMF_incidence.reset();
+    opt_predetermined_episodes = opt_mueller_pres_model = false;
     if (ModelOptions::option(NON_MALARIA_FEVERS)) {
         if (!clinical.getNonMalariaFevers().present()) {
             throw xml_scenario_error("NonMalariaFevers element of model->clinical required");
@@ -765,6 +767,7 @@ void DecisionTree5Day::setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& 
     set_liver_stage(hsDescription.getLiverStageDrug());
 }
 void ClinicalModel::init(RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario) {
+    opt_event_scheduler = opt_imm_outcomes = false;
     const scnXml::Clinical& clinical = scenario.getModel().getClinical();
     try {
         indirectMortBugfix = ModelOptions::option(INDIRECT_MORTALITY_FIX);

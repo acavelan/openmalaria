@@ -58,6 +58,20 @@ class LSTMPkPdSuite : public CxxTest::TestSuite {
 
     void testNone() { TS_ASSERT_EQUALS(proxy->getDrugFactor(m_rng, inf, massAt21), 1.0); }
 
+    void testCachedEffectConsumesNoDraws() {
+        for (const char* name : {"MQ", "PPQ3", "AS"}) {
+            LSTMModel drugs;
+            auto index = UnittestUtil::ctx().drugs.findDrug(name);
+            UnittestUtil::medicate(m_rng, drugs, index, 3000, 0);
+            const double factor = drugs.getDrugFactor(m_rng, inf, massAt21);
+            std::ostringstream before, after;
+            m_rng.checkpoint(before);
+            TS_ASSERT_EQUALS(drugs.getDrugFactor(m_rng, inf, massAt21), factor);
+            m_rng.checkpoint(after);
+            TS_ASSERT_EQUALS(after.str(), before.str());
+        }
+    }
+
     void testOral() {
         UnittestUtil::medicate(m_rng, *proxy, MQ_index, 3000, 0);
         TS_ASSERT_APPROX(proxy->getDrugFactor(m_rng, inf, massAt21), 0.03174563638523168);

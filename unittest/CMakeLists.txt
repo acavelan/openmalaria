@@ -52,6 +52,7 @@ set (OM_CXXTEST_HEADERS
   SamplerBatterySuite.h
   PercentileCFRSuite.h
   SlotAllocatorSuite.h
+  HostColumnsSuite.h
   TwoRunsSuite.h
 )
 

@@ -24,7 +24,6 @@
 
 #include "Clock.h"
 #include "RunContext.h"
-#include "Host/HostColumns.h"
 #include "util/random.h"
 #include "util/sampler.h"
 #include "util/errors.h"
@@ -159,7 +158,7 @@ class VivaxBrood {
      * 
      * @return pair describing whether the infection is finished (no more blood
      *  or liver stages) and whether a new primary blood-stage has started (to
-     *  update cum_prim_inf_ref())
+     *  update cum_prim_inf)
      */
     UpdResult update(LocalRng& rng);
 
@@ -220,7 +219,7 @@ class VivaxBrood {
  * WHCommon and WHDescriptive share the P. falciparum immunity machinery in
  * the intermediate WHFalciparum layer (WHFalciparum.cpp).
  *
- * The base holds the state every variant carries (column binding, infection
+ * The base holds the state every variant carries (infection
  * count, and the immunity/density block that the checkpoint wire writes for
  * every kind); the per-variant approaches are virtual overrides.
  */
@@ -228,13 +227,6 @@ class WHInterface {
   public:
     /// The within-host model variant implemented by this instance.
     enum class Kind { Vivax, Common, Descriptive, Mock };
-
-    /** Bind the host human's column row (Human ctor immediately after
-     * creation; unit tests bind a mini-column themselves). */
-    void bind_columns(HumanColumns& c, size_t r) {
-        cols = &c;
-        row = r;
-    }
 
     /// The run this model belongs to (clock accessed as ctx.clock).
     RunContext& ctx;
@@ -353,8 +345,8 @@ class WHInterface {
     virtual void clearImmunity() = 0;
 
     // TODO(monitoring): these shouldn't have to be exposed (perhaps use summarize to report the data):
-    virtual double getCumulative_h() const { return imm_h_ref(); }
-    virtual double getCumulative_Y() const { return imm_Y_ref(); }
+    virtual double getCumulative_h() const { return imm_h; }
+    virtual double getCumulative_Y() const { return imm_Y; }
 
     /// Vivax/Mock have no per-infection origins (Indigenous); Falciparum
     /// layer derives from its infection list.
@@ -366,26 +358,17 @@ class WHInterface {
     const Kind kind;
 
   public: // simple data + fragments (test suites and WH models touch these directly)
-    /// The host human's SoA columns/row (bind_columns; immunity state lives
-    /// in the imm_* / cum_prim_inf columns).
-    HumanColumns* cols = nullptr;
-    size_t row = 0;
-
     /// Multiplicity of infection
     int numInfs = 0;
 
     //!innate ability to control parasite densities
     double _innateImmSurvFact = 0.0;
 
-    /** Number of infections received since birth, cumulative parasite
-     * density since birth and its one-step lag: SoA columns (imm_h/imm_Y/
-     * imm_Y_lag; bound via bind_columns — accessor refs keep read/write
-     * syntax). Old: imm_h_ref()/_Y/_Y_lag doubles. */
-    double& imm_h_ref() const { return cols->imm_h[row]; }
-    double& imm_Y_ref() const { return cols->imm_Y[row]; }
-    double& imm_Y_lag_ref() const { return cols->imm_Y_lag[row]; }
-    /// Primary blood-stage infections since birth (old cumPrimInf; column).
-    uint32_t& cum_prim_inf_ref() const { return cols->cum_prim_inf[row]; }
+    /// Immunity state used together during one host's update. The owning
+    /// unique_ptr moves with the human; no column binding can become stale.
+    double imm_h = 0.0, imm_Y = 0.0, imm_Y_lag = 0.0;
+    /// Primary blood-stage infections since birth.
+    uint32_t cum_prim_inf = 0;
 
     /// Total asexual blood stage density (sum of density of infections).
     double totalDensity = 0.0;
@@ -450,7 +433,7 @@ class WHFalciparum : public WHInterface {
      */
     void clearInfections(Treatments::Stages stage);
 
-    /** Updates for the immunity model − assumes imm_h_ref() and imm_Y_ref()
+    /** Updates for the immunity model − assumes imm_h and imm_Y
      * have already been incremented.
      *
      * Applies decay of immunity against asexual blood stages, if present. */
@@ -467,7 +450,7 @@ class WHFalciparum : public WHInterface {
 
     /** Host-tick-constant part of immunitySurvivalFactor: dH and dA depend on
      * host immunity accumulators and age only, both frozen during an infection
-     * update loop (imm_h_ref/imm_Y_ref are mutated outside it). Computing once
+     * update loop (imm_h/imm_Y are mutated outside it). Computing once
      * per host tick saves one exp+div per infection; the per-infection remainder
      * below reproduces the identical IEEE operand sequence ((dY*dH)*dA). */
     struct ImmSurvTick {
@@ -585,7 +568,7 @@ class WHVivax final : public WHInterface {
     State morbidity = NONE;
 
     // The number of primary blood stage infections to have started since this
-    // human was born: SoA column, see cum_prim_inf_ref().
+    // human was born: see cum_prim_inf.
 
     // Either never or expiry time of treatment
     SimTime treatExpiryLiverVivax = zero(), treatExpiryBloodVivax = zero();

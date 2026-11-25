@@ -37,7 +37,6 @@
 namespace scnXml {
 class VectorSpeciesIntervention;
 class Description1;
-class NonVector;
 }
 
 namespace OpenMalaria {
@@ -325,8 +324,6 @@ class AnophelesModel {
         return interventionEIR[ctx.clock.inSteps(ctx.clock.interv)] / initAvail;
     }
     //@}
-
-    void changeEIRIntervention(const scnXml::NonVector& nonVectorData);
 
     ///@brief Interventions and reporting
     //@{

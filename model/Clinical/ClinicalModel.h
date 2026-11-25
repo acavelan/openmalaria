@@ -58,7 +58,7 @@ enum DoomedCause {
  *
  * Base of the case-management variant hierarchy (p8-poly pattern): holds the
  * state every variant shares (treatment-seeking factor, episode report/state,
- * doomed codes, column bind) and draws NO random numbers; each XML-selected
+ * doomed codes) and draws NO random numbers; each XML-selected
  * variant is a clearly independent derived class below with its own update
  * functions. createClinicalModel() selects the variant (one create-line
  * each). */\
@@ -123,13 +123,8 @@ public:
         latestReport.flush();
     }
 
-    /** Time of the last treatment (never() if never treated): SoA
-     * column t_last_treatment (old member; accessors keep read/write syntax). */
-    SimTime& t_last_treatment() const { return cols->t_last_treatment[row]; }
-
-    /** Bind the host human's column row (Human ctor after creation; see
-     * Human::set_row for renumber rebinds). */
-    void bind_columns( HumanColumns& c, size_t r ) { cols = &c; row = r; }
+    /// Time of the last treatment (never() if never treated).
+    SimTime t_last_treatment = never();
     
     /** Construct a per-human instance (base: no RNG draws; the EventScheduler
      * variant rejects treatment-seeking heterogeneity in its own ctor). */
@@ -153,8 +148,8 @@ public:
         assert(false); // 5-day kinds only
     }
 
-    /// isExistingCase() memory clock (ES keeps its own column).
-    virtual SimTime timeOfLastTreatment() const { return t_last_treatment(); }
+    /// isExistingCase() memory clock (ES keeps its own clock).
+    virtual SimTime timeOfLastTreatment() const { return t_last_treatment; }
 
 protected:
 
@@ -167,11 +162,6 @@ public:
     /** Last episode; report to survey pending a new episode or human's death. */
     Episode latestReport;
     Episode::State latestState;
-
-    /// The host human's SoA columns/row (bind_columns; re-bound by
-    /// Human::set_row — stale mirror = wrong host after renumber).
-    HumanColumns* cols = nullptr;
-    size_t row = 0;
 
     
     /** Can indicate that the individual is dead or about to die.
@@ -243,13 +233,9 @@ class CMEventScheduler final : public ClinicalModel {
 
   public: // run state; wire in checkpoint/humans.cpp
     Episode::State esPgState = NONE;    ///< current sickness state
-    /// ES bout clock/state (old esCaseStartTime/esTimeOfRecovery/
-    /// esTimeLastTreatment SimTime members; column row refs, same syntax).
-    SimTime& es_case_start() const { return cols->es_case_start[row]; }
-    SimTime& es_time_recovery() const { return cols->es_time_recovery[row]; }
-    SimTime& es_time_treatment() const { return cols->es_time_treatment[row]; }
-    /// Total density last time step (old esPreviousDensity; column).
-    double& es_prev_density() const { return cols->es_prev_density[row]; }
+    /// ES-only state stays with its variant, not in every population row.
+    SimTime es_case_start = never(), es_time_recovery = never(), es_time_treatment = never();
+    double es_prev_density = std::numeric_limits<double>::quiet_NaN();
 };
 
 

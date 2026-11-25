@@ -73,7 +73,7 @@ void clinicalUpdate5Day(ClinicalModel& cm, RunContext& ctx, Human& human, double
 
     if (pg.indirectMortality && cm.doomed == NOT_DOOMED) cm.doomed = -ctx.clock.one_TS();
 
-    if (cm.t_last_treatment() == ctx.clock.ts0()) human.removeFirstEvent(SubPopRemove::ON_FIRST_TREATMENT);
+    if (cm.t_last_treatment == ctx.clock.ts0()) human.removeFirstEvent(SubPopRemove::ON_FIRST_TREATMENT);
 
     if (pgState & SICK) human.removeFirstEvent(SubPopRemove::ON_FIRST_BOUT);
 }
@@ -136,7 +136,7 @@ void severeMalaria(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::St
 
     //NOTE: we do not model diagnostics in this case
     if (prandom >= q[2]) { // treated in hospital
-        cm.t_last_treatment() = ctx.clock.ts0();
+        cm.t_last_treatment = ctx.clock.ts0();
         recordEvent(measure("nTreatments3"), human);
         Episode::State stateTreated = Episode::State(pgState | EVENT_IN_HOSPITAL);
 
@@ -190,7 +190,7 @@ const FlatTree *treeUCOfficial = 0, *treeUCSelfTreat = 0;
 void treeUncomplicatedEvent(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState) {
     // If last treatment prescribed was in recent memory, consider second line.
     CM5DayCommon::CaseType regimen = CM5DayCommon::FirstLine;
-    if (cm.t_last_treatment() + ClinicalModel::healthSystemMemory > ctx.clock.ts0()) {
+    if (cm.t_last_treatment + ClinicalModel::healthSystemMemory > ctx.clock.ts0()) {
         pgState = Episode::State(pgState | SECOND_CASE);
         regimen = CM5DayCommon::SecondLine;
     }
@@ -208,7 +208,7 @@ void treeUncomplicatedEvent(ClinicalModel& cm, RunContext& ctx, Human& human, Ep
                                             ec);
 
         if (output.treated) { // if any treatment or intervention deployed
-            cm.t_last_treatment() = ctx.clock.ts0();
+            cm.t_last_treatment = ctx.clock.ts0();
             recordEvent(CM5DayCommon::measures[regimen], human);
         }
         if (output.screened) recordEvent(measure("nTreatDiagnostics"), human);
@@ -232,7 +232,7 @@ bool ImmediateOutcomes::useDiagnosticUC = false;
 void immOutUncomplicatedEvent(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState) {
     // If last treatment prescribed was in recent memory, consider second line.
     CM5DayCommon::CaseType regimen = CM5DayCommon::FirstLine;
-    if (cm.t_last_treatment() + ClinicalModel::healthSystemMemory > ctx.clock.ts0()) {
+    if (cm.t_last_treatment + ClinicalModel::healthSystemMemory > ctx.clock.ts0()) {
         pgState = Episode::State(pgState | SECOND_CASE);
         regimen = CM5DayCommon::SecondLine;
     }
@@ -252,7 +252,7 @@ void immOutUncomplicatedEvent(ClinicalModel& cm, RunContext& ctx, Human& human, 
                 return; // negative outcome: no treatment
         }
 
-        cm.t_last_treatment() = ctx.clock.ts0();
+        cm.t_last_treatment = ctx.clock.ts0();
         recordEvent(CM5DayCommon::measures[regimen], human);
 
         double p = (x < CM5DayCommon::accessUCSelfTreat[regimen] * cm.m_treatmentSeekingFactor)

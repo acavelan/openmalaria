@@ -96,7 +96,13 @@ enum SimulationMode {
     dynamicEIR,
 };
 
-/// Abstract base class, defines behaviour of transmission models
+/// Plain change-EIR input. Validation and interval averaging occur at deployment.
+struct EirSeries {
+    std::vector<double> daily;
+    SimTime eipDuration;
+};
+
+/// Vector/non-vector transmission model.
 class TransmissionModel {
   public:
     /// Which behaviour this (single, final) model class implements.
@@ -238,12 +244,7 @@ class TransmissionModel {
         if (kind == Kind::Vector) vectorUpdate_vector(population);
     }
 
-    void changeEIRIntervention(const scnXml::NonVector& nonVectorData) {
-        if (kind == Kind::Vector)
-            changeEIRIntervention_vector(nonVectorData);
-        else
-            changeEIRIntervention_nonVector(nonVectorData);
-    }
+    void changeEIRIntervention(const EirSeries& eir);
 
     /** Does per-time-step updates and returns the EIR (inoculation rate per host
      * per time step). Should be called exactly once per time-step (at least,
@@ -551,7 +552,6 @@ class TransmissionModel {
     void calculateEIR_vector(Human& human, double ageYears, vector<double>& EIR_i, vector<double>& EIR_l) const;
     void uninfectVectors_vector();
     void summarize_vector(RunContext& ctx);
-    void changeEIRIntervention_vector(const scnXml::NonVector& nonVectorData);
 
     void ctsCbN_v0(ostream& stream);
     void ctsCbVecStat(VecStat, ostream& stream);
@@ -590,7 +590,6 @@ class TransmissionModel {
 
   public:
     // -----  non-vector kind (was NonVectorModel; unused for the Vector kind)  -----
-    void changeEIRIntervention_nonVector(const scnXml::NonVector& nonVectorData);
 
     /// multiplier used to calculate a positive EIR value where the measured value is zero
     const double min_EIR_mult = 0.01;

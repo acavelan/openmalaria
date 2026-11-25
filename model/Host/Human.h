@@ -46,7 +46,7 @@ class Human {
     /// This human's SoA columns (owned by Population; same lifetime as ctx).
     HumanColumns* cols;
     /// This human's row index in every column (kept in sync by Population;
-    /// renumbered after every structural erase — see Population::update).
+    /// rebound after every structural move — see Population::update).
     size_t row;
 
     /** Initialise all variables of a human datatype.

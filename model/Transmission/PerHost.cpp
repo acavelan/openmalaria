@@ -44,19 +44,16 @@ PerHost::PerHost() {
 
 void PerHost::initialise(RunContext& ctx, LocalRng& rng, double availabilityFactor) {
     rel_avail_het() = availabilityFactor;
-    anoph_ento_raw().resize(PerHostAnophParams::numSpecies(ctx));
-    anoph_ento_avail().resize(PerHostAnophParams::numSpecies(ctx));
-    anoph_prob_biting().resize(PerHostAnophParams::numSpecies(ctx));
-    anoph_prob_resting().resize(PerHostAnophParams::numSpecies(ctx));
-
     for (size_t i = 0; i < PerHostAnophParams::numSpecies(ctx); ++i) {
         const PerHostAnophParams& base = PerHostAnophParams::get(ctx, i);
-        anoph_ento_raw()[i] = base.entoAvailability->sample(rng);
-        anoph_ento_avail()[i] = base.entoAvailabilityFactor * anoph_ento_raw()[i] * availabilityFactor;
-        anoph_prob_biting()[i] = base.probMosqBiting.sample(rng);
+        auto& p = anoph()[i];
+        // parity: four draws per species, in the original a/b/c/d order.
+        p.ento_raw = base.entoAvailability->sample(rng);
+        p.ento_avail = base.entoAvailabilityFactor * p.ento_raw * availabilityFactor;
+        p.prob_biting = base.probMosqBiting.sample(rng);
         auto pRest1 = base.probMosqFindRestSite.sample(rng);
         auto pRest2 = base.probMosqSurvivalResting.sample(rng);
-        anoph_prob_resting()[i] = pRest1 * pRest2;
+        p.prob_resting = pRest1 * pRest2;
     }
 }
 
@@ -73,13 +70,13 @@ void PerHost::update(Human& human) { iv_update(*ctx, human); }
 // an if() when interventions aren't present.
 // parity: c — IvState.h folds preserve history order and *= order.
 double PerHost::entoAvailabilityHetVecItv(size_t species) const {
-    return iv_rel_attractiveness(*ctx, cols->iv[row], anoph_ento_avail()[species], species);
+    return iv_rel_attractiveness(*ctx, cols->iv[row], anoph()[species].ento_avail, species);
 }
 double PerHost::probMosqBiting(size_t species) const {
-    return iv_preprandial_survival(*ctx, cols->iv[row], anoph_prob_biting()[species], species);
+    return iv_preprandial_survival(*ctx, cols->iv[row], anoph()[species].prob_biting, species);
 }
 double PerHost::probMosqResting(size_t species) const {
-    return iv_postprandial_survival(*ctx, cols->iv[row], anoph_prob_resting()[species], species);
+    return iv_postprandial_survival(*ctx, cols->iv[row], anoph()[species].prob_resting, species);
 }
 
 double PerHost::relMosqFecundity(size_t species) const {

@@ -34,7 +34,6 @@
 #include "util/UnitParse.h"
 #include "util/errors.h"
 #include "util/sampler.h"
-#include "xml/DocumentLoader.h"
 #include "schema/scenario.h"
 
 #include <cassert>
@@ -46,6 +45,8 @@
 using namespace std;
 
 namespace OpenMalaria {
+
+SimTime read_latentP(const SimClock& clock, const scnXml::Model& model);
 
 // State defined in WHVivax.cpp (external linkage):
 extern SimTime latentP, bloodStageProtectionLatency;

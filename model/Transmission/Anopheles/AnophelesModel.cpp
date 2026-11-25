@@ -521,32 +521,24 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
     double modified_nhh_sigma_df = 0.0;
     double modified_nhh_sigma_dff = 0.0;
 
-    map<string, Nhh> currentNhh = nhhInstances;
-
-    // The five reduce maps below all applied the same multiply to a different Nhh
-    // field. Hoisted find (the existence test was decay-invariant) keeps the exact
-    // multiply sequence: map key order, then per-key vector order.
-    auto applyReduces = [&](map<string, vector<SimpleDecayingValue>>& reduces, double Nhh::* field) {
-        for (const auto& reduce : reduces) {
-            auto nhh = currentNhh.find(reduce.first);
-            if (nhh == currentNhh.end())
-                continue; // Check that the non-human hosts still exist
-            for (const auto& decay : reduce.second)
-                nhh->second.*field *= 1.0 - decay.current_value(ctx.clock.ts0());
-        }
-    };
-    applyReduces(reduceNhhAvailability, &Nhh::avail_i);
-    applyReduces(reduceP_B_I, &Nhh::P_B_I);
-    applyReduces(reduceP_C_I, &Nhh::P_C_I);
-    applyReduces(reduceP_D_I, &Nhh::P_D_I);
-    applyReduces(reduceFecundity, &Nhh::rel_fecundity);
-
-    for (auto it = currentNhh.begin(); it != currentNhh.end(); ++it) {
-        modified_nhh_avail += it->second.avail_i;
-        const double df =
-            it->second.avail_i * it->second.P_B_I * it->second.P_C_I * it->second.P_D_I; // term in P_df series
+    for (const auto& [name, original] : nhhInstances) {
+        Nhh nhh = original; // one local record, not an allocated copy of the map
+        // parity: each independent field keeps its ordered decay product; the
+        // three sums still visit hosts in map-key order. Decay evaluation is pure.
+        auto applyReduces = [&](const auto& reduces, double& field) {
+            if (const auto it = reduces.find(name); it != reduces.end())
+                for (const auto& decay : it->second)
+                    field *= 1.0 - decay.current_value(ctx.clock.ts0());
+        };
+        applyReduces(reduceNhhAvailability, nhh.avail_i);
+        applyReduces(reduceP_B_I, nhh.P_B_I);
+        applyReduces(reduceP_C_I, nhh.P_C_I);
+        applyReduces(reduceP_D_I, nhh.P_D_I);
+        applyReduces(reduceFecundity, nhh.rel_fecundity);
+        modified_nhh_avail += nhh.avail_i;
+        const double df = nhh.avail_i * nhh.P_B_I * nhh.P_C_I * nhh.P_D_I; // term in P_df series
         modified_nhh_sigma_df += df;
-        modified_nhh_sigma_dff += df * it->second.rel_fecundity;
+        modified_nhh_sigma_dff += df * nhh.rel_fecundity;
     }
 
     leaveRate += modified_nhh_avail;

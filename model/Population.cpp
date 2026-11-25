@@ -83,7 +83,7 @@ void Population::update() {
 
     // NOTE: this pass only decides (reads per-host state through POSITION,
     // cols[i]); Human::row goes stale for rows the compaction below moves and
-    // is fixed by the renumber pass, so don't use Human accessors here.
+    // is fixed by moved-row rebinding below, so don't use Human accessors here.
     std::vector<uint32_t> keep;
     keep.reserve(humans.size());
     for (size_t i = 0; i < humans.size(); ++i) {
@@ -109,16 +109,13 @@ void Population::update() {
         cols.compact(keep);
         size_t w = 0;
         for (const uint32_t r : keep) {
-            if (w != r) humans[w] = std::move(humans[r]);
+            if (w != r) {
+                humans[w] = std::move(humans[r]);
+                humans[w].set_row(w); // Rows that did not move retain valid bindings.
+            }
             ++w;
         }
         humans.erase(humans.begin() + w, humans.end()); // no default ctor
-
-        // Compaction shifted rows left; renumber so Human::row matches
-        // position again (newborns below append at the correct index
-        // themselves).
-        for (size_t i = 0; i < humans.size(); ++i)
-            humans[i].set_row(i);
     }
 
     // increase population size to targetPop

@@ -36,13 +36,14 @@
 #include "interventions/IRS.h"
 #include "interventions/ITN.h"
 #include "interventions/Vaccine.h"
-#include "xml/HumanInterventionComponents.h"
-#include "xml/entomology.h"
+#include "interventions/Components.h"
+#include "PkPd/LSTMMedicate.h"
 #include "interventions/Deployments.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "Transmission/TransmissionModel.h"
 #include "Transmission/PerHost.h"
 #include "Clinical/ClinicalModel.h"
+#include "Clinical/CMDecisionTree.h"
 #include "mon/Monitoring.h"
 #include "util/ModelOptions.h"
 #include "R_nmath/qnorm.h"
@@ -56,6 +57,91 @@
 using namespace std;
 
 namespace OpenMalaria {
+
+// Conversion-layer functions implemented in xml/entomology.cpp.
+void initVectorInterv(TransmissionModel& vm, const scnXml::Description::AnophelesSequence& list, size_t instance,
+                     const std::string& name);
+void initVectorTrap(TransmissionModel& vm, const scnXml::VectorTrap::DescriptionSequence list, size_t instance,
+                    const scnXml::VectorTrap::NameOptional name_opt);
+
+// Components sort into standard type-rank order (contract b).
+static void sort_components(RunContext& ctx, std::vector<ComponentId>& components) {
+    auto kind = [&ctx](ComponentId id) { return (*ctx.humanComponents)[id.id].kind; };
+    // parity: stable within one kind; simultaneous deployments keep XML order.
+    std::stable_sort(components.begin(), components.end(),
+                     [&kind](ComponentId a, ComponentId b) { return kind(a) < kind(b); });
+}
+static ComponentId component_id(RunContext& ctx, const std::string& textId) {
+    ComponentId id = InterventionManager::getComponentId(ctx, textId);
+    if (id.id >= ctx.humanComponents->size())
+        throw base_exception("invalid component id"); // used before defined
+    return id;
+}
+HumanIntervention::HumanIntervention(RunContext& ctx,
+                                     const xsd::cxx::tree::sequence<scnXml::Component>& componentList) {
+    components.reserve(componentList.size());
+    for (auto it = componentList.begin(), end = componentList.end(); it != end; ++it)
+        components.push_back(component_id(ctx, it->getId()));
+    sort_components(ctx, components);
+}
+HumanIntervention::HumanIntervention(RunContext& ctx, const xsd::cxx::tree::sequence<scnXml::Component>& componentList,
+                                     const xsd::cxx::tree::sequence<scnXml::Condition>& conditionList)
+    : HumanIntervention(ctx, componentList) {
+    for (auto it = conditionList.begin(), end = conditionList.end(); it != end; ++it) {
+        double min = it->getMinValue().present() ? it->getMinValue().get() : -numeric_limits<double>::infinity();
+        double max = it->getMaxValue().present() ? it->getMaxValue().get() : numeric_limits<double>::infinity();
+        conditions.push_back(setupCondition(ctx, it->getMeasure(), min, max, it->getInitialState()));
+    }
+}
+HumanIntervention::HumanIntervention(RunContext& ctx, const xsd::cxx::tree::sequence<scnXml::DTDeploy>& componentList) {
+    components.reserve(componentList.size());
+    for (auto it = componentList.begin(), end = componentList.end(); it != end; ++it)
+        components.push_back(component_id(ctx, it->getComponent()));
+    sort_components(ctx, components);
+}
+
+TriggeredDeployments::TriggeredDeployments(RunContext& ctx, const scnXml::TriggeredDeployments& elt) {
+    lists.reserve(elt.getDeploy().size());
+    for (auto it = elt.getDeploy().begin(), end = elt.getDeploy().end(); it != end; ++it)
+        lists.push_back(SubList(ctx, *it));
+}
+TriggeredDeployments::SubList::SubList(RunContext& ctx, const scnXml::Deploy& elt)
+    : HumanIntervention(ctx, elt.getComponent()), minAge(ctx.clock.from_years_n(elt.getMinAge())), maxAge(future()),
+      coverage(elt.getP()) {
+    if (elt.getMaxAge().present()) maxAge = ctx.clock.from_years_n(elt.getMaxAge().get());
+    if (minAge < zero() || maxAge < minAge)
+        throw xml_scenario_error("triggered intervention must have 0 <= minAge <= maxAge");
+    if (coverage < 0.0 || coverage > 1.0)
+        throw xml_scenario_error("triggered intervention must have 0 <= coverage <= 1");
+    if (coverage <= 0.0 || minAge >= maxAge) components.clear();
+}
+
+ScreenParams::ScreenParams(RunContext& ctx, const scnXml::Screen& elt)
+    : diagnostic(diagnostics::get(ctx, elt.getDiagnostic())), positive(ctx, elt.getPositive()),
+      negative(ctx, elt.getNegative()) {}
+
+TreatSimpleParams::TreatSimpleParams(RunContext& ctx, const scnXml::DTTreatSimple& elt) {
+    try {
+        SimTime durL = UnitParse::readShortDuration(ctx.clock, elt.getDurationLiver(), UnitParse::NONE),
+                durB = UnitParse::readShortDuration(ctx.clock, elt.getDurationBlood(), UnitParse::NONE);
+        SimTime neg1 = -ctx.clock.one_TS();
+        if (durL < neg1 || durB < neg1)
+            throw xml_scenario_error("treatSimple: cannot have durationBlood or durationLiver less than -1");
+        if (ModelOptions::option(VIVAX_SIMPLE_MODEL)) {
+            if (durL != zero() || durB != neg1)
+                throw unimplemented_exception("vivax model only supports timestepsLiver=0, timestepsBlood=-1");
+        }
+        timeLiver = durL;
+        timeBlood = durB;
+    } catch (const format_error& e) {
+        throw xml_scenario_error(string("treatSimple: ").append(e.message()));
+    }
+}
+TreatPKPDParams::TreatPKPDParams(RunContext& ctx, const scnXml::DTTreatPKPD& elt)
+    : schedule(ctx.treatments.findSchedule(elt.getSchedule())), dosage(ctx.treatments.findDosages(elt.getDosage())),
+      delay_d(elt.getDelay_h() / 24.0 /* convert to days */) {}
+DecisionTreeParams::DecisionTreeParams(RunContext& ctx, const scnXml::DecisionTree& elt)
+    : tree(compile_decision_tree(ctx, elt, false)) {}
 
 // UnitParse::readDate with the STEPS fallback (STEPS default is only for
 // backwards compatibility; former per-call comment, now stated once).
@@ -110,22 +196,6 @@ namespace OpenMalaria {
 // multiset and first-error order unchanged — punch-list #16).
 static const string min_avail_err = "timed intervention must have 0 <= minAvailability <= maxAvailability <= 100";
 static const string nonvec_err = "vector model interventions can not be used with the non-vector model";
-
-// 7.1: changeHS/changeEIR timed-deployment classes gone; the payload is the
-// schema clone in the TimedDeployment variant, consumed (deleted) on deploy.
-// Never-deployed clones leak at exit — exactly the old classes' behaviour
-// (their destructors never freed these).
-void timed_deploy_change_hs(RunContext& ctx, TransmissionModel&, ChangeHsDeployParams& p) {
-    ClinicalModel::setHS(ctx, *p.newHS);
-    delete p.newHS;
-    p.newHS = 0;
-}
-
-void timed_deploy_change_eir(RunContext& ctx, TransmissionModel& transmission, ChangeEirDeployParams& p) {
-    transmission.changeEIRIntervention(*p.newEIR);
-    delete p.newEIR;
-    p.newEIR = 0;
-}
 
 static int vacc_nonneg(int v, const char* err) {
     if (v < 0) throw xml_scenario_error(err);
@@ -1024,9 +1094,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& int
                                TransmissionModel& transmission) {
     ctx.nextTimed = 0;
 
-    // changeHS and changeEIR timed deployments: identical loops differing only
-    // in payload kind and error prefix (former duplicated blocks, merged).
-    auto timed_clone = [&ctx](const auto& seq, TimedDeploymentKind kind, const char* errPrefix, const auto& mk) {
+    auto timed_changes = [&ctx](const auto& seq, TimedDeploymentKind kind, const char* errPrefix, const auto& mk) {
         for (const auto& it : seq) {
             try {
                 SimTime date = readDate_steps(ctx.clock, it.getTime());
@@ -1038,14 +1106,18 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& int
         }
     };
     if (intervElt.getChangeHS().present())
-        timed_clone(intervElt.getChangeHS().get().getTimedDeployment(), TimedDeploymentKind::CHANGE_HS,
+        timed_changes(intervElt.getChangeHS().get().getTimedDeployment(), TimedDeploymentKind::CHANGE_HS,
                     "interventions/changeHS/timedDeployment/time: ", [](const auto& it) {
-                        return ChangeHsDeployParams{it._clone()};
+                        // parity: setHS registers treatments/trees at deployment, in event order.
+                        // ponytail: conversion stays late; precompile only with equivalent registration/error timing.
+                        auto hs = std::shared_ptr<const scnXml::HealthSystem>(it._clone());
+                        return ChangeHsDeployParams{[hs](RunContext& run) { ClinicalModel::setHS(run, *hs); }};
                     });
     if (intervElt.getChangeEIR().present())
-        timed_clone(intervElt.getChangeEIR().get().getTimedDeployment(), TimedDeploymentKind::CHANGE_EIR,
+        timed_changes(intervElt.getChangeEIR().get().getTimedDeployment(), TimedDeploymentKind::CHANGE_EIR,
                     "interventions/changeEIR/timedDeployment/time: ", [](const auto& it) {
-                        return ChangeEirDeployParams{it._clone()};
+                        const auto& daily = it.getEIRDaily();
+                        return EirSeries{{daily.begin(), daily.end()}, fromDays(it.getEipDuration())};
                     });
     // species_index_map is not available with the non-vector model or
     // non-dynamic mode, so setting it (lazily) also checks sim mode:

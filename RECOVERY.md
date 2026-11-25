@@ -1,7 +1,7 @@
 # OpenMalaria rewrite — full status, change report, and recovery guide
 
-Branch: `rewrite` (pushed to this repo's `origin` fork).
-Written: 2026-11-24; updated 2026-11-25 (§11, post-audit checkpoint). This
+Branch: `rewrite`, including the reviewed follow-up to `a49f56ec`.
+Written: 2026-11-24; updated 2026-11-25 (review follow-up). This
 file is the single entry point to understand or rebuild everything from
 another machine. `PERF.md` and `HANDOFF.md` hold the raw ledgers; this is the
 plain-language version.
@@ -13,11 +13,12 @@ plain-language version.
 The OpenMalaria model code (`model/`, ~19k lines) was rewritten in place, in
 small gated steps, with one goal: **same numbers out, far fewer lines in** —
 plus a side quest to make it faster than both the original and a competing
-optimisation branch. Result: **15,717 model code LOC (−16.5%)**, **bit-exact
-output on every test scenario and 10 seeds**, and **1.146× faster than the
-original at pop 2000, 1.214× at pop 10,000** — within ~2% of a branch that
-spent its budget purely on speed. Every single step passed the same four
-gates (below), so at no commit was the model ever wrong.
+optimisation branch. Current follow-up: **15,598 model code LOC (−17.1%)**,
+with **63/63 exact comparisons** against A0 in plain and shipping builds.
+The latest follow-up ledger is
+at the end of `PERF.md`. Historical speedups against A0 were **1.146× at
+pop 2000, 1.214× at pop 10,000**; those are not current-tree measurements.
+Passing the corpus establishes those tested cases, not universal correctness.
 
 ## 2. The rules that never changed (needed to trust the result)
 
@@ -29,11 +30,12 @@ gates (below), so at no commit was the model ever wrong.
   `-O3 -DNDEBUG -ffp-contract=off`, gcc 16.2.1, GSL 2.8 (see
   `util/a0-recipe.json`). `util/parity.py --recipe` hard-fails if the
   toolchain drifts — bit-exactness is only meaningful on the same recipe.
-- **Four gates per change:** build with 0 warnings/0 errors; `ctest` 64/64;
+- **Four gates per change:** clean build; plain-build `ctest` 65/65;
   `unittest` prints `.OK!`; T1 parity `63/63 identical` (all `test/scenario*.xml`
   + example scenario × seeds 1–10).
 - **LOC KPI:** `cloc --quiet model --include-lang="C++,C/C++ Header" | grep ^SUM`
-  column 5. Baseline 18,813 → current worktree 15,717 (both re-measured, not quoted).
+  column 5. Baseline 18,813 → review entry 15,718. Final follow-up counts,
+  XML subtotal and unit-test LOC are recorded separately in `PERF.md`.
 - All model variants kept (Descriptive/Dummy/Empirical/Molineaux/Penny
   infections; Falciparum/Common/Vivax within-host; all health-system kinds).
 - Perf candidates must be measured in the **shipping build form** (LTO+PGO
@@ -50,7 +52,7 @@ gates (below), so at no commit was the model ever wrong.
 | `eval/instr-counters` | diagnostic-only counters; produced the measurement behind E8. Never merge |
 | `bsperf/*` | the PR author's original branch-PR heads (mirror of remote `bscode`) |
 
-Tag `rewrite-status-2026-11-24` marks the pushed HEAD.
+Tag `rewrite-status-2026-11-24` marks that historical checkpoint, not today's HEAD.
 
 ## 4. The rewrite, phase by phase (LOC is model code LOC)
 
@@ -71,27 +73,39 @@ Tag `rewrite-status-2026-11-24` marks the pushed HEAD.
 | perf hunt E-series | **16,317** | +84 | see §6 (net code added buying the speed) |
 | Codex follow-ups + ownership/parser/checkpoint/decay cleanup | **16,082** | −235 | enum-indexed Parameters, shared CLI parsing, POD checkpoint vectors, scalar decay samples, smaller wrappers and direct EIR sums |
 | user-requested short-`if` presentation pass | **15,717** | −365 | single-statement bodies only; no logic or `else` chains changed |
+| selective post-compaction rebinding | **15,718** | +1 | rebind only moved rows; rewrite 0.67% slower @2k, 1.42% faster @10k than Baxter |
+| review follow-up | **15,598** | −120 | flat species + hybrid state, XML/runtime boundary, three file folds, deferred ownership, cache/NHH simplification |
 
-Every row: gates green at merge, main-session re-verified. `HANDOFF.md` has
+Historical rows record their gates at merge; the review follow-up's gates are
+recorded in `PERF.md`. `HANDOFF.md` has
 per-phase detail; `git log --oneline rewrite` is the full ledger (~200
 rewrite commits, each individually gated). LOC warning from the independent
 review: the −488 namespace flattening and one −70 reflow pass measure less
 presentation, not necessarily simpler ownership or execution; −16.5% is the
 requested code-size KPI, not a claim that every removed line simplified logic.
 
-## 5. Performance result
+## 5. Performance evidence
 
 Bench: `util/example/example_scenario.xml`, `taskset -c 5`, serialized
 interleaved rounds, median-of-5 user seconds. Same-window comparisons only.
 
-| pop | original A0 | competing branch | **rewrite (shipping recipe)** | vs original | gap left |
+Historical round-6 ladder (superseded for Baxter comparison, still the latest
+same-window A0 timing):
+
+| pop | original A0 | competing branch | **round-6 rewrite** | vs original | gap left |
 |---|---|---|---|---|---|
 | 2,000 (KPI) | 12.24 s | 10.47 s | **10.68 s** | **1.146×** | 2.0% |
 | 10,000 | 55.6 s | 44.97 s | **45.82 s** | **1.214×** | 1.9% |
 
-The "competing branch" is upstream DRAFT PRs 476–482 applied to the original
-(`eval/bs-all` + the LTO/PGO recipe). The rewrite matched its algorithmic
-content *and* kept −13% code.
+The competing branch is upstream DRAFT PRs 476–482 applied to the original
+(`eval/bs-all` + LTO/PGO). The final follow-up comparison uses the same
+compiler, LTO and six-scenario PGO corpus: Baxter/rewrite **10.47/10.30 s @2k**
+and **45.11/42.89 s @10k**, or **1.62%/4.92% less CPU**. Matching environment
+variables did not match heap policy: rewrite enables its own THP hints.
+These compare shipped configurations, not isolated storage layouts.
+At 5k, **23.17/22.56 s (−2.63%)**. The small-population seven-scenario sum of
+medians is **18.84/19.04 s (+1.06%)**, missing its ≤0.5% regression allowance.
+The scale-point gains therefore do not establish a universal speedup.
 
 ## 6. The perf experiments (E-series), honest accounting
 
@@ -115,10 +129,9 @@ count is identical across trees; flat retired-instruction sampling
 renaming; scratch-worktree counters (`eval/instr-counters`) turned "diffuse"
 into the E8 finding.
 
-The residual ~2% gap vs the competing branch is named (accessor
-re-materialisation through the context pointer) and **declined**: invasive,
-~1% ceiling, T1 risk on 140-year sims. Devirtualisation is vetoed by user
-order. This is the accepted bottom.
+The old ~2% gap is historical. The review follow-up tests flat species storage
+and hybrid person-local state; see the latest ledger for measured outcomes.
+Devirtualisation remains outside this work.
 
 ## 7. Recovering this session on another machine
 
@@ -135,7 +148,7 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_CXX_FLAGS="-O3 -DNDEBUG -ffp-contract=off"
 cmake --build build -j
 # gates:
-ctest --test-dir build -j          # want: 100% tests passed out of 64
+ctest --test-dir build -j          # want: 100% tests passed out of 65
 (cd build/unittest && ./unittest)  # want: .OK!
 
 # 2. T1 parity: rebuild reference A0 from the pinned commit + recipe:
@@ -148,19 +161,25 @@ python3 util/parity.py --old ../A0/build/openMalaria --new build/openMalaria \
         --recipe util/a0-recipe.json --tiers a,b --seeds 1-10 -j 6
 # want: "63/63 identical; 0 problems"
 
-# 3. Shipping (fast) binary — two-pass PGO recipe, ~15 min:
-util/pgo-build.sh build-pgo          # trains on util/example @popSize 2000
-# same three gates apply to build-pgo
+# 3. Shipping binary — generic six-scenario PGO corpus:
+JOBS=6 util/pgo-build.sh build-pgo
+# The script builds openMalaria + schemas; unittest is verified in the plain build.
+ctest --test-dir build-pgo -E '^unittest$' -j 6  # 64 harness/box/resume cases
+python3 util/parity.py --old ../A0/build/openMalaria --new build-pgo/openMalaria \
+        --recipe util/a0-recipe.json --tiers a,b --seeds 1-10 -j 6
 
 # 4. Benchmark (KPI pop 2000; scaling: SCEN=util/bench-scen-10000.xml):
-util/bench-om.sh /tmp/bench.log build-pgo/openMalaria
-# want (this machine, gcc 16.2.1): ~10.7s @2k, ~45.8s @10k
+TMPDIR=/tmp/opencode util/bench-om.sh /tmp/opencode/bench.log \
+    /absolute/path/to/reference/openMalaria "$PWD/build-pgo/openMalaria"
 ```
 
 Cross-window timing comparisons are invalid — always run reference and
 candidate in the same window (the bench script interleaves them for you).
+The test runner locates generated schemas under the source tree's `build/schema`;
+for a separate source snapshot, point its `build` symlink at the tested build.
+The PGO corpus is Genotypes, Penny, VecFullTest, NonHumanHosts, MSAT_HRP2 and Vivax.
 
-## 8. What is NOT pushed (and why it doesn't matter)
+## 8. Local artifacts
 
 - **Binaries / build dirs** (`build-r1`, `build-pgo-ex6`, …): gitignored, all
   reproducible from the recipes above.
@@ -172,13 +191,15 @@ candidate in the same window (the bench script interleaves them for you).
   recreate with `git worktree add` if ever needed.
 - **Scenario copies** for scaling pops: `util/bench-scen-10000.xml` is pushed;
   any other pop is `sed 's/popSize="2000"/popSize="N"/'` on the example.
+- **Review follow-up source and tests** are tracked on `rewrite`. Local stage
+  snapshots and logs are under `/tmp/opencode/rewrite-next-20261125/` and adjacent
+  source/build dirs; the measured results and recipes are recorded in `PERF.md`.
 
 ## 9. Where everything lives
 
-- `PERF.md` — rounds 1–6 ledger: every measurement, method, and declined lever.
-- `HANDOFF.md` — per-phase working notes (agent history; §1 header is stale
-  vs this file, trust this file for status).
-- `util/parity.py`, `util/compareBin` — T1 runner.
+- `PERF.md` — measurement ledger; latest sections supersede historical headlines.
+- `HANDOFF.md` — current status at the top, historical per-phase notes below.
+- `util/parity.py`, `util/compareBin.py` — T1 runner.
 - `util/pgo-build.sh` — shipping recipe (LTO + PGO, `-ffp-contract=off`).
 - `util/bench-om.sh`, `util/bench-scen-10000.xml` — benchmark harness.
 - `util/callcount.c` — LD_PRELOAD call-count shim (attribution tool).
@@ -186,7 +207,7 @@ candidate in the same window (the bench script interleaves them for you).
 
 ## 10. Appendix: "SoA should be faster" — why it had to be earned, not assumed
 
-Our model stores host state as Structure-of-Arrays columns (`HostColumns`: one
+Before the hybrid follow-up, the model stored host state as Structure-of-Arrays columns (`HostColumns`: one
 vector per state field; a host is a row index), so the intuition is that
 scanning state should beat the old row-object style nearly for free. True in
 principle; three measured corrections make it accurate.
@@ -219,74 +240,45 @@ paid down, not merely a set of unrelated bugs:
 | scattered heap | 25 growing allocations spread the columns over more 4K pages than their denser rows | E7 (in-code THP) |
 | ctx pointer chains | state moved from file-scope statics (one rip-relative load) to `this→ctx→subobject` re-materialisation | OPEN — ~1% ceiling, declined |
 
-**3. After the fixes, SoA visibly wins its own scorecard** (pop 10,000, same
-recipe, same windows, ours vs patched baseline): dTLB misses 0.05M vs 277M
+**3. Historical shipped-configuration counters** (pop 10,000, same
+recipe and windows, but unequal heap policy): dTLB misses 0.05M vs 277M
 (≈5,400×), cache misses 34M vs 61M, IPC 2.69 vs 2.64 — and vs the original
 A0: 6.2M mallocs/run vs 164M. What remains of the gap is instruction COUNT,
 not memory behaviour: 647.5B vs 635.3B retired instructions (+1.9%) with
 cycles +2.1% — a ~1:1 exposure: the remaining surplus (per-element address
 re-materialisation in the row-major hot lanes, E8 having removed the earlier
-larger share) now converts directly into the 1.9% wall-clock residual.
+larger share) was consistent with the 1.9% CPU-time residual in that window.
 
-**Verdict:** SoA delivered exactly what it promises (locality, low TLB/cache
-pressure, whole-column memmove runs, one-pass column algorithms) and cost
-exactly what it promises (addressing overhead for row-major access, extra
-indirection for container columns). The tax we paid was algorithmic and
-codegen-level — not the layout — and at larger populations, where the memory
-lead grows and the instruction surplus doesn't, the layout is the side to be
-on. That the layout also cut per-column code is why it survived every phase of
-the LOC rewrite.
+**Verdict:** the counters support locality and addressing hypotheses, but cannot
+attribute their differences to SoA independently of THP and other changes.
+Population scans and person-local updates have different access patterns.
+That motivates the measured hybrid follow-up rather than a blanket SoA claim.
 
-## 11. Status 2026-11-25 — post-audit checkpoint (perf parity, XML boundary, LOC)
+## 11. Review follow-up and remaining limits
 
-**No new timing number is quotable yet.** The ladder in §5 stands at 10.68 s @2k /
-45.82 s @10k (2.0 / 1.9 % behind the patched baseline). A fresh same-recipe
-reproduction is in flight in `/tmp/opencode/om-perf/`: A0 = `main@cfc3c8e0` plain,
-B = `eval/bs-all` + LTO/PGO on its own training corpus, R = `rewrite@c7ee853d` +
-`util/pgo-build.sh`, R2 = rewrite trained on B's corpus (recipe parity). T1 63/63
-must pass before any of it is quoted.
-
-Two ordered hypotheses for the residual:
-
-1. **Recipe parity — likely the larger lever.** `util/pgo-build.sh:60` trains only
-   on `util/example/example_scenario.xml`; the comparison's B profile came from a
-   multi-scenario mix. A mismatched profile can mis-order branches and hurt. If
-   R2 ≈ B, the cheapest fix is the shipping script's corpus, not code.
-2. **Source instruction surplus.** The residual is already known to be instruction
-   count (+1.9 % retired, +2.1 % cycles; IPC/cache/TLB lead is ours), named as
-   per-host `ctx->subobject` re-materialisation plus row-major address arithmetic.
-   Statically verified flag levers: `-fno-plt` (not default; removes a PLT jump per
-   `log`/`gsl_cdf_ugaussian_P` call in the hot transmission path) and `-fipa-pta`
-   (off by default; lets LTO prove `ctx.monitoring`/`ctx.genotypes` loads do not
-   alias monitoring stores so loop invariants can hoist). Both are bit-exact;
-   `-freorder-blocks-and-partition` and `-falign-loops` are already active at `-O3`.
-   No `-march`/`-mtune=native`, no fast-math, `-ffp-contract=off` stays in both PGO
-   phases.
-
-**XML boundary (PROMPT task 1).** Parsing is physically in `model/xml/` (12 files,
-~3.8k code lines) and **zero** `<schema/...>` includes remain outside it. The
-boundary is still incomplete by *type*: ~97 `scnXml::` reference lines outside
-`xml/` (135 tokens incl. forward declarations/xsd, 47 files); 38 headers carry
-130 lines of forward-declaration boilerplate (111 pure); four parse bodies remain
-outside (`WHInterface.cpp:19`, `PerHost.cpp:115`, `PopulationAgeStructure.cpp:39`,
-and the top-level `run.cpp:218-287` accessor chains); two payload structs own
-schema pointers (`Deployments.h:156,159`). Roughly 85 % moved by body, 40 % by
-type. Migration order (smallest gate first): util readers → `ModelNameProvider`/
-`Parameters`/`ModelOptions` → `ClockConfig` → monitoring → per-model small configs
-→ PkPd → `EirSeries`/`MosqParams`/`EntomologyConfig` → `HealthSystemConfig`/
-`ClinicalConfig` → intervention `ComponentIdList` → shrink `run.cpp`. The real
-per-step cost is `unittest/UnittestUtil.h` (205 scnXml refs): fixtures must be
-converted in the same commit as each signature.
-
-**LOC (PROMPT priority 2) — arithmetic, not aspiration.** Canonical KPI is 15,717
-code lines in the current worktree: 3,589 XML and 12,128 non-XML. The latest
-presentation pass packed 365 short single-statement `if` bodies without touching
-logic. Against the hard cap: `xml/` 2.6k ⇒ ~+1.0k over; non-xml 11.4k ⇒ ~+0.7k
-over. **The 14.0k cap still needs roughly 1.7k lines of substantive XML-reader
-and runtime-boundary redesign or explicit user sign-off**, not more code golf.
-CalcNvO remains explicitly excluded from further cleanup.
-
-**Next order:** (1) parity verdict; (2) hot-path queue, one gated change at a
-time; (3) behaviour-free boundary cleanup; (4) XML compression; (5) remaining
-de-static clusters (clinical config, `ModelOptions`/`CommandLine`/`UnitParse`,
-GSL workspaces) — keep `consteval` tables and immutable constants.
+- **Initialisation:** mixed-scenario testing exposed sticky clinical/within-host/
+  incidence/pathogenesis flags. These are reset on each configuration load, as
+  is the optional NMF interpolator. `TwoRunsSuite` now runs 9, 10, NonHumanHosts,
+  Vivax and Penny between two scenario1 runs. It proves this sequence, not
+  isolation of every mutable global or concurrent runs.
+- **Host storage:** one host-major species table replaces four per-host vectors.
+  Immunity and clinical clocks live with their consuming model objects;
+  event-scheduler-only fields live on that variant. Population columns retain
+  scan-oriented and intervention state. Checkpoint format is now **3**.
+- **XML boundary:** the driver receives `ScenarioRuntime`, not an XSD tree;
+  library-specific error reporting stays in `xml/`. Conversion declarations
+  still mention schema types in model headers. This is not a claim that all
+  configuration globals or schema-facing constructors have been removed.
+- **Checkpoint coverage:** the 12 resume cases include nine intervention-free
+  scenarios and three health-system-change scenarios. They do not establish
+  restored per-host intervention state, which is deliberately absent from
+  the wire. Population/model/RNG state and replayed model changes are covered.
+- **Performance closure remains conditional:** R/B ≤1.005 at 2k/10k,
+  ≤0.5% regression on the seven-scenario total, and no >1% regression at 5k.
+  The final candidate passes the 2k/5k/10k thresholds but misses the seven-scenario
+  allowance (+1.06%). An equal-heap-policy comparison is needed for causal layout claims.
+- **LOC:** the 14,000 total / 2,600 XML hard caps remain open; latest measured
+  counts are 15,598 / 3,558 (+1,598 / +958); unittest is 3,683.
+  Reducing presentation alone is not structural progress.
+- **Excluded:** CalcNv0/CalcNvO, solver replacement/caching, inherited F16/F26,
+  and the separate F73/F100 follow-ups.

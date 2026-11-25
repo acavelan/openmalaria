@@ -148,7 +148,7 @@ class RelativeAttractiveness {
 // ITN component parameters (phase 7.2b: plain Component payload struct; the
 // HumanInterventionComponent/HumanVectorInterventionComponent class bases and
 // the virtual deploy/componentType/print_details are gone — deployment is the
-// deploy_component switch in model/xml/HumanInterventionComponents.h).
+// deploy_component switch in model/interventions/Components.cpp).
 struct ITNParams {
   public:
     ITNParams(RunContext& ctx, ComponentId id, const scnXml::ITNDescription& elt,

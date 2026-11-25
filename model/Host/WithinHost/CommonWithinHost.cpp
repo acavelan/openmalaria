@@ -89,12 +89,12 @@ void WHFalciparum::clearImmunity() {
     for (auto inf = infections.begin(); inf != infections.end(); ++inf) {
         (*inf)->clearImmunity();
     }
-    imm_h_ref() = 0.0;
-    imm_Y_lag_ref() = 0.0;
+    imm_h = 0.0;
+    imm_Y_lag = 0.0;
 }
 void WHCommon::importInfection(LocalRng& rng) {
     if (SlotAllocator::try_import(numInfs)) { // mode A: at the cap, no draw at all
-        imm_h_ref() += 1;
+        imm_h += 1;
         numInfs += 1;
         // This is a hook, used by interventions. The newly imported infections
         // should use initial frequencies to select genotypes.
@@ -207,8 +207,8 @@ void WHCommon::update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInf
     // As in AJTMH p22, cumulative_h (X_h + 1) doesn't include infections added
     // this time-step and cumulative_Y only includes past densities, thus we
     // increment these after the update.
-    imm_h_ref() += nNewInfs_i + nNewInfs_l;
-    imm_Y_ref() += totalDensity;
+    imm_h += nNewInfs_i + nNewInfs_l;
+    imm_Y += totalDensity;
 
     streamValidate(totalDensity);
     streamValidate(hrp2Density);

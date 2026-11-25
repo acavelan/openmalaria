@@ -1,48 +1,44 @@
 # MAIN-SESSION STATUS (2026-11-25, authoritative)
-**Branch `rewrite`, HEAD `f6601671` + the current uncommitted follow-up. The Baxter-parity pass remains
-open; small follow-up A/B deltas below do not replace its headline comparison.** Read with `RECOVERY.md`
-and the latest `PERF.md` sections.
+**Branch `rewrite`, including the reviewed follow-up to `a49f56ec`.**
+`PERF.md`'s latest ledger is authoritative for measured LOC, timings and gates;
+`RECOVERY.md` has the rebuild recipe. Earlier blocks below are historical.
 
-- **Perf parity (open).** Fresh worktrees `/tmp/opencode/om-perf/{A0,B,R}`: A0 = `main@cfc3c8e0` plain
-  `-O3`; B = `origin/eval/bs-all` + LTO/PGO on its own corpus; R = `rewrite@c7ee853d` +
-  `util/pgo-build.sh` (trains on example@2000); R2 = rewrite trained on B's corpus (recipe parity).
-  Same harness, pinned, interleaved, 2k/10k/7-scenario; T1 63/63 required before any number is
-  quoted. The question is how much of the 2.0/1.9 % residual is PGO training-corpus mismatch vs
-  source codegen. Until it lands, the published ladder is unchanged.
-- **XML boundary (audited 2026-11-25).** Parsing is in `model/xml/` (12 files, ~3.8k code lines);
-  **zero** `<schema/...>` includes outside it. The boundary is incomplete by TYPE, not location:
-  ~97 `scnXml::` reference lines outside `xml/` (135 tokens incl. fwd decls/xsd, 47 files); 38 headers
-  carry 130 lines of fwd-decl boilerplate (111 pure); 4 parse bodies remain outside
-  (`Host/WithinHost/WHInterface.cpp:19`, `Transmission/PerHost.cpp:115`,
-  `PopulationAgeStructure.cpp:39`, and the top-level accessor chains `run.cpp:218-287`); 2 payload
-  structs own schema pointers (`interventions/Deployments.h:156,159`). ~85 % moved by body, ~40 % by
-  type. Migration order (smallest gate first): util readers → ModelNameProvider/Parameters/
-  ModelOptions → ClockConfig → monitoring → per-model small configs → PkPd → EirSeries/MosqParams/
-  EntomologyConfig → HealthSystemConfig/ClinicalConfig → intervention ComponentIdList → shrink
-  `run.cpp`. Real per-step cost is `unittest/UnittestUtil.h` (205 scnXml refs): convert fixtures in
-  the same commit as each signature.
-- **LOC census (current worktree).** Canonical cloc KPI is **15,717**: `xml/` 3,589, non-xml
-  12,128. Budget math vs the hard cap: `xml/` 2.6k ⇒ ~+1.0k over; non-xml 11.4k ⇒ ~+0.7k over.
-  Structural cleanups were followed by a user-requested short-`if` presentation pass removing 365
-  KPI lines with no logic changes. **The 14.0k cap still needs roughly 1.7k LOC of substantive
-  XML-reader and runtime-boundary redesign or explicit user sign-off**, not more code golf.
-  CalcNvO is explicitly excluded.
-- **Hot-path follow-ups (measured).** Forced/transient age hoists and the non-survey EIR monitoring
-  guard were flat and reverted. `-fno-plt` was mixed sub-floor and `-fipa-pta` was ~0.4% slower at
-  both benchmark sizes; neither is shipped. Returning the EIR sums already computed by `getEIR`
-  removes duplicate reductions and one LOC, but its timing delta is below floor and is not claimed
-  as a speed win. PGO now trains on the generic six-scenario corpus. See `PERF.md` for medians/MAD
-  and raw logs. Final follow-up gates: clean build, CTest 65/65, unittest `.OK!`, plain and shipping
-  T1 63/63.
-  **Do not** reuse `probTransGenotype_*` as `y_lag` scratch without zeroing on the
-  `pTransmit<=0` early return: `updateKappa` reads them unguarded when genotype tracking is on.
-- **Open non-KPI perf finds** (not in the benchmark's paths): `Infection::Kn()` does 3–4
-  `std::map` lookups per call (single `find` is bit-exact); `AnophelesModel::advancePeriod` copies
-  the full `nhhInstances` map every step (empty in the example scenario).
-
-Next: land the parity verdict → apply the hot-path queue one gated change at a time → behaviour-free
-boundary cleanup → XML compression → remaining de-static clusters (clinical config,
-`ModelOptions`/`CommandLine`/`UnitParse`, GSL workspaces; keep consteval tables and constants).
+- **Final gates:** plain CTest 65/65, shipping harness/box/resume 64/64, strict A0 parity
+  63/63 in both builds. Includes mixed-scenario initialisation reset, flat host/species
+  storage, hybrid immunity/clinical state and selective rebinding.
+- **XML/runtime work:** the driver now receives runtime objects through `initialiseScenario`;
+  XSD exception formatting stays in `xml/`. Episode reporting and two XML-only headers fold
+  into their consuming implementation files. Change-EIR uses plain data; deferred
+  health-system descriptions have RAII ownership. Six error cases have exact diagnostic parity.
+- **Checkpoint format: 3.** Species rows are one contiguous table; immunity/clinical fields
+  follow their owning model. Per-host intervention deployment state remains off-wire.
+  The 12 resume cases include nine intervention-free and three health-system-change scenarios;
+  their success does not prove restored per-host intervention state.
+- **Mixed-run scope:** scenario1 → 9/10/NonHumanHosts/Vivax/Penny → scenario1 exposed and now
+  guards sticky model-selection/NMF state. Mutable configuration globals still exist; this
+  is neither universal scenario isolation nor permission for concurrent/in-process batch runs.
+- **Final performance:** final/Baxter 10.30/10.47 s @2k, 22.56/23.17 s @5k and
+  42.89/45.11 s @10k: −1.62%/−2.63%/−4.92% CPU, passing the scale-point gates.
+  Seven-scenario sum of medians: 19.04/18.84 s, **+1.06%, missing the ≤0.5% allowance**.
+  Full performance closure remains open. Compiler/LTO/six-scenario PGO corpus matches;
+  built-in THP policy differs. Equal-heap-policy attribution remains separate.
+  Raw medians/MAD and per-scenario results are in `PERF.md`.
+- **Build corpus:** Genotypes, Penny, VecFullTest, NonHumanHosts, MSAT_HRP2, Vivax.
+  `pgo-build.sh` builds `openMalaria` and regenerates `inlined_xsd`; unit tests are checked
+  in the plain build. Provide the source snapshot's `build/schema` path. Missing profiles are fatal.
+- **LOC:** 15,598 model / 3,558 XML / 3,683 unittest, in 113 / 10 / 30 files.
+  Versus review entry: −120 model LOC, −3 files. The 14,000 / 2,600 caps remain open:
+  +1,598 total / +958 XML. No claim that presentation reduction alone simplifies ownership.
+- **Artifacts:** `/tmp/opencode/rewrite-next-20261125/` contains stage diffs, red/green logs,
+  excluded-file hashes and timing logs. Immutable stage source/build dirs sit alongside it.
+  Preserve unrelated untracked `PROMPT.md`, `email`, and `pgodata-p7d/`.
+- **Excluded:** CalcNv0/CalcNvO, solver changes/caching, inherited F16/F26; F73/F100 remain
+  separate follow-ups. Smaller review items implemented: single-find PK/PD cache hits
+  and local-record NHH reduction instead of a whole-map copy. Timing verdict is in `PERF.md`.
+- **Rejected experiments:** age-vector lookup, persistent survivor scratch, genotype-count
+  hoist, forced/transient age hoists, monitoring guard, `-fno-plt`, `-fipa-pta`. See raw ledger.
+  Do not reuse `probTransGenotype_*` as scratch without handling the `pTransmit<=0` early
+  return: genotype-tracking `updateKappa` reads those vectors unguarded.
 
 # MAIN-SESSION STATUS (2026-11-24 — superseded by the block above; per-agent history follows)
 **→ START AT `RECOVERY.md`: full change report, branch map, recovery-from-zero recipe. Branch pushed to origin 2026-11-24 (`rewrite`, `eval/bs-all`, `eval/e6-pyrogen`, `eval/e9-humans`, `eval/instr-counters`, tag `rewrite-status-2026-11-24`). Final: model 16,317 code LOC (baseline 18,813, −13.3%), 10.68s @2k / 45.82s @10k = 1.146×/1.214× vs A0, gap 2.0/1.9pct vs patched-baseline, all gates green at HEAD.**
@@ -392,18 +388,17 @@ late-main end-25d, mid-warmup) + truncated-file rejection for:
 Gates at C1: build ✓, ctest 57/57, unittest .OK!, tier-a 53/53.
 Gates at C2/C3: ctest 64/64, unittest .OK! (model binary byte-identical to
 the C1 parity-verified one).
-Final gates (HEAD): build ✓, ctest 64/64 (12 Resume_* + 52 legacy),
+Final gates at that historical checkpoint: build ✓, ctest 64/64 (12 Resume_* + 52 legacy),
 unittest .OK!, tier-a 53/53 bit-identical vs A0.
 
-## Known limits (honest partial)
-- NO interventions section (skill law 2026-11-20): --resume on a scenario
-  that deploys anything is UNSUPPORTED. Deployment schedules
-  (Interventions::Deployments / InterventionManager) and global IvState are
-  not on the wire and deployments are not replayed after resume, so state
-  created by a deployment before the save point is lost. Exception:
+## Known limits (corrected by the 2026-11-25 review)
+- Per-host intervention state is not on the wire. Schedules are rebuilt from
+  XML; changeHS/changeEIR events are replayed on restore, while per-host
+  deployments before the save point are not. Exception:
   per-infection drug dose records (TreatInfectionsWithDrug / LSTMDrug
-  queues) ARE on the wire with the infection. Proven days are all
-  intervention-free scenarios.
+  queues) ARE on the wire with the infection. Nine tested scenarios are
+  intervention-free and three contain health-system changes. None of the
+  12 cases establishes restored per-host intervention deployment state.
 - Intervention-derived side state not on the wire (same gap): human cohort
   intervention columns, AnophelesModel SimpleDecayingValue sugar-feeding
   values, vaccine/vector control registries. All config-rebuilt = empty.

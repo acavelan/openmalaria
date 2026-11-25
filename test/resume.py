@@ -36,7 +36,7 @@ def checkpointClock (path):
     with open (path, "rb") as f:
         head=f.read (25)
     magic, version = struct.unpack ("<II", head[:8])
-    assert magic==0x4B634D4F and version==1, "not a checkpoint"
+    assert magic==0x4B634D4F and version==3, "not a checkpoint"
     t0, t1, interv, end = struct.unpack ("<iiii", head[9:25])
     return t0, end
 

@@ -63,7 +63,7 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
     Episode::State newState = static_cast<Episode::State>(pg.state);
     streamValidate((newState << 16) & cm.esPgState);
 
-    if (ctx.clock.ts0() == cm.es_time_recovery()) {
+    if (ctx.clock.ts0() == cm.es_time_recovery) {
         if (cm.esPgState & DIRECT_DEATH) {
             // Human dies this time step (last day of risk of death)
             cm.doomed = DOOMED_COMPLICATED;
@@ -106,14 +106,14 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
                 // previously healthy or UC: progress to severe
                 cm.esPgState = Episode::State(cm.esPgState | newState | RUN_CM_TREE);
                 indirectMortality = pg.indirectMortality;
-                cm.es_case_start() = ctx.clock.ts0();
+                cm.es_case_start = ctx.clock.ts0();
             }
         } else {
             // uncomplicated case (UC/UC2/NMF): is it new?
             if (cm.esPgState & SICK) {
                 // previously UC; nothing to do
             } else {
-                if (cm.es_case_start() < ctx.clock.ts0()) {
+                if (cm.es_case_start < ctx.clock.ts0()) {
                     // new UC case
                     cm.esPgState = Episode::State(cm.esPgState | newState | RUN_CM_TREE);
                     indirectMortality = pg.indirectMortality;
@@ -127,7 +127,7 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
                     assert(false); // should have uVariate < 1 = ClinicalEventScheduler::cumDailyPrImmUCTS[len-1]
                 gotDelay:
                     // set start time: current time plus length of delay (days)
-                    cm.es_case_start() = ctx.clock.ts0() + fromDays(i);
+                    cm.es_case_start = ctx.clock.ts0() + fromDays(i);
                 }
             }
         }
@@ -136,19 +136,19 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
             cm.doomed = -ctx.clock.one_TS(); // start indirect mortality countdown
     }
 
-    if (cm.es_case_start() == ctx.clock.ts0() && (cm.esPgState & RUN_CM_TREE)) {
+    if (cm.es_case_start == ctx.clock.ts0() && (cm.esPgState & RUN_CM_TREE)) {
         // OK, we're about to run the CM tree
         cm.esPgState = Episode::State(cm.esPgState & ~RUN_CM_TREE);
 
         // If last treatment prescribed was in recent memory, consider second line.
-        if (cm.es_time_treatment() + ClinicalModel::healthSystemMemory > ctx.clock.ts0()) {
+        if (cm.es_time_treatment + ClinicalModel::healthSystemMemory > ctx.clock.ts0()) {
             cm.esPgState = Episode::State(cm.esPgState | SECOND_CASE);
         }
 
         CMDTOut auxOut = ESCaseManagement::execute(ctx, human, ageYears, cm.esPgState);
 
         if (auxOut.treated) { // I.E. some treatment was given
-            cm.es_time_treatment() = ctx.clock.ts0();
+            cm.es_time_treatment = ctx.clock.ts0();
             if (cm.esPgState & COMPLICATED) {
                 recordEvent(measure("nTreatments3"), human);
             } else {
@@ -165,7 +165,7 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
             cm.esPgState = Episode::State(cm.esPgState | EVENT_IN_HOSPITAL);
 
             /*FIXME if( auxOut.hospitalisation == CMAuxOutput::DELAYED )
-		++cm.es_case_start();*/
+		++cm.es_case_start;*/
         }
 
         // Case fatality rate (first day of illness)
@@ -182,9 +182,9 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
             if (human.rng().uniform_01() < pDeath) {
                 cm.esPgState = Episode::State(cm.esPgState | DIRECT_DEATH | EVENT_FIRST_DAY);
                 // Human is killed at end of time at risk
-                //cm.es_time_recovery() += ClinicalEventScheduler::extraDaysAtRisk;	(no point updating; will be set later: ATORWD)
+                // es_time_recovery will be set later: ATORWD (search keyword).
             }
-            cm.es_prev_density() = withinHostModel.getTotalDensity();
+            cm.es_prev_density = withinHostModel.getTotalDensity();
         }
 
         if (opt_non_malaria_fevers) {
@@ -244,14 +244,14 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
         // Case fatality rate (subsequent days)
         // Complicated case & at risk of death (note: ClinicalEventScheduler::extraDaysAtRisk <= 0)
         if ((cm.esPgState & COMPLICATED) && !(cm.esPgState & DIRECT_DEATH) &&
-            (ctx.clock.ts0() < cm.es_time_recovery() + ClinicalEventScheduler::extraDaysAtRisk)) {
+            (ctx.clock.ts0() < cm.es_time_recovery + ClinicalEventScheduler::extraDaysAtRisk)) {
             // In complicated episodes, S(t), the probability of survival on
             // subsequent days t, is described by log(S(t)) = -v(Y(t)/Y(t-1)),
             // for parasite density Y(t). v_neg below is -v.
             // TODO: this model should be revisited, and if possible placed
             // within the WHFalciparum class (or a subclass).
             if (withinHostModel.getTotalDensity() > 0.0) { // avoid division by zero
-                double parasiteReductionEffect = withinHostModel.getTotalDensity() / cm.es_prev_density();
+                double parasiteReductionEffect = withinHostModel.getTotalDensity() / cm.es_prev_density;
                 double pDeath = 1.0 - exp(ClinicalEventScheduler::neg_v * parasiteReductionEffect);
                 // community fatality rate when not in hospital
                 if (!(cm.esPgState & EVENT_IN_HOSPITAL)) pDeath = ClinicalModel::getCommunityCFR(pDeath);
@@ -261,17 +261,17 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
                 if (human.rng().uniform_01() < pDeath) {
                     cm.esPgState = Episode::State(cm.esPgState | DIRECT_DEATH);
                     // Human is killed at end of time at risk
-                    cm.es_time_recovery() = cm.es_time_recovery() +
+                    cm.es_time_recovery = cm.es_time_recovery +
                                             ClinicalEventScheduler::extraDaysAtRisk; // may be re-set later (see ATORWD)
                 }
             }
-            cm.es_prev_density() = withinHostModel.getTotalDensity();
+            cm.es_prev_density = withinHostModel.getTotalDensity();
         }
     }
 
     // Start of case. Not necessarily start of sickness due to treatment-seeking
     // delays and travel time.
-    if (cm.es_case_start() == ctx.clock.ts0()) {
+    if (cm.es_case_start == ctx.clock.ts0()) {
         // Patients in hospital are removed from the transmission cycle.
         // This should have an effect from the start of the next time step.
         // NOTE: This is not very accurate, but considered of little importance.
@@ -283,18 +283,18 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
             // exiting hospital are OK and medications terminating before the
             // end of hospitalisation shouldn't matter too much if the person
             // can't recieve new infections due to zero transmission in hospital.
-            cm.es_time_recovery() = ctx.clock.ts0() + ClinicalEventScheduler::complicatedCaseDuration;
+            cm.es_time_recovery = ctx.clock.ts0() + ClinicalEventScheduler::complicatedCaseDuration;
             // Time should be adjusted to end of at-risk period when patient dies:
             if (cm.esPgState & DIRECT_DEATH) // death may already have been determined
-                cm.es_time_recovery() =
-                    cm.es_time_recovery() + ClinicalEventScheduler::extraDaysAtRisk; // ATORWD (search keyword)
+                cm.es_time_recovery =
+                    cm.es_time_recovery + ClinicalEventScheduler::extraDaysAtRisk; // ATORWD (search keyword)
         } else {
-            cm.es_time_recovery() = ctx.clock.ts0() + ClinicalEventScheduler::uncomplicatedCaseDuration;
+            cm.es_time_recovery = ctx.clock.ts0() + ClinicalEventScheduler::uncomplicatedCaseDuration;
         }
     }
 
     // Remove on first models...
-    if (cm.es_time_treatment() == ctx.clock.ts0()) human.removeFirstEvent(SubPopRemove::ON_FIRST_TREATMENT);
+    if (cm.es_time_treatment == ctx.clock.ts0()) human.removeFirstEvent(SubPopRemove::ON_FIRST_TREATMENT);
 
     if (cm.esPgState & SICK) human.removeFirstEvent(SubPopRemove::ON_FIRST_BOUT);
 }

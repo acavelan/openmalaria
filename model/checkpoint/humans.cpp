@@ -215,19 +215,20 @@ void ckEpisode(Archive& a, Episode& ep) {
 void checkpoint(Archive& a, ClinicalModel& cm) {
     a.value(cm.m_treatmentSeekingFactor);
     a.value(cm.doomed);
+    a.value(cm.t_last_treatment);
     ckEpisode(a, cm.latestReport);
     {
         int32_t s = cm.latestState;
         a.value(s);
         cm.latestState = Episode::State(s);
-        // esPgState is CMEventScheduler payload; the kind tag (built by
-        // createClinicalModel, same run config both ends of the wire) is the
-        // proof for the down-cast. Wire stays symmetric: the 5-day variants
-        // carry the old always-NONE bytes in a local.
-        auto* es = cm.kind == ClinicalModel::Kind::EventScheduler ? &static_cast<CMEventScheduler&>(cm) : nullptr;
-        int32_t e = es ? static_cast<int32_t>(es->esPgState) : NONE;
-        a.value(e);
-        if (es) es->esPgState = Episode::State(e);
+    }
+    if (cm.kind == ClinicalModel::Kind::EventScheduler) {
+        auto& es = static_cast<CMEventScheduler&>(cm);
+        a.enumerated(es.esPgState);
+        a.value(es.es_case_start);
+        a.value(es.es_time_recovery);
+        a.value(es.es_time_treatment);
+        a.value(es.es_prev_density);
     }
 }
 
@@ -238,6 +239,10 @@ void ckWH(Archive& a, RunContext& ctx, WHInterface& wh, LocalRng& rng) {
     // at their defaults — same bytes, simplest symmetric code).
     a.value(wh.numInfs);
     a.value(wh._innateImmSurvFact);
+    a.value(wh.imm_h);
+    a.value(wh.imm_Y);
+    a.value(wh.imm_Y_lag);
+    a.value(wh.cum_prim_inf);
     a.value(wh.totalDensity);
     a.value(wh.hrp2Density);
     a.value(wh.timeStepMaxDensity);
@@ -319,19 +324,6 @@ void ckHuman(Archive& a, RunContext& ctx, Human& h) {
     a.value(c.cohort_set[r]);
     a.value(c.mon_age_group[r]);
     a.value(c.next_cts_dist[r]);
-    a.value(c.imm_h[r]);
-    a.value(c.imm_Y[r]);
-    a.value(c.imm_Y_lag[r]);
-    a.value(c.cum_prim_inf[r]);
-    a.value(c.t_last_treatment[r]);
-    a.value(c.es_case_start[r]);
-    a.value(c.es_time_recovery[r]);
-    a.value(c.es_time_treatment[r]);
-    a.value(c.es_prev_density[r]);
-    a.vector(c.anoph_ento_raw[r]);
-    a.vector(c.anoph_ento_avail[r]);
-    a.vector(c.anoph_prob_biting[r]);
-    a.vector(c.anoph_prob_resting[r]);
     a.value(c.rel_avail_het[r]);
     a.value(c.outside_trans[r]);
     a.value(h.p_infected);
@@ -366,6 +358,9 @@ void ckHumans(Archive& a, RunContext& ctx, Population& population) {
         for (auto& h : population.humans)
             ckHuman(a, ctx, h);
     }
+    a.vector(population.cols.anoph);
+    if (population.cols.anoph.size() != n * population.cols.num_species)
+        throw checkpoint_error("host/species table size mismatch");
 }
 
 } // namespace OpenMalaria
