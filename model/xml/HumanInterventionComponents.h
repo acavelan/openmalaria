@@ -277,20 +277,14 @@ void deploy_component(RunContext& ctx, const ComponentConfig& c, Human& human, m
 }
 
 void print_component(std::ostream& out, const ComponentConfig& c) {
-    out << c.id.id << '\t'
-        << (c.kind == Component::RECRUIT_ONLY   ? "Recruit only"
-            : c.kind == Component::SCREEN       ? "Screen"
-            : c.kind == Component::TREAT_SIMPLE ? "treatSimple"
-            : c.kind == Component::TREAT_PKPD   ? "treatPKPD"
-            : c.kind == Component::CM_DT        ? "Decision tree"
-            : c.kind == Component::PEV          ? "PEV"
-            : c.kind == Component::BSV          ? "BSV"
-            : c.kind == Component::TBV          ? "TBV"
-            : c.kind == Component::ITN          ? "ITN"
-            : c.kind == Component::IRS          ? "IRS"
-            : c.kind == Component::GVI          ? "GVI"
-                                                :
-                                                /* Component::CLEAR_IMMUNITY */ "clear immunity");
+    // Indexed by Component::Type (every kind assignable to c.kind is a member
+    // of that enum). IPT entry reproduces the former ternary's default:
+    // "clear immunity" (Component::IPT has no implementation; the old chain
+    // fell through to its last branch for it too).
+    static const char* const NAMES[] = {"Recruit only", "Screen", "treatSimple", "treatPKPD", "Decision tree",
+                                        "PEV", "BSV", "TBV", "clear immunity", // IPT: former default fall-through
+                                        "ITN", "IRS", "GVI", "clear immunity"};
+    out << c.id.id << '\t' << NAMES[c.kind];
 }
 
 }

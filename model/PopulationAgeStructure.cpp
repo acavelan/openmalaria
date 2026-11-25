@@ -52,56 +52,12 @@ int AgeStructure::targetCumPop(RunContext& ctx, size_t ageTSteps, int targetPop)
     return (int)floor(cumAgeProp[index] * targetPop + 0.5);
 }
 
-double wCalcRSS(const gsl_vector* v, void* params) {
-    double x, y;
-    x = gsl_vector_get(v, 0);
-    y = gsl_vector_get(v, 1);
-
-    // params: the run (see minimizeCalc_rss)
-    return AgeStructure::setDemoParameters(*static_cast<RunContext*>(params), x, y);
-}
-/** Presumably from AR. Searches iteratively for a minimum to function func.
- *
- * @param func A function pointer to the function used for ...
- * @param param1 Initial guess of first param taken by func
- * @param param2 Initial guess of second
- */
-void minimizeCalc_rss(RunContext& ctx, double param1, double param2) {
-    gsl_vector* stepSize = gsl_vector_alloc(2);
-    gsl_vector_set_all(stepSize, 0.1);
-
-    gsl_vector* initialValues = gsl_vector_alloc(2);
-    gsl_vector_set(initialValues, 0, param1);
-    gsl_vector_set(initialValues, 1, param2);
-
-    gsl_multimin_function minex_func;
-    minex_func.f = &wCalcRSS;
-    minex_func.params = &ctx;
-    minex_func.n = 2;
-
-    const gsl_multimin_fminimizer_type* T = gsl_multimin_fminimizer_nmsimplex;
-    gsl_multimin_fminimizer* minimizer = gsl_multimin_fminimizer_alloc(T, 2);
-    gsl_multimin_fminimizer_set(minimizer, &minex_func, initialValues, stepSize);
-
-    for (size_t iter = 0; iter < 100; ++iter) {
-        if (gsl_multimin_fminimizer_iterate(minimizer))
-            throw TRACED_EXCEPTION("gsl_multimin_fminimizer_iterate failed", util::Error::GSL);
-
-        double size = gsl_multimin_fminimizer_size(minimizer);
-        int status = gsl_multimin_test_size(size, 1e-2);
-        if (status == GSL_SUCCESS)
-            break;
-    }
-    // Call again to set final value.
-    wCalcRSS(minimizer->x, &ctx);
-
-    gsl_vector_free(initialValues);
-    gsl_vector_free(stepSize);
-    gsl_multimin_fminimizer_free(minimizer);
-}
-
-// Static method used by estimateRemovalRates
-double AgeStructure::setDemoParameters(RunContext& ctx, double param1, double param2) {
+/** Fit objective: set removal-rate parameters from the trial values
+ * (param1, param2) and return residual sum-of-squares vs the field-data age
+ * groups; splits the infant age groups as a side effect. Called back by the
+ * GSL minimiser (wCalcRSS); formerly a public static AgeStructure member,
+ * file-local since its only caller is in this TU. Body verbatim. */
+static double setDemoParameters(RunContext& ctx, double param1, double param2) {
     auto& ageGroupBounds = ctx.age.ageGroupBounds;
     auto& ageGroupPercent = ctx.age.ageGroupPercent;
     double& mu0 = ctx.age.mu0;
@@ -146,6 +102,54 @@ double AgeStructure::setDemoParameters(RunContext& ctx, double param1, double pa
         result += residual * residual;
     }
     return result;
+}
+
+static double wCalcRSS(const gsl_vector* v, void* params) {
+    double x, y;
+    x = gsl_vector_get(v, 0);
+    y = gsl_vector_get(v, 1);
+
+    // params: the run (see minimizeCalc_rss)
+    return setDemoParameters(*static_cast<RunContext*>(params), x, y);
+}
+/** Presumably from AR. Searches iteratively for a minimum to function func.
+ *
+ * @param func A function pointer to the function used for ...
+ * @param param1 Initial guess of first param taken by func
+ * @param param2 Initial guess of second
+ */
+void minimizeCalc_rss(RunContext& ctx, double param1, double param2) {
+    gsl_vector* stepSize = gsl_vector_alloc(2);
+    gsl_vector_set_all(stepSize, 0.1);
+
+    gsl_vector* initialValues = gsl_vector_alloc(2);
+    gsl_vector_set(initialValues, 0, param1);
+    gsl_vector_set(initialValues, 1, param2);
+
+    gsl_multimin_function minex_func;
+    minex_func.f = &wCalcRSS;
+    minex_func.params = &ctx;
+    minex_func.n = 2;
+
+    const gsl_multimin_fminimizer_type* T = gsl_multimin_fminimizer_nmsimplex;
+    gsl_multimin_fminimizer* minimizer = gsl_multimin_fminimizer_alloc(T, 2);
+    gsl_multimin_fminimizer_set(minimizer, &minex_func, initialValues, stepSize);
+
+    for (size_t iter = 0; iter < 100; ++iter) {
+        if (gsl_multimin_fminimizer_iterate(minimizer))
+            throw TRACED_EXCEPTION("gsl_multimin_fminimizer_iterate failed", util::Error::GSL);
+
+        double size = gsl_multimin_fminimizer_size(minimizer);
+        int status = gsl_multimin_test_size(size, 1e-2);
+        if (status == GSL_SUCCESS)
+            break;
+    }
+    // Call again to set final value.
+    wCalcRSS(minimizer->x, &ctx);
+
+    gsl_vector_free(initialValues);
+    gsl_vector_free(stepSize);
+    gsl_multimin_fminimizer_free(minimizer);
 }
 
 void AgeStructure::calcCumAgeProp(RunContext& ctx) {
