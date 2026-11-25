@@ -29,10 +29,6 @@
 #include "Host/WithinHost/Genotypes.h"
 #include "util/random.h"
 
-class UnittestUtil;
-class MolineauxInfectionSuite;
-class PennyInfectionSuite;
-
 namespace OM { namespace WithinHost {
 
 using util::LocalRng;
@@ -70,82 +66,54 @@ const double maxDens = 2000000;
  * CommonWithinHost handling the conversion when the main simulation uses a
  * 5-day time step; note that for them ctx.clock.ts0(), ts1(), etc. may not be
  * accurate since it is only updated once per main time step. Descriptive uses
- * the 5-day time step directly via determineDensities().
+ * the 5-day time step directly via determine_densities_descriptive().
  *
- * Member functions are defined per kind, in the former subclass TUs.
+ * Per-kind behaviour lives in free functions in the former subclass TUs
+ * (phase 7f); shared dispatch (ctor/update/checkpoint) is Infection.cpp.
  *
  * Molineaux model: L. Molineaux et al, Parasitology 122 (2001) 379-391.
  * Penny model: Penny et al (2011), within-host dynamics with blood stage
- * vaccines. */
-class Infection final {
-public:
+ * vaccines.
+ *
+ * Public struct (7.2b precedent: payloads public, friends dead): the per-kind
+ * bodies are free functions in the kind's TU (phase 7f). */
+struct Infection final {
     enum class Kind { Descriptive, Dummy, Empirical, Molineaux, Penny };
 
     /// The run this infection belongs to (clock accessed as ctx.clock).
     RunContext& ctx;
+
+    /// Which model this infection runs (scenario-derived; never checkpointed —
+    /// the checkpointing factory function pointer carries the kind across a
+    /// resume).
+    Kind kind;
 
     /// Pre-erythrocytic latent period (instantiated in WHFalciparum.cpp)
     inline static void init( SimTime latentP ){
         s_latentP = latentP;
     }
 
-    ///@name Static (shared) init — call the one for the model in use
-    //@{
-    static void initDescriptive(RunContext& ctx, const OM::Parameters& parameters);  // 5-day time step check
-    static void initDummy(RunContext& ctx);
-    static void initEmpirical(RunContext& ctx);   // 1-day time step check
-    static void initMolineaux(RunContext& ctx, const OM::Parameters& parameters);
-    static void initPenny(RunContext& ctx);
-    //@}
-
-    /// Create a new infection. growthRateMultiplier is only used by Empirical.
-    Infection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin, Kind kind,
-              double growthRateMultiplier = 1.0);
-    /// For checkpointing (don't use for anything else)
-    Infection(RunContext& ctx, istream& stream, Kind kind);
-    ~Infection ();
-
-    /** Update: calculate new density. Call this once per day (Dummy/Empirical/
-     * Molineaux/Penny; never for Descriptive).
-     *
-     * @param survivalFactor Density multiplier to introduce drug & vaccine effects
-     * @param now The simulation time. Use this instead of ctx.clock.ts1().
-     * @param body_mass Body mass of host in kg
-     * @returns True when the infection goes extinct. */
-    bool update( LocalRng& rng, double survivalFactor, SimTime now, double body_mass );
+    /// Shared-field init only: kind-specific construction (which may draw from
+    /// rng) is infection_new's / infection_new_checkpointed's job
+    /// (Infection.cpp). Pass placeholder genotype/origin when reading a
+    /// checkpoint: date/densities/genotype/origin are overwritten from the
+    /// stream immediately after.
+    Infection(RunContext& ctx, uint32_t genotype, int origin, Kind kind) :
+        ctx(ctx),
+        kind(kind),
+        m_startDate(this->ctx.clock.nowOrTs0()),
+        m_density(0.0),
+        m_cumulativeExposureJ(0.0),
+        m_genotype(genotype),
+        m_origin(origin)
+    {}
 
     /** Returns true when age reaches the pre-determined duration (i.e. when
-     * this infection terminates). Descriptive only; m_duration is never() for
-     * the other kinds, which self-terminate in update() instead. */
+     * this infection terminates). Descriptive only; the other kinds have no
+     * Descriptive payload and self-terminate in infection_update() instead. */
     bool expired () {
-        return ctx.clock.ts0() > m_startDate + m_duration;
+        return ctx.clock.ts0() > m_startDate + descriptive.duration;
     }
-
-    /** Determines parasite density of an individual infection (Descriptive,
-     * 5-day time step update).
-     *
-     * @param cumulativeh Cumulative number of infections
-     * @param timeStepMaxDensity (In-out param) Used to return the maximum
-     *  parasite density over a 5-day interval.
-     * @param innateImmSurvFact Density multiplier for innate immunity.
-     * @param bsvFactor Density multiplier for Blood-Stage Vaccine effect.
-     */
-    void determineDensities(
-            LocalRng& rng,
-            double cumulativeh,
-            double &timeStepMaxDensity,
-            double immSurvFact,
-            double innateImmSurvFact,
-            double bsvFactor);
-
-    /** Decide on an infection duration and return it (Descriptive).
-     *
-     * Determines infection duration by sampling from the log normal
-     * distribution using parameters for 53 patients from Georgia. Mean log
-     * duration of an infection values from AJTM p.9 eq.5. Parameters for this
-     * model are hard-coded.
-     */
-    static SimTime infectionDuration(RunContext& ctx, LocalRng& rng);
 
     /** Get the density of sequestered parasites (Penny). */
     inline double seqDensity(int ageDays){
@@ -204,7 +172,7 @@ public:
     /// Checkpointing
     template<class S>
     void operator& (S& stream) {
-        checkpoint (stream);
+        infection_checkpoint (*this, stream);
     }
 
     /// IC50^slope per drug type, if sampled (PkPd cache). Never serialised;
@@ -222,9 +190,6 @@ public:
     // taus: used for the variantTranscending and variantSpecific array, 4 Molineaux time steps = 8 days
     static const size_t taus = 4;
 
-protected:
-    void checkpoint (ostream& stream);
-
     /// Date of inoculation of infection (start of liver stage)
     /// This is the step of inoculation (ts0()).
     SimTime m_startDate = sim::never();
@@ -238,78 +203,10 @@ protected:
     /// Pre-erythrocytic latent period (instantiated in WHFalciparum.cpp)
     static SimTime s_latentP;
 
-private:
     /// Genotype of infection (a code; see Genotypes class).
     uint32_t m_genotype;
 
     int m_origin;
-
-    Kind m_kind;
-    friend class ::UnittestUtil;   // reads s_latentP and internals
-    friend class ::MolineauxInfectionSuite;
-    friend class ::PennyInfectionSuite;
-
-    // ——— ctor bodies and per-kind update/checkpoint, defined in the kind's TU ———
-    void ctorBody_Empirical(LocalRng& rng, double growthRateMultiplier);
-    void ctorBody_Molineaux(LocalRng& rng);
-    void ctorBody_Penny(LocalRng& rng);
-    bool updateDensity_Dummy(LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
-    bool updateDensity_Empirical(LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
-    bool updateDensity_Molineaux(LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
-    bool updateDensity_Penny(LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
-    void read_Descriptive(istream& stream);
-    void read_Empirical(istream& stream);
-    void read_Molineaux(istream& stream);
-    void read_Penny(istream& stream);
-    void checkpoint_Descriptive(ostream& stream);
-    void checkpoint_Empirical(ostream& stream);
-    void checkpoint_Molineaux(ostream& stream);
-    void checkpoint_Penny(ostream& stream);
-
-    // ——— Descriptive state ———
-    // Arbitrary predetermined maximum duration of the infection
-    SimTime m_duration = sim::never();
-    bool notPrintedMDWarning = true;
-    /* A triangular matrix: meanLogParasiteCount[i][j] is the
-     * Mean Log Parasite Count for age i (in time steps) of an infection which
-     * lasts j days. Indices with i>j are unused. */
-    static double meanLogParasiteCount[numDurations][numDurations];
-    static double sigma0sq;       ///< Sigma0^2 from AJTM p.9 eq. 13
-    static double xNuStar;        ///< XNuStar in AJTM p.9 eq. 13
-
-    // ——— Dummy state: none ———
-
-    // ——— Empirical state: in EmpiricalData payload ———
-
-    double getInflatedDensity(LocalRng& rng, double nonInflatedDensity);
-    double sigma_noise(int ageDays);
-    double sampleSubPatentValue(LocalRng& rng, double mu, double sigma, double upperBound);
-
-    ///@brief Static variables
-    ///Set by initEmpirical (and reset by independent parameterisation)
-    //@{
-    static const int _maximumDurationInDays=418;
-    static double _maximumPermittedAmplificationPerCycle;
-    static double _subPatentLimit;
-    static double _alpha1;
-    static double _alpha2;
-    static double _alpha3;
-    static double _mu1;
-    static double _mu2;
-    static double _mu3;
-    static double _sigma0_res;
-    static double _sigmat_res;
-    static double _mu_beta1[_maximumDurationInDays];
-    static double _sigma_beta1[_maximumDurationInDays];
-    static double _mu_beta2[_maximumDurationInDays];
-    static double _sigma_beta2[_maximumDurationInDays];
-    static double _mu_beta3[_maximumDurationInDays];
-    static double _sigma_beta3[_maximumDurationInDays];
-    static double _inflationMean;
-    static double _inflationVariance;
-    static double _extinctionLevel;
-    static double _overallMultiplier;
-    //@}
 
     // ——— Molineaux: variant row type (payload below) ———
     struct Variant {
@@ -332,19 +229,18 @@ private:
     // delta_V := delay to variant specific antibody response in R_V^x (days) (value 6.3572 round to 6)
     static const int delta_V=6;
 
-    static bool immune_threshold_gamma;
-    static bool update_density_gamma;
-
-    double getClonalSummation(int ageDays);
-    double getVariantSpecificSummation(LocalRng& rng, int ageDays);
-
     // ——— Per-kind cold state, one heap payload per kind (phase-5 perf fix) ———
-    // The profiled hot loop (Descriptive determineDensities/update_descriptive,
+    // The profiled hot loop (determine_densities_descriptive,
     // example@2000) only touches the common fields above; carrying every kind's
     // state inline cost ~4x the cache footprint of the Descriptive hot object
     // (RSS +12% after the 4b merge). Each payload is allocated in the ctor body
     // or the checkpoint reader for its kind only (no RNG draws involved), so
     // the m_rng stream and wire semantics are unchanged.
+    struct DescriptiveData {
+        // Arbitrary predetermined maximum duration of the infection
+        SimTime duration = sim::never();
+        bool notPrintedMDWarning = true;
+    };
     struct EmpiricalData {
         double _laggedLogDensities[3];
         double _patentGrowthRateMultiplier;
@@ -378,11 +274,100 @@ private:
         double variantSpecificSummation;
         double clonalSummation;
     };
+    // Embedded by value (small, hot): the pointer payload cost a malloc per
+    // infection plus a dependent load in every tick — bench +2.3%.
+    DescriptiveData descriptive;  // set by Kind::Descriptive
     std::unique_ptr<EmpiricalData> empirical;      // set by Kind::Empirical
     std::unique_ptr<MolineauxData> molineaux;      // set by Kind::Molineaux
     std::unique_ptr<PennyData> penny;              // set by Kind::Penny
     std::unique_ptr<std::map<size_t, double>> kn;  // PkPd cache, see Kn()
 };
+
+// ——— Shared dispatch (Infection.cpp) ———
+/// Create a new infection. growthRateMultiplier is only used by Empirical.
+Infection* infection_new(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin,
+                         Infection::Kind kind, double growthRateMultiplier = 1.0);
+/// For checkpointing (don't use for anything else)
+Infection* infection_new_checkpointed(RunContext& ctx, istream& stream, Infection::Kind kind);
+
+/** Update: calculate new density. Call this once per day (Dummy/Empirical/
+ * Molineaux/Penny; never for Descriptive).
+ *
+ * @param survivalFactor Density multiplier to introduce drug & vaccine effects
+ * @param now The simulation time. Use this instead of ctx.clock.ts1().
+ * @param body_mass Body mass of host in kg
+ * @returns True when the infection goes extinct. */
+bool infection_update(Infection& inf, LocalRng& rng, double survivalFactor, SimTime now, double body_mass);
+
+/// Checkpoint write-out (what Infection::operator& forwards to)
+void infection_checkpoint(Infection& inf, ostream& stream);
+
+// ——— Descriptive free functions (DescriptiveInfection.cpp) ———
+/// 5-day time step check; loads densities.csv matrix + parameters (per run)
+void infection_init_descriptive(RunContext& ctx, const OM::Parameters& parameters);
+
+/** Decide on an infection duration and return it.
+ *
+ * Determines infection duration by sampling from the log normal
+ * distribution using parameters for 53 patients from Georgia. Mean log
+ * duration of an infection values from AJTM p.9 eq.5. Parameters for this
+ * model are hard-coded. */
+SimTime infection_duration_descriptive(RunContext& ctx, LocalRng& rng);
+
+/// New-infection hook for Kind::Descriptive (allocates the payload; draws
+/// the duration — this is the kind's only RNG draw at construction time).
+void infection_ctor_descriptive(Infection& inf, LocalRng& rng);
+
+/** Determines parasite density of an individual infection (Descriptive,
+ * 5-day time step update).
+ *
+ * @param cumulativeh Cumulative number of infections
+ * @param timeStepMaxDensity (In-out param) Used to return the maximum
+ *  parasite density over a 5-day interval.
+ * @param innateImmSurvFact Density multiplier for innate immunity.
+ * @param bsvFactor Density multiplier for Blood-Stage Vaccine effect.
+ */
+void determine_densities_descriptive(
+        Infection& inf,
+        LocalRng& rng,
+        double cumulativeh,
+        double &timeStepMaxDensity,
+        double immSurvFact,
+        double innateImmSurvFact,
+        double bsvFactor);
+
+void read_descriptive(Infection& inf, istream& stream);
+void checkpoint_descriptive(Infection& inf, ostream& stream);
+
+// ——— Dummy free functions (DummyInfection.cpp) ———
+void infection_init_dummy(RunContext& ctx);
+/// One update step; @returns true when the infection goes extinct.
+bool update_density_dummy(Infection& inf, LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
+
+// ——— Empirical free functions (EmpiricalInfection.cpp) ———
+/// 1-day time step check; loads autoRegressionParameters.csv (per run)
+void infection_init_empirical(RunContext& ctx);
+/// New-infection hook for Kind::Empirical: prepatent-density draws (payload first).
+void infection_ctor_empirical(Infection& inf, LocalRng& rng, double growthRateMultiplier);
+bool update_density_empirical(Infection& inf, LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
+void read_empirical(Infection& inf, istream& stream);
+void checkpoint_empirical(Infection& inf, ostream& stream);
+
+// ——— Molineaux free functions (MolineauxInfection.cpp) ———
+void infection_init_molineaux(RunContext& ctx, const OM::Parameters& parameters);
+/// New-infection hook: mi[] + Pc_star/Pm_star draws (payload first).
+void infection_ctor_molineaux(Infection& inf, LocalRng& rng);
+bool update_density_molineaux(Infection& inf, LocalRng& rng, double survival_factor, SimTime age_BS, double body_mass);
+void read_molineaux(Infection& inf, istream& stream);
+void checkpoint_molineaux(Infection& inf, ostream& stream);
+
+// ——— Penny free functions (PennyInfection.cpp) ———
+void infection_init_penny(RunContext& ctx);
+/// New-infection hook: immune-threshold draws (payload first).
+void infection_ctor_penny(Infection& inf, LocalRng& rng);
+bool update_density_penny(Infection& inf, LocalRng& rng, double survivalFactor, SimTime bsAge, double body_mass);
+void read_penny(Infection& inf, istream& stream);
+void checkpoint_penny(Infection& inf, ostream& stream);
 
 /// Create a dummy infection (used directly by unit test).
 Infection* createDummyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin);

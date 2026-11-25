@@ -455,7 +455,7 @@ public:
         Parameters parameters( dummyXML::model.getParameters(), util::ModelNameProvider(dummyXML::model) );
         
         // This sets up the model based on parameters and options
-        WithinHost::Infection::initMolineaux(ctx(), parameters);
+        WithinHost::infection_init_molineaux(ctx(), parameters);
     }
     
     static void MosqLifeCycle_init() {
