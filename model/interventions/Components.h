@@ -92,6 +92,11 @@ struct ComponentConfig {
     std::variant<RecruitOnlyParams, ScreenParams, TreatSimpleParams, TreatPKPDParams, DecisionTreeParams, VaccineParams,
                  ITNParams, IRSParams, GVIParams>
         data;
+    /// kind + payload in one step (tag always matches the variant alternative).
+    template <class T, class... A> void set(Component::Type k, A&&... a) {
+        kind = k;
+        data.emplace<T>(a...);
+    }
 };
 
 /// Deploy component c to human (replaces the old virtual deploy()).

@@ -63,8 +63,8 @@ class CM5DayCommon {
 };
 
 /** Common 5-day clinical update (old CM5DayCommon::doClinicalUpdate; the
- * kind of cm selects the uncomplicatedEvent implementation, parity: the old
- * virtual call). */
+ * variant selects the uncomplicatedEvent implementation via the virtual —
+ * parity: the old virtual call). */
 void clinicalUpdate5Day(ClinicalModel& cm, RunContext& ctx, Human& human, double ageYears,
                         WithinHost::Pathogenesis::StatePair& pg);
 

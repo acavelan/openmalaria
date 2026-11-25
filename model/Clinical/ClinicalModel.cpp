@@ -53,9 +53,14 @@ util::AgeGroupInterpolator ClinicalModel::pSequelaeInpatient;
 // -----  static methods  -----
 
 unique_ptr<ClinicalModel> ClinicalModel::createClinicalModel(RunContext& ctx, double tSF) {
-    const Kind kind = opt_event_scheduler ? Kind::EventScheduler
-                                          : (opt_imm_outcomes ? Kind::ImmediateOutcomes : Kind::DecisionTree5Day);
-    return unique_ptr<ClinicalModel>(new ClinicalModel(ctx, tSF, kind));
+    // One create-line per variant; the kind flags are set at scenario load
+    // (ClinicalModel::init, xml/healthSystem.cpp).
+    if (opt_event_scheduler)
+        return unique_ptr<ClinicalModel>(new CMEventScheduler(ctx, tSF));
+    else if (opt_imm_outcomes)
+        return unique_ptr<ClinicalModel>(new CMImmediateOutcomes(ctx, tSF));
+    else
+        return unique_ptr<ClinicalModel>(new CMDecisionTree5Day(ctx, tSF));
 }
 
 double ClinicalModel::getCommunityCFR(double caseFatalityRatio) {
@@ -66,18 +71,49 @@ double ClinicalModel::getCommunityCFR(double caseFatalityRatio) {
 // -----  non-static construction, destruction and checkpointing  -----
 
 ClinicalModel::ClinicalModel(RunContext& ctx, double tSF, const Kind kind)
-    : kind(kind), ctx(ctx), m_treatmentSeekingFactor(tSF), latestReport(ctx), esPgState(Episode::NONE),
-      doomed(NOT_DOOMED) {
-    if (kind == Kind::EventScheduler && tSF != 1.0) {
+    : kind(kind), ctx(ctx), m_treatmentSeekingFactor(tSF), latestReport(ctx), doomed(NOT_DOOMED) {}
+
+// parity: guard = old ClinicalModel ctor's Kind::EventScheduler check, verbatim
+// (no RNG draws in any ctor; ctor layering cannot shift the stream).
+CMEventScheduler::CMEventScheduler(RunContext& ctx, double tSF)
+    : ClinicalModel(ctx, tSF, Kind::EventScheduler) {
+    if (tSF != 1.0) {
         // p(treatment seeking) is part of tree & handled generically, so we
         // don't have a way of modifying it. (parity: old ES ctor)
         throw util::xml_scenario_error("treatment seeking heterogeneity not supported");
     }
 }
 
+// Variant dispatch: each override calls its variant's free-function body
+// (this TU is the one that resolves the ClinicalModel<->EventScheduler/
+// CM5DayCommon include cycle, so the hooks live here). Bodies unchanged.
+void CMDecisionTree5Day::doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) {
+    clinicalUpdate5Day(*this, ctx, human, ageYears, pg);
+}
+
+void CMDecisionTree5Day::uncomplicatedEvent(Human& human, Episode::State pgState) {
+    treeUncomplicatedEvent(*this, ctx, human, pgState);
+}
+
+void CMImmediateOutcomes::doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) {
+    clinicalUpdate5Day(*this, ctx, human, ageYears, pg);
+}
+
+void CMImmediateOutcomes::uncomplicatedEvent(Human& human, Episode::State pgState) {
+    immOutUncomplicatedEvent(*this, ctx, human, pgState);
+}
+
+void CMEventScheduler::doClinicalUpdate(Human& human, double ageYears, WithinHost::Pathogenesis::StatePair& pg) {
+    esClinicalUpdate(*this, ctx, human, ageYears, pg);
+}
+
+SimTime CMEventScheduler::timeOfLastTreatment() const {
+    return es_time_treatment();
+}
+
 bool ClinicalModel::isExistingCase() {
     // If treated in the recent past:
-    const SimTime t = kind == Kind::EventScheduler ? es_time_treatment() : t_last_treatment();
+    const SimTime t = timeOfLastTreatment();
     return ctx.clock.now() > t && ctx.clock.now() <= t + healthSystemMemory;
 }
 
@@ -112,10 +148,7 @@ void ClinicalModel::update(Human& human, double ageYears, bool newBorn) {
     WithinHost::Pathogenesis::StatePair pg = human.withinHostModel->determineMorbidity(human, ageYears, isDoomed);
     latestState = static_cast<Episode::State>(pg.state);
 
-    if (kind == Kind::EventScheduler)
-        esClinicalUpdate(*this, ctx, human, ageYears, pg);
-    else
-        clinicalUpdate5Day(*this, ctx, human, ageYears, pg);
+    doClinicalUpdate(human, ageYears, pg);
 }
 
 void ClinicalModel::updateInfantDeaths(SimTime age) {
