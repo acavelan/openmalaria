@@ -71,14 +71,11 @@ void clinicalUpdate5Day(ClinicalModel& cm, RunContext& ctx, Human& human, double
         cm.uncomplicatedEvent(human, pgState); // virtual: tree vs immediate
     }
 
-    if (pg.indirectMortality && cm.doomed == NOT_DOOMED)
-        cm.doomed = -ctx.clock.one_TS();
+    if (pg.indirectMortality && cm.doomed == NOT_DOOMED) cm.doomed = -ctx.clock.one_TS();
 
-    if (cm.t_last_treatment() == ctx.clock.ts0())
-        human.removeFirstEvent(SubPopRemove::ON_FIRST_TREATMENT);
+    if (cm.t_last_treatment() == ctx.clock.ts0()) human.removeFirstEvent(SubPopRemove::ON_FIRST_TREATMENT);
 
-    if (pgState & SICK)
-        human.removeFirstEvent(SubPopRemove::ON_FIRST_BOUT);
+    if (pgState & SICK) human.removeFirstEvent(SubPopRemove::ON_FIRST_BOUT);
 }
 
 void severeMalaria(ClinicalModel& cm, RunContext& ctx, Human& human, Episode::State pgState, double ageYears,
@@ -214,9 +211,7 @@ void treeUncomplicatedEvent(ClinicalModel& cm, RunContext& ctx, Human& human, Ep
             cm.t_last_treatment() = ctx.clock.ts0();
             recordEvent(CM5DayCommon::measures[regimen], human);
         }
-        if (output.screened) {
-            recordEvent(measure("nTreatDiagnostics"), human);
-        }
+        if (output.screened) recordEvent(measure("nTreatDiagnostics"), human);
 
         human.withinHostModel->optionalPqTreatment(human);
     } else {

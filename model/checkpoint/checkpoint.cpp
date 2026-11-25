@@ -53,8 +53,7 @@ void ckHeader(Archive& a) {
     a.value(magic);
     a.value(version);
     if (a.reading()) {
-        if (magic != MAGIC)
-            throw checkpoint_error("not an OpenMalaria checkpoint file");
+        if (magic != MAGIC) throw checkpoint_error("not an OpenMalaria checkpoint file");
         if (version != FORMAT_VERSION)
             throw checkpoint_error("checkpoint format version " + std::to_string(version) + ", this build reads " +
                                    std::to_string(FORMAT_VERSION));
@@ -65,8 +64,7 @@ void ckClock(Archive& a, RunContext& ctx, Phase& phase, SimTime& endTime, SimTim
     uint8_t p = uint8_t(phase);
     a.value(p);
     if (a.reading()) {
-        if (p != uint8_t(Phase::Warmup) && p != uint8_t(Phase::Main))
-            throw checkpoint_error("bad checkpoint phase");
+        if (p != uint8_t(Phase::Warmup) && p != uint8_t(Phase::Main)) throw checkpoint_error("bad checkpoint phase");
         phase = Phase(p);
     }
     a.value(ctx.clock.t0);
@@ -80,8 +78,7 @@ void ckClock(Archive& a, RunContext& ctx, Phase& phase, SimTime& endTime, SimTim
 void writeCheckpoint(RunContext& ctx, Population& population, TransmissionModel& transmission, Phase phase,
                      SimTime endTime, SimTime estEndTime, const std::string& path) {
     std::ofstream out(path, std::ios::binary | std::ios::trunc);
-    if (!out.is_open())
-        throw checkpoint_error("cannot open \"" + path + "\" for writing");
+    if (!out.is_open()) throw checkpoint_error("cannot open \"" + path + "\" for writing");
     Archive a(out);
     Phase p = phase;
     ckHeader(a);
@@ -95,15 +92,13 @@ void writeCheckpoint(RunContext& ctx, Population& population, TransmissionModel&
     a.rng(ctx.master_RNG);
     a.checkExhausted(); // no-op on write; keeps sections symmetric
     out.flush();
-    if (out.fail())
-        throw checkpoint_error("error writing \"" + path + "\"");
+    if (out.fail()) throw checkpoint_error("error writing \"" + path + "\"");
 }
 
 void readCheckpoint(RunContext& ctx, Population& population, TransmissionModel& transmission, Phase& phase,
                     SimTime& endTime, SimTime& estEndTime, const std::string& path) {
     std::ifstream in(path, std::ios::binary);
-    if (!in.is_open())
-        throw checkpoint_error("cannot open checkpoint \"" + path + "\"");
+    if (!in.is_open()) throw checkpoint_error("cannot open checkpoint \"" + path + "\"");
     Archive a(in);
     ckHeader(a);
     ckClock(a, ctx, phase, endTime, estEndTime);

@@ -21,12 +21,12 @@ and the latest `PERF.md` sections.
   EntomologyConfig → HealthSystemConfig/ClinicalConfig → intervention ComponentIdList → shrink
   `run.cpp`. Real per-step cost is `unittest/UnittestUtil.h` (205 scnXml refs): convert fixtures in
   the same commit as each signature.
-- **LOC census (current worktree).** Canonical cloc KPI is **16,082**: `xml/` 3,713, non-xml
-  12,369. Budget math vs the hard cap: `xml/` 2.6k ⇒ ~+1.1k over; non-xml 11.4k ⇒ ~+1.0k over.
-  The latest cleanup removed 175 LOC through enum-indexed Parameters, shared CLI parsing, POD
-  checkpoint vectors, scalar decay samples, wrapper deletion and direct EIR sums. **The 14.0k cap is
-  not reachable by ordinary tidying** — it still needs roughly 2.1k LOC of substantive XML-reader
-  and runtime-boundary redesign or explicit user sign-off. CalcNvO is explicitly excluded.
+- **LOC census (current worktree).** Canonical cloc KPI is **15,717**: `xml/` 3,589, non-xml
+  12,128. Budget math vs the hard cap: `xml/` 2.6k ⇒ ~+1.0k over; non-xml 11.4k ⇒ ~+0.7k over.
+  Structural cleanups were followed by a user-requested short-`if` presentation pass removing 365
+  KPI lines with no logic changes. **The 14.0k cap still needs roughly 1.7k LOC of substantive
+  XML-reader and runtime-boundary redesign or explicit user sign-off**, not more code golf.
+  CalcNvO is explicitly excluded.
 - **Hot-path follow-ups (measured).** Forced/transient age hoists and the non-survey EIR monitoring
   guard were flat and reverted. `-fno-plt` was mixed sub-floor and `-fipa-pta` was ~0.4% slower at
   both benchmark sizes; neither is shipped. Returning the EIR sums already computed by `getEIR`

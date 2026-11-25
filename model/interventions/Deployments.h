@@ -237,9 +237,7 @@ inline void timed_human_deploy(RunContext& ctx, std::vector<Human>& population, 
                 availability <= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, th.maxAvailability)) {
                 if (d.subPop == ComponentId::wholePop() || (human.isInSubPop(d.subPop) != d.complement)) {
                     // parity: a — deploy short-circuit: RNG draw is the LAST test of the deploy condition; filter/age/cohort checks must precede it (plan §3a)
-                    if (human.rng().bernoulli(probability)) {
-                        d.deployToHuman(ctx, human, Deploy::TIMED);
-                    }
+                    if (human.rng().bernoulli(probability)) d.deployToHuman(ctx, human, Deploy::TIMED);
                 }
             }
         }
@@ -263,8 +261,7 @@ inline void timed_cumulative_deploy(RunContext& ctx, std::vector<Human>& populat
                 availability <= PerHostAnophParams::getEntoAvailabilityPercentile(ctx, th.maxAvailability)) {
                 if (d.subPop == ComponentId::wholePop() || (human.isInSubPop(d.subPop) != d.complement)) {
                     total += 1;
-                    if (!human.isInSubPop(cum.cumCovId))
-                        unprotected.push_back(&human);
+                    if (!human.isInSubPop(cum.cumCovId)) unprotected.push_back(&human);
                 }
             }
         }
@@ -282,9 +279,7 @@ inline void timed_cumulative_deploy(RunContext& ctx, std::vector<Human>& populat
              << "; total " << total << endl;
         for (Human* human : unprotected) {
             // parity: a — deploy short-circuit: RNG draw is the LAST test of the deploy condition; filter/age/cohort checks must precede it (plan §3a)
-            if (human->rng().uniform_01() < additionalCoverage) {
-                d.deployToHuman(ctx, *human, Deploy::TIMED);
-            }
+            if (human->rng().uniform_01() < additionalCoverage) d.deployToHuman(ctx, *human, Deploy::TIMED);
         }
     }
 }
@@ -323,8 +318,7 @@ inline void TimedDeployment::deploy(RunContext& ctx, std::vector<Human>& populat
         transmission.uninfectVectors();
         break;
     case TimedDeploymentKind::VECTOR:
-        if (transmission.isVector())
-            transmission.deployVectorPopInterv(std::get<VectorDeployParams>(p).instance);
+        if (transmission.isVector()) transmission.deployVectorPopInterv(std::get<VectorDeployParams>(p).instance);
         break;
     case TimedDeploymentKind::TRAP: {
         const TrapDeployParams& t = std::get<TrapDeployParams>(p);

@@ -157,8 +157,7 @@ inline bool Human::isInSubPop(ComponentId id) const {
     // Definition (unchanged from the old std::map): member if (id,expiry) is
     // present with expiry >= nowOrTs0(). Few spans per host; linear is fine.
     for (auto const& span : cols->cohorts[row]) {
-        if (span.first == id)
-            return span.second >= ctx->clock.nowOrTs0();
+        if (span.first == id) return span.second >= ctx->clock.nowOrTs0();
     }
     return false; // no history of membership
 }

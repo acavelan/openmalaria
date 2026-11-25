@@ -179,8 +179,7 @@ double InfectionIncidenceModel::getModelExpectedInfections(Human& human, double 
         return rng.gamma(inf_rate_shape_param, effectiveEIR * susceptibility(human) / inf_rate_shape_param);
     case Kind::LogNormal: { // parity: old LogNormalMAII formula
         // Documentation: http://www.plosmedicine.org/article/fetchSingleRepresentation.action?uri=info:doi/10.1371/journal.pmed.1001157.s009
-        if (effectiveEIR < 1e-10)
-            return 0.0;
+        if (effectiveEIR < 1e-10) return 0.0;
         double meanlog = log(effectiveEIR * susceptibility(human)) - inf_rate_offset;
         return rng.log_normal(meanlog, inf_rate_shape_param);
     }

@@ -162,8 +162,7 @@ struct Infection {
     /// IC50^slope per drug type, if sampled (PkPd cache). Never serialised;
     /// lazily allocated (phase-5 perf fix — only the PkPd path touches it).
     std::map<size_t, double>& Kn() {
-        if (!kn)
-            kn = std::make_unique<std::map<size_t, double>>();
+        if (!kn) kn = std::make_unique<std::map<size_t, double>>();
         return *kn;
     }
 
@@ -360,8 +359,7 @@ struct PennyInfection final : Infection {
 Infection* createDummyInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin);
 
 template <typename T> InfectionOrigin get_infection_origin(const std::list<T*>& infections) {
-    if (infections.empty())
-        return InfectionOrigin::Indigenous;
+    if (infections.empty()) return InfectionOrigin::Indigenous;
 
     // only >0 tests below matter (all-Imported = neither counter set)
     int nIntroduced = 0, nIndigenous = 0;

@@ -331,8 +331,7 @@ inline constexpr Measure MeasureCount = sizeof(defs) / sizeof(defs[0]);
 
 consteval Measure measure(std::string_view measureName) {
     for (Measure i = 0; i < MeasureCount; ++i) {
-        if (defs[i].name == measureName)
-            return i;
+        if (defs[i].name == measureName) return i;
     }
     throw "unknown monitoring measure";
 }

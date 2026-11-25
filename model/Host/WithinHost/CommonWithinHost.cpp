@@ -192,9 +192,7 @@ void WHCommon::update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInf
             } else {
                 double density = (*inf)->getDensity();
                 totalDensity += density;
-                if (!(*inf)->isHrp2Deficient()) {
-                    hrp2Density += density;
-                }
+                if (!(*inf)->isHrp2Deficient()) hrp2Density += density;
                 timeStepMaxDensity = max(timeStepMaxDensity, density);
                 if (density > 0) {
                     // Base 10 logarithms are usually used; +1 because it avoids negatives in output while having very little affect on high densities
@@ -220,8 +218,7 @@ void WHCommon::update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInf
     cache_y_lag();
 
     // This is a bug, we keep it this way to be consistent with old simulations
-    if (nNewInfsIgnored > 0)
-        nNewInfs_l += nNewInfsIgnored;
+    if (nNewInfsIgnored > 0) nNewInfs_l += nNewInfsIgnored;
 }
 
 // Shared by update_common and update_descriptive (byte-identical blocks).

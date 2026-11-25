@@ -51,11 +51,9 @@ void Genotypes::preMainSimInit() { current_mode = interv_mode; }
 
 uint32_t Genotypes::findAlleleCode(const string& locus, const string& allele) const {
     auto it = alleleCodes.find(locus);
-    if (it == alleleCodes.end())
-        return numeric_limits<uint32_t>::max();
+    if (it == alleleCodes.end()) return numeric_limits<uint32_t>::max();
     auto it2 = it->second.find(allele);
-    if (it2 == it->second.end())
-        return numeric_limits<uint32_t>::max();
+    if (it2 == it->second.end()) return numeric_limits<uint32_t>::max();
     return it2->second;
 }
 
@@ -77,8 +75,7 @@ uint32_t Genotypes::sampleGenotype(LocalRng& rng, vector<double>& genotype_weigh
         double cum = 0.0;
         for (size_t g = 0; g < N_genotypes; ++g) {
             cum += genotype_weights[g];
-            if (sample < cum)
-                return g;
+            if (sample < cum) return g;
         }
         return 0; // just to be safe (could happen if weight_sum == 0.0)
     }

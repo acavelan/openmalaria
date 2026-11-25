@@ -107,8 +107,7 @@ class EmergenceRateEstimator final {
 
     // Returns true if further fitting iterations are needed.
     bool estimate(AnophelesModel& m, const std::vector<double>& laggedKappa, double meanAvail) {
-        if (kind == Kind::Solver)
-            return estimateSolver(m, laggedKappa, meanAvail);
+        if (kind == Kind::Solver) return estimateSolver(m, laggedKappa, meanAvail);
         std::vector<double> avgAnnualS_v(oneYear(), 0.0);
         for (SimTime i = fromYearsI(4); i < fromYearsI(5); i = i + oneDay()) {
             avgAnnualS_v[mod_nn(i, oneYear())] = m.quinquennialS_v[i];

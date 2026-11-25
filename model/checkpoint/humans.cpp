@@ -227,8 +227,7 @@ void checkpoint(Archive& a, ClinicalModel& cm) {
         auto* es = cm.kind == ClinicalModel::Kind::EventScheduler ? &static_cast<CMEventScheduler&>(cm) : nullptr;
         int32_t e = es ? static_cast<int32_t>(es->esPgState) : NONE;
         a.value(e);
-        if (es)
-            es->esPgState = Episode::State(e);
+        if (es) es->esPgState = Episode::State(e);
     }
 }
 
@@ -249,10 +248,8 @@ void ckWH(Archive& a, RunContext& ctx, WHInterface& wh, LocalRng& rng) {
     {
         bool pm = wh.pathogenesisModel != nullptr;
         a.boolean(pm);
-        if (a.reading() && pm && !wh.pathogenesisModel)
-            throw checkpoint_error("pathogenesis model kind mismatch");
-        if (pm)
-            checkpoint(a, *wh.pathogenesisModel);
+        if (a.reading() && pm && !wh.pathogenesisModel) throw checkpoint_error("pathogenesis model kind mismatch");
+        if (pm) checkpoint(a, *wh.pathogenesisModel);
     }
     switch (wh.kind) {
     case WHInterface::Kind::Common:
@@ -267,8 +264,7 @@ void ckWH(Archive& a, RunContext& ctx, WHInterface& wh, LocalRng& rng) {
             // set); the other Common kinds use the factory from WH init.
             // Constructor draws are overwritten, like the Human ctor's.
             const bool desc = wh.kind == WHInterface::Kind::Descriptive;
-            if (!desc && ctx.createInfection == nullptr)
-                throw checkpoint_error("within-host infection factory unset");
+            if (!desc && ctx.createInfection == nullptr) throw checkpoint_error("within-host infection factory unset");
             for (uint64_t i = 0; i < n; ++i) {
                 Infection* inf = desc ? static_cast<Infection*>(new DescriptiveInfection(ctx, rng, 0, 0))
                                       : ctx.createInfection(ctx, rng, 0, 0);
@@ -289,8 +285,7 @@ void ckWH(Archive& a, RunContext& ctx, WHInterface& wh, LocalRng& rng) {
         {
             int32_t m = v.morbidity;
             a.value(m);
-            if (a.reading())
-                v.morbidity = State(m);
+            if (a.reading()) v.morbidity = State(m);
         }
         a.value(v.treatExpiryLiverVivax);
         a.value(v.treatExpiryBloodVivax);

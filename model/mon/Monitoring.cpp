@@ -45,9 +45,7 @@ uint32_t cohortSetOutputId(RunContext& ctx, uint32_t cohortSet) {
     uint32_t outNum = 0;
     assert((cohortSet >> runtime.cohortSubPopNumbers.size()) == 0);
     for (uint32_t i = 0; i < runtime.cohortSubPopNumbers.size(); ++i) {
-        if (cohortSet & (static_cast<uint32_t>(1) << i)) {
-            outNum += runtime.cohortSubPopNumbers[i];
-        }
+        if (cohortSet & (static_cast<uint32_t>(1) << i)) outNum += runtime.cohortSubPopNumbers[i];
     }
     return outNum;
 }
@@ -76,11 +74,8 @@ void addStore(RunContext& ctx, const OutMeasure& om, size_t nSpecies, size_t nDr
     assert(om.measure < MeasureCount);
     MeasureStore store;
     store.output = om;
-    if (forceNoCategories)
-        store.output.outId = -1;
-    if (!forceNoCategories && (om.dims & Dim::Age)) {
-        assert(!runtime.ageGroupUpperBound.empty());
-    }
+    if (forceNoCategories) store.output.outId = -1;
+    if (!forceNoCategories && (om.dims & Dim::Age)) assert(!runtime.ageGroupUpperBound.empty());
     store.nAges = forceNoCategories ? 1 : (om.dims & Dim::Age ? runtime.ageGroupUpperBound.size() : 1);
     store.nCohorts = forceNoCategories ? 1 : (om.dims & Dim::Cohort ? runtime.nCohorts : 1);
     store.nSpecies = forceNoCategories ? 1 : (om.dims & Dim::Species ? nSpecies : 1);
@@ -108,15 +103,13 @@ void initStores(RunContext& ctx, const vector<OutMeasure>& enabledMeasures, size
 void ensureConditionStore(RunContext& ctx, const OutMeasure& om) {
     auto& runtime = (*ctx.monitoring);
     assert(om.measure < MeasureCount);
-    if (runtime.storesByMeasure[om.measure].empty())
-        addStore(ctx, om, 1, 1, true);
+    if (runtime.storesByMeasure[om.measure].empty()) addStore(ctx, om, 1, 1, true);
 }
 
 double surveySum(RunContext& ctx, Measure measure, size_t survey) {
     auto& runtime = (*ctx.monitoring);
     assert(measure < runtime.storesByMeasure.size());
-    if (runtime.storesByMeasure[measure].empty())
-        throw SWITCH_DEFAULT_EXCEPTION;
+    if (runtime.storesByMeasure[measure].empty()) throw SWITCH_DEFAULT_EXCEPTION;
     const MeasureStore& store = runtime.stores[runtime.storesByMeasure[measure].front()];
     const size_t begin = survey * store.size();
     return std::visit(
@@ -131,8 +124,7 @@ namespace {
 void updateConditions(RunContext& ctx) {
     auto& runtime = (*ctx.monitoring);
     const size_t survey = statSurveyNumber(ctx);
-    if (survey == NOT_USED)
-        return;
+    if (survey == NOT_USED) return;
     for (Condition& cond : runtime.conditions) {
         const double val = surveySum(ctx, cond.measure, survey);
         cond.value = (val >= cond.min && val <= cond.max);
@@ -161,10 +153,8 @@ void writeMeasure(RunContext& ctx, ostream& stream, Writer writeRow, size_t surv
     const bool byDrug = om.dims & Dim::Drug;
     const int ageGroupAdd = om.dims & Dim::Age ? 1 : 0;
 
-    if (bySpecies)
-        assert(store.nAges == 1 && store.nCohorts == 1 && store.nDrugs == 1);
-    if (byDrug)
-        assert(store.nSpecies == 1 && store.nGenotypes == 1);
+    if (bySpecies) assert(store.nAges == 1 && store.nCohorts == 1 && store.nDrugs == 1);
+    if (byDrug) assert(store.nSpecies == 1 && store.nGenotypes == 1);
     for (size_t cohortSet = 0; cohortSet < store.nCohorts; ++cohortSet) {
         for (size_t ageGroup = 0; ageGroup < outputAgeGroups(store); ++ageGroup) {
             for (size_t species = 0; species < store.nSpecies; ++species) {
@@ -207,8 +197,7 @@ uint64_t countRows(RunContext& ctx, bool isDouble) {
     auto& runtime = (*ctx.monitoring);
     uint64_t count = isDouble && runtime.reportIMR >= 0 ? 1 : 0;
     for (const MeasureStore& store : runtime.stores) {
-        if (store.output.outId < 0 || store.output.isDouble != isDouble)
-            continue;
+        if (store.output.outId < 0 || store.output.isDouble != isDouble) continue;
         count += static_cast<uint64_t>(runtime.nSurveys) * outputAgeGroups(store) * store.nCohorts * store.nSpecies *
                  store.nGenotypes * store.nDrugs;
     }
@@ -265,9 +254,7 @@ void writeOutput(RunContext& ctx, const string& filename, ios::openmode mode, Wr
     }
     writer(ctx, stream);
     stream.close();
-    if (!stream) {
-        throw base_exception("Unable to write monitoring output file \"" + filename + "\"", Error::FileIO);
-    }
+    if (!stream) throw base_exception("Unable to write monitoring output file \"" + filename + "\"", Error::FileIO);
 }
 
 void updateSurveyNumbers(RunContext& ctx) {
@@ -283,9 +270,7 @@ void updateSurveyNumbers(RunContext& ctx) {
 size_t setupCondition(RunContext& ctx, const string& measureName, double minValue, double maxValue, bool initialState) {
     auto& runtime = (*ctx.monitoring);
     const OutMeasure om = findOutMeasure(measureName);
-    if (om.measure == invalidMeasure) {
-        throw xml_scenario_error("unrecognised measure: " + measureName);
-    }
+    if (om.measure == invalidMeasure) throw xml_scenario_error("unrecognised measure: " + measureName);
 
     if (!isValidCondition(om.measure)) {
         throw xml_scenario_error("cannot use measure " + measureName + " as condition of deployment");
@@ -305,13 +290,11 @@ bool checkCondition(RunContext& ctx, size_t conditionKey) {
 static void recordValue(RunContext& ctx, Measure measure, size_t survey, size_t age, uint32_t cohort, size_t species,
                         size_t genotype, size_t drug, double val, int outId = 0) {
     auto& runtime = (*ctx.monitoring);
-    if (survey == NOT_USED)
-        return;
+    if (survey == NOT_USED) return;
     assert(measure < runtime.storesByMeasure.size());
     for (size_t idx : runtime.storesByMeasure[measure]) {
         MeasureStore& store = runtime.stores[idx];
-        if (outId != 0 && store.output.outId != outId)
-            continue;
+        if (outId != 0 && store.output.outId != outId) continue;
         const size_t index = survey * store.size() + store.index(age, cohort, species, genotype, drug);
         std::visit(
             [index, val](auto& reports) {
@@ -390,8 +373,7 @@ void updateAgeGroup(RunContext& ctx, uint16_t& index, SimTime age) {
 uint32_t updateCohortSet(RunContext& ctx, uint32_t old, ComponentId subPop, bool isMember) {
     auto& runtime = (*ctx.monitoring);
     auto it = runtime.cohortSubPopIds.find(subPop);
-    if (it == runtime.cohortSubPopIds.end())
-        return old;
+    if (it == runtime.cohortSubPopIds.end()) return old;
     const uint32_t subPopId = static_cast<uint32_t>(1) << it->second;
     return (old & ~subPopId) | (isMember ? subPopId : 0);
 }

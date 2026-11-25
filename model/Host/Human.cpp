@@ -58,23 +58,17 @@ HumanHet hetSample(LocalRng& rng)
     if (ModelOptions::option(TRANS_HET)) {
         het.availabilityFactor = 0.2;
         // parity: order — local RNG stream: draw call order fixes stream state
-        if (rng.bernoulli(0.5)) {
-            het.availabilityFactor = 1.8;
-        }
+        if (rng.bernoulli(0.5)) het.availabilityFactor = 1.8;
     }
     if (ModelOptions::option(COMORB_HET)) {
         het.comorbidityFactor = 0.2;
         // parity: order — local RNG stream: draw call order fixes stream state
-        if (rng.bernoulli(0.5)) {
-            het.comorbidityFactor = 1.8;
-        }
+        if (rng.bernoulli(0.5)) het.comorbidityFactor = 1.8;
     }
     if (ModelOptions::option(TREAT_HET)) {
         het.treatmentSeekingFactor = 0.2;
         // parity: order — local RNG stream: draw call order fixes stream state
-        if (rng.bernoulli(0.5)) {
-            het.treatmentSeekingFactor = 1.8;
-        }
+        if (rng.bernoulli(0.5)) het.treatmentSeekingFactor = 1.8;
     }
     if (ModelOptions::option(TRANS_TREAT_HET)) {
         het.treatmentSeekingFactor = 0.2;
@@ -141,10 +135,8 @@ void Human::set_row(size_t r) {
     row = r;
     // Rebind every submodel caching (cols,row): a stale mirror reads/writes
     // another host's columns after compaction (WHInterface immunity, Clinical).
-    if (withinHostModel)
-        withinHostModel->bind_columns(*cols, r);
-    if (clinicalModel)
-        clinicalModel->bind_columns(*cols, r);
+    if (withinHostModel) withinHostModel->bind_columns(*cols, r);
+    if (clinicalModel) clinicalModel->bind_columns(*cols, r);
     perHostTransmission.bind_columns(*cols, r);
 }
 
@@ -176,8 +168,7 @@ void Human::addToCohort(ComponentId id, SimTime duration) {
 void Human::removeFromCohort(ComponentId id) {
     auto& spans = cols->cohorts[row];
     auto it = find_cohort(spans, id);
-    if (it != spans.end() && it->first == id)
-        spans.erase(it);
+    if (it != spans.end() && it->first == id) spans.erase(it);
 }
 
 void Human::removeFirstEvent(SubPopRemove::RemoveAtCode code) {
@@ -266,8 +257,7 @@ void update(RunContext& ctx, Human& human, TransmissionModel& transmission, Host
         transmission.getEIR(human, age0, age1, scratch.EIR_per_genotype_i, scratch.EIR_per_genotype_l);
 
     double x = 0.0;
-    if (eir > 0)
-        x = eir_i / eir;
+    if (eir > 0) x = eir_i / eir;
 
     const double expectedNNewInfs = InfectionIncidenceModel::expectedNumNewInfections(human, eir);
     const double expectedNNewInfs_i = x * expectedNNewInfs;

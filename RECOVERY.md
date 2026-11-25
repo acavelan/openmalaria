@@ -13,7 +13,7 @@ plain-language version.
 The OpenMalaria model code (`model/`, ~19k lines) was rewritten in place, in
 small gated steps, with one goal: **same numbers out, far fewer lines in** —
 plus a side quest to make it faster than both the original and a competing
-optimisation branch. Result: **16,082 model code LOC (−14.5%)**, **bit-exact
+optimisation branch. Result: **15,717 model code LOC (−16.5%)**, **bit-exact
 output on every test scenario and 10 seeds**, and **1.146× faster than the
 original at pop 2000, 1.214× at pop 10,000** — within ~2% of a branch that
 spent its budget purely on speed. Every single step passed the same four
@@ -33,7 +33,7 @@ gates (below), so at no commit was the model ever wrong.
   `unittest` prints `.OK!`; T1 parity `63/63 identical` (all `test/scenario*.xml`
   + example scenario × seeds 1–10).
 - **LOC KPI:** `cloc --quiet model --include-lang="C++,C/C++ Header" | grep ^SUM`
-  column 5. Baseline 18,813 → current worktree 16,082 (both re-measured, not quoted).
+  column 5. Baseline 18,813 → current worktree 15,717 (both re-measured, not quoted).
 - All model variants kept (Descriptive/Dummy/Empirical/Molineaux/Penny
   infections; Falciparum/Common/Vivax within-host; all health-system kinds).
 - Perf candidates must be measured in the **shipping build form** (LTO+PGO
@@ -70,12 +70,13 @@ Tag `rewrite-status-2026-11-24` marks the pushed HEAD.
 | p8-ns namespace flatten | **16,233** | −488 | one `namespace OpenMalaria` (util/Host/WithinHost/Transmission/... namespaces deleted); naming-wave churn reverted; collision audit in the commit message |
 | perf hunt E-series | **16,317** | +84 | see §6 (net code added buying the speed) |
 | Codex follow-ups + ownership/parser/checkpoint/decay cleanup | **16,082** | −235 | enum-indexed Parameters, shared CLI parsing, POD checkpoint vectors, scalar decay samples, smaller wrappers and direct EIR sums |
+| user-requested short-`if` presentation pass | **15,717** | −365 | single-statement bodies only; no logic or `else` chains changed |
 
 Every row: gates green at merge, main-session re-verified. `HANDOFF.md` has
 per-phase detail; `git log --oneline rewrite` is the full ledger (~200
 rewrite commits, each individually gated). LOC warning from the independent
 review: the −488 namespace flattening and one −70 reflow pass measure less
-presentation, not necessarily simpler ownership or execution; −14.5% is the
+presentation, not necessarily simpler ownership or execution; −16.5% is the
 requested code-size KPI, not a claim that every removed line simplified logic.
 
 ## 5. Performance result
@@ -277,15 +278,13 @@ type. Migration order (smallest gate first): util readers → `ModelNameProvider
 per-step cost is `unittest/UnittestUtil.h` (205 scnXml refs): fixtures must be
 converted in the same commit as each signature.
 
-**LOC (PROMPT priority 2) — arithmetic, not aspiration.** Canonical KPI is 16,082
-code lines in the current worktree: 3,713 XML and 12,369 non-XML. The latest
-cleanups removed another 175 lines by collapsing Parameters maps, sharing CLI
-parsing, using POD checkpoint vectors, replacing decay clones with scalar
-samples, and deleting pass-through wrappers. Against the hard cap: `xml/` 2.6k
-⇒ ~+1.1k over; non-xml 11.4k ⇒ ~+1.0k over. **The 14.0k cap cannot be reached
-by tidying**: it still needs roughly 2.1k lines of substantive XML-reader and
-runtime-boundary redesign or explicit user sign-off. Do not code-golf science
-code to hit the number; CalcNvO is explicitly excluded from further cleanup.
+**LOC (PROMPT priority 2) — arithmetic, not aspiration.** Canonical KPI is 15,717
+code lines in the current worktree: 3,589 XML and 12,128 non-XML. The latest
+presentation pass packed 365 short single-statement `if` bodies without touching
+logic. Against the hard cap: `xml/` 2.6k ⇒ ~+1.0k over; non-xml 11.4k ⇒ ~+0.7k
+over. **The 14.0k cap still needs roughly 1.7k lines of substantive XML-reader
+and runtime-boundary redesign or explicit user sign-off**, not more code golf.
+CalcNvO remains explicitly excluded from further cleanup.
 
 **Next order:** (1) parity verdict; (2) hot-path queue, one gated change at a
 time; (3) behaviour-free boundary cleanup; (4) XML compression; (5) remaining

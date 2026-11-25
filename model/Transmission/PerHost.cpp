@@ -89,8 +89,7 @@ double PerHost::relMosqFecundity(size_t species) const {
 bool PerHost::hasActiveInterv(Component::Type type) const {
     // kind is recorded on the record: no component-registry lookup needed
     for (const IvRecord& r : cols->iv[row])
-        if (r.kind == type && r.deploy != never())
-            return true;
+        if (r.kind == type && r.deploy != never()) return true;
     return false;
 }
 

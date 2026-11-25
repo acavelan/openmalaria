@@ -160,15 +160,12 @@ void WHDescriptive::update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nN
         static_cast<DescriptiveInfection*>(*inf)->determine_densities(rng, imm_h_ref(), infStepMaxDens, immSurvFact,
                                                                       _innateImmSurvFact, bsvFactor);
 
-        if (bugfix_max_dens)
-            infStepMaxDens = std::max(infStepMaxDens, timeStepMaxDensity);
+        if (bugfix_max_dens) infStepMaxDens = std::max(infStepMaxDens, timeStepMaxDensity);
         timeStepMaxDensity = infStepMaxDens;
 
         double density = (*inf)->getDensity();
         totalDensity += density;
-        if (!(*inf)->isHrp2Deficient()) {
-            hrp2Density += density;
-        }
+        if (!(*inf)->isHrp2Deficient()) hrp2Density += density;
 
         ++inf;
     }
@@ -271,8 +268,7 @@ bool WHDescriptive::summarize(Human& human) const {
         else if (infectionType == InfectionOrigin::Indigenous)
             recordStat(measure("nPatent_Indigenous"), human);
 
-        if (totalDensity > 1e-10)
-            recordStat(measure("sumlogDens"), human, log(totalDensity));
+        if (totalDensity > 1e-10) recordStat(measure("sumlogDens"), human, log(totalDensity));
         return true; // patent
     }
     return false; // not patent

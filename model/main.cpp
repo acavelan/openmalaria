@@ -111,8 +111,7 @@ int main(int argc, char* argv[]) {
     }
 
     // If we get to here, we already know an error occurred.
-    if (errno != 0)
-        std::perror("OpenMalaria");
+    if (errno != 0) std::perror("OpenMalaria");
 
     return exitStatus;
 }

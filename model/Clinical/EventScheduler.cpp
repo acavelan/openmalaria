@@ -95,8 +95,7 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
 
     // The bug fixed here is that indirectMortality was not set if no event occurred
     bool indirectMortality = false;
-    if (ClinicalModel::indirectMortBugfix)
-        indirectMortality = pg.indirectMortality;
+    if (ClinicalModel::indirectMortBugfix) indirectMortality = pg.indirectMortality;
 
     if (newState & SICK) {
         // we have some new case: is it severe/complicated?
@@ -123,9 +122,7 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
                     double uVariate = human.rng().uniform_01();
                     size_t i = 0; // units: days
                     for (; i < ClinicalEventScheduler::cumDailyPrImmUCTS.size(); ++i) {
-                        if (uVariate < ClinicalEventScheduler::cumDailyPrImmUCTS[i]) {
-                            goto gotDelay;
-                        }
+                        if (uVariate < ClinicalEventScheduler::cumDailyPrImmUCTS[i]) goto gotDelay;
                     }
                     assert(false); // should have uVariate < 1 = ClinicalEventScheduler::cumDailyPrImmUCTS[len-1]
                 gotDelay:
@@ -162,9 +159,7 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
                 }
             }
         }
-        if (auxOut.screened) {
-            recordEvent(measure("nTreatDiagnostics"), human);
-        }
+        if (auxOut.screened) recordEvent(measure("nTreatDiagnostics"), human);
 
         if (true /*FIXME auxOut.hospitalisation != CMAuxOutput::NONE*/) { // in hospital
             cm.esPgState = Episode::State(cm.esPgState | EVENT_IN_HOSPITAL);
@@ -239,9 +234,7 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
                 // chance of death:
                 if (needTreat) {
                     double pDeath = ClinicalEventScheduler::severeNmfMortality.eval(ageYears);
-                    if (human.rng().uniform_01() < pDeath) {
-                        cm.esPgState = Episode::State(cm.esPgState | DIRECT_DEATH);
-                    }
+                    if (human.rng().uniform_01() < pDeath) cm.esPgState = Episode::State(cm.esPgState | DIRECT_DEATH);
                 }
             }
         }
@@ -261,11 +254,9 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
                 double parasiteReductionEffect = withinHostModel.getTotalDensity() / cm.es_prev_density();
                 double pDeath = 1.0 - exp(ClinicalEventScheduler::neg_v * parasiteReductionEffect);
                 // community fatality rate when not in hospital
-                if (!(cm.esPgState & EVENT_IN_HOSPITAL))
-                    pDeath = ClinicalModel::getCommunityCFR(pDeath);
+                if (!(cm.esPgState & EVENT_IN_HOSPITAL)) pDeath = ClinicalModel::getCommunityCFR(pDeath);
                 recordStat(measure("expectedDirectDeaths"), human, pDeath);
-                if (cm.esPgState & EVENT_IN_HOSPITAL)
-                    recordStat(measure("expectedHospitalDeaths"), human, pDeath);
+                if (cm.esPgState & EVENT_IN_HOSPITAL) recordStat(measure("expectedHospitalDeaths"), human, pDeath);
                 // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
                 if (human.rng().uniform_01() < pDeath) {
                     cm.esPgState = Episode::State(cm.esPgState | DIRECT_DEATH);
@@ -284,8 +275,7 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
         // Patients in hospital are removed from the transmission cycle.
         // This should have an effect from the start of the next time step.
         // NOTE: This is not very accurate, but considered of little importance.
-        if (cm.esPgState & EVENT_IN_HOSPITAL)
-            human.perHostTransmission.outside_trans() = true;
+        if (cm.esPgState & EVENT_IN_HOSPITAL) human.perHostTransmission.outside_trans() = true;
 
         if (cm.esPgState & COMPLICATED) {
             // ClinicalEventScheduler::complicatedCaseDuration should to some respects be associated
@@ -304,11 +294,9 @@ void esClinicalUpdate(CMEventScheduler& cm, RunContext& ctx, Human& human, doubl
     }
 
     // Remove on first models...
-    if (cm.es_time_treatment() == ctx.clock.ts0())
-        human.removeFirstEvent(SubPopRemove::ON_FIRST_TREATMENT);
+    if (cm.es_time_treatment() == ctx.clock.ts0()) human.removeFirstEvent(SubPopRemove::ON_FIRST_TREATMENT);
 
-    if (cm.esPgState & SICK)
-        human.removeFirstEvent(SubPopRemove::ON_FIRST_BOUT);
+    if (cm.esPgState & SICK) human.removeFirstEvent(SubPopRemove::ON_FIRST_BOUT);
 }
 
 }

@@ -60,8 +60,7 @@ traced_exception::~traced_exception() throw() {
 }
 ostream& operator<<(ostream& stream, const traced_exception& e) {
     stream << "Call stack";
-    if (e.file != 0)
-        stream << ", starting from " << e.file << ':' << e.line;
+    if (e.file != 0) stream << ", starting from " << e.file << ':' << e.line;
     stream << ":\n";
 #ifdef OM_NO_STACK_TRACE
     stream << "backtrace capture disabled\n";
@@ -97,16 +96,12 @@ ostream& operator<<(ostream& stream, const traced_exception& e) {
             } else {
                 rb = strchr(lb + 1, ')');
             }
-            if (rb != 0) {
-                *rb = '\0';
-            }
+            if (rb != 0) *rb = '\0';
         }
         if (lb == 0) {
             stream << line;
         } else {
-            if (plus != 0) {
-                stream << "+" << (plus + 1);
-            }
+            if (plus != 0) stream << "+" << (plus + 1);
             if (demangled != 0) {
                 stream << '\t' << demangled;
                 free(demangled);

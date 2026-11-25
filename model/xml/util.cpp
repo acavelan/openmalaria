@@ -136,9 +136,7 @@ void WeibullSampler::setParams(const scnXml::WeibullSample& elt) { setScaleShape
 // order travel verbatim from the old subclass constructors.
 
 inline double readLToDays(const SimClock& clock, const scnXml::DecayFunction& elt) {
-    if (!elt.getL().present()) {
-        throw xml_scenario_error("decay function: attribute L required");
-    }
+    if (!elt.getL().present()) throw xml_scenario_error("decay function: attribute L required");
     return UnitParse::durationToDays(clock, elt.getL().get(), UnitParse::YEARS);
 }
 
@@ -217,8 +215,7 @@ unique_ptr<DecayFunction> DecayFunction::makeObject(const SimClock& clock, const
             throw xml_scenario_error("The Emax function expects exactly one user function, but " +
                                      to_string(decaySequence.size()) + "  were given.");
         auto need = [](bool have, const char* msg) {
-            if (!have)
-                throw xml_scenario_error(msg);
+            if (!have) throw xml_scenario_error(msg);
         };
         need(elt.getEmax().present(), "Emax function: the Emax parameter is not declared");
         need(elt.getIC50().present(), "Emax function: the IC50 parameter is not declared");
@@ -231,8 +228,7 @@ unique_ptr<DecayFunction> DecayFunction::makeObject(const SimClock& clock, const
         o->slope = elt.getSlope().get();
         o->initialConcentration = elt.getInitialConcentration().get();
         auto chk = [](bool bad, const string& msg) {
-            if (bad)
-                throw xml_scenario_error(msg);
+            if (bad) throw xml_scenario_error(msg);
         };
         chk(o->Emax < 0.0 || o->Emax > 1.0, "Emax function: Emax must be in [0, 1], got " + std::to_string(o->Emax));
         chk(rawIC50 <= 0.0, "Emax function: IC50 must be > 0, got " + std::to_string(rawIC50));
@@ -261,8 +257,7 @@ void AgeGroupInterpolator::set(const SimClock& clock, const scnXml::AgeGroupValu
         if (it == ageGroups.getGroup().end())
             throw xml_scenario_error(string(eltName) + ": at least one age group required");
         // first lower-bound must be 0
-        if (it->getLowerbound() != 0.0)
-            throw xml_scenario_error(string(eltName) + ": first lower-bound must be 0");
+        if (it->getLowerbound() != 0.0) throw xml_scenario_error(string(eltName) + ": first lower-bound must be 0");
 
         // Our insert iterator (used for performance)
         auto pos = data.begin();
@@ -305,8 +300,7 @@ void AgeGroupInterpolator::set(const SimClock& clock, const scnXml::AgeGroupValu
                                          " not greater than previous " + to_string(greatestLbound));
         }
         // first lower-bound must be 0
-        if (data.begin()->first != 0.0)
-            throw xml_scenario_error(string(eltName) + ": first lower-bound must be 0");
+        if (data.begin()->first != 0.0) throw xml_scenario_error(string(eltName) + ": first lower-bound must be 0");
 
         kind = Kind::PiecewiseConstant;
         outputSamples(clock, eltName);
@@ -374,8 +368,7 @@ class OptionCodeMap {
 
     OptionCodes operator[](const string s) {
         auto codeIt = codeMap.find(s);
-        if (codeIt != codeMap.end())
-            return codeIt->second;
+        if (codeIt != codeMap.end()) return codeIt->second;
         if (ignoreOptions.count(s)) {
             if (CommandLine::option(CommandLine::DEPRECATION_WARNINGS)) {
                 cerr << "Deprecation warning: model option " << s << " is no longer used" << endl;
@@ -399,8 +392,7 @@ class OptionCodeMap {
     // doesn't ensure code is unique in the map either
     string toString(const OptionCodes code) {
         for (auto codeIt = codeMap.begin(); codeIt != codeMap.end(); ++codeIt) {
-            if (codeIt->second == code)
-                return codeIt->first;
+            if (codeIt->second == code) return codeIt->first;
         }
         throw TRACED_EXCEPTION_DEFAULT("toString called with unknown code"); // this is a code error
     }
@@ -431,8 +423,7 @@ void ModelOptions::init(const SimClock& clock, scnXml::Model::ModelOptionsOption
         const scnXml::OptionSet::OptionSequence& optSeq = optionsElt.get().getOption();
         for (auto it = optSeq.begin(); it != optSeq.end(); ++it) {
             OptionCodes opt = codeMap[it->getName()];
-            if (opt != IGNORE)
-                options[opt] = it->getValue();
+            if (opt != IGNORE) options[opt] = it->getValue();
         }
     }
 
@@ -441,8 +432,7 @@ void ModelOptions::init(const SimClock& clock, scnXml::Model::ModelOptionsOption
         const std::bitset<NUM_OPTIONS> defaultOptSet = getLegacyDefaultModelOptions();
         cout << "Non-default model options:";
         for (int i = 0; i < NUM_OPTIONS; ++i) {
-            if (options[i] != defaultOptSet[i])
-                cout << "\t" << codeMap.toString(OptionCodes(i)) << "=" << options[i];
+            if (options[i] != defaultOptSet[i]) cout << "\t" << codeMap.toString(OptionCodes(i)) << "=" << options[i];
         }
         cout << endl;
     }
@@ -494,8 +484,7 @@ void ModelOptions::init(const SimClock& clock, scnXml::Model::ModelOptionsOption
                 << " is incompatible with flags:";
             bitset<NUM_OPTIONS> incompat = (options & incompatibilities[i]);
             for (int j = 0; j < NUM_OPTIONS; ++j) {
-                if (incompat[j])
-                    msg << "\t" << codeMap.toString(OptionCodes(j)) << "=" << options[j];
+                if (incompat[j]) msg << "\t" << codeMap.toString(OptionCodes(j)) << "=" << options[j];
             }
             throw xml_scenario_error(msg.str());
         }

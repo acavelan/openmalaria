@@ -156,8 +156,7 @@ class Parameters {
      */
     double operator[](Parameter name) const {
         const auto& value = values.at(static_cast<size_t>(name));
-        if (value)
-            return *value;
+        if (value) return *value;
 
         int id = static_cast<int>(name) + 1;
         if (id >= 29)
@@ -175,8 +174,7 @@ class Parameters {
     void initializeParamsFromXML(const scnXml::Parameters& parameters);
 
     static std::optional<Parameter> fromId(int id) {
-        if (id < 1 || id > 38 || id == 29)
-            return std::nullopt;
+        if (id < 1 || id > 38 || id == 29) return std::nullopt;
         return static_cast<Parameter>(id - (id > 29 ? 2 : 1));
     }
 

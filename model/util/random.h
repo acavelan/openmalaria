@@ -159,8 +159,7 @@ inline double Xoshiro256P::gen_double() {
 // Implement <random> interface.
 inline bool operator==(const Xoshiro256P& lhs, const Xoshiro256P& rhs) {
     for (int i = 0; i < 4; ++i) {
-        if (lhs.s[i] != rhs.s[i])
-            return false;
+        if (lhs.s[i] != rhs.s[i]) return false;
     }
 
     return true;

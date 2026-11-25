@@ -13,3 +13,6 @@ SortIncludes: Never
 ReflowComments: false
 FixNamespaceComments: false  # adding "} // namespace X" is a NON-whitespace change
 BreakStringLiterals: false
+# User amendment: pack short single-statement ifs; leave else chains expanded.
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortBlocksOnASingleLine: Always

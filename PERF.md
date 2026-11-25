@@ -415,3 +415,14 @@ median-of-5. Compiler-flag candidates used the retained EIR-sum source unchanged
 Raw logs: `/tmp/opencode/bench-perf-{age,monitor,eir,fnoplt,ipapta}-{2k,10k}.log` where applicable;
 shipping controls `/tmp/opencode/build-loc-clean-pgo` and `/tmp/opencode/build-perf-eir-pgo`. These
 small deltas do not update the historical original-vs-rewrite headline without a fresh same-window A0 run.
+
+## Single-statement `if` compaction (2026-11-25, user-requested presentation pass)
+
+Collapsed only short, single-statement `if` bodies that fit the existing 120-column style: braces were
+removed where present, and no `else` chain, comment-containing span, multiline condition/body, or
+CalcNvO source was touched. Updated `.clang-format` with `AllowShortIfStatementsOnASingleLine:
+WithoutElse` and short-block support so formatting preserves the requested style. **65 model files,
+−367 raw lines; cloc KPI 16,082 → 15,717 (−365; original baseline −16.5%).** No model expression,
+RNG call, FP operation, or condition was edited. Clean build, CTest **65/65**, strict A0 parity **63/63**
+in plain and shipping LTO+PGO forms. This is presentation-only and is not a claim of simpler ownership
+or faster execution.

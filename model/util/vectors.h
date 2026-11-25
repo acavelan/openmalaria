@@ -64,9 +64,7 @@ inline double mean(const vector<double>& vec) { return sum(vec) / vec.size(); }
 inline bool approxEqual(const double a, const double b, const double lim_fact = 1e-6) {
     bool aE = (fabs(a - b) <= max(fabs(a), fabs(b)) * lim_fact);
 #ifndef NDEBUG
-    if (!aE) {
-        cerr << "not approx equal: " << a << ", " << b << endl;
-    }
+    if (!aE) cerr << "not approx equal: " << a << ", " << b << endl;
 #endif
     return aE;
 }
@@ -74,11 +72,9 @@ inline bool approxEqual(const double a, const double b, const double lim_fact = 
 /// Returns true if vec1 and vec2 have equal length and all elements are
 /// approximately equal (see approxEqual for double parameters).
 inline bool approxEqual(const vector<double>& vec1, const vector<double>& vec2, const double lim_fact) {
-    if (vec1.size() != vec2.size())
-        return false;
+    if (vec1.size() != vec2.size()) return false;
     for (size_t i = 0; i < vec1.size(); ++i) {
-        if (!approxEqual(vec1[i], vec2[i], lim_fact))
-            return false;
+        if (!approxEqual(vec1[i], vec2[i], lim_fact)) return false;
     }
     return true;
 }
@@ -141,8 +137,7 @@ inline void logFourierCoefficients(const vector<double>& iArray, vector<double>&
    * so long as it is odd.
    * @param rAngle Angle to rotate generated series by in radians: [0,2π] */
 inline void expIDFT(std::vector<double>& tArray, const std::vector<double>& FC, double rAngle) {
-    if (mod_nn(FC.size(), 2) == 0)
-        throw TRACED_EXCEPTION_DEFAULT("The number of Fourier coefficents should be odd.");
+    if (mod_nn(FC.size(), 2) == 0) throw TRACED_EXCEPTION_DEFAULT("The number of Fourier coefficents should be odd.");
 
     size_t T2 = tArray.size();
     size_t N = (FC.size() + 1) / 2;
@@ -166,8 +161,7 @@ inline void expIDFT(std::vector<double>& tArray, const std::vector<double>& FC, 
 /// Utility to print a vector (operator must be in namespace)
 template <class T> ostream& operator<<(ostream& out, vector<T> vec) {
     out << '[';
-    if (vec.size())
-        out << vec[0];
+    if (vec.size()) out << vec[0];
     for (size_t i = 1; i < vec.size(); ++i)
         out << ", " << vec[i];
     out << ']';

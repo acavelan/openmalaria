@@ -46,17 +46,14 @@ string CommandLine::resumeName;
 
 string parseNextArg(int argc, char* argv[], int& i) {
     ++i;
-    if (i >= argc)
-        throw cmd_exception("Expected an argument following the last option");
+    if (i >= argc) throw cmd_exception("Expected an argument following the last option");
     return string(argv[i]);
 }
 
 void resolveOutputName(string& name, CommandLine::OutputFormat format, bool compressed) {
     string extension = format == CommandLine::OutputFormat::BIN ? ".bin" : ".txt";
-    if (compressed)
-        extension.append(".gz");
-    if (name == "")
-        name = "output";
+    if (compressed) extension.append(".gz");
+    if (name == "") name = "output";
     if (!filesystem::path(name).has_extension()) {
         name.append(extension);
     } else if (!name.ends_with(extension)) {
@@ -95,8 +92,7 @@ string CommandLine::parse(int argc, char* argv[]) {
 
     int i = 1;
     auto parseUnique = [&](string& value, const char* duplicateError) -> string& {
-        if (!value.empty())
-            throw cmd_exception(duplicateError);
+        if (!value.empty()) throw cmd_exception(duplicateError);
         return value = parseNextArg(argc, argv, i);
     };
     auto parseName = [&] {
@@ -153,16 +149,14 @@ string CommandLine::parse(int argc, char* argv[]) {
                         day = stoi(saveAt);
                     } catch (...) {
                     }
-                    if (day < 0)
-                        throw cmd_exception("--save-at must be a non-negative day or 'main'");
+                    if (day < 0) throw cmd_exception("--save-at must be a non-negative day or 'main'");
                 }
             } else if (clo == "resume") {
                 parseUnique(resumeName, "--resume argument may only be given once");
             } else if (clo == "name") {
                 parseName();
             } else if (clo == "seed") {
-                if (seedOverride >= 0)
-                    throw cmd_exception("--seed may only be given once");
+                if (seedOverride >= 0) throw cmd_exception("--seed may only be given once");
                 string s = parseNextArg(argc, argv, i);
                 try {
                     seedOverride = stoi(s);
@@ -206,8 +200,7 @@ string CommandLine::parse(int argc, char* argv[]) {
                 if (clo[j] == 'V') {
                     options.set(VERBOSE);
                 } else if (clo[j] == 'p') {
-                    if (j + 1 != clo.size())
-                        throw cmd_exception("a path must be given as next argument after -p");
+                    if (j + 1 != clo.size()) throw cmd_exception("a path must be given as next argument after -p");
                     parseUnique(resourcePath, "--resource-path (or -p) may only be given once").append("/");
                 } else if (clo[j] == 'm') {
                     skipWith(PRINT_MODEL_OPTIONS);
@@ -310,25 +303,17 @@ string CommandLine::parse(int argc, char* argv[]) {
              << " -v --version           Display the current schema version of OpenMalaria." << endl
              << " -h --help              Print this message." << endl
              << endl;
-        if (cloError)
-            throw cmd_exception("bad argument");
+        if (cloError) throw cmd_exception("bad argument");
     }
-    if (cloVersion || cloHelp) {
-        throw cmd_exception("Printed help", Error::None);
-    }
+    if (cloVersion || cloHelp) throw cmd_exception("Printed help", Error::None);
 
 #ifdef OM_STREAM_VALIDATOR
-    if (sVFile.size())
-        StreamValidator.loadStream(sVFile);
+    if (sVFile.size()) StreamValidator.loadStream(sVFile);
 #endif
 
-    if (scenarioFile == "") {
-        scenarioFile = "scenario.xml";
-    }
+    if (scenarioFile == "") scenarioFile = "scenario.xml";
     resolveOutputName(outputName, outputFormat, options.test(COMPRESS_OUTPUT));
-    if (ctsoutName == "") {
-        ctsoutName = "ctsout.txt";
-    }
+    if (ctsoutName == "") ctsoutName = "ctsout.txt";
 
     return lookupResource(scenarioFile);
 }

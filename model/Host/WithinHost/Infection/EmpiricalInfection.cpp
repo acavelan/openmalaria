@@ -191,9 +191,7 @@ bool EmpiricalInfection::update(LocalRng& rng, double survivalFactor, SimTime no
         localDensity *= survivalFactor; // Apply drug and vaccine effects
 
         // Infections that get killed before they become patent:
-        if ((ageDays == 0) && (localDensity < _subPatentLimit)) {
-            localDensity = 0.0;
-        }
+        if ((ageDays == 0) && (localDensity < _subPatentLimit)) localDensity = 0.0;
 
         amplificationPerCycle = localDensity / exp(L[1]);
         if (localDensity >= 0.0 && amplificationPerCycle <= _maximumPermittedAmplificationPerCycle)
@@ -228,8 +226,7 @@ static double sampleSubPatentValue(LocalRng& rng, double alpha, double mu, doubl
         inflatedValue = getInflatedDensity(rng, nonInflatedValue);
         tries++;
     } while ((inflatedValue > upperBound) && tries < 10);
-    if (inflatedValue > upperBound)
-        inflatedValue = upperBound;
+    if (inflatedValue > upperBound) inflatedValue = upperBound;
     return inflatedValue;
 }
 

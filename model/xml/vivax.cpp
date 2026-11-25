@@ -85,8 +85,7 @@ void WHVivax::init(RunContext& ctx, const Parameters& parameters, const scnXml::
     // Default value to use if no <parameters> element is present in XML.
     latentP = read_latentP(ctx.clock, model);
 
-    if (!model.getVivax().present())
-        throw xml_scenario_error("no vivax model description in scenario XML");
+    if (!model.getVivax().present()) throw xml_scenario_error("no vivax model description in scenario XML");
     const scnXml::Vivax& elt = model.getVivax().get();
     probBloodStageInfectiousToMosq = elt.getProbBloodStageInfectiousToMosq().getValue();
     maxNumberHypnozoites = elt.getHypnozoiteRelease().getNumberHypnozoites().getMax();

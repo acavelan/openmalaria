@@ -135,8 +135,7 @@ class TransmissionModel {
         // parity: order — vector kind only: seeding LocalRng from master_RNG
         // consumes master draws (Xoshiro seeds via 4 gen_u64); the non-vector
         // kind must not touch master here (old NonVectorModel never had an m_rng).
-        if (kind == Kind::Vector)
-            m_rng = LocalRng(ctx.master_RNG);
+        if (kind == Kind::Vector) m_rng = LocalRng(ctx.master_RNG);
         // Set VACCINE_GENOTYPE option
         opt_vaccine_genotype = ModelOptions::option(VACCINE_GENOTYPE);
 
@@ -192,8 +191,7 @@ class TransmissionModel {
         surveySimulatedEIR_l = 0.0;
         lastSurveyTime = ctx.clock.now();
 
-        if (kind == Kind::Vector)
-            summarize_vector(ctx);
+        if (kind == Kind::Vector) summarize_vector(ctx);
     }
 
     /** Scale the EIR used by the model.
@@ -210,13 +208,10 @@ class TransmissionModel {
     }
 
     SimTime initIterate() {
-        if (kind == Kind::Vector)
-            return initIterate_vector();
+        if (kind == Kind::Vector) return initIterate_vector();
 
         simulationMode = interventionMode;
-        if (simulationMode != dynamicEIR) {
-            return zero();
-        }
+        if (simulationMode != dynamicEIR) return zero();
 
         // initialKappa is used in calculateEIR
         assert(initialKappa.size() >= ctx.clock.steps_per_year);
@@ -240,8 +235,7 @@ class TransmissionModel {
      *
      * when the vector model is used this updates mosquito populations. */
     void vectorUpdate(const vector<Human>& population) {
-        if (kind == Kind::Vector)
-            vectorUpdate_vector(population);
+        if (kind == Kind::Vector) vectorUpdate_vector(population);
     }
 
     void changeEIRIntervention(const scnXml::NonVector& nonVectorData) {
@@ -302,8 +296,7 @@ class TransmissionModel {
             uninfectVectors_vector();
             return;
         }
-        if (simulationMode != dynamicEIR)
-            cerr << "Warning: uninfectVectors is not efficacious with forced EIR" << endl;
+        if (simulationMode != dynamicEIR) cerr << "Warning: uninfectVectors is not efficacious with forced EIR" << endl;
         // reset history of human infectivity, which scales dynamic EIR:
         laggedKappa.assign(laggedKappa.size(), 0.0);
     }
@@ -349,8 +342,7 @@ class TransmissionModel {
                 riskTrans *= avail;
             }
 
-            if (riskTrans > 0.0)
-                ++numTransmittingHumans;
+            if (riskTrans > 0.0) ++numTransmittingHumans;
 
             sumWt_kappa += riskTrans;
         }

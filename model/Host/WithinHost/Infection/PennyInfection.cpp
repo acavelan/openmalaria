@@ -275,9 +275,7 @@ bool PennyInfection::update(LocalRng& rng, double survivalFactor, SimTime now, d
                 cirDensity_new = exp(rng.gauss(log(cirDensity_new), sigma_epsilon)) * survivalFactor;
             }
             // please don't simplify this, we want more chance at ending infection
-            if (cirDensity_new < Omega) {
-                cirDensity_new = 0.0;
-            }
+            if (cirDensity_new < Omega) cirDensity_new = 0.0;
         }
         seqDensity_new *= survivalFactor;
         if (seqDensity_new < Omega) {

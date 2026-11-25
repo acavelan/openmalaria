@@ -106,8 +106,7 @@ inline void update(RunContext& ctx, Population& population) {
         if (ctx.clock.interv < zero() || mod_nn(ctx.clock.interv, ctsPeriod) != zero())
             return;
     } else {
-        if (mod_nn(ctx.clock.now(), ctsPeriod) != zero())
-            return;
+        if (mod_nn(ctx.clock.now(), ctsPeriod) != zero()) return;
         ctsOStream << ctx.clock.inSteps(ctx.clock.now()) << '\t';
     }
 
