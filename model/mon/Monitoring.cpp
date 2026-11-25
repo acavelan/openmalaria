@@ -26,7 +26,6 @@
 #include "Host/Human.h"
 #include "util/CommandLine.h"
 #include "util/errors.h"
-#include "schema/monitoring.h"
 
 #include <algorithm>
 #include <bit>

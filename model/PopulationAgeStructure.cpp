@@ -23,7 +23,6 @@
 #include "PopulationAgeStructure.h"
 #include "Global.h"
 #include "util/errors.h"
-#include "schema/demography.h"
 
 #include <cmath>
 #include <gsl_vector_double.h>
@@ -107,44 +106,6 @@ void minimizeCalc_rss(double (*func) (double,double), double param1,double param
     gsl_vector_free(initialValues);
     gsl_vector_free(stepSize);
     gsl_multimin_fminimizer_free (minimizer);
-}
-
-void AgeStructure::estimateRemovalRates( const scnXml::Demography& demography ){
-    // mu1, alpha1: These are estimated here
-    // mu0, alpha0: These are fixed alpha0=4.0, mu0 calculated from the other parameters
-    // rho - population growth rate (input)
-    
-    //Get lower and upper age bounds for age groups and cumulative precentage of population from field data
-    double sumperc = 0.0;
-    const scnXml::DemogAgeGroup::GroupSequence& group = demography.getAgeGroup().getGroup();
-    
-    size_t ngroups = group.size() + 1;
-    ageGroupBounds.resize(ngroups+1,0);
-    ageGroupPercent.resize(ngroups,0);
-    
-    //Add age group for first month of life
-    ageGroupBounds[0] = 0.0;
-    ageGroupBounds[1] = 1.0 / 12.0;
-    ageGroupPercent[0] = 0.0;
-    for(size_t i = 1;i < ngroups; i++) {
-	ageGroupBounds[i+1] = group[i-1].getUpperbound();
-	ageGroupPercent[i] = group[i-1].getPoppercent();
-	sumperc += ageGroupPercent[i];
-    }
-    sumperc = 100.0 / sumperc; // multiplier to get percentages
-    for(size_t i = 0;i < ngroups; i++) {
-	ageGroupPercent[i]  = ageGroupPercent[i] * sumperc;
-    }
-
-    /* NOTE: unused --- why?
-    double tol = 0.00000000001;
-    int maxcal = 500000;
-    int npar = 2;
-    int iw = 3; */
-    double p1 = 0.371626412;
-    double p2 = 0.841209593;
-    // returns "double rss":
-    minimizeCalc_rss (&setDemoParameters, p1, p2);
 }
 
 // Static method used by estimateRemovalRates
