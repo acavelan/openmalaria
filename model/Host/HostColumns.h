@@ -76,8 +76,9 @@ struct VacRecord {
  * passed by reference, never global).
  *
  * Row i of every column belongs to Population::humans[i]. Only Population
- * changes the row count (create/checkpoint-read append; update erases) and
- * keeps Human::row in sync after every erase (renumber pass).
+ * changes the row count (create/checkpoint-read append; update compacts dead/
+ * outmigrating rows in one batch) and keeps Human::row in sync after every
+ * compaction (renumber pass).
  *
  * RNG RULE (census fact 1): the rng row is constructed — copy-seeded from the
  * master — exactly at the owning Human's old member-init moment. Moving the
@@ -162,10 +163,22 @@ struct HumanColumns {
         return rng.size() - 1;
     }
 
-    /// Drop row `r` from every column (Population-only; mirrors humans.erase).
+    /// Drop every row except those listed in `keep` (ascending indices;
+    /// Population-only). Stable: final row order == sequential erase_at, but
+    /// every column is touched once. The w != r guard is load-bearing: a
+    /// self-move of a nested column (vector/map element) empties it.
     /// Adding a column: append to one of the e(...) calls below.
-    void erase_at(size_t r) {
-        const auto e = [r](auto& col) { col.erase(col.begin() + r); };
+    void compact(const std::vector<uint32_t>& keep) {
+        const auto e = [&keep](auto& col) {
+            size_t w = 0;
+            for (const uint32_t r : keep) {
+                if (w != r) col[w] = std::move(col[r]);
+                ++w;
+            }
+            // range-erase, not resize: resize needs a default ctor which
+            // LocalRng/nested columns deliberately don't have
+            col.erase(col.begin() + w, col.end());
+        };
         e(rng);
         e(dob);
         e(death);
