@@ -230,8 +230,7 @@ SimTime TransmissionModel::initIterate_vector() {
     for (size_t i = 0; i < speciesIndex.size(); ++i) {
         needIterate = emergenceRateEstimators[i]->estimate(*species[i], laggedKappa, meanAvail);
         species[i]->initIterate();
-        if (needIterate)
-            break;
+        if (needIterate) break;
     }
 
     if (needIterate) {
@@ -381,16 +380,12 @@ extern const string vec_mode_err = "vector interventions can only be used in "
                                    "dynamic transmission mode (mode=\"dynamic\")";
 
 void TransmissionModel::deployVectorPopInterv(size_t instance) {
-    if (interventionMode != dynamicEIR) {
-        throw xml_scenario_error(vec_mode_err);
-    }
+    if (interventionMode != dynamicEIR) throw xml_scenario_error(vec_mode_err);
     for (auto& s : species)
         s->deployVectorPopInterv(m_rng, instance);
 }
 void TransmissionModel::deployVectorTrap(size_t instance, double number, SimTime lifespan) {
-    if (interventionMode != dynamicEIR) {
-        throw xml_scenario_error(vec_mode_err);
-    }
+    if (interventionMode != dynamicEIR) throw xml_scenario_error(vec_mode_err);
     for (size_t i = 0; i < speciesIndex.size(); ++i) {
         species[i]->deployVectorTrap(m_rng, i, instance, number, lifespan);
     }

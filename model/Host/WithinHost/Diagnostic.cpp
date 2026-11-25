@@ -59,8 +59,7 @@ bool Diagnostic::isPositive(LocalRng& rng, double dens, double densHRP2) const {
 }
 
 bool Diagnostic::allowsFalsePositives() const {
-    if ((std::isnan)(specificity))
-        return dens_lim <= 0.0;
+    if ((std::isnan)(specificity)) return dens_lim <= 0.0;
     return specificity < 1.0;
 }
 
@@ -71,9 +70,7 @@ void diagnostics::clear(RunContext& ctx) { ctx.diagnostic_set.clear(); }
 const Diagnostic& diagnostics::get(RunContext& ctx, const string& name) {
     auto& diagnostic_set = ctx.diagnostic_set;
     auto it = diagnostic_set.find(name);
-    if (it == diagnostic_set.end()) {
-        throw xml_scenario_error(string("diagnostic not found: ").append(name));
-    }
+    if (it == diagnostic_set.end()) throw xml_scenario_error(string("diagnostic not found: ").append(name));
     return it->second;
 }
 

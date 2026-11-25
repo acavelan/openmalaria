@@ -189,8 +189,7 @@ void walk(const FlatTree& t, DTExecCtx& e, uint32_t n) {
         case DTK_Age:
             // age is that of human at start of time step (i.e. may be 0)
             n = branch_select(t, nd, e.ageYears);
-            if (n == UINT32_MAX)
-                throw TRACED_EXCEPTION("bad age-based decision tree switch", Error::PkPd);
+            if (n == UINT32_MAX) throw TRACED_EXCEPTION("bad age-based decision tree switch", Error::PkPd);
             continue;
         case DTK_Multiple: {
             // parity: CMDTMultiple::exec quirk — treated ORs out of children

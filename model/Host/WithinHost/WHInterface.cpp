@@ -17,10 +17,8 @@ bool opt_vivax_simple = false, opt_dummy_whm = false, opt_empirical_whm = false,
 // Variant selection (ModelOptions flags set by WHInterface::init): one line
 // per derived class; the Mock variant is created only by unittest/WHMock.cpp.
 unique_ptr<WHInterface> WHInterface::createWithinHostModel(RunContext& ctx, LocalRng& rng, double comorbidityFactor) {
-    if (opt_vivax_simple)
-        return unique_ptr<WHInterface>(new WHVivax(ctx, rng, comorbidityFactor));
-    if (opt_common_whm)
-        return unique_ptr<WHInterface>(new WHCommon(ctx, rng, comorbidityFactor));
+    if (opt_vivax_simple) return unique_ptr<WHInterface>(new WHVivax(ctx, rng, comorbidityFactor));
+    if (opt_common_whm) return unique_ptr<WHInterface>(new WHCommon(ctx, rng, comorbidityFactor));
     return unique_ptr<WHInterface>(new WHDescriptive(ctx, rng, comorbidityFactor));
 }
 

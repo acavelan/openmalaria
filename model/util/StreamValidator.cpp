@@ -38,16 +38,14 @@ const char OM_SV_HEAD[5] = "OMSV";
 void StreamValidatorType::saveStream() {
     if (storeMode) {
         ofstream f_str(OM_SV_FILE, ios::out | ios::binary);
-        if (!f_str.is_open())
-            throw base_exception("unable to write " OM_SV_FILE, Error::FileIO);
+        if (!f_str.is_open()) throw base_exception("unable to write " OM_SV_FILE, Error::FileIO);
         f_str.write(reinterpret_cast<const char*>(&OM_SV_HEAD), sizeof(char) * 4);
 
         stream & f_str;
 
         f_str.close();
     } else {
-        if (readIt != stream.end())
-            cerr << "StreamValidator: not at end!" << endl;
+        if (readIt != stream.end()) cerr << "StreamValidator: not at end!" << endl;
     }
 }
 
@@ -55,8 +53,7 @@ void StreamValidatorType::loadStream(const string& path) {
     string file = CommandLine::lookupResource(path);
     storeMode = false;
     ifstream f_str(file.c_str(), ios::in | ios::binary);
-    if (!f_str.is_open())
-        throw base_exception("unable to read " + string(file), Error::FileIO);
+    if (!f_str.is_open()) throw base_exception("unable to read " + string(file), Error::FileIO);
     char head[4];
     f_str.read(reinterpret_cast<char*>(&head), sizeof(char) * 4);
     if (memcmp(&OM_SV_HEAD, &head, sizeof(char) * 4) != 0)

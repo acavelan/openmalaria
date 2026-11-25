@@ -176,8 +176,7 @@ inline double IRSParams::sampleInitialInsecticide(LocalRng& rng) const {
     double sample = initialInsecticide.sample(rng);
     if (sample < 0.0)
         sample = 0.0; // avoid negative samples
-    if (sample > maxInsecticide)
-        sample = maxInsecticide;
+    if (sample > maxInsecticide) sample = maxInsecticide;
     return sample;
 }
 

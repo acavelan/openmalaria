@@ -271,8 +271,7 @@ void Genotypes::init(Genotypes& state, const scnXml::Scenario& scenario) {
                 auto it = longest.find(allele_codes[*j].first);
                 assert(it != longest.end());
                 uint32_t len_allele = allele_codes[*j].second.length();
-                if (len_allele > it->second)
-                    it->second = len_allele;
+                if (len_allele > it->second) it->second = len_allele;
             }
         }
 
@@ -282,9 +281,7 @@ void Genotypes::init(Genotypes& state, const scnXml::Scenario& scenario) {
         for (size_t i = 0; loci.size() < longest.size(); ++i) {
             assert(i < allele_codes.size());
             const string& locus = allele_codes[i].first;
-            if (std::find(loci.begin(), loci.end(), locus) == loci.end()) {
-                loci.push_back(locus);
-            }
+            if (std::find(loci.begin(), loci.end(), locus) == loci.end()) loci.push_back(locus);
         }
 
         //         string fm = "|%1$-12d|%|14t|%2$-12d|";
@@ -494,9 +491,7 @@ void SimClock::init(RunContext& ctx, const scnXml::Scenario& scenario, ModelName
         try {
             // on failure, this throws or returns never()
             start_date = UnitParse::parseDate(*this, mon.getStartDate().get());
-            if (start_date == never()) {
-                throw format_error("invalid format (expected YYYY-MM-DD)");
-            }
+            if (start_date == never()) throw format_error("invalid format (expected YYYY-MM-DD)");
         } catch (const format_error& e) {
             throw xml_scenario_error(string("monitoring/startDate: ").append(e.message()));
         }
@@ -533,11 +528,9 @@ void SimClock::initInterval(const scnXml::Scenario& scenario, ModelNames modelNa
 }
 
 ModelNames read_model_name(const scnXml::Model& model) {
-    if (!model.getModelName().present())
-        return ModelNames::none;
+    if (!model.getModelName().present()) return ModelNames::none;
     const std::string name = model.getModelName().get().getName();
-    if (name == "base")
-        return ModelNames::base;
+    if (name == "base") return ModelNames::base;
     throw xml_scenario_error("Unrecognized model name: " + name);
 }
 
@@ -563,9 +556,7 @@ Parameters::Parameters(const scnXml::Model::ParametersOptional& xmlParameterValu
     // that any parameter values written explicitly in XML will override any values set by the
     // named model.
     const bool useExplicitParamValues = xmlParameterValues.present();
-    if (useExplicitParamValues) {
-        initializeParamsFromXML(xmlParameterValues.get());
-    }
+    if (useExplicitParamValues) initializeParamsFromXML(xmlParameterValues.get());
 }
 
 void Parameters::initializeParamsFromXML(const scnXml::Parameters& parameters) {

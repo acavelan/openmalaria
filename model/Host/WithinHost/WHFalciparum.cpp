@@ -147,11 +147,9 @@ WHFalciparum::ImmSurvTick WHFalciparum::immSurvivalTick(double ageInYears) {
 }
 
 double WHFalciparum::immunitySurvivalFactor(const ImmSurvTick& t, double cumulativeExposureJ) {
-    if (std::isnan(cumulativeExposureJ))
-        throw base_exception("nan in immunitySurvivalFactor");
+    if (std::isnan(cumulativeExposureJ)) throw base_exception("nan in immunitySurvivalFactor");
     double dY = 1.0;
-    if (t.active)
-        dY = 1.0 / (1.0 + (t.immY - cumulativeExposureJ) * t.invY);
+    if (t.active) dY = 1.0 / (1.0 + (t.immY - cumulativeExposureJ) * t.invY);
     return streamValidate(std::min(dY * t.dH * t.dA, 1.0));
 }
 
@@ -222,8 +220,7 @@ double WHFalciparum::probTransmissionToMosquito(vector<double>& probTransGenotyp
     pTransmit = std::max(pTransmit, 0.0);
     pTransmit = std::min(pTransmit, 1.0);
 
-    if (pTransmit <= 0.0)
-        return pTransmit;
+    if (pTransmit <= 0.0) return pTransmit;
 
     for (size_t g = 0; g < n; ++g) {
         probTransGenotype_i[g] = pTransmit * y_lag_g_i[g] / y_lag_sum;
@@ -264,9 +261,7 @@ StatePair WHFalciparum::determineMorbidity(Human& human, double ageYears, bool i
     if( (result.state & MALARIA) && ModelOptions::option( PENALISATION_EPISODES ) ){
         // This does immunity penalisation:
         imm_Y_ref() = imm_Y_lag_ref() - immPenalty_22*(imm_Y_ref()-imm_Y_lag_ref());
-        if (imm_Y_ref() < 0) {
-            imm_Y_ref()=0.0;
-        }
+        if (imm_Y_ref() < 0) imm_Y_ref()=0.0;
     }*/
 
     return result;

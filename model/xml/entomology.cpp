@@ -66,8 +66,7 @@ template <class Seq> static double averageEIR_seq(const Seq& daily, const char* 
     size_t i = 0;
     for (; i < daily.size(); ++i)
         valaverageEIR += (double)daily[i];
-    if (i == 0)
-        throw xml_scenario_error(noneMsg);
+    if (i == 0) throw xml_scenario_error(noneMsg);
     return valaverageEIR / i;
 }
 
@@ -158,8 +157,7 @@ AnophelesModel* createAnophelesModel(RunContext& ctx, size_t i, const scnXml::An
         }
 
         EIRRotateAngle = 0;
-        if (seasFC.getEIRRotateAngle().present())
-            EIRRotateAngle = seasFC.getEIRRotateAngle().get();
+        if (seasFC.getEIRRotateAngle().present()) EIRRotateAngle = seasFC.getEIRRotateAngle().get();
 
         // EIR for this species, with index 0 refering to value over first interval
         initEIR365.resize(oneYear(), 0.0);
@@ -183,14 +181,12 @@ AnophelesModel* createAnophelesModel(RunContext& ctx, size_t i, const scnXml::An
             double maxEIR = months[0];
             for (size_t i = 0; i < N_m; ++i) {
                 months[i] = seq[i];
-                if (months[i] > maxEIR)
-                    maxEIR = months[i];
+                if (months[i] > maxEIR) maxEIR = months[i];
             }
             // arbitrary minimum we allow (cannot have zeros since we take the logarithm)
             double min = maxEIR / 100.0;
             for (size_t i = 0; i < N_m; ++i) {
-                if (months[i] < min)
-                    months[i] += min;
+                if (months[i] < min) months[i] += min;
             }
 
             FSCoeffic.assign(5, 0.0);
@@ -202,8 +198,7 @@ AnophelesModel* createAnophelesModel(RunContext& ctx, size_t i, const scnXml::An
 
             // Assume the values are for the start of the month
             EIRRotateAngle = 0;
-            if (seasM.getEIRRotateAngle().present())
-                EIRRotateAngle = seasM.getEIRRotateAngle().get();
+            if (seasM.getEIRRotateAngle().present()) EIRRotateAngle = seasM.getEIRRotateAngle().get();
 
             // EIR for this species, with index 0 refering to value over first interval
             initEIR365.resize(oneYear());
@@ -542,24 +537,20 @@ template <class V, class E2>
 static void set_interv_decay(SimClock& clock, V& slot, size_t instance, const E2& elt2, double lo, double hi,
                              const char* rangeMsg, const char* tag) {
     double initial = elt2.getInitial();
-    if (initial < lo || initial > hi)
-        throw xml_scenario_error(rangeMsg);
+    if (initial < lo || initial > hi) throw xml_scenario_error(rangeMsg);
     slot[instance].set(clock, initial, elt2.getDecay(), tag);
 }
 
 void AnophelesModel::initVectorInterv(const scnXml::VectorSpeciesIntervention& elt, size_t instance) {
-    if (emergenceReduction.size() <= instance)
-        emergenceReduction.resize(instance + 1);
+    if (emergenceReduction.size() <= instance) emergenceReduction.resize(instance + 1);
     if (elt.getEmergenceReduction().present())
         set_interv_decay(ctx.clock, emergenceReduction, instance, elt.getEmergenceReduction().get(),
                          -numeric_limits<double>::infinity(), 1.0,
                          "emergenceReduction intervention: initial effect must be ≤ 1", "emergenceReduction");
     if (probAdditionalDeathSugarFeedingIntervs.size() <= instance)
         probAdditionalDeathSugarFeedingIntervs.resize(instance + 1);
-    if (seekingDeathRateIntervs.size() <= instance)
-        seekingDeathRateIntervs.resize(instance + 1);
-    if (probDeathOvipositingIntervs.size() <= instance)
-        probDeathOvipositingIntervs.resize(instance + 1);
+    if (seekingDeathRateIntervs.size() <= instance) seekingDeathRateIntervs.resize(instance + 1);
+    if (probDeathOvipositingIntervs.size() <= instance) probDeathOvipositingIntervs.resize(instance + 1);
 
     if (elt.getProbAdditionalDeathSugarFeeding().present())
         set_interv_decay(ctx.clock, probAdditionalDeathSugarFeedingIntervs, instance,

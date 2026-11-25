@@ -53,8 +53,7 @@ void LSTMModel::prescribe(RunContext& ctx, size_t schedule, size_t dosage, doubl
 }
 
 void LSTMModel::medicate(RunContext& ctx, LocalRng& rng) {
-    if (medicateQueue.empty())
-        return;
+    if (medicateQueue.empty()) return;
 
     // Process pending medications (in interal queue) and apply/update:
     auto iter = medicateQueue.begin();

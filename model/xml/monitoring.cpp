@@ -76,8 +76,7 @@ void initReporting(RunContext& ctx, const scnXml::Scenario& scenario) {
 
     std::set<int> outIds;
     for (const scnXml::MonitoringOption& optElt : optsElt.getOption()) {
-        if (!optElt.getValue())
-            continue;
+        if (!optElt.getValue()) continue;
 
         OutMeasure om = findOutMeasure(optElt.getName());
         if (om.measure == invalidMeasure) {
@@ -93,14 +92,12 @@ void initReporting(RunContext& ctx, const scnXml::Scenario& scenario) {
         }
 
         auto applyCategory = [&](Dim flag, const auto& option, const char* label) {
-            if (!option.present())
-                return;
+            if (!option.present()) return;
             if (option.get() && !(om.dims & flag)) {
                 throw xml_scenario_error("measure " + std::string(optElt.getName()) +
                                          " does not support categorisation by " + label);
             }
-            if (!option.get())
-                om.dims &= ~flag;
+            if (!option.get()) om.dims &= ~flag;
         };
         applyCategory(Dim::Age, optElt.getByAge(), "age group");
         applyCategory(Dim::Cohort, optElt.getByCohort(), "cohort");
@@ -108,11 +105,8 @@ void initReporting(RunContext& ctx, const scnXml::Scenario& scenario) {
         applyCategory(Dim::Genotype, optElt.getByGenotype(), "genotype");
         applyCategory(Dim::Drug, optElt.getByDrugType(), "drug type");
 
-        if (optElt.getOutputNumber().present())
-            om.outId = optElt.getOutputNumber().get();
-        if (om.outId < 0) {
-            throw xml_scenario_error("monitoring output number must not be negative");
-        }
+        if (optElt.getOutputNumber().present()) om.outId = optElt.getOutputNumber().get();
+        if (om.outId < 0) throw xml_scenario_error("monitoring output number must not be negative");
         if (!outIds.insert(om.outId).second) {
             throw xml_scenario_error("monitoring output number " + std::to_string(om.outId) + " used more than once");
         }
@@ -159,9 +153,7 @@ SimTime readSurveyDates(RunContext& ctx, const scnXml::Monitoring& monitoring) {
             }
             if (surv.getRepeatStep().present()) {
                 const SimTime step = UnitParse::readDuration(clock, surv.getRepeatStep().get(), UnitParse::NONE);
-                if (step < clock.one_TS()) {
-                    throw xml_scenario_error("surveyTime: repeatStep must be >= 1");
-                }
+                if (step < clock.one_TS()) throw xml_scenario_error("surveyTime: repeatStep must be >= 1");
                 const SimTime end = UnitParse::readDate(clock, surv.getRepeatEnd().get(), UnitParse::NONE);
                 while (cur < end) {
                     addSurvey(cur, reporting);
@@ -182,9 +174,7 @@ SimTime readSurveyDates(RunContext& ctx, const scnXml::Monitoring& monitoring) {
         const size_t num = reporting ? runtime.nSurveys++ : NOT_USED;
         runtime.surveyDates.push_back({date, num});
     }
-    if (runtime.surveyDates.empty()) {
-        throw xml_scenario_error("Scenario defines no surveys; at least one is required.");
-    }
+    if (runtime.surveyDates.empty()) throw xml_scenario_error("Scenario defines no surveys; at least one is required.");
     if (!runtime.surveyDates.back().isReported()) {
         std::cerr
             << "Warning: the last survey is unreported. Having surveys beyond the last reported survey is pointless."
@@ -194,8 +184,7 @@ SimTime readSurveyDates(RunContext& ctx, const scnXml::Monitoring& monitoring) {
     if (CommandLine::option(CommandLine::PRINT_SURVEY_TIMES)) {
         std::cout << "Survey\tsteps\tdate\n";
         for (const SurveyDate& surveyDate : runtime.surveyDates) {
-            if (!surveyDate.isReported())
-                continue;
+            if (!surveyDate.isReported()) continue;
             std::cout << (surveyDate.num + 1) << '\t' << clock.inSteps(surveyDate.date - clock.start_date) << '\t'
                       << surveyDate.date << std::endl;
         }
@@ -213,8 +202,7 @@ void initCohorts(RunContext& ctx, const scnXml::Monitoring& monitoring) {
     auto& runtime = (*ctx.monitoring);
     runtime.cohortSubPopNumbers.clear();
     runtime.cohortSubPopIds.clear();
-    if (!monitoring.getCohorts().present())
-        return;
+    if (!monitoring.getCohorts().present()) return;
 
     const scnXml::Cohorts monCohorts = monitoring.getCohorts().get();
     uint32_t nextId = 0;
@@ -258,22 +246,19 @@ void init(RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoi
     try {
         //NOTE: if changing XSD, this should not have a default unit:
         ctsPeriod = UnitParse::readShortDuration(ctx.clock, options.getPeriod(), UnitParse::STEPS);
-        if (ctsPeriod < ctx.clock.one_TS())
-            throw format_error("must be >= 1 time step");
+        if (ctsPeriod < ctx.clock.one_TS()) throw format_error("must be >= 1 time step");
     } catch (const format_error& e) {
         throw xml_scenario_error(string("monitoring/continuous/period: ").append(e.message()));
     }
 
-    if (options.getDuringInit().present())
-        duringInit = options.getDuringInit().get();
+    if (options.getDuringInit().present()) duringInit = options.getDuringInit().get();
 
     for (const auto& option : options.getOption()) {
         auto registeredOutput = registered.find(option.getName());
         if (registeredOutput == registered.end()) {
             throw xml_scenario_error("monitoring.continuous: no output " + string(option.getName()));
         }
-        if (option.getValue())
-            toReport.push_back(registeredOutput->second);
+        if (option.getValue()) toReport.push_back(registeredOutput->second);
     }
 
     const string filename = CommandLine::getCtsoutName();
@@ -291,8 +276,7 @@ void init(RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoi
 
     ctsOStream.open(filename, ios::binary | ios::out);
     ctsOStream << "##\t##\n"; // live-graph needs a delimiter specifier when it is not a comma
-    if (duringInit)
-        ctsOStream << "simulation time\t";
+    if (duringInit) ctsOStream << "simulation time\t";
     ctsOStream << "timestep"; // TODO: change to days or remove or leave?
     for (const auto& report : toReport)
         ctsOStream << std::get<0>(report);

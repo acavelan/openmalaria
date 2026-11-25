@@ -34,8 +34,7 @@ namespace OpenMalaria {
 void HumanIntervention::deploy(RunContext& ctx, Human& human, Deploy::Method method, VaccineLimits vaccLimits) const {
     for (size_t cond : conditions) {
         // Abort deployment if any condition is false.
-        if (!checkCondition(ctx, cond))
-            return;
+        if (!checkCondition(ctx, cond)) return;
     }
 
     for (ComponentId id : components) {
@@ -108,12 +107,8 @@ void deploy_component(RunContext& ctx, const ComponentConfig& c, Human& human, D
         const DecisionTreeParams& p = std::get<DecisionTreeParams>(c.data);
         DTExecCtx ec(ctx, human, inYears(human.age(ctx.clock.nowOrTs1())), human.clinicalModel->latestState);
         CMDTOut out = exec_decision_tree(p.tree, ec);
-        if (out.treated) {
-            recordDeploy(measure("nMDAs"), measure("nCtsMDA"), human, method);
-        }
-        if (out.screened) {
-            recordDeploy(measure("nMassScreenings"), measure("nCtsScreenings"), human, method);
-        }
+        if (out.treated) recordDeploy(measure("nMDAs"), measure("nCtsMDA"), human, method);
+        if (out.screened) recordDeploy(measure("nMassScreenings"), measure("nCtsScreenings"), human, method);
         break;
     }
     case Component::PEV:
@@ -122,8 +117,7 @@ void deploy_component(RunContext& ctx, const ComponentConfig& c, Human& human, D
         if (vaccinate(ctx, human, c.id, vaccLimits) && ctx.vaccineReportComponent == c.id) {
             recordDeploy(measure("nMassVaccinations"), measure("nEPIVaccinations"), human, method);
         }
-        if (method == Deploy::TREAT)
-            recordEvent(measure("nTreatDeployments"), human);
+        if (method == Deploy::TREAT) recordEvent(measure("nTreatDeployments"), human);
         break;
     case Component::ITN:
         iv_deploy(ctx, human, c);

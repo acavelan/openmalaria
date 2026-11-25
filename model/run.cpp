@@ -95,8 +95,7 @@ void save_and_exit(RunContext& ctx, Population& population, TransmissionModel& t
 void maybe_save(RunContext& ctx, Population& population, TransmissionModel& transmission, bool mainPhase,
                 SimTime& endTime, SimTime& estEndTime) {
     const string spec = CommandLine::getSaveName().empty() ? string() : CommandLine::getSaveAt();
-    if (spec.empty() || spec == "main")
-        return;
+    if (spec.empty() || spec == "main") return;
     if (ctx.clock.now() >= fromDays(std::stoi(spec)))
         save_and_exit(ctx, population, transmission, mainPhase ? Phase::Main : Phase::Warmup, endTime, estEndTime);
 }
@@ -107,8 +106,7 @@ void run(RunContext& ctx, Population& population, TransmissionModel& transmissio
     int lastPercent = -1;
     const bool mainPhase = phase == "Intervention period";
 
-    if (CommandLine::option(CommandLine::VERBOSE))
-        cout << "Starting " << phase << "..." << endl;
+    if (CommandLine::option(CommandLine::VERBOSE)) cout << "Starting " << phase << "..." << endl;
 
     HostScratch scratch; // EIR out-vectors, reused across humans and ticks
     while (ctx.clock.now() < endTime) {
@@ -158,13 +156,11 @@ void run(RunContext& ctx, Population& population, TransmissionModel& transmissio
 
         ctx.clock.end_update();
 
-        if (CommandLine::option(CommandLine::PROGRESS))
-            print_progress(ctx, lastPercent, estEndTime);
+        if (CommandLine::option(CommandLine::PROGRESS)) print_progress(ctx, lastPercent, estEndTime);
         print_errno(ctx);
     }
 
-    if (CommandLine::option(CommandLine::VERBOSE))
-        cout << "Finishing " << phase << "..." << endl;
+    if (CommandLine::option(CommandLine::VERBOSE)) cout << "Finishing " << phase << "..." << endl;
 }
 
 } // namespace

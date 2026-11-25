@@ -57,8 +57,7 @@ void iv_deploy(RunContext& ctx, Human& human, const ComponentConfig& params) {
                 r.initial_insecticide = p.initialInsecticide.sample(rng);
                 if (r.initial_insecticide < 0.0)
                     r.initial_insecticide = 0.0; // avoid negative samples
-                if (r.initial_insecticide > p.maxInsecticide)
-                    r.initial_insecticide = p.maxInsecticide;
+                if (r.initial_insecticide > p.maxInsecticide) r.initial_insecticide = p.maxInsecticide;
                 break;
             }
             case Component::IRS:
@@ -96,8 +95,7 @@ void iv_deploy(RunContext& ctx, Human& human, const ComponentConfig& params) {
         r.initial_insecticide = p.initialInsecticide.sample(rng);
         if (r.initial_insecticide < 0.0)
             r.initial_insecticide = 0.0; // avoid negative samples
-        if (r.initial_insecticide > p.maxInsecticide)
-            r.initial_insecticide = p.maxInsecticide;
+        if (r.initial_insecticide > p.maxInsecticide) r.initial_insecticide = p.maxInsecticide;
         break;
     }
     case Component::IRS: {
@@ -126,8 +124,7 @@ void iv_deploy(RunContext& ctx, Human& human, const ComponentConfig& params) {
 void iv_update(RunContext& ctx, Human& human) {
     // Only nets mutate per step (old HumanIRS/HumanGVI update() were no-ops).
     for (auto& r : human.cols->iv[human.row]) {
-        if (r.kind != Component::ITN || r.deploy == never())
-            continue;
+        if (r.kind != Component::ITN || r.deploy == never()) continue;
         // First use is at age 0 relative to ts0()
         if (ctx.clock.ts0() >= r.disposal) {
             r.deploy = never(); // DISCARDED state (§9)
@@ -143,8 +140,7 @@ void iv_update(RunContext& ctx, Human& human) {
         r.hole_index += newHoles;
 
         double lambda = r.n_holes * r.rip_rate;
-        if (lambda > 0)
-            r.hole_index += ctx.itnComponents[r.id.id]->ripFactor * human.rng().poisson(lambda);
+        if (lambda > 0) r.hole_index += ctx.itnComponents[r.id.id]->ripFactor * human.rng().poisson(lambda);
     }
 }
 
@@ -166,8 +162,7 @@ inline double gvi_survival(RunContext& ctx, const IvRecord& r) {
 double iv_rel_attractiveness(RunContext& ctx, const IvRecord& r, size_t speciesIndex) {
     switch (r.kind) {
     case Component::ITN: {
-        if (r.deploy == never())
-            return 1.0;
+        if (r.deploy == never()) return 1.0;
         const ITNParams& params = *ctx.itnComponents[r.id.id];
         const ITNParams::ITNAnopheles& anoph = params.species[speciesIndex];
         return anoph.relativeAttractiveness(r.hole_index, insecticide_content(ctx, r));
@@ -192,8 +187,7 @@ double iv_rel_attractiveness(RunContext& ctx, const IvRecord& r, size_t speciesI
 double iv_preprandial_survival(RunContext& ctx, const IvRecord& r, size_t speciesIndex) {
     switch (r.kind) {
     case Component::ITN: {
-        if (r.deploy == never())
-            return 1.0;
+        if (r.deploy == never()) return 1.0;
         const ITNParams& params = *ctx.itnComponents[r.id.id];
         const ITNParams::ITNAnopheles& anoph = params.species[speciesIndex];
         return anoph.preprandialSurvivalFactor(r.hole_index, insecticide_content(ctx, r));
@@ -218,8 +212,7 @@ double iv_preprandial_survival(RunContext& ctx, const IvRecord& r, size_t specie
 double iv_postprandial_survival(RunContext& ctx, const IvRecord& r, size_t speciesIndex) {
     switch (r.kind) {
     case Component::ITN: {
-        if (r.deploy == never())
-            return 1.0;
+        if (r.deploy == never()) return 1.0;
         const ITNParams& params = *ctx.itnComponents[r.id.id];
         const ITNParams::ITNAnopheles& anoph = params.species[speciesIndex];
         return anoph.postprandialSurvivalFactor(r.hole_index, insecticide_content(ctx, r));
@@ -244,8 +237,7 @@ double iv_postprandial_survival(RunContext& ctx, const IvRecord& r, size_t speci
 double iv_rel_fecundity(RunContext& ctx, const IvRecord& r, size_t speciesIndex) {
     switch (r.kind) {
     case Component::ITN: {
-        if (r.deploy == never())
-            return 1.0;
+        if (r.deploy == never()) return 1.0;
         const ITNParams& params = *ctx.itnComponents[r.id.id];
         const ITNParams::ITNAnopheles& anoph = params.species[speciesIndex];
         return anoph.relFecundity(r.hole_index, insecticide_content(ctx, r));

@@ -106,9 +106,7 @@ LSTMDrugType::LSTMDrugType(RunContext& ctx, size_t index, const scnXml::PKPDDrug
                                  "compartment3 without compartment2");
     }
     if (pk.getConversion().present()) {
-        if (k12) {
-            throw xml_scenario_error("PK conversion model is incompatible with 2/3-compartment model");
-        }
+        if (k12) throw xml_scenario_error("PK conversion model is incompatible with 2/3-compartment model");
         const scnXml::Conversion& conv = pk.getConversion().get();
         try {
             metabolite = ctx.drugs.findDrug(conv.getMetabolite());

@@ -265,8 +265,7 @@ bool WHVivax::summarize(Human& human) const {
             patentHost = true;
         }
     }
-    if (patentHost)
-        recordStat(measure("nPatent"), human);
+    if (patentHost) recordStat(measure("nPatent"), human);
     return patentHost;
 }
 
@@ -296,13 +295,11 @@ void WHVivax::update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs
     //double matImmClin = 1 - (1 * exp(-(0.639*8*ageInYears)/2.53));
     auto inf = vivaxInfections.begin();
     while (inf != vivaxInfections.end()) {
-        if (treatmentLiver)
-            inf->treatmentLS();
+        if (treatmentLiver) inf->treatmentLS();
         if (treatmentBlood)
             inf->treatmentBS(); // clearance due to treatment; no protection against reemergence
         VivaxBrood::UpdResult result = inf->update(rng);
-        if (result.newPrimaryBS)
-            cum_prim_inf_ref() += 1;
+        if (result.newPrimaryBS) cum_prim_inf_ref() += 1;
 
         if (result.newBS) {
             // Sample for each new blood stage infection: the chance of some clinical event.
@@ -364,9 +361,7 @@ void WHVivax::update(Human& human, LocalRng& rng, int& nNewInfs_i, int& nNewInfs
     }
 
     //NOTE: currently we don't model co-infection or indirect deaths
-    if (morbidity == NONE) {
-        morbidity = PathogenesisModel::sampleNMF(rng, ageInYears);
-    }
+    if (morbidity == NONE) morbidity = PathogenesisModel::sampleNMF(rng, ageInYears);
 }
 
 bool WHVivax::diagnosticResult(LocalRng& rng, const Diagnostic& diagnostic) const {

@@ -70,8 +70,7 @@ void ckStatics(Archive& a, RunContext& ctx) {
     infantMortalityStatics(a);
     int32_t mode = ctx.genotypes.current_mode; // int on wire (enum domain)
     a.value(mode);
-    if (a.reading())
-        ctx.genotypes.current_mode = Genotypes::SampleMode(mode);
+    if (a.reading()) ctx.genotypes.current_mode = Genotypes::SampleMode(mode);
     checkpoint(a, *ctx.importedInfections);
 }
 
@@ -95,8 +94,7 @@ void ckMonitoring(Archive& a, RunContext& ctx) {
     a.value(ctx.ctsStreamOffset);
     if (a.reading() && ctx.ctsPeriod != zero()) {
         ctx.ctsOStream.seekp(ctx.ctsStreamOffset, std::ios::beg);
-        if (ctx.ctsOStream.fail())
-            throw checkpoint_error("continuous output: can't seek to saved position");
+        if (ctx.ctsOStream.fail()) throw checkpoint_error("continuous output: can't seek to saved position");
     }
 
     auto& rt = *ctx.monitoring;
@@ -107,37 +105,32 @@ void ckMonitoring(Archive& a, RunContext& ctx) {
     { // surveyDates: config-sized vector; only .num changes during a run
         uint64_t n = rt.surveyDates.size();
         a.value(n);
-        if (a.reading() && n != rt.surveyDates.size())
-            throw checkpoint_error("survey date count mismatch");
+        if (a.reading() && n != rt.surveyDates.size()) throw checkpoint_error("survey date count mismatch");
         for (auto& sd : rt.surveyDates)
             a.value(sd.num);
     }
     { // conditions: config-sized vector; only .value changes during a run
         uint64_t n = rt.conditions.size();
         a.value(n);
-        if (a.reading() && n != rt.conditions.size())
-            throw checkpoint_error("condition count mismatch");
+        if (a.reading() && n != rt.conditions.size()) throw checkpoint_error("condition count mismatch");
         for (auto& c : rt.conditions)
             a.boolean(c.value);
     }
     {
         uint64_t n = rt.stores.size();
         a.value(n);
-        if (a.reading() && n != rt.stores.size())
-            throw checkpoint_error("measure store count mismatch");
+        if (a.reading() && n != rt.stores.size()) throw checkpoint_error("measure store count mismatch");
         for (auto& store : rt.stores) {
             // variant index: 0 = int reports, 1 = double reports (both runs
             // agree by config; checked anyway)
             int32_t idx = std::holds_alternative<std::vector<int>>(store.reports) ? 0 : 1;
             a.value(idx);
-            if (a.reading() && idx != 0 && idx != 1)
-                throw checkpoint_error("bad report store kind");
+            if (a.reading() && idx != 0 && idx != 1) throw checkpoint_error("bad report store kind");
             std::visit(
                 [&a](auto& v) {
                     uint64_t n = v.size();
                     a.value(n);
-                    if (a.reading() && n != v.size())
-                        throw checkpoint_error("report store size mismatch");
+                    if (a.reading() && n != v.size()) throw checkpoint_error("report store size mismatch");
                     for (auto& e : v)
                         a.value(e);
                 },

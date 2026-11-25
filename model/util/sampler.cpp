@@ -37,9 +37,7 @@ NormalSample NormalSample::generate(LocalRng& rng) {
 }
 
 NormalSample NormalSample::generate_correlated(NormalSample base, double correlation, double factor, LocalRng& rng) {
-    if (correlation == 1.0) {
-        return base;
-    }
+    if (correlation == 1.0) return base;
 
     // parity: order — local RNG stream: draw call order fixes stream state
     double e = rng.gauss(0.0, factor);
@@ -52,9 +50,7 @@ void NormalSampler::setParams(double m, double s) {
 }
 
 double NormalSampler::sample(LocalRng& rng) const {
-    if (sigma == 0.0) {
-        return mu;
-    }
+    if (sigma == 0.0) return mu;
     // parity: order — local RNG stream: draw call order fixes stream state
     return rng.gauss(mu, sigma);
 }
@@ -65,15 +61,12 @@ unique_ptr<Sampler> Sampler::fromMeanCV(Kind kind, double mean, double CV, std::
     sampler->truncate = truncate;
 
     if (kind == Kind::Gamma) {
-        if (mean <= 0)
-            throw xml_scenario_error("gamma: required mean > 0");
-        if (CV < 0)
-            throw xml_scenario_error("gamma: required CV >= 0");
+        if (mean <= 0) throw xml_scenario_error("gamma: required mean > 0");
+        if (CV < 0) throw xml_scenario_error("gamma: required CV >= 0");
 
         sampler->mu = mean;
 
-        if (CV == 0.0)
-            return sampler;
+        if (CV == 0.0) return sampler;
 
         // 1 / sqrt(k) = CV; k * theta = mean:
         sampler->k = 1.0 / (CV * CV);
@@ -95,10 +88,8 @@ unique_ptr<Sampler> Sampler::fromMeanCV(Kind kind, double mean, double CV, std::
     }
 
     // The distribution is not "const"
-    if (mean <= 0)
-        throw xml_scenario_error("log-normal: required mean > 0");
-    if (CV < 0)
-        throw xml_scenario_error("log-normal: required CV >= 0");
+    if (mean <= 0) throw xml_scenario_error("log-normal: required mean > 0");
+    if (CV < 0) throw xml_scenario_error("log-normal: required CV >= 0");
 
     // The following formulae are derived from:
     // X ~ lognormal(μ, σ)
@@ -119,15 +110,12 @@ unique_ptr<Sampler> Sampler::fromMeanVariance(Kind kind, double mean, double var
     sampler->truncate = truncate;
 
     if (kind == Kind::Gamma) {
-        if (mean <= 0)
-            throw xml_scenario_error("gamma: required mean > 0");
-        if (variance < 0)
-            throw xml_scenario_error("gamma: required variance >= 0");
+        if (mean <= 0) throw xml_scenario_error("gamma: required mean > 0");
+        if (variance < 0) throw xml_scenario_error("gamma: required variance >= 0");
 
         sampler->mu = mean;
 
-        if (variance == 0.0)
-            return sampler;
+        if (variance == 0.0) return sampler;
 
         // k = mu^2 / variance; k * theta = mean:
         sampler->k = (sampler->mu * sampler->mu) / variance;
@@ -146,10 +134,8 @@ unique_ptr<Sampler> Sampler::fromMeanVariance(Kind kind, double mean, double var
     }
 
     // The distribution is not "const"
-    if (mean <= 0)
-        throw xml_scenario_error("log-normal: required mean > 0");
-    if (variance < 0)
-        throw xml_scenario_error("log-normal: required variance >= 0");
+    if (mean <= 0) throw xml_scenario_error("log-normal: required mean > 0");
+    if (variance < 0) throw xml_scenario_error("log-normal: required variance >= 0");
 
     // The following formulae are derived from:
     // X ~ lognormal(μ, σ)
@@ -167,8 +153,7 @@ unique_ptr<Sampler> Sampler::fromMeanVariance(Kind kind, double mean, double var
 void Sampler::scaleMean(double scalar) { mu += log(scalar); }
 
 double Sampler::mean() const {
-    if (kind == Kind::Gamma)
-        return mu;
+    if (kind == Kind::Gamma) return mu;
     return exp(mu + 0.5 * sigma * sigma);
 }
 
@@ -187,16 +172,14 @@ double Sampler::sample(LocalRng& rng) const {
         // parity: order — local RNG stream: draw call order fixes stream state
         value = rng.log_normal(mu, sigma);
 
-    if (truncate && value > *truncate)
-        return *truncate;
+    if (truncate && value > *truncate) return *truncate;
 
     return value;
 }
 
 double Sampler::cdf(double x) const {
     // 1) anything at or below 0 has CDF = 0
-    if (x <= 0.0)
-        return 0.0;
+    if (x <= 0.0) return 0.0;
 
     if (kind == Kind::Gamma) {
         // 2) Degenerate case

@@ -101,8 +101,7 @@ TriggeredDeployments::TriggeredDeployments(RunContext& ctx, const scnXml::Trigge
 TriggeredDeployments::SubList::SubList(RunContext& ctx, const scnXml::Deploy& elt)
     : HumanIntervention(ctx, elt.getComponent()), minAge(ctx.clock.from_years_n(elt.getMinAge())), maxAge(future()),
       coverage(elt.getP()) {
-    if (elt.getMaxAge().present())
-        maxAge = ctx.clock.from_years_n(elt.getMaxAge().get());
+    if (elt.getMaxAge().present()) maxAge = ctx.clock.from_years_n(elt.getMaxAge().get());
 
     if (minAge < zero() || maxAge < minAge) {
         throw xml_scenario_error("triggered intervention must have 0 <= minAge <= maxAge");
@@ -113,8 +112,7 @@ TriggeredDeployments::SubList::SubList(RunContext& ctx, const scnXml::Deploy& el
     }
 
     // Zero coverage: optimise
-    if (coverage <= 0.0 || minAge >= maxAge)
-        components.clear();
+    if (coverage <= 0.0 || minAge >= maxAge) components.clear();
 }
 // ———  Component payload constructors  ———
 

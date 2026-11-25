@@ -81,8 +81,7 @@ inline ComponentId InterventionManager::getComponentId(RunContext& ctx, const st
 }
 
 inline void InterventionManager::deploy(RunContext& ctx, vector<Human>& population, TransmissionModel& transmission) {
-    if (ctx.clock.interv < zero())
-        return;
+    if (ctx.clock.interv < zero()) return;
 
     // deploy imported infections (not strictly speaking an intervention)
     ctx.importedInfections->import(ctx, population);

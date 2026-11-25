@@ -81,8 +81,7 @@ void PathogenesisModel::init(RunContext& ctx, const Parameters& parameters, cons
         const scnXml::Clinical::NonMalariaFeversType& nmfDesc = clinical.getNonMalariaFevers().get();
         pg_NMF_incidence.set(ctx.clock, nmfDesc.getIncidence(), "incidence");
     }
-    if (nmfOnly)
-        return;
+    if (nmfOnly) return;
 
     pg_indirRiskCoFactor = 1 - exp(-parameters[Parameter::INDIRECT_RISK_COFACTOR]);
     pg_severeMalThreshold = parameters[Parameter::SEVERE_MALARIA_THRESHHOLD] + 1;
@@ -111,12 +110,9 @@ TreatmentId Treatments::addTreatment(RunContext& ctx, const scnXml::TreatmentOpt
 }
 
 Treatments::Stages stageFromString(const std::string& str) {
-    if (str == "liver")
-        return Treatments::LIVER;
-    if (str == "blood")
-        return Treatments::BLOOD;
-    if (str == "both")
-        return Treatments::BOTH;
+    if (str == "liver") return Treatments::LIVER;
+    if (str == "blood") return Treatments::BLOOD;
+    if (str == "both") return Treatments::BOTH;
     throw format_error(std::string("stage must be liver, blood or both, not ").append(str));
 }
 Treatments::Treatments(RunContext& ctx, const scnXml::TreatmentOption& elt)
@@ -258,8 +254,7 @@ void add_branch_table(CompileCtx& c, uint32_t n, vector<DTBranch>&& b) {
     // drop tied keys (keep first inserted, == map::insert behaviour):
     size_t w = 0;
     for (const DTBranch& br : b) {
-        if (w && br.key == b[w - 1].key)
-            continue;
+        if (w && br.key == b[w - 1].key) continue;
         b[w++] = br;
     }
     b.resize(w);
@@ -301,14 +296,10 @@ uint32_t compile_multiple(CompileCtx& c, const scnXml::DTMultiple& node) {
         kids.push_back(compile_age(c, sn));
     for (const scnXml::DTCohort& sn : node.getCohort())
         kids.push_back(compile_cohort(c, sn));
-    if (node.getTreatPKPD().size())
-        kids.push_back(compile_treat_pkpd(c, node.getTreatPKPD()));
-    if (node.getTreatSimple().size())
-        kids.push_back(compile_treat_simple(c, node.getTreatSimple()));
-    if (node.getReport().size())
-        kids.push_back(compile_report(c, node.getReport()));
-    if (node.getDeploy().size())
-        kids.push_back(compile_deploy(c, node.getDeploy()));
+    if (node.getTreatPKPD().size()) kids.push_back(compile_treat_pkpd(c, node.getTreatPKPD()));
+    if (node.getTreatSimple().size()) kids.push_back(compile_treat_simple(c, node.getTreatSimple()));
+    if (node.getReport().size()) kids.push_back(compile_report(c, node.getReport()));
+    if (node.getDeploy().size()) kids.push_back(compile_deploy(c, node.getDeploy()));
     FlatTree::Node& nd = c.t.nodes[n];
     nd.aux = static_cast<uint32_t>(c.t.children.size());
     c.t.children.insert(c.t.children.end(), kids.begin(), kids.end());
@@ -317,9 +308,7 @@ uint32_t compile_multiple(CompileCtx& c, const scnXml::DTMultiple& node) {
 }
 
 uint32_t compile_case_type(CompileCtx& c, const scnXml::DTCaseType& node) {
-    if (!c.isUC) {
-        throw xml_scenario_error("decision tree: caseType can only be used for uncomplicated cases");
-    }
+    if (!c.isUC) throw xml_scenario_error("decision tree: caseType can only be used for uncomplicated cases");
     const uint32_t n = c.add(DTK_CaseType);
     // gcc arg order: secondLine evaluated first (see file comment)
     const uint32_t second = compile_node(c, node.getSecondLine());
@@ -464,8 +453,7 @@ uint32_t compile_random(CompileCtx& c, const scnXml::DTRandom& node) {
         // the old map<double> stored (UB: breaks the map's ordering
         // invariants). Sorted tables cannot carry it, so reject it here —
         // behaviour changes only for inputs that were undefined before.
-        if (p != p)
-            throw xml_scenario_error("decision tree (random node): outcome probability is not a number");
+        if (p != p) throw xml_scenario_error("decision tree (random node): outcome probability is not a number");
         cum_p += p;
         b.push_back(DTBranch{cum_p, compile_node(c, outcome)});
     }
@@ -495,8 +483,7 @@ uint32_t compile_age(CompileCtx& c, const scnXml::DTAge& node) {
             }
             b.push_back(DTBranch{age.getLb(), lastNode});
         }
-        if (age.getLb() != age.getLb())
-            throw xml_scenario_error("decision tree age switch: age bound is not a number");
+        if (age.getLb() != age.getLb()) throw xml_scenario_error("decision tree age switch: age bound is not a number");
         lastNode = compile_node(c, age);
         lastAge = age.getLb();
     }
@@ -506,39 +493,24 @@ uint32_t compile_age(CompileCtx& c, const scnXml::DTAge& node) {
 }
 
 uint32_t compile_node(CompileCtx& c, const scnXml::DecisionTree& node) {
-    if (node.getMultiple().present())
-        return compile_multiple(c, node.getMultiple().get());
+    if (node.getMultiple().present()) return compile_multiple(c, node.getMultiple().get());
     // branching nodes
-    if (node.getCaseType().present())
-        return compile_case_type(c, node.getCaseType().get());
-    if (node.getInfectionOrigin().present())
-        return compile_infection_origin(c, node.getInfectionOrigin().get());
-    if (node.getDiagnostic().present())
-        return compile_diagnostic(c, node.getDiagnostic().get());
-    if (node.getUncomplicated().present())
-        return compile_uncomplicated(c, node.getUncomplicated().get());
-    if (node.getSevere().present())
-        return compile_severe(c, node.getSevere().get());
-    if (node.getRandom().present())
-        return compile_random(c, node.getRandom().get());
-    if (node.getAge().present())
-        return compile_age(c, node.getAge().get());
-    if (node.getCohort().present())
-        return compile_cohort(c, node.getCohort().get());
+    if (node.getCaseType().present()) return compile_case_type(c, node.getCaseType().get());
+    if (node.getInfectionOrigin().present()) return compile_infection_origin(c, node.getInfectionOrigin().get());
+    if (node.getDiagnostic().present()) return compile_diagnostic(c, node.getDiagnostic().get());
+    if (node.getUncomplicated().present()) return compile_uncomplicated(c, node.getUncomplicated().get());
+    if (node.getSevere().present()) return compile_severe(c, node.getSevere().get());
+    if (node.getRandom().present()) return compile_random(c, node.getRandom().get());
+    if (node.getAge().present()) return compile_age(c, node.getAge().get());
+    if (node.getCohort().present()) return compile_cohort(c, node.getCohort().get());
 
     // action nodes
-    if (node.getNoTreatment().present())
-        return c.add(DTK_NoTreatment);
-    if (node.getReport().size())
-        return compile_report(c, node.getReport());
-    if (node.getTreatFailure().present())
-        return c.add(DTK_TreatFailure);
-    if (node.getTreatPKPD().size())
-        return compile_treat_pkpd(c, node.getTreatPKPD());
-    if (node.getTreatSimple().size())
-        return compile_treat_simple(c, node.getTreatSimple());
-    if (node.getDeploy().size())
-        return compile_deploy(c, node.getDeploy());
+    if (node.getNoTreatment().present()) return c.add(DTK_NoTreatment);
+    if (node.getReport().size()) return compile_report(c, node.getReport());
+    if (node.getTreatFailure().present()) return c.add(DTK_TreatFailure);
+    if (node.getTreatPKPD().size()) return compile_treat_pkpd(c, node.getTreatPKPD());
+    if (node.getTreatSimple().size()) return compile_treat_simple(c, node.getTreatSimple());
+    if (node.getDeploy().size()) return compile_deploy(c, node.getDeploy());
     throw xml_scenario_error("unterminated decision tree");
 }
 
@@ -604,9 +576,7 @@ void ClinicalEventScheduler::setParameters(const SimClock& clock, const scnXml::
         cumP += *it;
         cumDailyPrImmUCTS.push_back(cumP);
     }
-    if (cumP < 0.999 || cumP > 1.001) {
-        throw xml_scenario_error("Event scheduler: dailyPrImmUCTS seq must add up to 1");
-    }
+    if (cumP < 0.999 || cumP > 1.001) throw xml_scenario_error("Event scheduler: dailyPrImmUCTS seq must add up to 1");
     cumDailyPrImmUCTS.back() = 1.0;
 
     ClinicalModel::caseFatalityRate.scale(alpha);
@@ -668,18 +638,12 @@ double getHealthSystemACRByName(const scnXml::TreatmentDetails& td, const string
 // note: "CQOptional" is the same type as for other drugs
 const scnXml::TreatmentActions::CQOptional& getHealthSystemTreatmentOptional(const scnXml::TreatmentActions& treatActs,
                                                                              const string& drug) {
-    if (drug == "CQ")
-        return treatActs.getCQ();
-    if (drug == "SP")
-        return treatActs.getSP();
-    if (drug == "AQ")
-        return treatActs.getAQ();
-    if (drug == "SPAQ")
-        return treatActs.getSPAQ();
-    if (drug == "ACT")
-        return treatActs.getACT();
-    if (drug == "QN")
-        return treatActs.getQN();
+    if (drug == "CQ") return treatActs.getCQ();
+    if (drug == "SP") return treatActs.getSP();
+    if (drug == "AQ") return treatActs.getAQ();
+    if (drug == "SPAQ") return treatActs.getSPAQ();
+    if (drug == "ACT") return treatActs.getACT();
+    if (drug == "QN") return treatActs.getQN();
     throw xml_scenario_error("healthSystem.drugRegimen: firstLine / secondLine / inpatient has bad value");
 }
 TreatmentId getHealthSystemTreatmentByName(RunContext& ctx, const scnXml::TreatmentActions& treatActs,

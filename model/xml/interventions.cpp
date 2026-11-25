@@ -68,9 +68,7 @@ void ImportedInfections::init(RunContext& ctx, const scnXml::ImportedInfections&
     try {
         //NOTE: if changing XSD, this should not have a default unit:
         period = UnitParse::readDuration(ctx.clock, tElt.getPeriod(), UnitParse::STEPS);
-        if (period < zero()) {
-            throw format_error("cannot be negative");
-        }
+        if (period < zero()) throw format_error("cannot be negative");
     } catch (const format_error& e) {
         throw xml_scenario_error(string("interventions/importedInfections/timed/period: ").append(e.message()));
     }
@@ -130,8 +128,7 @@ void timed_deploy_change_eir(RunContext& ctx, TransmissionModel& transmission, C
 }
 
 static int vacc_nonneg(int v, const char* err) {
-    if (v < 0)
-        throw xml_scenario_error(err);
+    if (v < 0) throw xml_scenario_error(err);
     return v;
 }
 void VaccineLimits::set(const scnXml::DeploymentBase& deploy) {
@@ -176,12 +173,9 @@ HumanDeployParams HumanDeployParams::read(RunContext&, const scnXml::DeploymentB
 /// continuous human deployment readers (getMax before getMin, same message
 /// and check position as the former duplicated blocks).
 template <class Elt> static void read_avail_limits(const Elt& elt, SimTime& mn, SimTime& mx) {
-    if (elt.getMaxAvailability().present())
-        mx = elt.getMaxAvailability().get();
-    if (elt.getMinAvailability().present())
-        mn = elt.getMinAvailability().get();
-    if (mn < zero() || mx < mn)
-        throw xml_scenario_error(min_avail_err);
+    if (elt.getMaxAvailability().present()) mx = elt.getMaxAvailability().get();
+    if (elt.getMinAvailability().present()) mn = elt.getMinAvailability().get();
+    if (mn < zero() || mx < mn) throw xml_scenario_error(min_avail_err);
 }
 
 TimedHumanParams TimedHumanParams::read(RunContext& ctx, SimTime date, const scnXml::MassDeployment& mass,
@@ -195,11 +189,9 @@ TimedHumanParams TimedHumanParams::read(RunContext& ctx, SimTime date, const scn
     th.minAvailability = 0;
     th.maxAvailability = 100;
 
-    if (mass.getMaxAge().present())
-        th.maxAge = ctx.clock.from_years_n(mass.getMaxAge().get());
+    if (mass.getMaxAge().present()) th.maxAge = ctx.clock.from_years_n(mass.getMaxAge().get());
 
-    if (th.minAge < zero() || th.maxAge < th.minAge)
-        throw xml_scenario_error(min_avail_err);
+    if (th.minAge < zero() || th.maxAge < th.minAge) throw xml_scenario_error(min_avail_err);
 
     read_avail_limits(mass, th.minAvailability, th.maxAvailability);
     return th;
@@ -242,11 +234,9 @@ ContinuousHumanDeployment ContinuousHumanDeployment::read(RunContext& ctx, SimTi
 template <class M, class Opt>
 static void nhh_slot(const SimClock& clock, M& m, const std::string& intervName, size_t instance, const Opt& opt,
                      const scnXml::DecayFunction& decay, double lo, double hi, const char* rangeErr, const char* tag) {
-    if (!opt.present())
-        return;
+    if (!opt.present()) return;
     const double v = opt.get().getInitial();
-    if (v < lo || v > hi)
-        throw xml_scenario_error(rangeErr);
+    if (v < lo || v > hi) throw xml_scenario_error(rangeErr);
     m[intervName][instance].set(clock, v, decay, tag);
 }
 
@@ -271,8 +261,7 @@ static void nhh_mods_setup(RunContext& ctx, size_t instance, string intervName,
             for (auto* m : {&anophModel->reduceNhhAvailability, &anophModel->reduceP_B_I, &anophModel->reduceP_C_I,
                             &anophModel->reduceP_D_I, &anophModel->reduceFecundity}) {
                 auto& slot = (*m)[intervName];
-                if (slot.size() <= instance)
-                    slot.resize(instance + 1);
+                if (slot.size() <= instance) slot.resize(instance + 1);
             }
 
             nhh_slot(ctx.clock, anophModel->reduceNhhAvailability, intervName, instance,
@@ -355,9 +344,7 @@ void timed_deploy_add_nhh(RunContext& ctx, vector<Human>& population, Transmissi
     TransmissionModel* vectorModel = transmission.isVector() ? &transmission : nullptr;
     if (vectorModel) {
         double popSize = population.size();
-        if (vectorModel->interventionMode != SimulationMode::dynamicEIR) {
-            throw xml_scenario_error(vec_mode_err);
-        }
+        if (vectorModel->interventionMode != SimulationMode::dynamicEIR) throw xml_scenario_error(vec_mode_err);
         for (size_t i = 0; i < vectorModel->speciesIndex.size(); ++i) {
             AnophelesModel* anophModel = vectorModel->species[i].get();
 
@@ -390,8 +377,7 @@ void timed_deploy_add_nhh(RunContext& ctx, vector<Human>& population, Transmissi
 // duplicated blocks; present()/get() call order and messages travel verbatim).
 template <class Usage> static double read_propUse(const Usage& usage, const char* rangeErr) {
     const double u = usage.present() ? usage.get().getValue() : 1.0;
-    if (!(u >= 0.0 && u <= 1.0))
-        throw xml_scenario_error(rangeErr);
+    if (!(u >= 0.0 && u <= 1.0)) throw xml_scenario_error(rangeErr);
     return u;
 }
 static void set_protected(double proportionUse, double propActive, double& prot, double& unprot) {
@@ -497,10 +483,8 @@ void SurvivalFactor::init(const scnXml::ITNKillingEffect& elt, double maxInsecti
         if (!(a.BF + a.HF >= 0.0 && a.BF + a.PF * pmax >= 0.0 && a.BF + a.HF + (a.PF + a.IF) * pmax >= 0.0)) {
             ostringstream msg;
             msg << eltName << ": bounds not met:";
-            if (!(a.BF + a.HF >= 0.0))
-                msg << " baseFactor+holeFactor≥0";
-            if (!(a.BF + a.PF * pmax >= 0.0))
-                msg << " baseFactor+" << pmax << "×insecticideFactor≥0";
+            if (!(a.BF + a.HF >= 0.0)) msg << " baseFactor+holeFactor≥0";
+            if (!(a.BF + a.PF * pmax >= 0.0)) msg << " baseFactor+" << pmax << "×insecticideFactor≥0";
             if (!(a.PF + a.HF + (a.PF + a.IF) * pmax >= 0.0))
                 msg << " baseFactor+holeFactor+" << pmax << "×(insecticideFactor+interactionFactor)≥0";
             throw xml_scenario_error(msg.str());
@@ -575,12 +559,9 @@ void SurvivalFactor::init(const scnXml::ITNKillingEffect& elt, double maxInsecti
               a.BF + a.HF + (a.PF + a.IF) * pmax <= 1.0 && a.HF + (a.PF + a.IF) * pmax >= 0.0)) {
             ostringstream msg;
             msg << eltName << ": bounds not met:";
-            if (!(a.BF + a.HF <= 1.0))
-                msg << " baseFactor+holeFactor≤1";
-            if (!(a.HF >= 0.0))
-                msg << " holeFactor≥0";
-            if (!(a.BF + a.PF * pmax <= 1.0))
-                msg << " baseFactor+" << pmax << "×insecticideFactor≤1";
+            if (!(a.BF + a.HF <= 1.0)) msg << " baseFactor+holeFactor≤1";
+            if (!(a.HF >= 0.0)) msg << " holeFactor≥0";
+            if (!(a.BF + a.PF * pmax <= 1.0)) msg << " baseFactor+" << pmax << "×insecticideFactor≤1";
             if (!(a.PF >= 0.0))
                 msg << " insecticideFactor≥0"; // if this fails, we know pmax>0 (since it is in any case non-negative) — well, or an NaN
             if (!(a.PF + a.HF + (a.PF + a.IF) * pmax <= 1.0))
@@ -663,16 +644,11 @@ void RelativeAttractiveness::initSingleStage(const scnXml::ITNDeterrency& elt, d
         cerr << "Note: since the following bounds are not met, the ITN could make humans more\n";
         cerr << "attractive to mosquitoes than they would be without a net.\n";
         cerr << "ITN.description.anophelesParams.deterrency: bounds not met:\n";
-        if (!(HF > 0.0))
-            cerr << "  holeFactor>0\n";
-        if (!(PF > 0.0))
-            cerr << "  insecticideFactor>0\n";
-        if (!(IF > 0.0))
-            cerr << "  interactionFactor>0\n";
-        if (!(HF <= 1.0))
-            cerr << "  holeFactor≤1\n";
-        if (!(PF <= 1.0))
-            cerr << "  insecticideFactor≤1\n";
+        if (!(HF > 0.0)) cerr << "  holeFactor>0\n";
+        if (!(PF > 0.0)) cerr << "  insecticideFactor>0\n";
+        if (!(IF > 0.0)) cerr << "  interactionFactor>0\n";
+        if (!(HF <= 1.0)) cerr << "  holeFactor≤1\n";
+        if (!(PF <= 1.0)) cerr << "  insecticideFactor≤1\n";
         if (!(HF * pow(PF * IF, pmax) <= 1.0))
             cerr << "  holeFactor×(insecticideFactor×interactionFactor)^" << pmax << "≤1\n";
         cerr.flush();
@@ -1039,8 +1015,7 @@ VaccineParams::VaccineParams(RunContext& ctx, ComponentId component, const scnXm
 
 /// Register a per-type component parameter payload under id.
 template <typename T> static void reg_at(std::vector<const T*>& v, ComponentId id, const T* p) {
-    if (v.size() <= id.id)
-        v.resize(id.id + 1, nullptr);
+    if (v.size() <= id.id) v.resize(id.id + 1, nullptr);
     assert(v[id.id] == nullptr);
     v[id.id] = p;
 }
@@ -1078,8 +1053,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& int
 
     {
         TransmissionModel* vectorModel = transmission.isVector() ? &transmission : nullptr;
-        if (vectorModel != nullptr)
-            species_index_map = vectorModel->speciesIndex;
+        if (vectorModel != nullptr) species_index_map = vectorModel->speciesIndex;
     }
 
     if (intervElt.getHuman().present()) {
@@ -1099,15 +1073,9 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& int
             SimTime expireAfter = future();
             if (component.getSubPopRemoval().present()) {
                 const scnXml::SubPopRemoval& removeOpts = component.getSubPopRemoval().get();
-                if (removeOpts.getOnFirstBout()) {
-                    ctx.removeAtIds[SubPopRemove::ON_FIRST_BOUT].push_back(id);
-                }
-                if (removeOpts.getOnFirstInfection()) {
-                    ctx.removeAtIds[SubPopRemove::ON_FIRST_INFECTION].push_back(id);
-                }
-                if (removeOpts.getOnFirstTreatment()) {
-                    ctx.removeAtIds[SubPopRemove::ON_FIRST_TREATMENT].push_back(id);
-                }
+                if (removeOpts.getOnFirstBout()) ctx.removeAtIds[SubPopRemove::ON_FIRST_BOUT].push_back(id);
+                if (removeOpts.getOnFirstInfection()) ctx.removeAtIds[SubPopRemove::ON_FIRST_INFECTION].push_back(id);
+                if (removeOpts.getOnFirstTreatment()) ctx.removeAtIds[SubPopRemove::ON_FIRST_TREATMENT].push_back(id);
                 if (removeOpts.getAfterYears().present()) {
                     expireAfter = ctx.clock.from_years_n(removeOpts.getAfterYears().get());
                 }
@@ -1192,13 +1160,9 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& int
                 for (auto it2 = ctsSeq.begin(), end2 = ctsSeq.end(); it2 != end2; ++it2) {
                     try {
                         SimTime begin = ctx.clock.start_date;
-                        if (it2->getBegin().present()) {
-                            begin = readDate_steps(ctx.clock, it2->getBegin().get());
-                        }
+                        if (it2->getBegin().present()) begin = readDate_steps(ctx.clock, it2->getBegin().get());
                         SimTime end = future();
-                        if (it2->getEnd().present()) {
-                            end = readDate_steps(ctx.clock, it2->getEnd().get());
-                        }
+                        if (it2->getEnd().present()) end = readDate_steps(ctx.clock, it2->getEnd().get());
                         ctx.continuous->push_back(
                             ContinuousHumanDeployment::read(ctx, begin, end, *it2, intervention, subPop, complement));
                     } catch (const format_error& e) {
@@ -1221,9 +1185,7 @@ void InterventionManager::init(RunContext& ctx, const scnXml::Interventions& int
                         if (it2->getRepeatStep().present()) {
                             SimTime step =
                                 UnitParse::readDuration(ctx.clock, it2->getRepeatStep().get(), UnitParse::NONE);
-                            if (step < ctx.clock.one_TS()) {
-                                throw xml_scenario_error("deploy: repeatStep must be >= 1");
-                            }
+                            if (step < ctx.clock.one_TS()) throw xml_scenario_error("deploy: repeatStep must be >= 1");
                             SimTime end = UnitParse::readDate(ctx.clock, it2->getRepeatEnd().get(), UnitParse::NONE);
                             while (date < end) {
                                 deployTimes.insert(make_pair(date, &*it2));

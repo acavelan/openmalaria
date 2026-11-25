@@ -59,8 +59,7 @@ class Archive {
         end_ = is_->tellg();
         is_->clear();
         is_->seekg(0, std::ios::beg);
-        if (is_->fail())
-            throw checkpoint_error("cannot size checkpoint input");
+        if (is_->fail()) throw checkpoint_error("cannot size checkpoint input");
     }
     /// Write mode.
     explicit Archive(std::ostream& os) : is_(nullptr), os_(&os) {}
@@ -80,8 +79,7 @@ class Archive {
                 throw checkpoint_error("stream read error");
         } else {
             os_->write(static_cast<const char*>(p), std::streamsize(n));
-            if (os_->fail())
-                throw checkpoint_error("stream write error");
+            if (os_->fail()) throw checkpoint_error("stream write error");
         }
     }
 
@@ -97,8 +95,7 @@ class Archive {
         uint8_t b = v ? 1 : 0;
         value(b);
         v = b != 0;
-        if (reading() && b > 1)
-            throw checkpoint_error("bool out of range");
+        if (reading() && b > 1) throw checkpoint_error("bool out of range");
     }
 
     /// Enum as its underlying integer (range-checked on read by the caller
@@ -116,14 +113,12 @@ class Archive {
         uint32_t n = uint32_t(s.size());
         value(n);
         if (reading()) {
-            if (n > remaining())
-                throw checkpoint_error("string longer than remaining data");
+            if (n > remaining()) throw checkpoint_error("string longer than remaining data");
             s.resize(n);
             if (n)
                 bytes(&s[0], n);
         } else {
-            if (n)
-                bytes(&s[0], n);
+            if (n) bytes(&s[0], n);
         }
     }
 
@@ -141,8 +136,7 @@ class Archive {
             if (n)
                 bytes(v.data(), size_t(n * sizeof(T)));
         } else {
-            if (n)
-                bytes(v.data(), size_t(n * sizeof(T)));
+            if (n) bytes(v.data(), size_t(n * sizeof(T)));
         }
     }
 
@@ -160,8 +154,7 @@ class Archive {
 
     /// Fail if anything was left unread (caller bug or file mismatch).
     void checkExhausted() {
-        if (!reading())
-            return;
+        if (!reading()) return;
         if (remaining() != 0)
             throw checkpoint_error("checkpoint file has " + std::to_string(remaining()) + " bytes remaining");
     }

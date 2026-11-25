@@ -111,9 +111,7 @@ double LSTMDrugOneComp::calculateDrugFactor(LocalRng& rng, Infection* inf, doubl
             break;
         }
     }
-    if (time < 1.0) {
-        totalFactor *= drugPD.calcFactor(Kn, neg_elim_rate, &concentration_today, 1.0 - time);
-    }
+    if (time < 1.0) totalFactor *= drugPD.calcFactor(Kn, neg_elim_rate, &concentration_today, 1.0 - time);
 
     return totalFactor; // Drug effect per day per drug per parasite
 }
@@ -177,8 +175,7 @@ LSTMDrugThreeComp::LSTMDrugThreeComp(const LSTMDrugType& type, LocalRng& rng) : 
 double LSTMDrugThreeComp::getConcentration(size_t index) const { return index == typeData->index ? conc() : 0.0; }
 
 void LSTMDrugThreeComp::updateCached(double body_mass) const {
-    if (last_bm == body_mass)
-        return;
+    if (last_bm == body_mass) return;
 
     double k = elim_sample * pow(body_mass, typeData->neg_m_exp);
 
@@ -259,9 +256,7 @@ double LSTMDrugThreeComp::calculateFactor_fC(const Params_fC& p, double duration
 
     int r = gsl_integration_qag(&F, 0.0, duration, abs_eps, rel_eps, GSL_INTG_MAX_ITER, qag_rule, gsl_intgr_wksp,
                                 &intfC, &err_eps);
-    if (r != 0) {
-        throw TRACED_EXCEPTION("calculateFactor: error from gsl_integration_qag", Error::GSL);
-    }
+    if (r != 0) throw TRACED_EXCEPTION("calculateFactor: error from gsl_integration_qag", Error::GSL);
     if (err_eps > 5e-2) {
         // This could be a warning, except that warnings tend to be ignored.
         ostringstream msg;
@@ -320,9 +315,7 @@ double LSTMDrugThreeComp::calculateDrugFactor(LocalRng& rng, Infection* inf, dou
             // ignore
         }
     }
-    if (time < 1.0) {
-        totalFactor *= calculateFactor_fC(p, 1.0 - time);
-    }
+    if (time < 1.0) totalFactor *= calculateFactor_fC(p, 1.0 - time);
 
     return totalFactor;
 }
@@ -479,9 +472,7 @@ double LSTMDrugConversion::calculateFactor_conv(const Params_convFactor& p, doub
     //     intg_steps = 0;
     int r = gsl_integration_qag(&F, 0.0, duration, abs_eps, rel_eps, GSL_INTG_CONV_MAX_ITER, qag_rule,
                                 gsl_intgr_conv_wksp, &intfC, &err_eps);
-    if (r != 0) {
-        throw TRACED_EXCEPTION("calculateFactor: error from gsl_integration_qag", Error::GSL);
-    }
+    if (r != 0) throw TRACED_EXCEPTION("calculateFactor: error from gsl_integration_qag", Error::GSL);
     // Testing err_eps is redundant with GSL's built-in tests
     //     cout << "integration steps: " << intg_steps << endl;
     //     cout << "duration: " << duration << ", AUC: " << intfC << endl;
@@ -573,9 +564,7 @@ double LSTMDrugConversion::calculateDrugFactor(LocalRng& rng, Infection* inf, do
             // ignore
         }
     }
-    if (time < 1.0) {
-        totalFactor *= calculateFactor_conv(p, 1.0 - time);
-    }
+    if (time < 1.0) totalFactor *= calculateFactor_conv(p, 1.0 - time);
 
     return totalFactor;
 }

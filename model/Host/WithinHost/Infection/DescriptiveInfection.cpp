@@ -108,9 +108,7 @@ void DescriptiveInfection::init(RunContext& ctx, const Parameters& parameters) {
         //fill initial matrix
         meanLogParasiteCount[i - 1][j - 1] = meanlogdens;
         //fill also the triangle that will not be used (to ensure everything is initialised)
-        if (j != i) {
-            meanLogParasiteCount[j - 1][i - 1] = 0.0;
-        }
+        if (j != i) meanLogParasiteCount[j - 1][i - 1] = 0.0;
     }
 }
 
@@ -206,8 +204,7 @@ void DescriptiveInfection::determine_densities(LocalRng& rng, double cumulativeh
         inf.m_cumulativeExposureJ += inf.ctx.clock.one_TS() * inf.m_density;
     }
 
-    if (bugfix_innate_max_dens)
-        timeStepMaxDensity *= innateImmSurvFact;
+    if (bugfix_innate_max_dens) timeStepMaxDensity *= innateImmSurvFact;
     timeStepMaxDensity *= bsvFactor;
 }
 

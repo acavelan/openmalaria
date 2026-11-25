@@ -50,8 +50,7 @@ namespace {
 void ckSdvVector(Archive& a, std::vector<SimpleDecayingValue>& v) {
     uint64_t n = v.size();
     a.value(n);
-    if (a.reading() && n != v.size())
-        throw checkpoint_error("species intervention count mismatch");
+    if (a.reading() && n != v.size()) throw checkpoint_error("species intervention count mismatch");
     for (auto& sdv : v)
         checkpoint(a, sdv);
 }
@@ -144,12 +143,10 @@ void checkpoint(Archive& a, TransmissionModel& tm) {
     if (tm.kind == TransmissionModel::Kind::Vector) {
         uint64_t n = tm.species.size();
         a.value(n);
-        if (a.reading() && n != tm.species.size())
-            throw checkpoint_error("tm.species count mismatch");
+        if (a.reading() && n != tm.species.size()) throw checkpoint_error("tm.species count mismatch");
         for (auto& s : tm.species)
             checkpoint(a, *s);
-        if (a.reading() && n != tm.emergenceRateEstimators.size())
-            throw checkpoint_error("estimator count mismatch");
+        if (a.reading() && n != tm.emergenceRateEstimators.size()) throw checkpoint_error("estimator count mismatch");
         for (auto& e : tm.emergenceRateEstimators)
             checkpoint(a, *e);
     } else {

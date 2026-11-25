@@ -238,8 +238,7 @@ class AnophelesModel {
         vectors::scale(O_v_l, factor);
         vectors::scale(S_v_i, factor);
         vectors::scale(S_v_l, factor);
-        if (simpleMPD)
-            vectors::scale(simpleMPD->nOvipositingDelayed, factor);
+        if (simpleMPD) vectors::scale(simpleMPD->nOvipositingDelayed, factor);
     }
 
     /** Initialisation which must wait until a human population is available.
@@ -347,8 +346,7 @@ class AnophelesModel {
     double getLastVecStat(VecStat vs) const;
 
     double getResAvailability() const {
-        if (!simpleMPD)
-            return numeric_limits<double>::quiet_NaN();
+        if (!simpleMPD) return numeric_limits<double>::quiet_NaN();
         // TODO: why offset by one time step? This is effectively getting the resources available on the last time step
         // TODO: only have to add one year because of offset
         const SimpleMPDState& sm = *simpleMPD;

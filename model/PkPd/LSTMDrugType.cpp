@@ -86,9 +86,7 @@ size_t DrugRegistry::findDrug(string _abbreviation) {
     // We assume that drugs are used when and only when findDrug returns their
     // index or they are a metabolite of a drug returned here.
     drugIsUsed(drugsInUse, index);
-    if (drugTypes[index].conversion_rate /*conversion model used*/) {
-        drugIsUsed(drugsInUse, drugTypes[index].metabolite);
-    }
+    if (drugTypes[index].conversion_rate /*conversion model used*/) drugIsUsed(drugsInUse, drugTypes[index].metabolite);
 
     return index;
 }

@@ -61,9 +61,7 @@ class ImportedInfections {
             return; // no imported infections
         SimTime now = ctx.clock.interv;
         assert(now >= zero());
-        if (period > zero()) {
-            now = mod_nn(now, period);
-        }
+        if (period > zero()) now = mod_nn(now, period);
         if (rate[lastIndex].time > now) {
             lastIndex = 0; // gone round in a loop: back to start of period
         }

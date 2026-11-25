@@ -140,8 +140,7 @@ void minimizeCalc_rss(RunContext& ctx, double param1, double param2) {
 
         double size = gsl_multimin_fminimizer_size(minimizer);
         int status = gsl_multimin_test_size(size, 1e-2);
-        if (status == GSL_SUCCESS)
-            break;
+        if (status == GSL_SUCCESS) break;
     }
     // Call again to set final value.
     wCalcRSS(minimizer->x, &ctx);
@@ -164,9 +163,7 @@ void AgeStructure::calcCumAgeProp(RunContext& ctx) {
         double M2s = (mu1 * (exp(alpha1 * ageYears) - 1.0) / alpha1);
         double Ms = M1s + M2s;
         double predperc = exp(-rho * ageYears - Ms);
-        if (age >= ctx.clock.max_human_age) {
-            predperc = 0.0;
-        }
+        if (age >= ctx.clock.max_human_age) predperc = 0.0;
         cumAgeProp[j] = cumAgeProp[j - 1] + predperc;
     }
     double totalCumPC = cumAgeProp[cumAgeProp.size() - 1];

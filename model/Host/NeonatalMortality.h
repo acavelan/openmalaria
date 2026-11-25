@@ -98,22 +98,18 @@ inline void NeonatalMortality::update(RunContext& ctx, vector<Human>& population
         // Note: since we're using a linked list, we have to iterate until we reach
         // the individuals we're interested in. Due to population structure, it's
         // probably quickest to start iterating from the oldest.
-        if (age >= ageUb)
-            continue;
+        if (age >= ageUb) continue;
         if (age < ageLb)
             break; // Not interested in younger individuals.
 
         nCounter++;
-        if (human.withinHostModel->diagnosticResult(human.rng(), *neonatalDiagnostic)) {
-            pCounter++;
-        }
+        if (human.withinHostModel->diagnosticResult(human.rng(), *neonatalDiagnostic)) pCounter++;
     }
 
     // ———  calculate risk of neonatal mortality  ———
     //default value of prev2025, for use when there are no 20-25 year olds
     double prev2025 = 0.25;
-    if (nCounter > 0)
-        prev2025 = double(pCounter) / nCounter;
+    if (nCounter > 0) prev2025 = double(pCounter) / nCounter;
 
     double maxPrev = prev2025;
     //update the vector containing the prevalence by gestational age

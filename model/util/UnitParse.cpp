@@ -40,9 +40,7 @@ namespace UnitParse {
 
 template <typename T> int castToInt(T x) {
     int y = static_cast<int>(x);
-    if (static_cast<T>(y) != x) {
-        throw format_error("underflow/overflow");
-    }
+    if (static_cast<T>(y) != x) throw format_error("underflow/overflow");
     return y;
 }
 

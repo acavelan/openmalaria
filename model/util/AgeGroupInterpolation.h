@@ -100,8 +100,7 @@ struct AgeGroupInterpolator {
 
     /** Scale function by factor. */
     void scale(double factor) {
-        if (kind == Kind::Dummy)
-            dummyThrow();
+        if (kind == Kind::Dummy) dummyThrow();
         for (auto& kv : data)
             kv.second *= factor;
     }
@@ -110,8 +109,7 @@ struct AgeGroupInterpolator {
      * which individuals are considered adults where all adults have the same
      * same value). */
     double firstGlobalMaximum() const {
-        if (kind == Kind::Dummy)
-            dummyThrow();
+        if (kind == Kind::Dummy) dummyThrow();
         double age = 0.0, max = numeric_limits<double>::min();
         for (const auto& kv : data) {
             if (kv.second > max) {
@@ -129,9 +127,7 @@ struct AgeGroupInterpolator {
     /** Sample interpolator between 0 and max age, outputting to a csv file
      * called name.csv. */
     void outputSamples(const SimClock& clock, const string name) {
-        if (!CommandLine::option(CommandLine::SAMPLE_INTERPOLATIONS)) {
-            return;
-        }
+        if (!CommandLine::option(CommandLine::SAMPLE_INTERPOLATIONS)) return;
         ofstream fstream((name + ".csv").c_str());
         double max = inYears(clock.max_human_age);
         for (double age = 0.0; age < max; age += 0.1) {

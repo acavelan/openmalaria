@@ -112,9 +112,7 @@ void Episode::report() {
         // Report non-malarial fever and outcomes
         recordEvent(*rctx, measure("nNMFever"), surveyPeriod, ageGroup, cohortSet);
 
-        if (state & DIRECT_DEATH) {
-            recordEvent(*rctx, measure("nNmfDeaths"), surveyPeriod, ageGroup, cohortSet);
-        }
+        if (state & DIRECT_DEATH) recordEvent(*rctx, measure("nNmfDeaths"), surveyPeriod, ageGroup, cohortSet);
     }
 }
 

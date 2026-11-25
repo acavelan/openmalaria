@@ -67,10 +67,8 @@ double a = numeric_limits<double>::signaling_NaN(), b = numeric_limits<double>::
 
 PathogenesisModel* PathogenesisModel::createPathogenesisModel(double cF) {
     // Kind from model options (same dispatch chain as the old subclass factory)
-    if (opt_predetermined_episodes)
-        return new PathogenesisModel(cF, Kind::Predet);
-    if (opt_mueller_pres_model)
-        return new PathogenesisModel(cF, Kind::Mueller);
+    if (opt_predetermined_episodes) return new PathogenesisModel(cF, Kind::Predet);
+    if (opt_mueller_pres_model) return new PathogenesisModel(cF, Kind::Mueller);
     return new PathogenesisModel(cF, Kind::Pyrogen);
 }
 
@@ -169,9 +167,7 @@ StatePair PathogenesisModel::determineState(Human& human, double ageYears, doubl
         // IndirectRisk is the probability of dying from the indirect effects
         // of malaria conditional on not having an acute attack of malaria
         double indirectRisk = pg_indirRiskCoFactor * comorb_factor;
-        if (!isDoomed) {
-            recordStat(measure("expectedIndirectDeaths"), human, indirectRisk);
-        }
+        if (!isDoomed) recordStat(measure("expectedIndirectDeaths"), human, indirectRisk);
         //NOTE: we could only evaluate indirectMortality if not already doomed,
         // except that (a) it affects random numbers, and (b) it affects
         // evaluation of uncomplicated cases with the 5-day HS when
@@ -189,8 +185,7 @@ State PathogenesisModel::sampleNMF(LocalRng& rng, double ageYears) {
     if (pg_NMF_incidence.isSet()) {
         double pNMF = pg_NMF_incidence.eval(ageYears);
         // parity: order — local RNG stream: draw call order fixes stream state
-        if (rng.bernoulli(pNMF))
-            return STATE_NMF;
+        if (rng.bernoulli(pNMF)) return STATE_NMF;
     }
     return NONE;
 }
