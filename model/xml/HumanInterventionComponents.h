@@ -327,13 +327,14 @@ class DecisionTreeComponent : public HumanInterventionComponent {
 public:
     DecisionTreeComponent( RunContext& ctx, ComponentId id, const scnXml::DecisionTree& elt ) :
         HumanInterventionComponent(id),
-        tree(Clinical::CMDecisionTree::create(ctx, elt, false))
+        tree(Clinical::compile_decision_tree(ctx, elt, false))
     {}
     
     void deploy( RunContext& ctx, Human& human, mon::Deploy::Method method, VaccineLimits )const{
-        Clinical::CMDTOut out = tree.exec( ctx, Clinical::CMHostData(human,
+        Clinical::DTExecCtx ec( ctx, human,
                 sim::inYears(human.age(ctx.clock.nowOrTs1())),
-                human.clinicalModel->getLatestState()) );
+                human.clinicalModel->getLatestState() );
+        Clinical::CMDTOut out = Clinical::exec_decision_tree(tree, ec);
         if( out.treated ){
             mon::recordDeploy(mon::measure("nMDAs"), mon::measure("nCtsMDA"), human, method);
         }
@@ -349,7 +350,7 @@ public:
     }
     
 private:
-    const Clinical::CMDecisionTree& tree;
+    const Clinical::FlatTree& tree;
 };
 
 class ClearImmunityComponent : public HumanInterventionComponent {

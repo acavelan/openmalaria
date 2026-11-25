@@ -41,7 +41,8 @@ public:
     * (Re)loads all data affected by this healthSystem element. */
     static void setHealthSystem (RunContext& ctx, const scnXml::HSEventScheduler& esData);
     
-    static CMDTOut execute( RunContext& ctx, const CMHostData& hostData );
+    static CMDTOut execute( RunContext& ctx, Host::Human& human,
+        double ageYears, Episode::State pgState );
 };
 
 } }

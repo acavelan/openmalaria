@@ -34,21 +34,22 @@ namespace OM { namespace Clinical {
 
 // -----  ESCaseManagement  -----
 
-const CMDecisionTree *escm_uncomplicated = 0,
+const FlatTree *escm_uncomplicated = 0,
     *escm_complicated = 0;
 
 
 CMDTOut ESCaseManagement::execute (RunContext& ctx,
-        const CMHostData& hostData
+        Host::Human& human, double ageYears, Episode::State pgState
 ) {
-    assert (hostData.pgState & Episode::SICK);
+    assert (pgState & Episode::SICK);
     //TODO: should we remove any existing prescriptions?
     //TODO: Note that these trees do both "access" and "case management" decisions.
     //TODO: medicateQueue.clear();
     
-    const CMDecisionTree& tree = (hostData.pgState & Episode::COMPLICATED) ?
+    const FlatTree& tree = (pgState & Episode::COMPLICATED) ?
         *escm_complicated : *escm_uncomplicated;
-    return tree.exec( ctx, hostData );
+    DTExecCtx ec( ctx, human, ageYears, pgState );
+    return exec_decision_tree( tree, ec );
 }
 
 } }
