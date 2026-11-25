@@ -72,7 +72,10 @@ Tag `rewrite-status-2026-11-24` marks the pushed HEAD.
 
 Every row: gates green at merge, main-session re-verified. `HANDOFF.md` has
 per-phase detail; `git log --oneline rewrite` is the full ledger (~200
-rewrite commits, each individually gated).
+rewrite commits, each individually gated). LOC warning from the independent
+review: the −488 namespace flattening and one −70 reflow pass measure less
+presentation, not necessarily simpler ownership or execution; −13.3% is the
+requested code-size KPI, not a claim that every removed line simplified logic.
 
 ## 5. Performance result
 
@@ -198,9 +201,13 @@ elements: 9 of 25 columns hold per-row containers (vectors/maps), so a density
 read chases THREE levels — column base → row container header → its heap
 buffer — partly defeating the layout precisely where it's hottest.
 
-**2. The original code was ALREADY columnar** (`HostColumns` is upstream;
-`rewrite` kept it). So the round-3 "structural tax" was never SoA vs AoS — it
-was four concrete things, three of which we fixed:
+**2. Correction: the rewrite introduced the columnar layout.** `HostColumns.h`
+is absent from A0 (`cfc3c8e0`) and current upstream main; `git log
+--diff-filter=A` places its introduction at rewrite commit `e2c87de0` ("rng SoA
+column", phase 6). An earlier draft of this report wrongly called it upstream.
+Therefore this unequal-tuning memory comparison cannot prove SoA was free, and
+the round-3 structural tax is a real cost of the rewrite design that had to be
+paid down, not merely a set of unrelated bugs:
 
 | tax item | why it hurt | fixed by |
 |---|---|---|

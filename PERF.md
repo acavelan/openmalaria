@@ -379,3 +379,11 @@ tracking is on. Any such change also needs a genotype-tracking scenario in T1, n
 
 **Close criteria:** R/B ≤ 1.005 @2k and @10k, ≤0.5 % on the 7-scenario total, no >1 % regression
 @5k, T1 63/63, `ctest` 64/64, `unittest` `.OK!`, resume suite green.
+
+## Codex review follow-ups (2026-11-25)
+
+| change | model LOC | unittest LOC | performance | readability / gates |
+|---|---:|---:|---|---|
+| suggestions 3–8: fold the seven `HostView` stages back into `update` (explicit plan deviation); keep `HostScratch` EIR vectors but hoist them across ticks; dissolve per-host incidence ownership into two `Human` values + free equations; `RunContext` owning raw pointers → `unique_ptr`; remove global `WHMockHooks`; share the four history-ordered intervention folds; move intervention runtime code out of `xml/HumanInterventionComponents.h` into `interventions/Components.cpp` | **16,257 (−60 vs 16,317; baseline −13.6%)** | **3,593 (−16)** | same generic six-scenario PGO corpus + LTO, alternating A/B order, 2 warm + median-of-5: @2k **10.73 (MAD .020) → 10.64 (MAD .010) s**; @10k **45.23 (.040) → 44.87 (.110) s**. Both −0.8%, below the 1% structural-change floor; kept for LOC/uniformity, not claimed as a standalone optimization. First noisy 10k pass (base MAD 1.66 s) discarded, not used for a decision. | smaller ownership/dispatch surface and exact equation order retained; one new regression test proves independent mock state. Build 0 C++ warnings/errors, unittest `.OK!`, CTest **65/65**, strict A0 parity **63/63** in both plain and LTO+PGO forms. PGO consumption enforced with `-Werror=missing-profile` (and Clang equivalents). |
+
+Measurement tooling now trains on Genotypes/Penny/VecFullTest/NonHumanHosts/MSAT_HRP2/Vivax rather than the scored example; builds only the trained executable so untrained unit-test TUs cannot trigger false missing-profile failures. `bench-om.sh` starts a fresh log, alternates binary order, records binary SHA-256/scenario/core/allocator environment, and reports user median+MAD plus system/elapsed/RSS/page-fault medians. Before/after binaries: `/tmp/opencode/build-codex-base` and `build-codex-new`; raw logs `/tmp/opencode/bench-codex-{2k,10k}-repeat.log`.
