@@ -29,51 +29,47 @@
 
 using namespace OM::WithinHost;
 
-class InfectionImmunitySuite : public CxxTest::TestSuite
-{
-public:
-    void setUp () {
+class InfectionImmunitySuite : public CxxTest::TestSuite {
+  public:
+    void setUp() {
         UnittestUtil::initTime(5);
-        
-	// Note: these values were pulled from one source and shouldn't be taken as authoritative
-	double invCumulativeYstar = 1.0 / 68564384.7102;
-	double invCumulativeHstar = 1.0 / 71.676733;
-	double alpha_m = 1.0 - exp(- 2.411434);
-	double decayM = 2.717773;
+
+        // Note: these values were pulled from one source and shouldn't be taken as authoritative
+        double invCumulativeYstar = 1.0 / 68564384.7102;
+        double invCumulativeHstar = 1.0 / 71.676733;
+        double alpha_m = 1.0 - exp(-2.411434);
+        double decayM = 2.717773;
         WHFalciparum::setParams(invCumulativeYstar, invCumulativeHstar, alpha_m, decayM);
-        
+
         // Any falciparum kind will do:
         LocalRng rng(0, 721347520444481703);
-	wh = new WHDescriptive{ UnittestUtil::ctx(), rng, numeric_limits<double>::quiet_NaN() };
+        wh = new WHDescriptive{UnittestUtil::ctx(), rng, numeric_limits<double>::quiet_NaN()};
         // immunity state lives in columns now: bind a private mini-column
         util::MasterRng master(0, 1);
         wh->bind_columns(cols, cols.append_row(sim::zero(), master));
     }
-    void tearDown () {
-	delete wh;
-    }
-    
-    void testImmunity () {
-	// Base case: virtually no immunity due to mother's immunity or past infections
+    void tearDown() { delete wh; }
+
+    void testImmunity() {
+        // Base case: virtually no immunity due to mother's immunity or past infections
         wh->imm_h_ref() = 0.0;
         wh->imm_Y_ref() = 0.0;
         double cumExposureJ = 0.0;
-	TS_ASSERT_APPROX (wh->immunitySurvivalFactor (100., cumExposureJ), 1.0);
-        
-	// maternal immunity
-	TS_ASSERT_APPROX (wh->immunitySurvivalFactor (0.1, cumExposureJ), 0.30631938551881299);
-        
-	// past infections, no density
+        TS_ASSERT_APPROX(wh->immunitySurvivalFactor(100., cumExposureJ), 1.0);
+
+        // maternal immunity
+        TS_ASSERT_APPROX(wh->immunitySurvivalFactor(0.1, cumExposureJ), 0.30631938551881299);
+
+        // past infections, no density
         wh->imm_h_ref() = 100.0;
-	TS_ASSERT_APPROX (wh->immunitySurvivalFactor (100., cumExposureJ), 0.41995608739475931);
-        
-	// previous with cum. density of 1e8 (but none from current infection)
+        TS_ASSERT_APPROX(wh->immunitySurvivalFactor(100., cumExposureJ), 0.41995608739475931);
+
+        // previous with cum. density of 1e8 (but none from current infection)
         wh->imm_Y_ref() = 1e8;
-	TS_ASSERT_APPROX (wh->immunitySurvivalFactor (100., cumExposureJ), 0.17081918453312689);
+        TS_ASSERT_APPROX(wh->immunitySurvivalFactor(100., cumExposureJ), 0.17081918453312689);
     }
-    
-private:
+
+  private:
     WHDescriptive* wh;
     HumanColumns cols;
 };
-

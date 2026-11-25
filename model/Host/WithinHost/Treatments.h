@@ -28,8 +28,8 @@
 
 using namespace std;
 
-namespace scnXml{
-    class TreatmentOption;
+namespace scnXml {
+class TreatmentOption;
 }
 
 namespace OM {
@@ -43,10 +43,10 @@ namespace WithinHost {
  * Note: this struct and the Treatments class offer a sub-set of the
  * functionality offered by CMDecisionTree, and thus is technically redundant.
  */
-struct TreatmentId{
-    inline bool operator==( const TreatmentId that ){ return id == that.id; }
-    inline bool operator!=( const TreatmentId that ){ return id != that.id; }
-    
+struct TreatmentId {
+    inline bool operator==(const TreatmentId that) { return id == that.id; }
+    inline bool operator!=(const TreatmentId that) { return id != that.id; }
+
     /// Default constructor: construct to an initial value. Don't pass this value to WHInterface::treatment()!
     TreatmentId() : id(numeric_limits<uint32_t>::max()) {}
     explicit TreatmentId(uint32_t id) : id(id) {}
@@ -62,28 +62,23 @@ struct TreatmentId{
  * For use within WithinHost only.
  */
 class Treatments : public interventions::TriggeredDeployments {
-public:
+  public:
     /// @brief Static methods
     //@{
     /** Configure a new treatment option, and return the code used to select
      * that option later. */
-    static TreatmentId addTreatment( RunContext& ctx, const scnXml::TreatmentOption& desc );
-    
+    static TreatmentId addTreatment(RunContext& ctx, const scnXml::TreatmentOption& desc);
+
     /** Return the corresponding treatment description. */
-    static const Treatments& select( RunContext& ctx, TreatmentId treatId );
+    static const Treatments& select(RunContext& ctx, TreatmentId treatId);
     //@}
-    
+
     /// @brief Types used by the non-static methods
     //@{
     /// Stages effected
-    enum Stages{
-        NONE /*i.e. no effect*/,
-        LIVER = 1,
-        BLOOD = 2,
-        BOTH = LIVER | BLOOD
-    };
+    enum Stages { NONE /*i.e. no effect*/, LIVER = 1, BLOOD = 2, BOTH = LIVER | BLOOD };
     //@}
-    
+
     /// @brief Non-static methods
     //@}
 
@@ -91,9 +86,9 @@ public:
     /// n>0 = treatment for next n time steps.
     SimTime timeLiver, timeBlood;
 
-private:
+  private:
     // non-static:
-    Treatments( RunContext& ctx, const scnXml::TreatmentOption& elt );
+    Treatments(RunContext& ctx, const scnXml::TreatmentOption& elt);
 };
 
 }

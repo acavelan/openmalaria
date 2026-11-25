@@ -52,19 +52,20 @@ namespace {
 
 /// Raw IEEE-754 bit pattern of every monitoring report value, in store order
 /// (contract (g): store order is deterministic). NaN-safe: compares bits.
-void captureMonStores(OM::RunContext& ctx, std::vector<uint64_t>& out)
-{
+void captureMonStores(OM::RunContext& ctx, std::vector<uint64_t>& out) {
     for (const OM::mon::internal::MeasureStore& store : (*ctx.monitoring).stores) {
         out.push_back(uint64_t(INT64_MAX) + 1 + static_cast<uint64_t>(store.output.measure));
         out.push_back(store.size());
-        std::visit([&out](const auto& reports) {
-            for (const auto v : reports) {
-                double d = static_cast<double>(v);
-                uint64_t bits;
-                std::memcpy(&bits, &d, sizeof bits);
-                out.push_back(bits);
-            }
-        }, store.reports);
+        std::visit(
+            [&out](const auto& reports) {
+                for (const auto v : reports) {
+                    double d = static_cast<double>(v);
+                    uint64_t bits;
+                    std::memcpy(&bits, &d, sizeof bits);
+                    out.push_back(bits);
+                }
+            },
+            store.reports);
     }
 }
 
@@ -73,8 +74,7 @@ struct RunCapture {
     std::vector<char> surveyBytes;
 };
 
-RunCapture captureRun(RunContext& ctx, const std::string& surveyFile)
-{
+RunCapture captureRun(RunContext& ctx, const std::string& surveyFile) {
     RunCapture c;
     captureMonStores(ctx, c.monValues);
     std::ifstream in(surveyFile, std::ios::in | std::ios::binary);
@@ -84,12 +84,10 @@ RunCapture captureRun(RunContext& ctx, const std::string& surveyFile)
 
 } // namespace
 
-class TwoRunsSuite : public CxxTest::TestSuite
-{
-public:
-    void testTwoRunsInOneProcessAreBitIdentical()
-    {
-        const std::string src(UnittestSourceDir);       // <repo>/unittest/
+class TwoRunsSuite : public CxxTest::TestSuite {
+  public:
+    void testTwoRunsInOneProcessAreBitIdentical() {
+        const std::string src(UnittestSourceDir); // <repo>/unittest/
         const std::string scenario = src + "../test/scenario1.xml";
         const std::string xsd = src + "../schema/scenario_50.xsd";
         const std::string resources = src + "../test";
@@ -105,11 +103,8 @@ public:
         std::filesystem::copy_file(xsd, work / "scenario_current.xsd");
         std::filesystem::current_path(work);
 
-        const char* argv[] = { "unittest",
-            "--scenario", scenario.c_str(),
-            "--resource-path", resources.c_str(),
-            "--output-format", "bin",
-            "--output", "tworuns.bin" };
+        const char* argv[] = {"unittest",        "--scenario", scenario.c_str(), "--resource-path", resources.c_str(),
+                              "--output-format", "bin",        "--output",       "tworuns.bin"};
         std::string scenarioFile;
         try {
             scenarioFile = OM::util::CommandLine::parse(5, const_cast<char**>(argv));
@@ -134,25 +129,33 @@ public:
         }
         std::filesystem::current_path(oldCwd);
 
-        if (!ok) { TS_FAIL(err); return; }
+        if (!ok) {
+            TS_FAIL(err);
+            return;
+        }
 
         TS_ASSERT_EQUALS(run1.monValues.size(), run2.monValues.size());
         size_t firstDiff = run1.monValues.size();
         for (size_t i = 0; i < std::min(run1.monValues.size(), run2.monValues.size()); ++i) {
-            if (run1.monValues[i] != run2.monValues[i]) { firstDiff = i; break; }
+            if (run1.monValues[i] != run2.monValues[i]) {
+                firstDiff = i;
+                break;
+            }
         }
         if (firstDiff < run1.monValues.size()) {
-            const auto hex = [](uint64_t v){ char b[19]; std::snprintf(b, sizeof b, "0x%016llx", static_cast<unsigned long long>(v)); return std::string(b); };
+            const auto hex = [](uint64_t v) {
+                char b[19];
+                std::snprintf(b, sizeof b, "0x%016llx", static_cast<unsigned long long>(v));
+                return std::string(b);
+            };
             TS_FAIL("monitoring store value differs at #" + std::to_string(firstDiff) +
-                    ": run1=" + hex(run1.monValues[firstDiff]) +
-                    " run2=" + hex(run2.monValues[firstDiff]));
+                    ": run1=" + hex(run1.monValues[firstDiff]) + " run2=" + hex(run2.monValues[firstDiff]));
         }
         TS_ASSERT_EQUALS(run1.surveyBytes.size(), run2.surveyBytes.size());
-        if (!run1.surveyBytes.empty()) {   // sanity: run 1 produced output at all
+        if (!run1.surveyBytes.empty()) { // sanity: run 1 produced output at all
             TS_ASSERT(run1.surveyBytes == run2.surveyBytes);
             // in-memory value capture must be non-empty too, else the test proves nothing
             TS_ASSERT(!run1.monValues.empty());
         }
     }
 };
-

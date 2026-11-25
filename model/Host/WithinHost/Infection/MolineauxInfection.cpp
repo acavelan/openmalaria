@@ -66,7 +66,7 @@ static double qPow[MolineauxInfection::v];
 
 // sigma, rho: decay parameters, per day, of the acquired variant-specific and variant-transcending immune responses
 const double sigma = 0.02;
-const double sigma_decay = exp(-2.0*sigma);
+const double sigma_decay = exp(-2.0 * sigma);
 // const double rho = 0.0;      // NOTE: rho is not used; if setting this, also change the code below (search rho)
 // beta: Minimum value of the probability that a parasite escapes control by the acquired and variant-transcending immune response
 const double beta = 0.01;
@@ -97,10 +97,10 @@ const double C = 1.0;
 // Blood volume per kg can be found, for example, here:
 // http://hypertextbook.com/facts/1998/LanNaLee.shtml
 // Futher searches give values between around 65 and 85 ml/kg.
-const double blood_vol_per_kg = 7e4;    // μl/kg; (equals 70 ml/kg)
+const double blood_vol_per_kg = 7e4; // μl/kg; (equals 70 ml/kg)
 // PRBC = parasited red blood cell
-const double initial_dens = 0.1;        // initial parasite density in PRBC/μl
-const double elim_parasites = 50;       // minimum number PRBC to avoid elimination of infection and variant
+const double initial_dens = 0.1;  // initial parasite density in PRBC/μl
+const double elim_parasites = 50; // minimum number PRBC to avoid elimination of infection and variant
 
 /* Case-specific parameters.
  * 
@@ -111,157 +111,153 @@ const double elim_parasites = 50;       // minimum number PRBC to avoid eliminat
  * Indexing is 2*patient + param where 0 <= patient < 35 and 0 <= param < 2.
  */
 const double case_specific_data[] = {
-        216, 18600, // G131
-        198, 13080, // G140
-        206, 45720, // G141
-        366, 23760, // G142
-        230, 60840, // G143
-        172, 6000, // G146
-        100, 2340, // G147
-        236, 31440, // G159
-        236, 453600, // G161
-        120, 4240, // G173
-        176, 195840, // G174
-        178, 60120, // G178
-        36, 8720, // G184
-        44, 8000, // G193
-        242, 395280, // G200
-        70, 28320, // G210
-        292, 200160, // G212
-        248, 59320, // G217
-        98, 66480, // G23
-        176, 61200, // G230
-        234, 169920, // G240
-        226, 46800, // G264
-        270, 19260, // G265
-        278, 86040, // G279
-        212, 110160, // G290
-        264, 43200, // G385
-        364, 133920, // G407
-        184, 222480, // G408
-        160, 21420, // G414
-        220, 74160, // G416
-        132, 210960, // G423
-        176, 89280, // G439
-        208, 105840, // G445
-        330, 21600, // G457
-        404, 156240 // G48
+    216, 18600,  // G131
+    198, 13080,  // G140
+    206, 45720,  // G141
+    366, 23760,  // G142
+    230, 60840,  // G143
+    172, 6000,   // G146
+    100, 2340,   // G147
+    236, 31440,  // G159
+    236, 453600, // G161
+    120, 4240,   // G173
+    176, 195840, // G174
+    178, 60120,  // G178
+    36,  8720,   // G184
+    44,  8000,   // G193
+    242, 395280, // G200
+    70,  28320,  // G210
+    292, 200160, // G212
+    248, 59320,  // G217
+    98,  66480,  // G23
+    176, 61200,  // G230
+    234, 169920, // G240
+    226, 46800,  // G264
+    270, 19260,  // G265
+    278, 86040,  // G279
+    212, 110160, // G290
+    264, 43200,  // G385
+    364, 133920, // G407
+    184, 222480, // G408
+    160, 21420,  // G414
+    220, 74160,  // G416
+    132, 210960, // G423
+    176, 89280,  // G439
+    208, 105840, // G445
+    330, 21600,  // G457
+    404, 156240  // G48
 };
 
 // ———  static (non-class-member) code  ———
 
-Infection* createMolineauxInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
-    return new MolineauxInfection (ctx, rng, protID, origin);
+Infection* createMolineauxInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+    return new MolineauxInfection(ctx, rng, protID, origin);
 }
 
-void MolineauxInfection::init( RunContext& ctx, const Parameters& parameters ){
+void MolineauxInfection::init(RunContext& ctx, const Parameters& parameters) {
     ctx.createInfection = &createMolineauxInfection;
-    
-    multi_factor_gamma = util::ModelOptions::option( util::PARASITE_REPLICATION_GAMMA );
-    
-    pairwise_P_star_sample = util::ModelOptions::option( util::MOLINEAUX_PAIRWISE_SAMPLE );
-    if( !pairwise_P_star_sample ){
+
+    multi_factor_gamma = util::ModelOptions::option(util::PARASITE_REPLICATION_GAMMA);
+
+    pairwise_P_star_sample = util::ModelOptions::option(util::MOLINEAUX_PAIRWISE_SAMPLE);
+    if (!pairwise_P_star_sample) {
         mean_shape_first_local_max = parameters[Parameter::MEAN_LOCAL_MAX_DENSITY];
         sd_scale_first_local_max = parameters[Parameter::SD_LOCAL_MAX_DENSITY];
-        
+
         mean_shape_diff_pos_days = parameters[Parameter::MEAN_DIFF_POS_DAYS];
         sd_scale_diff_pos_days = parameters[Parameter::SD_DIFF_POS_DAYS];
-        
-        
-        // with gamma distribution shape and scale parameters has to be recalculated 
-        if (util::ModelOptions::option (util::FIRST_LOCAL_MAXIMUM_GAMMA)) {
+
+        // with gamma distribution shape and scale parameters has to be recalculated
+        if (util::ModelOptions::option(util::FIRST_LOCAL_MAXIMUM_GAMMA)) {
             //NOTE: variant does not appear to work well (according to unit test stats)
             first_local_maximum_gamma = true;
-            mean_shape_first_local_max = pow(mean_shape_first_local_max,2) / pow(sd_scale_first_local_max,2);
-            sd_scale_first_local_max = pow(sd_scale_first_local_max,2) / mean_shape_first_local_max;
+            mean_shape_first_local_max = pow(mean_shape_first_local_max, 2) / pow(sd_scale_first_local_max, 2);
+            sd_scale_first_local_max = pow(sd_scale_first_local_max, 2) / mean_shape_first_local_max;
         } else {
             first_local_maximum_gamma = false;
         }
-        
+
         // with gamma distribution shape and scale parameters has to be recalculated
-        if(util::ModelOptions::option (util::MEAN_DURATION_GAMMA)) {
+        if (util::ModelOptions::option(util::MEAN_DURATION_GAMMA)) {
             //NOTE: variant does not appear to work well (according to unit test stats)
             mean_duration_gamma = true;
-            mean_shape_diff_pos_days = pow(mean_shape_diff_pos_days,2) / pow(sd_scale_diff_pos_days,2);
-            sd_scale_diff_pos_days = pow(sd_scale_diff_pos_days,2) / mean_shape_diff_pos_days;
+            mean_shape_diff_pos_days = pow(mean_shape_diff_pos_days, 2) / pow(sd_scale_diff_pos_days, 2);
+            sd_scale_diff_pos_days = pow(sd_scale_diff_pos_days, 2) / mean_shape_diff_pos_days;
         } else {
             mean_duration_gamma = false;
         }
     }
-    
-   for( size_t i = 0; i < MolineauxInfection::v; i++ ){
-       qPow[i] = pow(q, static_cast<double>(i+1));
-   }
+
+    for (size_t i = 0; i < MolineauxInfection::v; i++) {
+        qPow[i] = pow(q, static_cast<double>(i + 1));
+    }
 }
 
 // ———  Molineaux: initialisation  ———
 
 // mi[] + Pc_star/Pm_star draws at the old infection_ctor_molineaux() slots
-MolineauxInfection::MolineauxInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin) :
-    Infection (ctx, genotype, origin, Kind::Molineaux)
-{
-    auto* molineaux = this;   // alias: body below verbatim
+MolineauxInfection::MolineauxInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin)
+    : Infection(ctx, genotype, origin, Kind::Molineaux) {
+    auto* molineaux = this; // alias: body below verbatim
     constexpr size_t v = MolineauxInfection::v;
     constexpr size_t taus = MolineauxInfection::taus;
-    for( size_t i = 0; i < v; i++ ){
+    for (size_t i = 0; i < v; i++) {
         // Molineaux paper, equation 11
-        if( multi_factor_gamma ){
-            do{
+        if (multi_factor_gamma) {
+            do {
                 // parity: order — local RNG stream: draw call order fixes stream state
-                molineaux->mi[i] = static_cast<float>(rng.gamma(shape_m,scale_m));
-            }while( molineaux->mi[i]<1.0 );
-        }else{
-            do{
+                molineaux->mi[i] = static_cast<float>(rng.gamma(shape_m, scale_m));
+            } while (molineaux->mi[i] < 1.0);
+        } else {
+            do {
                 molineaux->mi[i] = static_cast<float>(rng.gauss(mu_m, sigma_m));
-            }while( molineaux->mi[i]<1.0 );
+            } while (molineaux->mi[i] < 1.0);
         }
     }
-    
-    for( size_t tau=0; tau<taus; tau++ ){
+
+    for (size_t tau = 0; tau < taus; tau++) {
         molineaux->lagged_Pc[tau] = 0.0;
     }
-    
+
     molineaux->Sm_summation = 0.0;
-    
-    if( pairwise_P_star_sample ){
-        int patient = rng.uniform( 35 );
-        molineaux->Pc_star = static_cast<float>( k_c * case_specific_data[2 * patient + 1] );
-        molineaux->Pm_star = static_cast<float>( k_m * case_specific_data[2 * patient + 0] );
-    }else{
+
+    if (pairwise_P_star_sample) {
+        int patient = rng.uniform(35);
+        molineaux->Pc_star = static_cast<float>(k_c * case_specific_data[2 * patient + 1]);
+        molineaux->Pm_star = static_cast<float>(k_m * case_specific_data[2 * patient + 0]);
+    } else {
         // Sampling of the first local maxima:
-        if( first_local_maximum_gamma ){
-            molineaux->Pc_star = static_cast<float>( k_c * pow(10.0, rng.gamma(
-                mean_shape_first_local_max, sd_scale_first_local_max)) );
+        if (first_local_maximum_gamma) {
+            molineaux->Pc_star =
+                static_cast<float>(k_c * pow(10.0, rng.gamma(mean_shape_first_local_max, sd_scale_first_local_max)));
         } else {
-            molineaux->Pc_star = static_cast<float>( k_c * pow(10.0, rng.gauss(
-                mean_shape_first_local_max, sd_scale_first_local_max)) );
+            molineaux->Pc_star =
+                static_cast<float>(k_c * pow(10.0, rng.gauss(mean_shape_first_local_max, sd_scale_first_local_max)));
         }
-        
+
         // Sampling of duration:
-        if( mean_duration_gamma ) {
-            molineaux->Pm_star = static_cast<float>( k_m * pow(10.0, rng.gamma(
-                mean_shape_diff_pos_days,sd_scale_diff_pos_days)) );
+        if (mean_duration_gamma) {
+            molineaux->Pm_star =
+                static_cast<float>(k_m * pow(10.0, rng.gamma(mean_shape_diff_pos_days, sd_scale_diff_pos_days)));
         } else {
-            molineaux->Pm_star = static_cast<float>( k_m * pow(10.0, rng.gauss(
-                mean_shape_diff_pos_days,sd_scale_diff_pos_days)) );
+            molineaux->Pm_star =
+                static_cast<float>(k_m * pow(10.0, rng.gauss(mean_shape_diff_pos_days, sd_scale_diff_pos_days)));
         }
     }
 }
 
-MolineauxInfection::Variant::Variant () :
-        Pi1(0.0), Pi2(0.0), Si_summation(0.0)
-{
-    for(size_t tau=0; tau<taus; tau++){
-        lagged_Pi[tau] =  0.0;
+MolineauxInfection::Variant::Variant() : Pi1(0.0), Pi2(0.0), Si_summation(0.0) {
+    for (size_t tau = 0; tau < taus; tau++) {
+        lagged_Pi[tau] = 0.0;
     }
 }
 
 // ———  Molineaux: density updates  ———
 
-bool MolineauxInfection::update( LocalRng&, double survival_factor, SimTime now, double body_mass ){
-    SimTime age_BS = now - m_startDate - Infection::s_latentP;	// age of post-latent-period blood stage
-    if( age_BS < sim::zero() )
-        return false;	// latent period (liver stage) — don't do anything
+bool MolineauxInfection::update(LocalRng&, double survival_factor, SimTime now, double body_mass) {
+    SimTime age_BS = now - m_startDate - Infection::s_latentP; // age of post-latent-period blood stage
+    if (age_BS < sim::zero())
+        return false; // latent period (liver stage) — don't do anything
     // bsAge : age of blood stage; 0 implies initial density (0.1; time t=0 in
     // paper, t=1 in MP's Matlab code), age 2 days is after first update step
     // survivalFactor : probabilty of merozoites surviving drugs, inter-infection immunity and vaccines
@@ -271,22 +267,22 @@ bool MolineauxInfection::update( LocalRng&, double survival_factor, SimTime now,
     auto* molineaux = this;
     constexpr size_t v = MolineauxInfection::v;
     constexpr size_t taus = MolineauxInfection::taus;
-    
+
     double blood_volume = blood_vol_per_kg * body_mass;
-    double elim_dens = elim_parasites / blood_volume;   // 50 / 5e6 = 5e-5
-    
+    double elim_dens = elim_parasites / blood_volume; // 50 / 5e6 = 5e-5
+
     // ———  1. Update m_density (Pc), Pi and related  ———
-    double Pi[v] = { 0.0f };
-    
-    if (age_BS == sim::zero()){
+    double Pi[v] = {0.0f};
+
+    if (age_BS == sim::zero()) {
         // The first variant starts with a pre-set density (regardless of blood
         // volume; this is an assumption by DH; paper assumes fixed volume)
         molineaux->variants.resize(1);
         Pi[0] = initial_dens;
         m_density = initial_dens;
-    }else{
+    } else {
         double sum = 0.0;
-        for( size_t i = 0; i < molineaux->variants.size(); i++ ){
+        for (size_t i = 0; i < molineaux->variants.size(); i++) {
             double newP = survival_factor * molineaux->variants[i].Pi1;
             Pi[i] = newP;
             molineaux->variants[i].Pi1 = static_cast<float>(survival_factor * molineaux->variants[i].Pi2);
@@ -294,107 +290,107 @@ bool MolineauxInfection::update( LocalRng&, double survival_factor, SimTime now,
         }
         m_density = sum;
     }
-    
+
     // Integration with inter-infection immunity model
     m_cumulativeExposureJ += m_density;
-    
-    if( m_density <= elim_dens ){
-        return true;    // infection goes extinct
+
+    if (m_density <= elim_dens) {
+        return true; // infection goes extinct
     }
-    
+
     // Every other step (if bsAge is even) we calculate new densities (the
     // Molineaux model uses a 2-day step; we have simply added interpolation
     // for the interleaving densities). In other cases we are finished now.
-    if( mod_nn(int(age_BS), 2) != 0 ){
-        return false;   // end of update, not extinct
+    if (mod_nn(int(age_BS), 2) != 0) {
+        return false; // end of update, not extinct
     }
-    
-    
+
     // ———  2-4: Calculate infection-specific immune responses  ———
     // Sc (probability that a parasite escapes control by innate and variant-transcending immune response)
     // Sm (                        "                      acquired and variant-transcending immune response)
     // S[i] (                      "                      acquired and variant-specific immune response)
-    
+
     // ———  2. innate immunity (equation 5)  ———
-    static_assert( kappa_c == 3, "kappa_c == 3" );        // allows us to optimise pow(..., kappa_c) to multiplication
-    const double base = m_density/molineaux->Pc_star;
-    const double Sc = 1.0 / (1.0 + base*base*base);
-    
+    static_assert(kappa_c == 3, "kappa_c == 3"); // allows us to optimise pow(..., kappa_c) to multiplication
+    const double base = m_density / molineaux->Pc_star;
+    const double Sc = 1.0 / (1.0 + base * base * base);
+
     // ———  3. variant-transcending immune response (equations 7, 8)  ———
     // 3.a) Update the sum in (7), based on previous result
-    const size_t tau = mod_nn(age_BS / 2, taus);    // 8 days ago has same index as today
+    const size_t tau = mod_nn(age_BS / 2, taus); // 8 days ago has same index as today
     // NOTE: rho == 0 so we can optimise this code:
     //Sm_summation = Sm_summation * exp(-2.0*rho) + laggedPc[index];
     molineaux->Sm_summation = molineaux->Sm_summation + molineaux->lagged_Pc[tau];
-    
+
     // 3.b) Update laggedPc (equation 8, but only stored for the last tau steps)
     //We could use min here, but it seems that min has problems with static const double C
     molineaux->lagged_Pc[tau] = static_cast<float>(m_density < C ? m_density : C);
-    
+
     // 3.c) calculate S_m(t) (equation 7)
-    static_assert( kappa_m == 1, "kappa_m == 1" );        // allows us to optimise out pow(..., kappa_m):
+    static_assert(kappa_m == 1, "kappa_m == 1"); // allows us to optimise out pow(..., kappa_m):
     //double Sm = (1.0 - beta) / (1.0 + pow(Sm_summation / Pm_star, kappa_m)) + beta
     const double Sm = (1.0 - beta) / (1.0 + molineaux->Sm_summation / molineaux->Pm_star) + beta;
-    
+
     // ———  4. variant-specific immune response (equation 6)  ———
-    double Si[v];       // calculate value for each variant
-    double sum_qj_Sj=0.0;       // simultaneously calculation summataion in equation 4
-    
-    for(size_t i = 0; i < v; i++){
-        if( i < molineaux->variants.size() ){
+    double Si[v];           // calculate value for each variant
+    double sum_qj_Sj = 0.0; // simultaneously calculation summataion in equation 4
+
+    for (size_t i = 0; i < v; i++) {
+        if (i < molineaux->variants.size()) {
             // 4.a) Update the sum in (6) based on the last step's value
             //note: sigma_decay = exp(-2*sigma)
-            molineaux->variants[i].Si_summation = static_cast<float>(
-                molineaux->variants[i].Si_summation * sigma_decay + molineaux->variants[i].lagged_Pi[tau]);
+            molineaux->variants[i].Si_summation = static_cast<float>(molineaux->variants[i].Si_summation * sigma_decay +
+                                                                     molineaux->variants[i].lagged_Pi[tau]);
             // 4.b) update history of density (P_i(t))
             molineaux->variants[i].lagged_Pi[tau] = static_cast<float>(Pi[i]);
-            
+
             // 4.c) calculate S_i(t) (equation 6)
-            static_assert( kappa_v == 3, "kappa_v == 3" );        // again, optimise pow to multiplication
+            static_assert(kappa_v == 3, "kappa_v == 3"); // again, optimise pow to multiplication
             const double base = molineaux->variants[i].Si_summation * inv_Pv_star;
-            Si[i] = 1.0 / (1.0 + base*base*base);        // eqn 6, given κ_v = 3
-        }else{
+            Si[i] = 1.0 / (1.0 + base * base * base); // eqn 6, given κ_v = 3
+        } else {
             Si[i] = 1.0; // eqn 6 for the case when P_i(τ) = 0 for τ ≤ t - δ_m
         }
-        sum_qj_Sj += qPow[i] * Si[i];    // sum in eqn 4
+        sum_qj_Sj += qPow[i] * Si[i]; // sum in eqn 4
     }
-    
+
     // ———  5. Variant densities, equations 1, 2 and 4  ———
-    for(size_t i = 0; i < v; i++ ){
+    for (size_t i = 0; i < v; i++) {
         // 4.a) Calculate p_i, variant selection probability (eqn 4)
         double p_i = 0.0;
-        if( Si[i] >= 0.1 ){
+        if (Si[i] >= 0.1) {
             //note: qPow[i] = pow(q, i+1)
             p_i = qPow[i] * Si[i] / sum_qj_Sj;
         }
-        
+
         // 4.b) calculate P_i'(t+2) [eqn 1] then P_i(t+2) [eqn 2]
         // This is the growth rate after taking immune effect into account:
-        double growth_factor = molineaux->mi[i] * Si[i] * Sc * Sm;   // part of eqn 1
-        if( i < molineaux->variants.size() ){
+        double growth_factor = molineaux->mi[i] * Si[i] * Sc * Sm; // part of eqn 1
+        if (i < molineaux->variants.size()) {
             // Pi_prime: the variant's density at time t+2 (eqn 1)
-            double Pi_prime = ( (1.0 - s) * Pi[i] + s * p_i * m_density ) * growth_factor;
-            
-            if( Pi_prime < elim_dens ) Pi_prime = 0.0;    // eqn 2
-            
+            double Pi_prime = ((1.0 - s) * Pi[i] + s * p_i * m_density) * growth_factor;
+
+            if (Pi_prime < elim_dens)
+                Pi_prime = 0.0; // eqn 2
+
             molineaux->variants[i].Pi1 = static_cast<float>(sqrt(Pi[i] * Pi_prime));
             molineaux->variants[i].Pi2 = static_cast<float>(Pi_prime);
-        }else{
+        } else {
             // In this case P_i(τ) = 0 for all τ ≤ t, and we haven't allocated storage.
-            
+
             // Pi_prime: the variant's density at time t+2 (eqn 1 in paper)
-            double Pi_prime = ( s * p_i * m_density ) * growth_factor;
-            
+            double Pi_prime = (s * p_i * m_density) * growth_factor;
+
             // Molineaux paper equation 2
-            if( Pi_prime >= elim_dens ){    // [if not, P_i(t+2) = 0]
+            if (Pi_prime >= elim_dens) { // [if not, P_i(t+2) = 0]
                 // express a new variant at time t+2:
-                molineaux->variants.resize( i+1 ); // allocate (potentially for multiple variants)
+                molineaux->variants.resize(i + 1); // allocate (potentially for multiple variants)
                 molineaux->variants[i].Pi2 = static_cast<float>(Pi_prime);
             }
         }
     }
-    
-    return false;       // end of update, not extinct
+
+    return false; // end of update, not extinct
 }
 
 // ———  Molineaux: checkpointing  ———

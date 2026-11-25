@@ -28,41 +28,43 @@
 #include "Clock.h"
 #include <limits>
 
-namespace OM { namespace interventions {
+namespace OM {
+namespace interventions {
 
 /** Enumeration of all available components, in the order that these should be
  * deployed in within a single intervention. */
-namespace Component { enum Type {
-    RECRUIT_ONLY,     // selection for a sub-population (without other effects)
-    SCREEN,     // screening, e.g. as part of MSAT
-    TREAT_SIMPLE,       // treatment using the simple model (e.g. for MDA)
-    TREAT_PKPD, // treatment using the PK/PD model (e.g. MDA)
-    CM_DT,      // execute a "case management" decision tree (e.g. MSAT or more complicated things)
-    PEV,        // pre-erythrocytic vaccine
-    BSV,        // blood-stage vaccine
-    TBV,        // transmission-blocking vaccine
-    IPT,        // intermittent preventative treatment
-    ITN,        // insecticide treated net
-    IRS,        // indoor residual spraying
-    GVI,        // generic vector intervention
-    CLEAR_IMMUNITY,     // reset accumulated immunity to zero
-}; }
+namespace Component {
+enum Type {
+    RECRUIT_ONLY,   // selection for a sub-population (without other effects)
+    SCREEN,         // screening, e.g. as part of MSAT
+    TREAT_SIMPLE,   // treatment using the simple model (e.g. for MDA)
+    TREAT_PKPD,     // treatment using the PK/PD model (e.g. MDA)
+    CM_DT,          // execute a "case management" decision tree (e.g. MSAT or more complicated things)
+    PEV,            // pre-erythrocytic vaccine
+    BSV,            // blood-stage vaccine
+    TBV,            // transmission-blocking vaccine
+    IPT,            // intermittent preventative treatment
+    ITN,            // insecticide treated net
+    IRS,            // indoor residual spraying
+    GVI,            // generic vector intervention
+    CLEAR_IMMUNITY, // reset accumulated immunity to zero
+};
+}
 
 /** Essentially just an integer, used as a vector index.
  * 
  * This class wraps the integer to guard against unintended conversions to or
  * from an integer (which could be mis-use). */
-struct ComponentId{
-    explicit inline ComponentId( size_t id ) : id(id) {}
-    inline bool operator== (const ComponentId that) const{ return id == that.id; }
-    inline bool operator< (const ComponentId that) const{ return id < that.id; }
-    
+struct ComponentId {
+    explicit inline ComponentId(size_t id) : id(id) {}
+    inline bool operator==(const ComponentId that) const { return id == that.id; }
+    inline bool operator<(const ComponentId that) const { return id < that.id; }
+
     /// Special value indicating the whole population
-    static ComponentId wholePop() {
-        return ComponentId{ numeric_limits<uint32_t>::max() };
-    }
-    
+    static ComponentId wholePop() { return ComponentId{numeric_limits<uint32_t>::max()}; }
+
     size_t id;
 };
 
-} }
+}
+}

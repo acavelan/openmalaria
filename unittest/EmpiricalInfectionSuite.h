@@ -35,97 +35,100 @@ using namespace OM::WithinHost;
 
 const bool dump_emprical = false;
 
-class EmpiricalInfectionSuite : public CxxTest::TestSuite
-{
-public:
+class EmpiricalInfectionSuite : public CxxTest::TestSuite {
+  public:
     EmpiricalInfectionSuite() : m_rng(0, 0) {}
-    
-    void setUp () {
+
+    void setUp() {
         m_rng.seed(3978236241, 721347520444481703);
         UnittestUtil::initTime(1);
-        UnittestUtil::Infection_init_latentP_and_NaN ();
+        UnittestUtil::Infection_init_latentP_and_NaN();
         EmpiricalInfection::init(UnittestUtil::ctx());
         // pkpdID (1st value) isn't important since we're not using drug model here:
-        infection = UnittestUtil::ctx().createInfection( UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous);
-        for( SimTime d = UnittestUtil::clock().ts1(), end = UnittestUtil::clock().ts1() + sim::fromDays(15); d < end; d = d + sim::oneDay() ){
+        infection =
+            UnittestUtil::ctx().createInfection(UnittestUtil::ctx(), m_rng, 0xFFFFFFFF, InfectionOrigin::Indigenous);
+        for (SimTime d = UnittestUtil::clock().ts1(), end = UnittestUtil::clock().ts1() + sim::fromDays(15); d < end;
+             d = d + sim::oneDay()) {
             // blood stage starts 15 days after creation
-            UnittestUtil::incrTime( sim::oneDay() );
-            infection->update(m_rng, 1.0, d, numeric_limits<double>::quiet_NaN() );
+            UnittestUtil::incrTime(sim::oneDay());
+            infection->update(m_rng, 1.0, d, numeric_limits<double>::quiet_NaN());
         }
     }
-    void tearDown () {
-        delete infection;
-    }
+    void tearDown() { delete infection; }
 
-    void testNewInf () {
-        TS_ASSERT_APPROX (infection->getDensity(), 0.00000000000000000);
-    }
+    void testNewInf() { TS_ASSERT_APPROX(infection->getDensity(), 0.00000000000000000); }
 
     // Parasite growth is stochastic, so there's not a lot we can test, except for reproducability
-    void testUpdatedInf () {
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+    void testUpdatedInf() {
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 1.0, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
-        if (dump_emprical) cout << setprecision(8) << infection->getDensity() << endl;
-        TS_ASSERT_APPROX (infection->getDensity(), 2.3427793);
+        if (dump_emprical)
+            cout << setprecision(8) << infection->getDensity() << endl;
+        TS_ASSERT_APPROX(infection->getDensity(), 2.3427793);
     }
-    void testUpdated2Inf () {
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+    void testUpdated2Inf() {
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 1.0, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 1.0, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
-        if (dump_emprical) cout << setprecision(8) << infection->getDensity() << endl;
-        TS_ASSERT_APPROX (infection->getDensity(), 0.42220637);
+        if (dump_emprical)
+            cout << setprecision(8) << infection->getDensity() << endl;
+        TS_ASSERT_APPROX(infection->getDensity(), 0.42220637);
     }
-    void testUpdated3Inf () {
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+    void testUpdated3Inf() {
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 1.0, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 1.0, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 1.0, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
-        if (dump_emprical) cout << setprecision(8) << infection->getDensity() << endl;
-        TS_ASSERT_APPROX (infection->getDensity(), 1.2290052);
+        if (dump_emprical)
+            cout << setprecision(8) << infection->getDensity() << endl;
+        TS_ASSERT_APPROX(infection->getDensity(), 1.2290052);
     }
-    void testUpdated4Inf () {
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+    void testUpdated4Inf() {
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 1.0, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 1.0, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 1.0, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 1.0, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
-        if (dump_emprical) cout << setprecision(8) << infection->getDensity() << endl;
-        TS_ASSERT_APPROX (infection->getDensity(), 0.4272347);
+        if (dump_emprical)
+            cout << setprecision(8) << infection->getDensity() << endl;
+        TS_ASSERT_APPROX(infection->getDensity(), 0.4272347);
     }
-    void testUpdatedInf1 () {
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+    void testUpdatedInf1() {
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 1.0, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
-        if (dump_emprical) cout << setprecision(8) << infection->getDensity() << endl;
-        TS_ASSERT_APPROX (infection->getDensity(), 2.3427793);
+        if (dump_emprical)
+            cout << setprecision(8) << infection->getDensity() << endl;
+        TS_ASSERT_APPROX(infection->getDensity(), 2.3427793);
     }
 
-    void testUpdatedReducedInf () {
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+    void testUpdatedReducedInf() {
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 1.0, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 0.1, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
         // This is, as expected, 1/10th of that in testUpdated2Inf
-        if (dump_emprical) cout << setprecision(8) << infection->getDensity() << endl;
-        TS_ASSERT_APPROX (infection->getDensity(), 0.042220637);
+        if (dump_emprical)
+            cout << setprecision(8) << infection->getDensity() << endl;
+        TS_ASSERT_APPROX(infection->getDensity(), 0.042220637);
     }
-    void testUpdatedReducedInf2 () {
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+    void testUpdatedReducedInf2() {
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 0.1, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
-        UnittestUtil::incrTime( UnittestUtil::clock().one_TS() );
+        UnittestUtil::incrTime(UnittestUtil::clock().one_TS());
         infection->update(m_rng, 1.0, UnittestUtil::clock().ts1(), numeric_limits<double>::quiet_NaN());
         // This is completely different due to stochasitic effects
-        if (dump_emprical) cout << setprecision(8) << infection->getDensity() << endl;
-        TS_ASSERT_APPROX (infection->getDensity(), 0.16787395);
+        if (dump_emprical)
+            cout << setprecision(8) << infection->getDensity() << endl;
+        TS_ASSERT_APPROX(infection->getDensity(), 0.16787395);
     }
 
-private:
+  private:
     Infection* infection;
     LocalRng m_rng;
 };
-

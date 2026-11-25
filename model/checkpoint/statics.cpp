@@ -44,115 +44,114 @@ namespace OM {
 // external linkage; the checkpoint module is the only code outside those TUs
 // that touches them):
 namespace Clinical {
-    extern std::vector<int> infantDeaths;           // ClinicalModel.cpp
-    extern std::vector<int> infantIntervalsAtRisk;  // ditto
+extern std::vector<int> infantDeaths;          // ClinicalModel.cpp
+extern std::vector<int> infantIntervalsAtRisk; // ditto
 }
 namespace Host {
-    extern double riskFromMaternalInfection;        // NeonatalMortality.cpp
-    extern std::vector<double> prevByGestationalAge;  // ditto
+extern double riskFromMaternalInfection;         // NeonatalMortality.cpp
+extern std::vector<double> prevByGestationalAge; // ditto
 }
 
 namespace Host {
 /// NeonatalMortality run state (was NeonatalMortality::staticCheckpoint).
-void neonatalStatics (checkpoint::Archive& a) {
-    a.value (riskFromMaternalInfection);
-    a.vector (prevByGestationalAge);
+void neonatalStatics(checkpoint::Archive& a) {
+    a.value(riskFromMaternalInfection);
+    a.vector(prevByGestationalAge);
 }
 /// InfectionIncidenceModel run counter (was InfectionIncidenceModel::staticCheckpoint).
-void infectionIncidenceStatics (checkpoint::Archive& a) {
-    a.value (InfectionIncidenceModel::ctsNewInfections);
-}
+void infectionIncidenceStatics(checkpoint::Archive& a) { a.value(InfectionIncidenceModel::ctsNewInfections); }
 /// ImportedInfections rate-table cursor (was ImportedInfections::checkpoint).
-void checkpoint (checkpoint::Archive& a, ImportedInfections& ii) {
-    a.value (ii.lastIndex);
-}
+void checkpoint(checkpoint::Archive& a, ImportedInfections& ii) { a.value(ii.lastIndex); }
 } // namespace Host
 
 namespace Clinical {
 /// InfantMortality death/risk summaries (was InfantMortality::staticCheckpoint).
-void infantMortalityStatics (checkpoint::Archive& a) {
-    a.vector (infantDeaths);
-    a.vector (infantIntervalsAtRisk);
+void infantMortalityStatics(checkpoint::Archive& a) {
+    a.vector(infantDeaths);
+    a.vector(infantIntervalsAtRisk);
 }
 } // namespace Clinical
 
 namespace checkpoint {
 
-void ckStatics (Archive& a, RunContext& ctx) {
-    Host::neonatalStatics (a);
-    Host::infectionIncidenceStatics (a);
-    Clinical::infantMortalityStatics (a);
-    int32_t mode = ctx.genotypes.current_mode;   // int on wire (enum domain)
-    a.value (mode);
+void ckStatics(Archive& a, RunContext& ctx) {
+    Host::neonatalStatics(a);
+    Host::infectionIncidenceStatics(a);
+    Clinical::infantMortalityStatics(a);
+    int32_t mode = ctx.genotypes.current_mode; // int on wire (enum domain)
+    a.value(mode);
     if (a.reading())
-        ctx.genotypes.current_mode =
-            WithinHost::Genotypes::SampleMode (mode);
-    Host::checkpoint (a, *ctx.importedInfections);
+        ctx.genotypes.current_mode = WithinHost::Genotypes::SampleMode(mode);
+    Host::checkpoint(a, *ctx.importedInfections);
 }
 
 namespace {
 /// A vector whose length is config-fixed: write contents only, checking the
 /// count matches the already-initialised size on read.
-template<class T>
-void fixedVector (Archive& a, std::vector<T>& v) {
+template <class T> void fixedVector(Archive& a, std::vector<T>& v) {
     uint64_t n = v.size();
-    a.value (n);
+    a.value(n);
     if (a.reading() && n != v.size())
-        throw checkpoint_error ("monitoring vector: checkpoint has " +
-            std::to_string (n) + " entries, scenario has " +
-            std::to_string (v.size()));
-    for (auto& e : v) a.value (e);
+        throw checkpoint_error("monitoring vector: checkpoint has " + std::to_string(n) + " entries, scenario has " +
+                               std::to_string(v.size()));
+    for (auto& e : v)
+        a.value(e);
 }
 } // namespace
 
-void ckMonitoring (Archive& a, RunContext& ctx) {
+void ckMonitoring(Archive& a, RunContext& ctx) {
     // Continuous output: resume position in the cts file (header written by
     // Continuous::init; rows are flushed per record, so this is exact).
-    a.value (ctx.ctsStreamOffset);
+    a.value(ctx.ctsStreamOffset);
     if (a.reading() && ctx.ctsPeriod != sim::zero()) {
-        ctx.ctsOStream.seekp (ctx.ctsStreamOffset, std::ios::beg);
+        ctx.ctsOStream.seekp(ctx.ctsStreamOffset, std::ios::beg);
         if (ctx.ctsOStream.fail())
-            throw checkpoint_error ("continuous output: can't seek to saved position");
+            throw checkpoint_error("continuous output: can't seek to saved position");
     }
 
     auto& rt = *ctx.monitoring;
-    a.boolean (rt.isInit);
-    a.value (rt.surveyIndex);
-    a.value (rt.survNumEvent);
-    fixedVector (a, rt.cohortSubPopNumbers);
-    {   // surveyDates: config-sized vector; only .num changes during a run
+    a.boolean(rt.isInit);
+    a.value(rt.surveyIndex);
+    a.value(rt.survNumEvent);
+    fixedVector(a, rt.cohortSubPopNumbers);
+    { // surveyDates: config-sized vector; only .num changes during a run
         uint64_t n = rt.surveyDates.size();
-        a.value (n);
+        a.value(n);
         if (a.reading() && n != rt.surveyDates.size())
-            throw checkpoint_error ("survey date count mismatch");
-        for (auto& sd : rt.surveyDates) a.value (sd.num);
+            throw checkpoint_error("survey date count mismatch");
+        for (auto& sd : rt.surveyDates)
+            a.value(sd.num);
     }
-    {   // conditions: config-sized vector; only .value changes during a run
+    { // conditions: config-sized vector; only .value changes during a run
         uint64_t n = rt.conditions.size();
-        a.value (n);
+        a.value(n);
         if (a.reading() && n != rt.conditions.size())
-            throw checkpoint_error ("condition count mismatch");
-        for (auto& c : rt.conditions) a.boolean (c.value);
+            throw checkpoint_error("condition count mismatch");
+        for (auto& c : rt.conditions)
+            a.boolean(c.value);
     }
     {
         uint64_t n = rt.stores.size();
-        a.value (n);
+        a.value(n);
         if (a.reading() && n != rt.stores.size())
-            throw checkpoint_error ("measure store count mismatch");
+            throw checkpoint_error("measure store count mismatch");
         for (auto& store : rt.stores) {
             // variant index: 0 = int reports, 1 = double reports (both runs
             // agree by config; checked anyway)
-            int32_t idx = std::holds_alternative<std::vector<int>> (store.reports) ? 0 : 1;
-            a.value (idx);
+            int32_t idx = std::holds_alternative<std::vector<int>>(store.reports) ? 0 : 1;
+            a.value(idx);
             if (a.reading() && idx != 0 && idx != 1)
-                throw checkpoint_error ("bad report store kind");
-            std::visit ([&a](auto& v) {
-                uint64_t n = v.size();
-                a.value (n);
-                if (a.reading() && n != v.size())
-                    throw checkpoint_error ("report store size mismatch");
-                for (auto& e : v) a.value (e);
-            }, store.reports);
+                throw checkpoint_error("bad report store kind");
+            std::visit(
+                [&a](auto& v) {
+                    uint64_t n = v.size();
+                    a.value(n);
+                    if (a.reading() && n != v.size())
+                        throw checkpoint_error("report store size mismatch");
+                    for (auto& e : v)
+                        a.value(e);
+                },
+                store.reports);
         }
     }
 }

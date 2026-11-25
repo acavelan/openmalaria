@@ -29,15 +29,15 @@
 
 namespace OM {
 namespace Host {
-    class Human;
+class Human;
 }
 namespace interventions {
-    using util::LocalRng;
+using util::LocalRng;
 
 // ———  sub-population removal  ———
 
-namespace SubPopRemove{
-    /** Identifiers for types of sub-population removal option, followed by NUM
+namespace SubPopRemove {
+/** Identifiers for types of sub-population removal option, followed by NUM
      * in last place (as a counter).
      * 
      * ON_FIRST_BOUT: remove humans from some sub-populations at the start of
@@ -49,11 +49,7 @@ namespace SubPopRemove{
      * ON_FIRST_TREATMENT: remove humans from some sub-populations when
      * assigning each course of treatment.
      */
-    enum RemoveAtCode {
-        ON_FIRST_BOUT,
-        ON_FIRST_INFECTION,
-        ON_FIRST_TREATMENT,
-        NUM };
+enum RemoveAtCode { ON_FIRST_BOUT, ON_FIRST_INFECTION, ON_FIRST_TREATMENT, NUM };
 }
 
 /** For each RemoveAtCode (excluding NUM), this is a list of all sub-population
@@ -61,8 +57,8 @@ namespace SubPopRemove{
 
 // ———  vaccines  ———
 
-namespace Vaccine{
-    enum Types { PEV, BSV, TBV, NumVaccineTypes };
+namespace Vaccine {
+enum Types { PEV, BSV, TBV, NumVaccineTypes };
 }
 
 /** Per vaccine effect (type), per human details.

@@ -37,18 +37,15 @@
 namespace OM {
 namespace Transmission {
 namespace Anopheles {
-    using std::numeric_limits;
-    using namespace OM::util;
+using std::numeric_limits;
+using namespace OM::util;
 
-inline int argmax(const std::vector<double> &vec)
-{
+inline int argmax(const std::vector<double>& vec) {
     int imax = 0;
     double max = 0.0;
-    for(size_t i=0; i<vec.size(); i++)
-    {
+    for (size_t i = 0; i < vec.size(); i++) {
         double v = vec[i];
-        if(v >= max)
-        {
+        if (v >= max) {
             max = v;
             imax = i;
         }
@@ -56,29 +53,26 @@ inline int argmax(const std::vector<double> &vec)
     return imax;
 }
 
-inline double findAngle(const double EIRRotageAngle, const std::vector<double> & FSCoeffic, const std::vector<double> &sim)
-{
+inline double findAngle(const double EIRRotageAngle, const std::vector<double>& FSCoeffic,
+                        const std::vector<double>& sim) {
     std::vector<double> temp(sim.size(), 0.0);
 
     double delta = 2.0 * M_PI / 365.0;
 
     double min = std::numeric_limits<double>::infinity();
     double minAngle = 0.0;
-    for(double angle=-M_PI; angle<M_PI; angle+=delta)
-    {
+    for (double angle = -M_PI; angle < M_PI; angle += delta) {
         vectors::expIDFT(temp, FSCoeffic, EIRRotageAngle + angle);
 
         // Minimize l1-norm
         double sum = 0.0;
-        for(int i=0; i<sim::oneYear(); i++)
-        {
+        for (int i = 0; i < sim::oneYear(); i++) {
             double v = fabs(temp[i] - sim[i]);
-            sum += v*v;
+            sum += v * v;
         }
 
         sum = sqrtf(sum);
-        if(sum < min)
-        {
+        if (sum < min) {
             min = sum;
             minAngle = angle;
             // cout << angle << " " << min << " " << sum << endl;
@@ -94,7 +88,6 @@ inline double findAngle(const double EIRRotageAngle, const std::vector<double> &
         //     min = offset;
         //     minAngle = angle;
         // }
-
     }
     return minAngle;
 }
@@ -103,29 +96,24 @@ inline double findAngle(const double EIRRotageAngle, const std::vector<double> &
  * one final class, behaviour chosen by DATA (Kind). The AdaptiveFitter kind
  * iterates (estimate() returns true until converged); the Solver kind computes
  * the exact solution in one step (ATSB secant path: phase 8/9). */
-class EmergenceRateEstimator final
-{
-public:
+class EmergenceRateEstimator final {
+  public:
     enum class Kind { AdaptiveFitter, Solver };
 
-    EmergenceRateEstimator (Kind kind, AnophelesModel &m, int populationSize) :
-        kind(kind), scaleFactor(1.0), rotated(false), scaled(false),
-        populationSize(populationSize)
-    {
+    EmergenceRateEstimator(Kind kind, AnophelesModel& m, int populationSize)
+        : kind(kind), scaleFactor(1.0), rotated(false), scaled(false), populationSize(populationSize) {
         if (kind == Kind::AdaptiveFitter) {
             // usually around 20 days; no real analysis for effect of changing EIPDuration or mosqRestDuration
-            shiftAngle = m.EIRRotateAngle - (m.mosq.EIPDuration + 10) / 365. * 2. *M_PI;
+            shiftAngle = m.EIRRotateAngle - (m.mosq.EIPDuration + 10) / 365. * 2. * M_PI;
         }
     }
 
     // Returns true if further fitting iterations are needed.
-    bool estimate(AnophelesModel &m, const std::vector<double> &laggedKappa, double meanAvail)
-    {
+    bool estimate(AnophelesModel& m, const std::vector<double>& laggedKappa, double meanAvail) {
         if (kind == Kind::Solver)
             return estimateSolver(m, laggedKappa, meanAvail);
         std::vector<double> avgAnnualS_v(sim::oneYear(), 0.0);
-        for (SimTime i = sim::fromYearsI(4); i < sim::fromYearsI(5); i = i + sim::oneDay())
-        {
+        for (SimTime i = sim::fromYearsI(4); i < sim::fromYearsI(5); i = i + sim::oneDay()) {
             avgAnnualS_v[mod_nn(i, sim::oneYear())] = m.quinquennialS_v[i];
         }
 
@@ -133,17 +121,14 @@ public:
 
         // cout << "check: " << vectors::sum(forcedS_v) << " " << vectors::sum(avgAnnualS_v) << endl;
         // cout << "Pre-calced Sv, dynamic Sv:\t"<<sumAnnualForcedS_v<<'\t'<<vectors::sum(annualS_v)<<endl;
-        if (!(factor > 1e-6 && factor < 1e6))
-        {
-            if (factor > 1e6 && vectors::sum(m.quinquennialS_v) < 1e-3)
-            {
+        if (!(factor > 1e-6 && factor < 1e6)) {
+            if (factor > 1e6 && vectors::sum(m.quinquennialS_v) < 1e-3) {
                 throw util::base_exception("Simulated S_v is approx 0 (i.e.\
      mosquitoes are not infectious, before interventions). Simulator cannot handle this; perhaps\
      increase EIR or change the entomology model.",
                                            util::Error::VectorFitting);
             }
-            if (vectors::sum(m.forcedS_v) == 0.0)
-            {
+            if (vectors::sum(m.forcedS_v) == 0.0) {
                 return false; // no EIR desired: nothing to do
             }
             cerr << "Input S_v for this vector:\t" << vectors::sum(m.forcedS_v) << endl;
@@ -153,13 +138,11 @@ public:
 
         const double LIMIT = 0.1;
 
-        if (fabs(factor - 1.0) > LIMIT)
-        {
+        if (fabs(factor - 1.0) > LIMIT) {
             scaled = false;
             double factorDiff = (scaleFactor * factor - scaleFactor) * 1.0;
             scaleFactor += factorDiff;
-        }
-        else
+        } else
             scaled = true;
 
         double rAngle = findAngle(m.EIRRotateAngle, m.FSCoeffic, avgAnnualS_v);
@@ -182,11 +165,9 @@ public:
         return !(scaled && rotated);
     }
 
-
-private:
-    bool estimateSolver(AnophelesModel &m, const std::vector<double> &laggedKappa, double meanAvail)
-    {
-        std::vector<double> &mosqEmergeRateVector = m.mosqEmergeRate;
+  private:
+    bool estimateSolver(AnophelesModel& m, const std::vector<double>& laggedKappa, double meanAvail) {
+        std::vector<double>& mosqEmergeRateVector = m.mosqEmergeRate;
         int thetap = sim::DAYS_IN_YEAR;
         int tau = m.mosq.restDuration;
         int thetas = m.mosq.EIPDuration;
@@ -198,10 +179,10 @@ private:
         std::vector<double> PCi{m.mosq.probFindRestSite};
         std::vector<double> PDi{m.mosq.probResting};
         std::vector<double> PEi{m.mosq.probOvipositing};
-        std::vector<double> &svInit = m.forcedS_v;
+        std::vector<double>& svInit = m.forcedS_v;
 
         // Append active NHH host types (malaria-non-susceptible)
-        for (const auto &[name, nhh] : m.nhhInstances) {
+        for (const auto& [name, nhh] : m.nhhInstances) {
             // Interpret nhh.avail_i as total availability α_i * N_i
             Ni.push_back(1.0);
             alphai.push_back(nhh.avail_i);
@@ -220,7 +201,7 @@ private:
         // Linear interpolation 73 -> daily (5-day blocks)
         for (size_t i = 0; i < laggedKappa.size(); ++i) {
             const size_t start = i * 5;
-            const size_t end   = std::min(start + 5, static_cast<size_t>(thetap));
+            const size_t end = std::min(start + 5, static_cast<size_t>(thetap));
 
             const double v0 = laggedKappa[i];
             const double v1 = laggedKappa[(i + 1) % laggedKappa.size()];
@@ -241,28 +222,28 @@ private:
             }
         }
 
-        CalcInitMosqEmergeRate(mosqEmergeRateVector, 
-            thetap, // $\theta_p$: daysInYear
-            tau, // $\tau$: mosqRestDuration
-            thetas, // $\theta_s$: EIPDuration
-            nHost, // $n$: nHostTypes
-            nMalHost, // $m$: nMalHostTypes
-            Ni, // $N_i$: popSize (length n)
-            alphai, // $\alpha_i$: hostAvailabilityRate	(length n)
-            muvA, // $\mu_{vA}: mosqSeekingDeathRate
-            thetad, // $\theta_d$: mosqSeekingDuration
-            PBi, // $P_{B_i}$: mosqProbBiting (length n)
-            PCi, // $P_{C_i}$: mosqProbFindRestSite (length n)
-            PDi, // $P_{D_i}$: mosqProbResting (length n)
-            PEi, // $P_{E_i}$: mosqProbOvipositing
-            KviInit, // Kvi (size n * thetap)
-            svInit // Sv (length n)
+        CalcInitMosqEmergeRate(mosqEmergeRateVector,
+                               thetap,   // $\theta_p$: daysInYear
+                               tau,      // $\tau$: mosqRestDuration
+                               thetas,   // $\theta_s$: EIPDuration
+                               nHost,    // $n$: nHostTypes
+                               nMalHost, // $m$: nMalHostTypes
+                               Ni,       // $N_i$: popSize (length n)
+                               alphai,   // $\alpha_i$: hostAvailabilityRate	(length n)
+                               muvA,     // $\mu_{vA}: mosqSeekingDeathRate
+                               thetad,   // $\theta_d$: mosqSeekingDuration
+                               PBi,      // $P_{B_i}$: mosqProbBiting (length n)
+                               PCi,      // $P_{C_i}$: mosqProbFindRestSite (length n)
+                               PDi,      // $P_{D_i}$: mosqProbResting (length n)
+                               PEi,      // $P_{E_i}$: mosqProbOvipositing
+                               KviInit,  // Kvi (size n * thetap)
+                               svInit    // Sv (length n)
         );
-        
+
         return false;
     }
 
-public:  // run state; wire in checkpoint/transmission.cpp
+  public: // run state; wire in checkpoint/transmission.cpp
     Kind kind;
     // AdaptiveFitter-kind state:
     double scaleFactor, shiftAngle;

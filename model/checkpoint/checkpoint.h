@@ -52,7 +52,9 @@ namespace OM {
 
 class RunContext;
 class Population;
-namespace Transmission { class TransmissionModel; }
+namespace Transmission {
+class TransmissionModel;
+}
 
 namespace checkpoint {
 
@@ -63,9 +65,8 @@ enum class Phase : uint8_t { Warmup = 1, Main = 2 };
 
 /// Write the checkpoint (phase + loop-end times included). Throws
 /// checkpoint_error on I/O trouble.
-void writeCheckpoint (RunContext& ctx, Population& population,
-    Transmission::TransmissionModel& transmission, Phase phase,
-    SimTime endTime, SimTime estEndTime, const std::string& path);
+void writeCheckpoint(RunContext& ctx, Population& population, Transmission::TransmissionModel& transmission,
+                     Phase phase, SimTime endTime, SimTime estEndTime, const std::string& path);
 
 /// Restore into the current (XML-initialised) run. On return: clock, all
 /// RNG streams, statics, monitoring, transmission and humans match the
@@ -73,9 +74,8 @@ void writeCheckpoint (RunContext& ctx, Population& population,
 /// continues the warmup loop (Phase::Warmup) or goes straight to the main
 /// loop (Phase::Main). Throws checkpoint_error on a bad file.
 /// Outputs: save-time phase and loop-end times.
-void readCheckpoint (RunContext& ctx, Population& population,
-    Transmission::TransmissionModel& transmission, Phase& phase,
-    SimTime& endTime, SimTime& estEndTime, const std::string& path);
+void readCheckpoint(RunContext& ctx, Population& population, Transmission::TransmissionModel& transmission,
+                    Phase& phase, SimTime& endTime, SimTime& estEndTime, const std::string& path);
 
 } // namespace checkpoint
 } // namespace OM

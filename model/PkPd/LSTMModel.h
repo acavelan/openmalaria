@@ -27,41 +27,38 @@
 #include "PkPd/LSTMDrug.h"
 
 class UnittestUtil;
-namespace scnXml{
-    class PKPDMedication;
+namespace scnXml {
+class PKPDMedication;
 }
-namespace OM { class RunContext;
-namespace Host{
-    class Human;
+namespace OM {
+class RunContext;
+namespace Host {
+class Human;
 }
 namespace WithinHost {
-    class Infection;
+class Infection;
 }
 namespace PkPd {
 
 struct DrugRegistry;
 
 struct MedicateData {
-    MedicateData () :
-        drug(0),
-        qty(numeric_limits< double >::signaling_NaN()),
-        time(numeric_limits< double >::signaling_NaN())
-    {}
-    
+    MedicateData()
+        : drug(0), qty(numeric_limits<double>::signaling_NaN()), time(numeric_limits<double>::signaling_NaN()) {}
+
     /// Set from an XML element (defined in model/xml/pharmacology.cpp).
-    void load( DrugRegistry& drugs, const scnXml::PKPDMedication& med );
-    
-public:
-    
-    inline MedicateData multiplied( double doseMult ){
-        MedicateData r( *this );
+    void load(DrugRegistry& drugs, const scnXml::PKPDMedication& med);
+
+  public:
+    inline MedicateData multiplied(double doseMult) {
+        MedicateData r(*this);
         r.qty *= doseMult;
         return r;
     }
-    
-    size_t drug;      /// Drug type index
-    double qty;         /// Quantity of drug prescribed in mg
-    double time;        /// Time to medicate at, in days (0 means start of time step, may be >= 1 (thus not today))
+
+    size_t drug; /// Drug type index
+    double qty;  /// Quantity of drug prescribed in mg
+    double time; /// Time to medicate at, in days (0 means start of time step, may be >= 1 (thus not today))
 };
 
 /** Pharmacokinetic and pharmacodynamics interface, used by each human's
@@ -77,10 +74,10 @@ public:
  *  * decayDrugs()
  */
 class LSTMModel {
-public:
+  public:
     /// Static initialisation
-    static void init ( RunContext& ctx, const scnXml::Scenario& scenario );
-    
+    static void init(RunContext& ctx, const scnXml::Scenario& scenario);
+
     /** Prescribe a patient a course of drugs, via the Pk/Pd model
      * 
      * Note: doses sizes are modified according to age via the dosage
@@ -93,7 +90,7 @@ public:
      * @param delay_d Delay of treatment in days
      */
     void prescribe(RunContext& ctx, size_t schedule, size_t dosages, double age, double body_mass, double delay_d);
-    
+
     /** Medicate drugs: human takes prescribed drugs which are to be taken this
      * day.
      * 
@@ -101,29 +98,29 @@ public:
      * model, prescribe with a "poor adherence" schedule.
      */
     void medicate(RunContext& ctx, LocalRng& rng);
-    
+
     /** Get concentration of the drug at the beginning of the day.
      * 
      * For unit testing. Not optimised. */
-    double getDrugConc (size_t drug_index) const;
-    
+    double getDrugConc(size_t drug_index) const;
+
     /** This is how drugs act on infections.
      *
      * Each time step, on each infection, the parasite density is multiplied by
      * the return value of this infection. The WithinHostModels are responsible
      * for clearing infections once the parasite density is negligible. */
-    double getDrugFactor (LocalRng& rng, WithinHost::Infection *inf, double body_mass) const;
-    
+    double getDrugFactor(LocalRng& rng, WithinHost::Infection* inf, double body_mass) const;
+
     /** After any resident infections have been reduced by getDrugFactor(),
      * this function is called to update drug levels to their effective level
      * at the end of the day, as well as clear data once drug concentrations
      * become negligible. */
-    void decayDrugs (double body_mass);
-    
+    void decayDrugs(double body_mass);
+
     /** Make summaries of drug concentration data. */
-    void summarize( RunContext& ctx, const Host::Human& human ) const;
-    
-public:	// simple state record; test util reads the queue directly
+    void summarize(RunContext& ctx, const Host::Human& human) const;
+
+  public: // simple state record; test util reads the queue directly
     /** Medicate drugs to an individual, which act on infections the following
      * time steps, until rendered ineffective by decayDrugs().
      *
@@ -139,12 +136,13 @@ public:	// simple state record; test util reads the queue directly
      * called after getDrugFactor in a time step, and a time of zero means the
      * dose has effect from the start of the following time step. */
     void medicateDrug(RunContext& ctx, LocalRng& rng, size_t typeIndex, double qty, double time);
-    
+
     /// Drugs with non-zero blood concentrations:
     vector<unique_ptr<LSTMDrug>> m_drugs;
-    
+
     /// All pending medications
     list<MedicateData> medicateQueue;
 };
 
-} }
+}
+}

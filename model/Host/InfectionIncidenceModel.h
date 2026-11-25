@@ -27,9 +27,9 @@
 #include "util/random.h"
 
 namespace OM {
-    class Parameters;
+class Parameters;
 namespace Host {
-    class Human;
+class Human;
 
 using util::LocalRng;
 
@@ -48,48 +48,44 @@ using util::LocalRng;
  *
  * There are also two susceptibility models which should be compatible with all
  * of these (see susceptibility()). */
-class InfectionIncidenceModel
-{
-public:
+class InfectionIncidenceModel {
+  public:
     enum class Kind { Default, HetWorkaround, NegBinom, LogNormal };
 
-protected:
+  protected:
     /// The run this model belongs to (clock accessed as ctx.clock).
     RunContext& ctx;
 
-public:
-  ///@brief Static initialisation & constructors
-  //@{
-  /// Read in/initialise parameters
-  static void init(RunContext& ctx, const Parameters& parameters);
-  /// Create a new instance (Kind selected from the model options)
-  static InfectionIncidenceModel* createModel (RunContext& ctx);
-  
-  /// Reset summary outputs at beginning of main simulation
-  static inline void preMainSimInit() {
-      ctsNewInfections = 0;
-  }
-  //@}
-  
-protected:
-  /// Create a new model
-  explicit InfectionIncidenceModel (RunContext& ctx, Kind kind) :
-      ctx(ctx), kind(kind), m_pInfected(0.0), m_cumulativeEIRa(0.0)
-  {}
-public:
-  
-  /** Return an availability multiplier, dependant on the model (NegBinom
+  public:
+    ///@brief Static initialisation & constructors
+    //@{
+    /// Read in/initialise parameters
+    static void init(RunContext& ctx, const Parameters& parameters);
+    /// Create a new instance (Kind selected from the model options)
+    static InfectionIncidenceModel* createModel(RunContext& ctx);
+
+    /// Reset summary outputs at beginning of main simulation
+    static inline void preMainSimInit() { ctsNewInfections = 0; }
+    //@}
+
+  protected:
+    /// Create a new model
+    explicit InfectionIncidenceModel(RunContext& ctx, Kind kind)
+        : ctx(ctx), kind(kind), m_pInfected(0.0), m_cumulativeEIRa(0.0) {}
+
+  public:
+    /** Return an availability multiplier, dependant on the model (NegBinom
    * and LogNormal models use this). Ideally availability adjustments
    * should have nothing to do with the InfectionIncidenceModel though.
    * 
    * @param baseAvailability This was BaselineAvailabilityMean from Constant.h,
    *	and had the value 1.0. Whether it should be anything else I don't know.
    */
-  double getAvailabilityFactor(LocalRng& rng, double baseAvailability = 1.0);
-  
-  /// Output _pinfected to the summary
-  void summarize (const Host::Human& human);
-  
+    double getAvailabilityFactor(LocalRng& rng, double baseAvailability = 1.0);
+
+    /// Output _pinfected to the summary
+    void summarize(const Host::Human& human);
+
     /** Calculate the expected number of new infections to introduce.
  * 
  * Firstly converts the EIR into an expected number of infections (what
@@ -105,17 +101,17 @@ public:
  * @param effectiveEIR    EIR adjusted for availability (age, het,
  *        outside transmission due to hospitalisation)
  */
-  double expectedNumNewInfections(OM::Host::Human& human, double effectiveEIR);
+    double expectedNumNewInfections(OM::Host::Human& human, double effectiveEIR);
 
-  /** Calculate the number of new infections to introduce.
+    /** Calculate the number of new infections to introduce.
    * 
    * @param human   Reference to human
    * @param expectedNumNewInfections   Expected number of infections
    * to be introduced
    */
-  int numNewInfections(OM::Host::Human& human, double expectedNumNewInfections);
+    int numNewInfections(OM::Host::Human& human, double expectedNumNewInfections);
 
-  /** Report the number of new infections
+    /** Report the number of new infections
    * 
    * This number might be lower than the numNewInfections from this model
    * due to vaccine factors being applied in the WithinHost model
@@ -123,31 +119,32 @@ public:
    * @param int newNumInfections_i  Number of introduced infections to be reported
    * @param int newNumInfections_l  Number of local (indigenous) infections to be reported
    */
-  void reportNumNewInfections(Human& human, int newNumInfections_i, int newNumInfections_l);
-  
-public:  // run state; wire in checkpoint/humans.cpp + statics.cpp
-  /// Calculates the expected number of infections, excluding vaccine effects.
-  /// Kind switch: one case per old-subclass formula.
-  double getModelExpectedInfections (LocalRng& rng, double effectiveEIR, const Transmission::PerHost& phTrans);
-  
-  double susceptibility ();
-  
-  static void ctsReportNewInfections (const vector<Host::Human> &, ostream& stream);
-  
-  /// Which formulas this instance runs (set by createModel from ModelOptions).
-  Kind kind;
+    void reportNumNewInfections(Human& human, int newNumInfections_i, int newNumInfections_l);
 
-  /** Probability of infection (cumulative or reset to zero in massTreatment).
+  public: // run state; wire in checkpoint/humans.cpp + statics.cpp
+    /// Calculates the expected number of infections, excluding vaccine effects.
+    /// Kind switch: one case per old-subclass formula.
+    double getModelExpectedInfections(LocalRng& rng, double effectiveEIR, const Transmission::PerHost& phTrans);
+
+    double susceptibility();
+
+    static void ctsReportNewInfections(const vector<Host::Human>&, ostream& stream);
+
+    /// Which formulas this instance runs (set by createModel from ModelOptions).
+    Kind kind;
+
+    /** Probability of infection (cumulative or reset to zero in massTreatment).
    *
    * Appears to be used only for calculating expected inoculations for the
    * analysis of pre-erythrocytic immunity. */
-  double m_pInfected;
-  
-  //!Number of infective bites since birth
-  double m_cumulativeEIRa;//TODO(memory opt): not needed by NegBinom and LogNormal
-  
+    double m_pInfected;
+
+    //!Number of infective bites since birth
+    double m_cumulativeEIRa; //TODO(memory opt): not needed by NegBinom and LogNormal
+
     /// Number of new infections introduced, per continuous reporting period
     static int ctsNewInfections;
 };
 
-} }
+}
+}

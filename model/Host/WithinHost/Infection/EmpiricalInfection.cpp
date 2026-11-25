@@ -32,10 +32,10 @@
 #include <string>
 #include <cmath>
 
-
-namespace OM { namespace WithinHost {
+namespace OM {
+namespace WithinHost {
 using namespace ::OM::util;
-    
+
 // -----  Empirical model statics  -----
 // File scope: this TU is the only reader/writer; re-initialised per run by
 // EmpiricalInfection::init (and reset by independent parameterisation):
@@ -43,12 +43,12 @@ constexpr int _maximumDurationInDays = 418;
 static double _maximumPermittedAmplificationPerCycle;
 static double _subPatentLimit;
 static double _alpha1;
-static double _alpha2;	
+static double _alpha2;
 static double _alpha3;
-static double _mu1;	
-static double _mu2;	
+static double _mu1;
+static double _mu2;
 static double _mu3;
-static double _sigma0_res;	
+static double _sigma0_res;
 static double _sigmat_res;
 static double _mu_beta1[_maximumDurationInDays];
 static double _sigma_beta1[_maximumDurationInDays];
@@ -66,187 +66,184 @@ static double getInflatedDensity(LocalRng& rng, double nonInflatedDensity);
 static double sigma_noise(int ageDays);
 static double sampleSubPatentValue(LocalRng& rng, double mu, double sigma, double upperBound);
 
-
-Infection* createEmpiricalInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
-    return new EmpiricalInfection (ctx, rng, protID, origin);
+Infection* createEmpiricalInfection(RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
+    return new EmpiricalInfection(ctx, rng, protID, origin);
 }
 
-
-void EmpiricalInfection::init(RunContext& ctx){
+void EmpiricalInfection::init(RunContext& ctx) {
     ctx.createInfection = &createEmpiricalInfection;
-    
-  // alpha1 corresponds to 1 day before first patent, alpha2 2 days before first patent etc.
-  _alpha1=0.2647;
-  _alpha2=2.976;
-  _alpha3=0.9181;
-  _mu1=6.08e-04;
-  _mu2=0.624;
-  _mu3=0.3064;
-  _sigma0_res=0.9998;
-  _sigmat_res=0.002528;
-/* The following variables are assigned separately for each infection to enable optimisation of their values
-*/    
-  _inflationMean= 1.09635;
-  _inflationVariance= 0.172029;
-  _extinctionLevel= 0.0100976;
-  _overallMultiplier= 0.697581;
-  _subPatentLimit=10.0/_overallMultiplier; 
-  _maximumPermittedAmplificationPerCycle=1000.0;
-  string fname = util::CommandLine::lookupResource("autoRegressionParameters.csv");
-  fstream f_autoRegressionParameters(fname.c_str(),ios::in);
-  if (!f_autoRegressionParameters.is_open())
-    throw base_exception (string("file not found: ").append(fname), util::Error::FileIO);
 
-  //read header of file (unused)
-  string csvLine;
-  getline(f_autoRegressionParameters,csvLine);
-  if (csvLine != "day,mub1,sigb1,mub2,sigb2,mub3,sigb3")
-      // this check is here to catch unexpected alterations
-      throw TRACED_EXCEPTION_DEFAULT ("autoRegressionParameters.csv does not have expected header line");
+    // alpha1 corresponds to 1 day before first patent, alpha2 2 days before first patent etc.
+    _alpha1 = 0.2647;
+    _alpha2 = 2.976;
+    _alpha3 = 0.9181;
+    _mu1 = 6.08e-04;
+    _mu2 = 0.624;
+    _mu3 = 0.3064;
+    _sigma0_res = 0.9998;
+    _sigmat_res = 0.002528;
+    /* The following variables are assigned separately for each infection to enable optimisation of their values
+*/
+    _inflationMean = 1.09635;
+    _inflationVariance = 0.172029;
+    _extinctionLevel = 0.0100976;
+    _overallMultiplier = 0.697581;
+    _subPatentLimit = 10.0 / _overallMultiplier;
+    _maximumPermittedAmplificationPerCycle = 1000.0;
+    string fname = util::CommandLine::lookupResource("autoRegressionParameters.csv");
+    fstream f_autoRegressionParameters(fname.c_str(), ios::in);
+    if (!f_autoRegressionParameters.is_open())
+        throw base_exception(string("file not found: ").append(fname), util::Error::FileIO);
 
-  // read every line from the stream
-  while(getline(f_autoRegressionParameters, csvLine)){
+    //read header of file (unused)
+    string csvLine;
+    getline(f_autoRegressionParameters, csvLine);
+    if (csvLine != "day,mub1,sigb1,mub2,sigb2,mub3,sigb3")
+        // this check is here to catch unexpected alterations
+        throw TRACED_EXCEPTION_DEFAULT("autoRegressionParameters.csv does not have expected header line");
 
-    std::istringstream csvStream(csvLine);
+    // read every line from the stream
+    while (getline(f_autoRegressionParameters, csvLine)) {
 
-    // read every element from the line that is separated by commas
-    string csvField[7];
-    for( string& field : csvField ) getline(csvStream, field, ',');
+        std::istringstream csvStream(csvLine);
 
-    istringstream csvNum1(csvField[0]);
-    int day;
-    csvNum1 >> day;
-    if (day < 0 || day >= _maximumDurationInDays)
-      throw TRACED_EXCEPTION_DEFAULT ("EmpiricalInfection::init(): invalid day");
-    // value order unchanged: mu/sigma of beta1, beta2, beta3
-    double* target[6] = { &_mu_beta1[day], &_sigma_beta1[day], &_mu_beta2[day],
-                          &_sigma_beta2[day], &_mu_beta3[day], &_sigma_beta3[day] };
-    for( int i=0; i<6; ++i ){ istringstream num(csvField[i + 1]); num >> *target[i]; }
-  }  
-  f_autoRegressionParameters.close();
+        // read every element from the line that is separated by commas
+        string csvField[7];
+        for (string& field : csvField)
+            getline(csvStream, field, ',');
+
+        istringstream csvNum1(csvField[0]);
+        int day;
+        csvNum1 >> day;
+        if (day < 0 || day >= _maximumDurationInDays)
+            throw TRACED_EXCEPTION_DEFAULT("EmpiricalInfection::init(): invalid day");
+        // value order unchanged: mu/sigma of beta1, beta2, beta3
+        double* target[6] = {&_mu_beta1[day],    &_sigma_beta1[day], &_mu_beta2[day],
+                             &_sigma_beta2[day], &_mu_beta3[day],    &_sigma_beta3[day]};
+        for (int i = 0; i < 6; ++i) {
+            istringstream num(csvField[i + 1]);
+            num >> *target[i];
+        }
+    }
+    f_autoRegressionParameters.close();
 }
-
 
 // -----  non-static members (Construction and destruction, checkpointing)  -----
 
 /* Initialises a new infection by assigning the densities for the last 3 prepatent days
 */
 EmpiricalInfection::EmpiricalInfection(RunContext& ctx, LocalRng& rng, uint32_t genotype, int origin,
-        double growthRateMultiplier) :
-    Infection (ctx, genotype, origin, Kind::Empirical)
-{
-  //sample the parasite densities for the last 3 prepatent days
-  //note that the lag decreases with time
-  _laggedLogDensities[0]=sampleSubPatentValue(rng, _alpha1,_mu1,log(_subPatentLimit));  
-  _laggedLogDensities[1]=sampleSubPatentValue(rng, _alpha2,_mu2,log(_subPatentLimit)); 
-  _laggedLogDensities[2]=sampleSubPatentValue(rng, _alpha3,_mu3,log(_subPatentLimit));  
-  //only the immediately preceding value is modified by the growth rate multiplier
-  _laggedLogDensities[0] += log(growthRateMultiplier); 
-  _patentGrowthRateMultiplier = growthRateMultiplier;
+                                       double growthRateMultiplier)
+    : Infection(ctx, genotype, origin, Kind::Empirical) {
+    //sample the parasite densities for the last 3 prepatent days
+    //note that the lag decreases with time
+    _laggedLogDensities[0] = sampleSubPatentValue(rng, _alpha1, _mu1, log(_subPatentLimit));
+    _laggedLogDensities[1] = sampleSubPatentValue(rng, _alpha2, _mu2, log(_subPatentLimit));
+    _laggedLogDensities[2] = sampleSubPatentValue(rng, _alpha3, _mu3, log(_subPatentLimit));
+    //only the immediately preceding value is modified by the growth rate multiplier
+    _laggedLogDensities[0] += log(growthRateMultiplier);
+    _patentGrowthRateMultiplier = growthRateMultiplier;
 }
-
 
 // -----  non-static class members (other functions)  -----
 
-
 // NOTE: TS never provided a lot of documentation for this code.
 const int EI_MAX_SAMPLES = 10;
-bool EmpiricalInfection::update( LocalRng& rng, double survivalFactor, SimTime now, double ){
-    SimTime bsAge = now - m_startDate - Infection::s_latentP;	// age of post-latent-period blood stage
-    if( bsAge < sim::zero() )
-        return false;	// latent period (liver stage) — don't do anything
+bool EmpiricalInfection::update(LocalRng& rng, double survivalFactor, SimTime now, double) {
+    SimTime bsAge = now - m_startDate - Infection::s_latentP; // age of post-latent-period blood stage
+    if (bsAge < sim::zero())
+        return false; // latent period (liver stage) — don't do anything
     // aliases: the equation block below is verbatim from the free function
     // (inf.empirical-> payload refs became inf. member refs)
     auto& inf = *this;
-  //to avoid the formula for the linear predictor being excessively long we introduce L for the lagged densities
-  # define L inf._laggedLogDensities
-  
-  if (bsAge >= _maximumDurationInDays || !(L[0] > -999999.9))	// Note: second test is extremely unlikely to fail
-    return true;	// cut-off point
-  
-  // constraints to ensure the density is defined and not exploding
-  double upperLimitoflogDensity=log(_maximumPermittedAmplificationPerCycle*exp(L[1])/_inflationMean);
-  double amplificationPerCycle;
-  double localDensity;	// density before scaling by _overallMultiplier
-  size_t ageDays = bsAge;
-  for(int tries0 = 0; tries0 < EI_MAX_SAMPLES; ++tries0) {
-    double logDensity;
-    for(int tries1 = 0; tries1 < EI_MAX_SAMPLES; ++tries1) {
-      // parity: order — local RNG stream: draw call order fixes stream state
-      double b_1=rng.gauss(_mu_beta1[ageDays],_sigma_beta1[ageDays]);
-      double b_2=rng.gauss(_mu_beta2[ageDays],_sigma_beta2[ageDays]);
-      double b_3=rng.gauss(_mu_beta3[ageDays],_sigma_beta3[ageDays]);
-      double expectedlogDensity = b_1 * (L[0]+L[1]+L[2]) / 3
-      + b_2 * (L[2]-L[0]) / 2
-      + b_3 * (L[2]+L[0]-2*L[1]) / 4;
-      
-      //include sampling error
-      logDensity=rng.gauss(expectedlogDensity,sigma_noise(ageDays));
-      //include drug and immunity effects via growthRateMultiplier 
-      logDensity += log(inf._patentGrowthRateMultiplier);
-      
-      if (logDensity <= upperLimitoflogDensity)	//got an acceptable density, we're done
-	break;	// most of the time this should happen first try
+//to avoid the formula for the linear predictor being excessively long we introduce L for the lagged densities
+#define L inf._laggedLogDensities
+
+    if (bsAge >= _maximumDurationInDays || !(L[0] > -999999.9)) // Note: second test is extremely unlikely to fail
+        return true;                                            // cut-off point
+
+    // constraints to ensure the density is defined and not exploding
+    double upperLimitoflogDensity = log(_maximumPermittedAmplificationPerCycle * exp(L[1]) / _inflationMean);
+    double amplificationPerCycle;
+    double localDensity; // density before scaling by _overallMultiplier
+    size_t ageDays = bsAge;
+    for (int tries0 = 0; tries0 < EI_MAX_SAMPLES; ++tries0) {
+        double logDensity;
+        for (int tries1 = 0; tries1 < EI_MAX_SAMPLES; ++tries1) {
+            // parity: order — local RNG stream: draw call order fixes stream state
+            double b_1 = rng.gauss(_mu_beta1[ageDays], _sigma_beta1[ageDays]);
+            double b_2 = rng.gauss(_mu_beta2[ageDays], _sigma_beta2[ageDays]);
+            double b_3 = rng.gauss(_mu_beta3[ageDays], _sigma_beta3[ageDays]);
+            double expectedlogDensity =
+                b_1 * (L[0] + L[1] + L[2]) / 3 + b_2 * (L[2] - L[0]) / 2 + b_3 * (L[2] + L[0] - 2 * L[1]) / 4;
+
+            //include sampling error
+            logDensity = rng.gauss(expectedlogDensity, sigma_noise(ageDays));
+            //include drug and immunity effects via growthRateMultiplier
+            logDensity += log(inf._patentGrowthRateMultiplier);
+
+            if (logDensity <= upperLimitoflogDensity) //got an acceptable density, we're done
+                break;                                // most of the time this should happen first try
+        }
+        if (!(logDensity <= upperLimitoflogDensity)) // in case all the above attempts fail, cap logDensity
+            logDensity = upperLimitoflogDensity;
+
+        localDensity = getInflatedDensity(rng, logDensity);
+
+        localDensity *= survivalFactor; // Apply drug and vaccine effects
+
+        // Infections that get killed before they become patent:
+        if ((ageDays == 0) && (localDensity < _subPatentLimit)) {
+            localDensity = 0.0;
+        }
+
+        amplificationPerCycle = localDensity / exp(L[1]);
+        if (localDensity >= 0.0 && amplificationPerCycle <= _maximumPermittedAmplificationPerCycle)
+            break; // We're done. Hopefully usually with the first try.
     }
-    if (!(logDensity <= upperLimitoflogDensity))	// in case all the above attempts fail, cap logDensity
-      logDensity=upperLimitoflogDensity;
-    
-    localDensity= getInflatedDensity(rng, logDensity);
-    
-    localDensity *= survivalFactor;	// Apply drug and vaccine effects
-    
-    // Infections that get killed before they become patent:
-    if( (ageDays == 0) && (localDensity < _subPatentLimit) ){
-        localDensity=0.0;
-    }
-    
-    amplificationPerCycle=localDensity/exp(L[1]);
-    if (localDensity >= 0.0 && amplificationPerCycle <= _maximumPermittedAmplificationPerCycle)
-      break;	// We're done. Hopefully usually with the first try.
-  }
-  if (!(localDensity >= 0.0 && amplificationPerCycle <= _maximumPermittedAmplificationPerCycle))	// in case the above tries fail
-    localDensity = _maximumPermittedAmplificationPerCycle*exp(L[1]);
-  
-  inf._laggedLogDensities[2]=inf._laggedLogDensities[1];
-  inf._laggedLogDensities[1]=inf._laggedLogDensities[0];
-  inf._laggedLogDensities[0]=log(localDensity);
-  
-  inf.m_density = localDensity;
-  inf.m_cumulativeExposureJ += inf.m_density;
-  
-  // Note: here use a positive test for survival, since if m_density became an NaN tests against it will return false:
-  if (inf.m_density > _extinctionLevel)
-    return false;	// Still parasites; infection didn't go extinct
-  else
-    return true;	// parasites are extinct; infection will be removed from model
-# undef L
+    if (!(localDensity >= 0.0 &&
+          amplificationPerCycle <= _maximumPermittedAmplificationPerCycle)) // in case the above tries fail
+        localDensity = _maximumPermittedAmplificationPerCycle * exp(L[1]);
+
+    inf._laggedLogDensities[2] = inf._laggedLogDensities[1];
+    inf._laggedLogDensities[1] = inf._laggedLogDensities[0];
+    inf._laggedLogDensities[0] = log(localDensity);
+
+    inf.m_density = localDensity;
+    inf.m_cumulativeExposureJ += inf.m_density;
+
+    // Note: here use a positive test for survival, since if m_density became an NaN tests against it will return false:
+    if (inf.m_density > _extinctionLevel)
+        return false; // Still parasites; infection didn't go extinct
+    else
+        return true; // parasites are extinct; infection will be removed from model
+#undef L
 }
 
-static double sampleSubPatentValue(LocalRng& rng, double alpha, double mu, double upperBound){
-    double beta = alpha * (1.0-mu) / mu;
+static double sampleSubPatentValue(LocalRng& rng, double alpha, double mu, double upperBound) {
+    double beta = alpha * (1.0 - mu) / mu;
     // parity: order — local RNG stream: draw call order fixes stream state
     double nonInflatedValue = upperBound + log(rng.beta(alpha, beta));
     double inflatedValue;
-    int tries=0;
+    int tries = 0;
     do {
-	inflatedValue=getInflatedDensity(rng, nonInflatedValue);
-	tries++;
-    } while ((inflatedValue>upperBound) && tries<10);
-    if (inflatedValue>upperBound)
-	inflatedValue=upperBound;
+        inflatedValue = getInflatedDensity(rng, nonInflatedValue);
+        tries++;
+    } while ((inflatedValue > upperBound) && tries < 10);
+    if (inflatedValue > upperBound)
+        inflatedValue = upperBound;
     return inflatedValue;
 }
 
-static double sigma_noise(int ageDays) {
-  return _sigma0_res+_sigmat_res*((double)ageDays);
-}
+static double sigma_noise(int ageDays) { return _sigma0_res + _sigmat_res * ((double)ageDays); }
 
-static double getInflatedDensity(LocalRng& rng, double nonInflatedDensity){
-  // parity: order — local RNG stream: draw call order fixes stream state
-  double inflatedLogDensity = log(_inflationMean) + rng.gauss(nonInflatedDensity, sqrt(_inflationVariance));
-  return exp(inflatedLogDensity);
+static double getInflatedDensity(LocalRng& rng, double nonInflatedDensity) {
+    // parity: order — local RNG stream: draw call order fixes stream state
+    double inflatedLogDensity = log(_inflationMean) + rng.gauss(nonInflatedDensity, sqrt(_inflationVariance));
+    return exp(inflatedLogDensity);
 }
 
 // -----  checkpointing  -----
 
-} }
+}
+}

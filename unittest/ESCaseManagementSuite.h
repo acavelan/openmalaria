@@ -228,4 +228,3 @@ private:
     ESDecisionMap dMap;
 };
 #endif
-

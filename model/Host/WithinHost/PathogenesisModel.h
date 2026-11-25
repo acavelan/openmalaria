@@ -26,15 +26,20 @@
 #include "Parameters.h"
 #include "util/random.h"
 
-namespace scnXml{
-    class HSESNMF;
-    class Clinical;
+namespace scnXml {
+class HSESNMF;
+class Clinical;
 }
-namespace OM { class RunContext; }
+namespace OM {
+class RunContext;
+}
 
 namespace OM {
-    namespace Host { class Human; }
-    namespace WithinHost { namespace Pathogenesis {
+namespace Host {
+class Human;
+}
+namespace WithinHost {
+namespace Pathogenesis {
 
 using util::LocalRng;
 
@@ -42,33 +47,34 @@ using util::LocalRng;
    *
    * Most values are flags which can be combined in any form. A few
    * combinations set follow. */
-  enum State {
+enum State {
     /* Values here are written in hexadecimal: http://en.wikipedia.org/wiki/Hexadecimal
      * Many are designed to be "flags", so the value corresponds to a single bit:
      * http://en.wikipedia.org/wiki/Flag_byte
      * Max: 0x80000000
      * (note & | ^ are C++'s binary AND, OR and XOR operators). */
-    NONE		= 0,		///< Not sick
-    
+    NONE = 0, ///< Not sick
+
     // Flags for current state/worst state to report:
-    SICK		= 0x1,		///< Sick (may or may not be from malaria)
-    MALARIA		= 0x2,		///< Malaria sickness
-    SEVERE		= 0x8,		///< Severe malaria case
-    COINFECTION		= 0x4,		///< Malaria with a coinfection
-    COMPLICATED		= 0x20,		///< Flag used to indicate SEVERE and/or COINFECTION
-    
+    SICK = 0x1,         ///< Sick (may or may not be from malaria)
+    MALARIA = 0x2,      ///< Malaria sickness
+    SEVERE = 0x8,       ///< Severe malaria case
+    COINFECTION = 0x4,  ///< Malaria with a coinfection
+    COMPLICATED = 0x20, ///< Flag used to indicate SEVERE and/or COINFECTION
+
     // Flags for outcome reporting:
-    STATE_NMF           = SICK, ///< Alias: SICK
+    STATE_NMF = SICK, ///< Alias: SICK
     //STATE_NMF_NEED_AB    = SICK | NEED_ANTIBIOTIC,       ///< Combination: SICK, NEED_ANTIBIOTIC
-    STATE_MALARIA	= SICK | MALARIA,	///< Combination: SICK, MALARIA
-    STATE_SEVERE	= STATE_MALARIA | COMPLICATED | SEVERE,	///< Combination: SICK, MALARIA, COMPLICATED, SEVERE
-    STATE_COINFECTION	= STATE_MALARIA | COMPLICATED | COINFECTION,	///< Combination: SICK, MALARIA, COMPLICATED, COINFECTION
-  };
-  struct StatePair{
-      StatePair() : state(NONE), indirectMortality(false) {}
-      State state;
-      bool indirectMortality;   // implies death a little later on which may not be seen as a malaria death
-  };
+    STATE_MALARIA = SICK | MALARIA,                      ///< Combination: SICK, MALARIA
+    STATE_SEVERE = STATE_MALARIA | COMPLICATED | SEVERE, ///< Combination: SICK, MALARIA, COMPLICATED, SEVERE
+    STATE_COINFECTION = STATE_MALARIA | COMPLICATED |
+        COINFECTION, ///< Combination: SICK, MALARIA, COMPLICATED, COINFECTION
+};
+struct StatePair {
+    StatePair() : state(NONE), indirectMortality(false) {}
+    State state;
+    bool indirectMortality; // implies death a little later on which may not be seen as a malaria death
+};
 
 /*! Pathogenesis model: one final class, behaviour chosen by DATA (Kind switch
  * — the old Mueller/Pyrogen/Predet subclass trio, incl. the Submodels.h merge,
@@ -76,11 +82,11 @@ using util::LocalRng;
  *
  * Previously named MorbidityModel and PresentationModel. */
 class PathogenesisModel {
-public:
+  public:
     enum class Kind { Mueller, Pyrogen, Predet };
 
     /// Calls static init on correct PathogenesisModel.
-    static void init( RunContext& ctx, const Parameters& parameters, const scnXml::Clinical& clinical, bool nmfOnly );
+    static void init(RunContext& ctx, const Parameters& parameters, const scnXml::Clinical& clinical, bool nmfOnly);
 
     /** Create an instance, Kind dependant on global options.
      *
@@ -91,25 +97,25 @@ public:
      *
      * May introduce severe or uncomplicated cases of malaria, as well as non-
      * malaria fevers. */
-    StatePair determineState( Host::Human& human, double ageYears,
-            double timeStepMaxDensity, double endDensity, bool isDoomed );
-    
+    StatePair determineState(Host::Human& human, double ageYears, double timeStepMaxDensity, double endDensity,
+                             bool isDoomed);
+
     /** For Vivax: determine the chance of a NMF and sample, returning either
      * NONE or STATE_NMF. */
-    static Pathogenesis::State sampleNMF( LocalRng& rng, double ageYears );
-    
+    static Pathogenesis::State sampleNMF(LocalRng& rng, double ageYears);
+
     /** Summarize PathogenesisModel details
      *
      * Only the pyrogen-threshold kinds (Pyrogen, Predet) have anything to add
      * to the summary (parity: old PyrogenPathogenesis::summarize). */
-    void summarize (const Host::Human& human);
+    void summarize(const Host::Human& human);
 
     /// Read parameters (parity: old MuellerPathogenesis::init /
     /// PyrogenPathogenesis::init; called from PathogenesisModel::init in xml).
-    static void initMueller( RunContext& ctx, const Parameters& parameters );
-    static void initPyrogen( RunContext& ctx, const Parameters& parameters );
+    static void initMueller(RunContext& ctx, const Parameters& parameters);
+    static void initPyrogen(RunContext& ctx, const Parameters& parameters);
 
-protected:
+  protected:
     /** Create a PathogenesisModel (_pyrogenThres = initPyroThres for the
      * pyrogenic kinds, per old PyrogenPathogenesis ctor). */
     PathogenesisModel(double cF, Kind kind);
@@ -117,18 +123,21 @@ protected:
     /// Episode probability: one case per Kind (were three virtual overrides).
     double getPEpisode(double timeStepMaxDensity, double totalDensity);
 
-public:
+  public:
     //! comorbidity factor for heterogeneity
     double _comorbidityFactor;
 
-private:
+  private:
     /// Determine the current pyrogenic threshold (Pyrogen and Predet kinds).
     void updatePyrogenThres(double totalDensity);
 
     Kind kind;
-public:
+
+  public:
     /// Critical density for fever (clinical episodes); Pyrogen and Predet only
     double _pyrogenThres;
 };
 
-} } }
+}
+}
+}

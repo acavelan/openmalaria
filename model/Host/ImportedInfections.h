@@ -24,7 +24,9 @@
 
 #include "Clock.h"
 #include "RunContext.h"
-namespace scnXml { class ImportedInfections; }
+namespace scnXml {
+class ImportedInfections;
+}
 #include "util/errors.h"
 #include "util/UnitParse.h"
 #include "Host/Human.h"
@@ -32,22 +34,22 @@ namespace scnXml { class ImportedInfections; }
 #include "Host/WithinHost/Infection/Infection.h"
 
 namespace OM {
-    class Population;
+class Population;
 
 namespace Host {
 
-    class ImportedInfections {
-    public:
-        ImportedInfections() : period(sim::zero()), lastIndex(0) {}
-        
-        /** Initialise, passing intervention description
+class ImportedInfections {
+  public:
+    ImportedInfections() : period(sim::zero()), lastIndex(0) {}
+
+    /** Initialise, passing intervention description
          * 
          * @param iiElt The scenario element with description of rates
          * @returns True if any infections are imported
          */
-        void init( RunContext& ctx, const scnXml::ImportedInfections& iiElt );
-        
-        /** Import this time-step's imported infections, according to initialised rates
+    void init(RunContext& ctx, const scnXml::ImportedInfections& iiElt);
+
+    /** Import this time-step's imported infections, according to initialised rates
          * 
          *  The probability of an host to import an infection is calculated
          *  from the importedInfectionsPerThousandHosts. The bernoulli distribution
@@ -56,51 +58,49 @@ namespace Host {
          *  person.
          * 
          * @param pop The Population class encapsulating all humans */
-        void import(RunContext& ctx, vector<Human>& population)
-        {
-            if( rate.size() == 0 ) return;      // no imported infections
-            SimTime now = ctx.clock.interv;
-            assert( now >= sim::zero() );
-            if( period > sim::zero() ){
-                now = mod_nn(now, period);
+    void import(RunContext& ctx, vector<Human>& population) {
+        if (rate.size() == 0)
+            return; // no imported infections
+        SimTime now = ctx.clock.interv;
+        assert(now >= sim::zero());
+        if (period > sim::zero()) {
+            now = mod_nn(now, period);
+        }
+        if (rate[lastIndex].time > now) {
+            lastIndex = 0; // gone round in a loop: back to start of period
+        }
+        if (now > rate[lastIndex].time && rate.size() > lastIndex + 1) {
+            if (rate[lastIndex + 1].time <= now) {
+                ++lastIndex;
+                // won't be necessary to do this more than once, since import() is called every time step
             }
-            if( rate[lastIndex].time > now ){
-                lastIndex = 0;  // gone round in a loop: back to start of period
-            }
-            if( now > rate[lastIndex].time && rate.size() > lastIndex+1 ){
-                if( rate[lastIndex+1].time <= now ){
-                    ++lastIndex;
-                    // won't be necessary to do this more than once, since import() is called every time step
-                }
-            }
-            
-            double rateNow = rate[lastIndex].value;
-            if( rateNow > 0.0 ){
-                for(Human& human : population){
-                    // parity: e — bernoulli import draw per human-day; rate->draw->importInfection(order) frozen (plan §3e)
-                    if(human.rng().bernoulli( rateNow )){
-                        human.withinHostModel->importInfection(human.rng());
-                        mon::recordEvent(mon::measure("nNewInfections"), human);
-                        mon::recordEvent(mon::measure("nNewInfections_Imported"), human);
-                    }
+        }
+
+        double rateNow = rate[lastIndex].value;
+        if (rateNow > 0.0) {
+            for (Human& human : population) {
+                // parity: e — bernoulli import draw per human-day; rate->draw->importInfection(order) frozen (plan §3e)
+                if (human.rng().bernoulli(rateNow)) {
+                    human.withinHostModel->importInfection(human.rng());
+                    mon::recordEvent(mon::measure("nNewInfections"), human);
+                    mon::recordEvent(mon::measure("nNewInfections_Imported"), human);
                 }
             }
         }
-        
-    public:  // run state; wire in checkpoint/statics.cpp
-        SimTime period = sim::never();
-        uint32_t lastIndex;
+    }
 
-    private:
-        struct Rate {
-            Rate( SimTime t, double v ): time(t), value(v) {}
-            SimTime time = sim::never();
-            double value;
-            inline bool operator< (const Rate& that) const{
-                return time < that.time;
-            }
-        };
-        vector<Rate> rate;
+  public: // run state; wire in checkpoint/statics.cpp
+    SimTime period = sim::never();
+    uint32_t lastIndex;
+
+  private:
+    struct Rate {
+        Rate(SimTime t, double v) : time(t), value(v) {}
+        SimTime time = sim::never();
+        double value;
+        inline bool operator<(const Rate& that) const { return time < that.time; }
     };
-} }
-
+    vector<Rate> rate;
+};
+}
+}

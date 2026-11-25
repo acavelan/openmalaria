@@ -34,31 +34,27 @@ using util::LocalRng;
 namespace {
 WHMockState* state = nullptr;
 
-void treatment(void*){
-    state->nTreatments += 1;
-}
+void treatment(void*) { state->nTreatments += 1; }
 
-bool treatSimple(void*, SimTime timeLiver, SimTime timeBlood){
+bool treatSimple(void*, SimTime timeLiver, SimTime timeBlood) {
     state->nTreatments += 1;
     state->lastTimeLiver = timeLiver;
     state->lastTimeBlood = timeBlood;
     return timeBlood != sim::zero();
 }
 
-void treatPkPd(void*, RunContext& ctx, size_t schedule, size_t dosages, double age, double delay_d){
+void treatPkPd(void*, RunContext& ctx, size_t schedule, size_t dosages, double age, double delay_d) {
     state->nTreatments += 1;
-    state->pkpd.prescribe( ctx, schedule, dosages, age, numeric_limits<double>::quiet_NaN(), delay_d );
+    state->pkpd.prescribe(ctx, schedule, dosages, age, numeric_limits<double>::quiet_NaN(), delay_d);
 }
 
-double getTotalDensity(const void*){
-    return state->totalDensity;
+double getTotalDensity(const void*) { return state->totalDensity; }
+
+bool diagnosticResult(const void*, LocalRng& rng, const WithinHost::Diagnostic& diagnostic) {
+    return diagnostic.isPositive(rng, state->totalDensity, numeric_limits<double>::quiet_NaN());
 }
 
-bool diagnosticResult(const void*, LocalRng& rng, const WithinHost::Diagnostic& diagnostic){
-    return diagnostic.isPositive( rng, state->totalDensity, numeric_limits<double>::quiet_NaN() );
-}
-
-RunContext::WHMockHooks hooks = { nullptr, &treatment, &treatSimple, &treatPkPd, &getTotalDensity, &diagnosticResult };
+RunContext::WHMockHooks hooks = {nullptr, &treatment, &treatSimple, &treatPkPd, &getTotalDensity, &diagnosticResult};
 
 /** Within-host model for unit tests (see WHMockState): treatment/treatSimple/
  * treatPkPd/density/diagnostic run through the hook table on RunContext
@@ -66,66 +62,54 @@ RunContext::WHMockHooks hooks = { nullptr, &treatment, &treatSimple, &treatPkPd,
  * Kind::Mock dispatch branch did — throws unimplemented_exception. No
  * infections, no draws, no state beyond the hook table. */
 class WHMock final : public WithinHost::WHInterface {
-public:
-    explicit WHMock( RunContext& ctx ) : WHInterface( ctx, Kind::Mock ) {}
+  public:
+    explicit WHMock(RunContext& ctx) : WHInterface(ctx, Kind::Mock) {}
 
-    void treatment( Host::Human&, WithinHost::TreatmentId ) override {
+    void treatment(Host::Human&, WithinHost::TreatmentId) override {
         const RunContext::WHMockHooks* h = ctx.whMock;
-        h->treatment( h->state );
+        h->treatment(h->state);
     }
-    bool treatSimple( Host::Human&, SimTime timeLiver, SimTime timeBlood ) override {
+    bool treatSimple(Host::Human&, SimTime timeLiver, SimTime timeBlood) override {
         const RunContext::WHMockHooks* h = ctx.whMock;
-        return h->treatSimple( h->state, timeLiver, timeBlood );
+        return h->treatSimple(h->state, timeLiver, timeBlood);
     }
-    void treatPkPd( size_t schedule, size_t dosages, double age, double delay_d ) override {
+    void treatPkPd(size_t schedule, size_t dosages, double age, double delay_d) override {
         const RunContext::WHMockHooks* h = ctx.whMock;
-        h->treatPkPd( h->state, ctx, schedule, dosages, age, delay_d );
+        h->treatPkPd(h->state, ctx, schedule, dosages, age, delay_d);
     }
     double getTotalDensity() const override {
         const RunContext::WHMockHooks* h = ctx.whMock;
-        return h->getTotalDensity( h->state );
+        return h->getTotalDensity(h->state);
     }
-    bool diagnosticResult( LocalRng& rng, const WithinHost::Diagnostic& diagnostic ) const override {
+    bool diagnosticResult(LocalRng& rng, const WithinHost::Diagnostic& diagnostic) const override {
         const RunContext::WHMockHooks* h = ctx.whMock;
-        return h->diagnosticResult( h->state, rng, diagnostic );
+        return h->diagnosticResult(h->state, rng, diagnostic);
     }
 
-    double probTransmissionToMosquito( vector<double>&, vector<double>& ) const override {
-        throw util::unimplemented_exception( "not needed in unit test" );
+    double probTransmissionToMosquito(vector<double>&, vector<double>&) const override {
+        throw util::unimplemented_exception("not needed in unit test");
     }
-    bool summarize( Host::Human& ) const override {
-        throw util::unimplemented_exception( "not needed in unit test" );
+    bool summarize(Host::Human&) const override { throw util::unimplemented_exception("not needed in unit test"); }
+    void importInfection(LocalRng&) override { throw util::unimplemented_exception("not needed in unit test"); }
+    void optionalPqTreatment(Host::Human&) override { throw util::unimplemented_exception("not needed in unit test"); }
+    void update(Host::Human&, LocalRng&, int&, int&, vector<double>&, vector<double>&, double) override {
+        throw util::unimplemented_exception("not needed in unit test");
     }
-    void importInfection( LocalRng& ) override {
-        throw util::unimplemented_exception( "not needed in unit test" );
+    WithinHost::Pathogenesis::StatePair determineMorbidity(Host::Human&, double, bool) override {
+        throw util::unimplemented_exception("not needed in unit test");
     }
-    void optionalPqTreatment( Host::Human& ) override {
-        throw util::unimplemented_exception( "not needed in unit test" );
-    }
-    void update( Host::Human&, LocalRng&, int&, int&, vector<double>&, vector<double>&, double ) override {
-        throw util::unimplemented_exception( "not needed in unit test" );
-    }
-    WithinHost::Pathogenesis::StatePair determineMorbidity( Host::Human&, double, bool ) override {
-        throw util::unimplemented_exception( "not needed in unit test" );
-    }
-    void clearImmunity() override {
-        throw util::unimplemented_exception( "not needed in unit test" );
-    }
-    double getCumulative_h() const override {
-        throw util::unimplemented_exception( "not needed in unit test" );
-    }
-    double getCumulative_Y() const override {
-        throw util::unimplemented_exception( "not needed in unit test" );
-    }
+    void clearImmunity() override { throw util::unimplemented_exception("not needed in unit test"); }
+    double getCumulative_h() const override { throw util::unimplemented_exception("not needed in unit test"); }
+    double getCumulative_Y() const override { throw util::unimplemented_exception("not needed in unit test"); }
 };
 }
 
-unique_ptr<WithinHost::WHInterface> makeWHMock(RunContext& ctx){
+unique_ptr<WithinHost::WHInterface> makeWHMock(RunContext& ctx) {
     delete state;
     state = new WHMockState();
     hooks.state = state;
     ctx.whMock = &hooks;
-    return unique_ptr<WithinHost::WHInterface>( new WHMock( ctx ) );
+    return unique_ptr<WithinHost::WHInterface>(new WHMock(ctx));
 }
 
 }

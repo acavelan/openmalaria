@@ -32,10 +32,13 @@
 #include "util/errors.h"
 
 namespace scnXml {
-    class AgeGroupValues;
+class AgeGroupValues;
 }
-namespace OM { class SimClock; }
-namespace OM { namespace util {
+namespace OM {
+class SimClock;
+}
+namespace OM {
+namespace util {
 
 /** Deterministic interpolation of data collected by age groups: one
  * enum-tagged value type (Kind switch picks the formula — the old
@@ -46,8 +49,7 @@ namespace OM { namespace util {
  * Current version does not store an age index, thus an order log(n) lookup
  * must occur each time a value is looked up.
  ********************************************/
-struct AgeGroupInterpolator
-{
+struct AgeGroupInterpolator {
     enum class Kind { Dummy, PiecewiseConstant, Linear };
 
     /** Create (Dummy: set() must be called before further use). */
@@ -59,53 +61,61 @@ struct AgeGroupInterpolator
      * @param ageGroups XML element of per-age-group values
      * @param eltName Name of XML element (for reasonable error reporting)
      */
-    void set( const SimClock& clock, const scnXml::AgeGroupValues& ageGroups, const char* eltName );
+    void set(const SimClock& clock, const scnXml::AgeGroupValues& ageGroups, const char* eltName);
 
     /** Set back to initial state. */
-    void reset(){ kind = Kind::Dummy; data.clear(); }
+    void reset() {
+        kind = Kind::Dummy;
+        data.clear();
+    }
 
     /// Return true if set() was ever called.
-    bool isSet(){ return kind != Kind::Dummy; }
+    bool isSet() { return kind != Kind::Dummy; }
 
     /** Return a value interpolated for age ageYears. */
-    inline double eval( double ageYears ) const {
-        switch(kind) {
-        case Kind::PiecewiseConstant: {  // parity: AgeGroupPiecewiseConstant::eval (xml/util.cpp:531)
-            assert ( ageYears >= 0.0 );
-            auto it = data.upper_bound( ageYears );
-            --it;   // previous point when ordered by age (it->first <= ageYears < (it+1)->first)
-            return it->second; }
-        case Kind::Linear: {  // parity: AgeGroupPiecewiseLinear::eval (xml/util.cpp:633)
-            assert ( ageYears >= 0.0 );
+    inline double eval(double ageYears) const {
+        switch (kind) {
+        case Kind::PiecewiseConstant: { // parity: AgeGroupPiecewiseConstant::eval (xml/util.cpp:531)
+            assert(ageYears >= 0.0);
+            auto it = data.upper_bound(ageYears);
+            --it; // previous point when ordered by age (it->first <= ageYears < (it+1)->first)
+            return it->second;
+        }
+        case Kind::Linear: { // parity: AgeGroupPiecewiseLinear::eval (xml/util.cpp:633)
+            assert(ageYears >= 0.0);
             // Get the first point with age greater than ageYears:
-            auto it = data.upper_bound( ageYears );
-            assert( it != data.end() );
-            double a1 = it->first;  // a1 > ageYears
+            auto it = data.upper_bound(ageYears);
+            assert(it != data.end());
+            double a1 = it->first; // a1 > ageYears
             double f1 = it->second;
-            --it;   // previous point when ordered by age
-            double a0 = it->first;  // a0 ≤ ageYears
+            --it;                  // previous point when ordered by age
+            double a0 = it->first; // a0 ≤ ageYears
             double f0 = it->second;
-            return (ageYears - a0) / (a1 - a0) * (f1 - f0) + f0; }
+            return (ageYears - a0) / (a1 - a0) * (f1 - f0) + f0;
+        }
         default:
             dummyThrow();
         }
-        return 0.0;  // unreachable
+        return 0.0; // unreachable
     }
 
     /** Scale function by factor. */
-    void scale( double factor ){
-        if( kind == Kind::Dummy ) dummyThrow();
-        for( auto& kv : data ) kv.second *= factor;
+    void scale(double factor) {
+        if (kind == Kind::Dummy)
+            dummyThrow();
+        for (auto& kv : data)
+            kv.second *= factor;
     }
 
     /** Find the youngest age which is the global maximum (i.e. the age at
      * which individuals are considered adults where all adults have the same
      * same value). */
     double firstGlobalMaximum() const {
-        if( kind == Kind::Dummy ) dummyThrow();
+        if (kind == Kind::Dummy)
+            dummyThrow();
         double age = 0.0, max = numeric_limits<double>::min();
-        for( const auto& kv : data ){
-            if( kv.second > max ){
+        for (const auto& kv : data) {
+            if (kv.second > max) {
                 max = kv.second;
                 age = kv.first;
             }
@@ -113,28 +123,27 @@ struct AgeGroupInterpolator
         return age;
     }
 
-private:
+  private:
     /** Cold path: old AgeGroupDummy methods threw; keep one throw site. */
-    [[noreturn]] void dummyThrow() const {
-        throw TRACED_EXCEPTION_DEFAULT( "AgeGroupDummy" );
-    }
+    [[noreturn]] void dummyThrow() const { throw TRACED_EXCEPTION_DEFAULT("AgeGroupDummy"); }
 
     /** Sample interpolator between 0 and max age, outputting to a csv file
      * called name.csv. */
-    void outputSamples( const SimClock& clock, const string name ){
-        if( !util::CommandLine::option(util::CommandLine::SAMPLE_INTERPOLATIONS) ){
+    void outputSamples(const SimClock& clock, const string name) {
+        if (!util::CommandLine::option(util::CommandLine::SAMPLE_INTERPOLATIONS)) {
             return;
         }
-        ofstream fstream( (name+".csv").c_str() );
+        ofstream fstream((name + ".csv").c_str());
         double max = sim::inYears(clock.max_human_age);
-        for( double age = 0.0; age < max; age += 0.1 ){
-            fstream << age << "," << this->eval( age ) << endl;
+        for (double age = 0.0; age < max; age += 0.1) {
+            fstream << age << "," << this->eval(age) << endl;
         }
     }
 
     Kind kind;
     /// Breakpoints (lower-age-bound or interpolation points) in numeric key order.
-    map<double,double> data;
+    map<double, double> data;
 };
 
-} }
+}
+}

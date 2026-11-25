@@ -27,45 +27,44 @@
 
 class UnittestUtil;
 namespace scnXml {
-    class Diagnostic;
+class Diagnostic;
 }
 
 namespace OM {
-    class Parameters;
-    class RunContext;
+class Parameters;
+class RunContext;
 namespace WithinHost {
 
 using util::LocalRng;
 
 class Diagnostic {
-public:
+  public:
     /** Use the test.
      * 
      * @param dens Current parasite density in parasites per µL
      * @param densHRP2 Equivalent density for diagnostics dependent on HRP2
      * @returns True if outcome is positive. */
-    bool isPositive( LocalRng& rng, double dens, double densHRP2 ) const;
-    
-    inline bool operator!=( const Diagnostic& that )const{
-        return specificity != that.specificity ||
-            dens_lim != that.dens_lim;
+    bool isPositive(LocalRng& rng, double dens, double densHRP2) const;
+
+    inline bool operator!=(const Diagnostic& that) const {
+        return specificity != that.specificity || dens_lim != that.dens_lim;
     }
-    
+
     /// True if false positives are possible
     bool allowsFalsePositives() const;
-    
-public:	// constructed by the diagnostics registry (Diagnostic.cpp)
+
+  public: // constructed by the diagnostics registry (Diagnostic.cpp)
     /** Construct from XML parameters. */
-    Diagnostic( const Parameters& parameters, const scnXml::Diagnostic& elt );
+    Diagnostic(const Parameters& parameters, const scnXml::Diagnostic& elt);
     /** Construct as deterministic. */
-    explicit Diagnostic( double minDens );
-    
+    explicit Diagnostic(double minDens);
+
     // switch: either not-a-number indicating a deterministic test, or specificity
     double specificity;
     // depending on model, this is either the minimum detectible density
     // or the density at which test has half a chance of a positive outcome
     double dens_lim;
-    
+
     // if true, the diagnostic is dependent on the HRP2 antigen
     bool uses_hrp2;
 };
@@ -73,23 +72,24 @@ public:	// constructed by the diagnostics registry (Diagnostic.cpp)
 /** Static members to do with Diagnostic: library of parameterised Diagnostic
  * objects. */
 class diagnostics {
-public:
+  public:
     /** Initialise from input data (registry: ctx.diagnostic_set). */
-    static void init( RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario );
-    
+    static void init(RunContext& ctx, const Parameters& parameters, const scnXml::Scenario& scenario);
+
     /** Look up a diagnostic by name and get a reference to it.
      * 
      * @throws util::xml_scenario_error on failure
      */
-    static const Diagnostic& get( RunContext& ctx, const std::string& name );
-    
+    static const Diagnostic& get(RunContext& ctx, const std::string& name);
+
     /** Make a new diagnostic with deterministic density and return a reference. */
-    static const Diagnostic& make_deterministic( RunContext& ctx, double minDens );
+    static const Diagnostic& make_deterministic(RunContext& ctx, double minDens);
 
     /** The diagnostic used for monitoring output (ext; Diagnostic.cpp). */
-    static const Diagnostic& monitoringDiagnostic( RunContext& ctx );
-    
-    static void clear( RunContext& ctx );       // for unit tests (UnittestUtil)
+    static const Diagnostic& monitoringDiagnostic(RunContext& ctx);
+
+    static void clear(RunContext& ctx); // for unit tests (UnittestUtil)
 };
 
-} }
+}
+}

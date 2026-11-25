@@ -31,14 +31,16 @@
 namespace OM {
 class RunContext;
 class Population;
-namespace Transmission { class TransmissionModel; }
+namespace Transmission {
+class TransmissionModel;
+}
 
 namespace checkpoint {
 
-void ckStatics (Archive&, RunContext&);
-void ckMonitoring (Archive&, RunContext&);
-void ckTransmission (Archive&, RunContext&, Transmission::TransmissionModel&);
-void ckHumans (Archive&, RunContext&, Population&);
+void ckStatics(Archive&, RunContext&);
+void ckMonitoring(Archive&, RunContext&);
+void ckTransmission(Archive&, RunContext&, Transmission::TransmissionModel&);
+void ckHumans(Archive&, RunContext&, Population&);
 
 } // namespace checkpoint
 } // namespace OM
