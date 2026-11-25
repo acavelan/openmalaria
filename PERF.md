@@ -1,0 +1,620 @@
+# Rewrite KPI ledger (plan v3.3)
+
+One row per phase (contract: `openmalaria-rewrite` skill). Three KPIs per row.
+
+- **model LOC** = `cloc --quiet model --include-lang="C++,C/C++ Header" | grep '^SUM'` col 5 — code lines only (comments/blanks never count; `// parity:` annotations are LOC-free). Hard cap Σ ≤ 14.0k incl. `model/xml/` (xml/ ≤ 2.6k). `unittest/` LOC tracked beside it — model logic relocated into tests counts as a breach.
+- **CPU-s** = user CPU seconds (`/usr/bin/time -f %U`) of the single benchmark: `util/example/example_scenario.xml` (popSize 2000, iseed 1 — built-in values, scenario not to be edited; covers dynamic EIR, 3 species, ExactNv0, ITN deployments = full hotspot map), `taskset`-pinned, governor/turbo off, median-of-5, warmup/main split, **build A2** (PGO; A0 = plain `-O3 -DNDEBUG -ffp-contract=off` is the T1 gate build). Never ctest wall. Noise floor = max(1.0%, 2×MAD); below it = revert. The benchmark scenario also runs bit-exact-diff in the parity runner (timing is void if its output diverges).
+- **Readability** = qualitative note (new free-function equations, `// parity:` anchors kept, no statics).
+
+Build-recipe hash (compiler/flags/lib versions/source commit of the T1 reference binary) is stamped on every row; hash mismatch invalidates parity claims.
+
+| Phase | Description | model LOC | unittest LOC | CPU-s (A2, example_scenario w/m) | vs A2 prev | Readability note | Verdict |
+|---|---|---|---|---|---|---|---|
+| 0 | baseline, build A0 `-O3 -DNDEBUG -ffp-contract=off` (recipe `fb6a8d73c3c0bd90`, ref bin `/tmp/opencode/om-ref/A0/`, commit cfc3c8e0 clean) | 18,813 | 3,529 | A0 12.33 (MAD .010) | 1.000 | reference | reference |
+| 0a | flag lever A1 = A0+LTO — T1 bit-check **57/57 pass** | — | — | 12.03 (MAD .010) | **A1/A0 = 1.025** | — | kept (free) |
+| 0b | flag lever A2 = A1+PGO (corpus: ctest 51 + unittest + example hot-run) — T1 bit-check **57/57 pass** ⇒ **A2 is the timing yardstick** (recipe `52a4b6f5b1ac0649`) | — | — | 11.34 (MAD .010) | **A2/A0 = 1.087** | — | kept; note: slightly under the 1.10 hope |
+| 0c | branch-miss pricing (`perf stat`, example@2000): A0 120.8M misses vs A2 120.3M flat; IPC 3.56→3.63; PGO win = −5.8 % instructions, not miss-rate. Residual miss ceiling ≈ 0.33 s/12 s (**≤3 %**) — de-virt (phase 4) must win via instruction/indirect-call elimination + IPO, *not* branch prediction; KPI 1.15–1.35 pre-break already reflects this | — | — | — | — | — | de-virt priced |
+| 0d | harness: `util/parity.py` (T1 two-tier runner, recipe-hash guard), `util/toleranceTable.py` → `test/tolerance_example_p2000.json` (189,800 keys, CV med 2.7 %/p95 316 % ⇒ blanket 2e-2 falsified), `--seed` CLI (bit-proven ≡ XML iseed), EIR-uninit UB fix (**value-neutral, zero re-bless**), single-run gate mode: **53/53 bin-identical**; ctest noise 9.36 s | 18,839 (+26 seed/UB-fix) | grows with T2 work | — | — | +`--seed`, −UB | green |
+| 1 | census (`census/`: statics 347 rows evidence-tagged, hierarchies 17 roots, xml_glue 140 types, draws 139 sites, latent-bug re-verify, mon measure-ids 90+12) + **108 `// parity:` comments at every draw/contract site** (§3 a–g); runners `util/census/` re-runnable + drift gates (`monids.sh compare` PASS, `draws.sh` comment-only proof) | **18,839 (Δ0 code** vs 0d; 18,813 was pre-phase-0 in row 0 — the +26 there was phase-0's own seed/UB work**)** | 3,544 (untouched; measured) | — (comments only; no rebuild-timing claim) | — | comments 9,119→9,227 (**+108, LOC-exempt** per user ruling 2026-11-19) | green: ctest 52/52, tier-b seeds 1–2 bit-identical, comment-only diff proof PASS |
+| 2 | `model/xml/` conversion split (9 XSD-module TUs + `HumanInterventionComponents.h` + `DocumentLoader`/`XMLChecker`): **all scnXml readers moved verbatim**; model headers forward-declare (`xsd` sequence/optional bool arg spelled out); `byDeployTime` → inline variable; option-rule table (`INCOMPAT_RULES`, byte-identical errors); changeHS/changeEIR spec met as-is (load-time `_clone()` + stable-sorted timed list + recompile via same `setHS`/`changeEIRIntervention` — no restructure needed); **generated schema now included only from `model/xml/` (+unittest)** | **19,054 (Δ+215** vs phase-1: conversion glue — extern re-decls, split-header declarations, duplicated `SampleMode` enum; **xml/ subset 4,889 > 2.6k budget**, deviation: readers moved verbatim, compaction is a later-phase lever**)** | 3,544 (Δ0) | — (structure-only; no timing claim) | — | readers in one place per XSD module; hidden include deps surfaced & fixed (`<cstring>` in checkpoint.cpp, own f.d.s in DecayFunction/PerHost/AnophelesModel.h) | green: clean rebuild, ctest 52/52, **T1 tiers a+b seeds 1–10: 63/63 bit-identical**; deviations documented (xml LOC over budget, model +215, unsigned commits, main keeps typed scenario via `xml/DocumentLoader.h` facade) |
+| 3 | Per-run state into ONE `RunContext` (branch `p3-runcontext`): `main()` engine driver extracted to `OM::run_simulation(ctx, scenario…)`; `RunContext{clock, master_RNG{0,0}, genotypes, drugs, treatments, age, ext*}` + heap `RunExtensions` bundle for include-cycled state (registries, monitoring `RuntimeState`, continuous-output stream, ento params); 54/56 plan-§5 statics moved (census-verified), the 2 remainders tagged as legal survivors (`ModelOptions::options` — fully reassigned per run; `AgeGroupDummy::singleton` — stateless never-written dummy); mon human-based `recordStat`/`recordEvent` overloads resolve the run via `human.ctx` (~100 call sites untouched); GSL demography fit carries the run through `gsl_multimin_function.params` (killed the `wCalcRSSFunc` global); **TwoRunsSuite: two full engine runs in one process are bit-identical** (was the red acceptance test at 1a) | **19,323 (Δ+269** vs phase-2: the two new core headers + de-inlined ext accessors + RunContext plumbing through readers/deploy chains; xml/ subset Δ0**)** | 3,657 (Δ+113: TwoRunsSuite + ctx-aware fixtures) | 12.41s user-median — **A0-class build** (build-p3: `-O3 -DNDEBUG -ffp-contract=off`, no PGO); structural phase, perf-neutral required: vs A0-recheck 12.33s = **+0.6%, below the 1.0% noise floor** (mad 0.000) | n/a (A2 vs A0-class builds not comparable; A2 not rebuilt this phase) | one obvious place for per-run state; `RunExtensions*` deliberately raw (gcc 16.2 instantiates `unique_ptr` deleters at class scope on incomplete types) — out-of-line `~RunContext` deletes it; `// parity:` anchors kept (MasterRng(0,0) percentile seed moved verbatim) | green: ctest 52/52, unittest 86/86 (incl. TwoRunsSuite), **T1 tiers a+b seeds 1–10: 63/63 bit-identical**; deviations: unsigned commits (headless gpg), Δ+269 LOC, A0-class (not A2) benchmark |
+| 4a | Decision-tree de-polymorph (branch `p4a-dectree`): the 15-class `CMDecisionTree` hierarchy (already parked in `model/xml/healthSystem.cpp` by p2) replaced by **compile-stage canonicalisation** `compile_decision_tree()` (xml layer: names→ids for diagnostics/cohorts/schedules/dosages/deploy-components, cumulative-p precompute, XSD-sequence-rank child order, `map<double>` numeric-key-order reproduction via stable_sort+first-wins tie-drop, **consecutive-identical-leaf folding** with per-rule draw-legality proof, NaN-p rejection replacing old map-UB — documented, unreachable in corpus) + **one flat-array interpreter** `exec_decision_tree()` (`model/Clinical/CMDecisionTree.cpp`: 32-byte POD nodes {kind, side-table range, ≤3 child idx}, iterative walk, zero virtual dispatch per node, single `DTExecCtx{ctx,human,rng&,age,pgState,outcomes}`); quirk-faithful: Multiple's screened-swallow, TreatSimple last-wins, gen_double∈[0,1) makes `end()` unreachable; compile-order of side effects (component-id registration, error priority) mirrors reference gcc **right-to-left ctor-argument evaluation** (probed on gcc 16.2.1) — that + 63/63 is the contract-(d) proof; trees owned by `RunExtensions::decision_trees`, old equality-dedup dropped (memory-only); checkpoint byte layout untouched (trees were never serialized — verified) | **19,160 (Δ−163)** (15 classes + virtuals gone; interpreter+compile in their place) | 3,760 (Δ+103: 5 golden tests × table-driven: age-seam boundaries {2.4/2.5/50/1e6}, cumulative-key tie-drop (p=0 dup), all-fold random, zero-p-first, Multiple screened-swallow — goldens captured from p3-green code pre-rewrite, asserted post; suite 86→91) | **12.31s** user-median (A0-class build-p4a, mad 0.000) vs A0 12.33 = **−0.16 %, inside noise floor — expected, kept as T1-green structural change, not an optimization claim**; `perf record` example@2000 (pinned c5, `-F 999`): dgemm 19.1 % top (phase-0 map intact), **whole clinical tree path ≈0.55 %**, the interpreter itself **below the 0.01 % report floor** — tree CPU is tiny in the benchmark scenario; the de-virt win here is instruction-count + a flat array phases 6/8 can inline, not measurable CPU | n/a (A0-class; A2 not rebuilt) | one free function per stage (compile/exec); `// parity: d` anchors on the draw, the sort and the XSD-rank walk; folding legality + NaN decision + eval-order proof in comments; hierarchies.csv row closed | green: ctest 52/52, **unittest 91/91**, **T1 tiers a+b seeds 1–10: 63/63 bit-identical** |
+
+| 4b | Config/state de-polymorph (branch `p4b-configstate`): **12 hierarchies → enum-Kind final classes**, each gate = build+ctest 52/52+unittest 91/91+T1 tier-a (tier-b probes at h3/h9/h12): DecayFunction −101 (9→1, factory error-order + RTL-arg order pinned); AgeGroupInterpolation −76 (5→1, `eval` inlined; AgeGroupDummy::singleton static killed); InfectionIncidenceModel −21 (4→1, file's own TODO); PathogenesisModel −64 (3→1+Submodels.h deleted); ClinicalModel −22 (4→1); EmergenceRateEstimator −1 (2→1); LSTMDrug −177 (10→1; **m_rng-stream trap found+fixed**: master-reseed draw point preserved); AnophelesModel+SimpleMPD −117 (guarded optional member, 4 hooks); Sampler −153 (3→1, tier-b 4/4); TransmissionModel+Vector+NonVector −141 (PerHost class gone); **Infection −192** (7→1: Kind{Descriptive,Dummy,Empirical,Molineaux,Penny}, kind-conditional `m_duration` draw in ctor init list — draw-point discipline); **WHInterface −1** (5 classes/19 virtuals → 1 final `WHInterface{Kind}`: Vivax/Common/Descriptive/Mock; kind-conditional ctor fragments keep every old RNG draw at its old stream position; checkpoint chains byte-frozen per kind; TreatmentId → Treatments.h (include-cycle untied); dead `addProphylacticEffects` deleted; **WHMock → Kind::Mock + RunExtensions::WHMockHooks fn-ptr table** — production null, mock state in unittest/WHMock.cpp; statics renames initFalciparum/initVivax/initCommon/setHSParametersVivax). Per-hierarchy Δ are file-scope (deleted subclass files); whole-model adds dispatcher/hook/glue elsewhere ⇒ ledger Δ below | **18,599 (Δ−561** vs p4a-green 19,160; measured whole-model cloc at 4b-base 19,160 → pre-h12 18,600 → head 18,599; file-scope Σ-of-claimed −1,066 overshoots: Kind scaffolding + call-site qualification added outside the touched files**)** | 3,698 (Δ−62: WHMock class replaced by state-struct + hook installer) | **12.80s** user-median (mad .010, 5 runs; A0-class build-p4b) vs A0 12.33 = **+3.8 % — ABOVE noise floor; bisected per-hierarchy: post-h9 12.41 / post-h10 12.46 / post-h11 12.88 / post-h12 12.80 ⇒ regression ≈ −0.42s sits in hierarchy 11 (Infection merge)**: RSS 34.9→39.1 MB (+12 %) — merged object carries the union of all kinds' members ⇒ per-infection cache pressure in the update loop (old: 5 small classes). h10 +0.05s (dense per-host arrays). **Not a revert trigger (structural phase, T1-clean) but a flagged deviation: phase-5 lever = hot/cold split or per-kind side-struct for Infection members, re-bench after**; A2 not rebuilt | n/a (A0-class) | one Kind enum per former hierarchy + per-kind member-def TUs kept (readable diffs, checkpoint order visible per kind); `// parity:` anchors preserved through every merge; census statics 347→293 rows retagged; hierarchies.csv 12 rows closed DONE-p4b | green on correctness: ctest 52/52, unittest 91/91 (TwoRunsSuite incl. — ext hook table touched), **T1 tiers a+b seeds 1–10: 63/63 bit-identical**; deviations: **+3.8 % CPU (attributed to h11, lever noted)**, model Δ−561 < Σ file-scope deltas, A0-class build |
+
+| 5 | Hot/cold + cycles + downcasts (branch `p5-cycles`): **Infection hot/cold fix (the 4b h11 lever)** — per-kind cold state moved out of the hot object into three heap payloads (`EmpiricalData`/`MolineauxData`/`PennyData` behind one `unique_ptr` each, allocated exactly in old `ctorBody_X`/`read_X` points — zero RNG-draw change; **checkpoint wire byte-order kept identical** ⇒ 12/12a goldens + two-run box tests green with NO re-bless); benchmark kind (Descriptive, the default) shrinks ~500B→~100B; dead `setPatentGrowthRateMultiplier` deleted; `Kn` kept as lazy `unique_ptr<map>` (LSTMDrug users — near-miss deletion logged in HANDOFF). **Cycle break**: `Transmission/VectorIntervention.h` (bases verbatim) + leaf `interventions/ComponentId.h`; PerHost.h now pulls ONLY the leaf (`g++ -H` proven) — Transmission→interventions include chain gone. **All 4 model/ dynamic_casts deleted** → declared virtual seams (`asVectorIntervention`/`asITNComponent`/`asIRSComponent`/`replayedOnRestore`), mismatch behaviour identical. **Clinical seam formalised**: sole clinical→interventions call is `deploys[aux].deploy()` on concrete owned values (CMDecisionTree.cpp, documented); interventions→clinical runtime edges live only in model/xml wiring — phase-7 `ctx.ext` list. Also: `~PerHost()` + move ops out-of-line (user-declared dtor had silently killed implicit moves of per-host vectors — Population.cpp `std::move` was deep-copying; latent perf bug fixed), stray-quote `#include` from 4b fixed | **18,657 (Δ+58** vs p4b-green 18,599: +15 payload decls (perf trade), +44 split-headers/4 seams, −1 dead include; cap Δ+800 not in play**)** | 3,698 (Δ0 — only PennyInfectionSuite friend-path retarget `penny->`) | **12.51s** user-median (mad .010; A0-class build-p5) vs session baseline 12.77 (p4b-green re-measure, mad 0) = **−2.0 % — above 1.0 % floor ⇒ KEEP**; RSS 39.4→35.4 MB — back to ~A0 parity (34.9); h11 inflation gone; residual over A0 12.33 = **+1.5 % (was +3.8 %)** — remaining gap ≈0.18s sits in Infection-loop call-shape + residual per-host cold members, next lever = phase-8 A2 rebuild re-measure (dgemm 18 % still top, dies with ExactNv0 at p8) | n/a (A0-class) | payload structs one-screen readable, wire order visible per struct; `// parity:` anchors preserved; 0 dynamic_cast in model/; hierarchies include-graph cycle count down | green: **ctest 52/52, unittest 91/91, T1 tiers a+b seeds 1–10: 63/63 bit-identical**; deviations: Δ+58 LOC for a −2.0 % perf win (trade declared), A0-class build |
+
+| 6 | SoA sidecar (branch `p6-soa`): **all §7-pinned persistent columns migrated** into `HumanColumns` (`model/humans/HostColumns.h`, owned by Population, zero globals): rng (row copy-seeded at the old member-init moment — census fact 1), dob/death, cohort bitmask u32 + sparse (id,expiry) pairs (map→sorted-vector, iteration order preserved), monAgeGroup u16, nextCtsDist, immunity accumulators f64×3 + u32, clinical 4×SimTime + f64 (never()/NaN defaults live in append_row), per-species transmission params (nested per-row vectors, resized in `initialise` at the old resize point) + het f64 + outside-flag u8; intervention effect columns deliberately stay in PerHost (phase-7 landing zone). Each cluster: old member DELETED (compiler = migration checker), submodel gains `bind_columns(cols,row)` + const-ref accessors (wire bytes unchanged per member), **`Human::set_row` rebinds every mirror** (missed once → wrong-host immunity; trap documented; caught by death-heavy ctest, invisible to tier-a). `SlotAllocator` = sole clamp owner (+T2 golden suite); scratch: run-loop-owned `HostScratch` EIR vectors + `updateKappa` probTransGenotype assign-reuse (mirrors vectorUpdate's existing pattern); per-infection row-ref hoists in `immunitySurvivalFactor`/`updateImmuneStatus` (bit-identical, recovered +0.07 s); **Host::update decomposed into the 7 §9 free functions over `HostView`** (bodies verbatim, order identical); het_sample §9 draw contract verified + annotated | **18,895 (Δ+238** vs p5 18,657; per-commit Δ: 6.1 +16, 6.2a +27, 6.2b +62, 6.2c +16, 6.2d +19, 6.2e +20, 6.3 +6, 6.4 +37 (measured via cloc per commit**)** | 3,794 (Δ+96: SlotAllocatorSuite mode-A goldens + at-cap 0-draw pin; bind-columns fixture updates) | **12.58 s** user-median (mad .010; A0-class build-p6) vs p5 12.51 = **+0.56 %, below the 1.0 % noise floor ⇒ KEEP** (6.2c briefly +1.2 % → hoists recovered; RSS 36.4 MB ≈ p5); vs A0 12.33 = +2.0 % — layout phase, no lever claimed; recovery budget unchanged for phase-8 A2 rebuild | n/a (A0-class) | HostColumns.h = self-documenting column table; 7 named stages ↔ 7 functions (§9); `// parity:` anchors preserved through every move | green: **ctest 52/52, unittest 94/94** (91 + 3 new T2), **T1 tiers a+b seeds 1–10: 63/63 bit-identical**; deviations: **B/row ≈303 fixed (+~80 heap/span data) vs ≈158 target** — the gap is LocalRng 104 B (study assumed 32 B raw state) + 120 B of std::vector headers across 5 nested columns; compaction decision (raw-state rng column, dense inline [nsp] arrays) deferred to phase-7/8 with T1 re-proof; census `draws.sh` refresh bit-rotted vs phase-4–6 file moves (`int('')` on line-less order rows) — draw-set invariance instead proven by T1+RngGoldens+TwoRunsSuite, script repair deferred |
+| 6-notes | measured B/row (fixed part): rng 104 · dob 4 · death 4 · cohort_set 4 · cohorts-hdr 24 (+16/span) · mon 2 · cts 4 · imm 3×8 · cum_prim 4 · t_last_treat 4 · es×3 3×4 · es_prevdens 8 · anoph 4×24-hdr (+8·nsp each) · rel_het 8 · outside 1 = **303**; per-cluster LOC deltas in row 6; HostView{ctx,human,transmission,scratch} — pinned {cols,row,rng,scratch,iv,mon} completion is phase 7 | — | — | — | — | column table lives in HostColumns.h comments | phase-7 handoff: iv/mon fields of HostView land when PerHost intervention columns dissolve |
+| 7 | Interventions rewrite (branch `p7-interventions`, agent died ×2 on infra; final gate + merge run by main session): **7.1** polymorphic TimedDeployment tree → flat `TimedDeploymentKind` + variant payloads, date-cursor + `sim::future()` sentinel, deploy bodies verbatim (contract a: RNG draw stays LAST filter; contract b: single list, stable_sort-by-date + insertion tie-break preserved); **7.2a** per-host intervention state dissolved to columns: `IvRecord` vector (deploy-history order = contract c; HumanITN/HumanIRS/HumanGVI/PerHostInterventionData DEAD, `iv_deploy/iv_update/iv_*` free fns), `VacRecord` vector (PerHumanVaccine DEAD, `vaccinate/vaccine_factor` free fns, 12 getFactor sites retyped); **7.2b** `HumanInterventionComponent` class tree (11 classes) → flat `ComponentConfig{kind, variant payload}` + deploy/print switches — LAST polymorphic hierarchy in model/ gone; **7.3** ITN §9 state/draw contract verified already-exact from 7.2a (no code change; 3-state anchors + Poisson hole→rip order + IRS insecticide-then-het re-anchored); **7.4** copula map → `copula_g` column per (host,subPop); **7.5** interventions emit ZERO checkpoint bytes (user invariant: checkpoint = post-warmup = pre-intervention ⇒ wire intervention state is dead weight — deleted, zero compat effort; 12/12a two-run goldens + 2ITNs same-binary round-trip stay green) | **18,639 (Δ−221** vs p6-green **re-measured 18,860**; per-commit: 7.1 +32, 7.2a-i −38, 7.2a-ii +5, 7.2b −122, 7.4 +3, 7.5 −101. Ledger correction: row 6 recorded 18,895 but p6-green tree measures 18,860 (same tree as 4ce2157d) — row 6 overstated by 35. `model/interventions/` 1,478→1,360; the census-2837 baseline figure was pre-phase-2 (conversion glue now in xml/)** | 3,794 (Δ0) | **12.47 s** user-median (clean-4 spread 12.46–12.50, one 13.93 external outlier discarded; A0-class build-p7) vs p6 12.58 = **−0.9 %, under the 1.0 % floor ⇒ flat, KEEP** (LOC-driven phase, no perf claim); vs A0 12.33 = **+1.1 %**. Secondary ITN-heavy VecFullTest: 2.28 vs A0 2.24 = +1.8 % — interventions removal bought no time at A0-class | n/a (A0-class); **pull-forward clause FIRED** (ratio vs A2 11.34 ≈ 0.91 ≪ 1.2) ⇒ A2 rebuild of the new tree + T1-safe levers (forcedEIR early-out, arena, rng-column compaction 104→32 B) scheduled before phase 8 | `ComponentConfig` kind table self-documenting; iv/vac record columns in HostColumns.h; `// parity:` anchors (a/b/c) re-anchored at every moved draw | green (main-session rerun): **ctest 52/52, unittest 94/94, T1 tiers a+b seeds 1–10: 63/63 bit-identical**; deviation: HostView stays {ctx,human,transmission,scratch} (iv/mon refs = zero consumers, dead weight; records reached via cols+row) |
+
+Known: `12a` continuous-vs-resumed golden divergence (22 measures, ≤8 %; checkpoint veto covers it; re-bless scheduled at phase 8).
+
+## Phase 7b — A2 yardstick rebuild + T1-safe levers (branch `p7b-levers`)
+| Phase | Description | model LOC | unittest LOC | CPU-s | ratio | Readability note | Verdict |
+|---|---|---|---|---|---|---|---|
+| 7b-A | **A2 yardstick rebuilt on the REWRITTEN tree** (frozen 11.34 s was baseline-commit A2 — invalid vs this code): A1 = A0-class + `-flto=auto` (T1 bit-check tier-b s1–2 PASS; LTO verified at link + stripped symtab); A2 = A1 + PGO two-pass (corpus: ctest 52/52 + unittest 94/94 + example@2000 seeds 1–4 under `-fprofile-generate`; profile use proven: `.text` +5.3 % vs A1, extra inlines on probe) — T1 bit-check tier-b s1–2 PASS ⇒ A2 is the current-tree timing yardstick. **Finding: the LTO+PGO lever collapsed** — baseline A2/A0 = 1.087, current A2/A0-class = **1.003**: compiler magic mined the polymorphism/indirect-branch density that phases 4–7 deleted; the residual is data layout + per-row heap records ⇒ stage-B levers, and phase 8's dgemm flip (~19 % of CPU), are where the time is | — | — | A1 **12.37** (MAD .010; raw 12.34–12.38); A2 **12.43** (MAD .010; raw 12.40/12.42/12.43/12.44/12.45) | current-A2/frozen-A2 = **0.912** = true structural cost so far (**+9.6 % time vs baseline A2**); A2 vs current A0-class 12.47 = −0.3 % (under floor — flat); A1/A0-class = 1.008 | recipe `/tmp/opencode/om-ref/A2new/recipe.json`; yardstick binary `A2new/openMalaria`; -flto+profile proven, not assumed | yardstick stamped; levers measured vs 12.43 going forward | green: T1 tier-b s1–2 bit-identical vs A0 ref (recipe check ok) |
+| 7b-B1a | **allocation-churn kill (the B1 lever, redirected by measurement)**: brief hypothesised a HostColumns arena (iv/vac/cohorts/copula) — probe disproved it (those columns allocate only at deploy events). LD_PRELOAD malloc probe on A2: **88.2M allocations/run, 83.3M ≤16 B ≈ per-host-tick**; backtrace sampling → `probTransmissionToMosquito_falciparum` allocated `vector<double> y_lag_g_i/l(n)` **per host per tick** → two function-local reused scratch vectors (fully overwritten before every read, values never escape, `n` fixed per run — value-identical by construction; TwoRunsSuite re-proven). Residual 5.9M allocs (~600/s, `new Infection` per infection + warmup gsl vectors) priced below floor → kept simple, slot-pool is phase-8 slot-traversal territory. **Premise correction logged**: B3 forcedEIR early-out likewise verified already-skipped at source (`initIterate_vector` returns early in forced mode; no dgemm in forced-scenario profile; the remaining forced-mode vector work feeds `Vector_*` survey stats = live, not dead) | +2 (18,641 total) | 0 | A2 12.13 (MAD .005; raw 12.11/12.13/12.13/12.14 + 13.91 external outlier discarded) | **12.43→12.13 = −2.4 % > 1.0 % floor ⇒ KEEP**; vs frozen 11.34 = 0.935; malloc 88.2M→5.9M (−93 %) | scratch rationale + no-leak proof in comment at the site; `// parity` untouched | green: ctest 52/52, unittest 94/94, T1 tier-a 53/53 (gate bin) + tier-b s1 (A2 bin) |
+| 7b-B2 | **rng-column compaction 104→32 B — REVERTED (under noise floor)**: `RNG<T>` slimmed to engine-state-only member (per-row 104→32 B; GSL wrapper rebuilt as stack `GslView` per distribution call — pure view, zero stream consumption; ChaCha/Xoshiro round-trip proof = `binary_checkpoint` IS the raw state; draw-point rule untouched). All gates green incl. RngGoldens + TwoRunsSuite + checkpoint goldens, but A2 bench 12.13→12.09 (raw 12.08/12.08/12.09/12.11/12.12, MAD .010) = **−0.33 % < 1.0 % floor ⇒ REVERT per contract**. Read: the host-update loop touches the rng column row-locally, not as a contiguous stream — the column size doesn't price into the benchmark (the p6 "104 B" layout debt stands, but it costs nothing here; revisit only if a future profile shows rng-column misses) | Δ0 (reverted) | 0 | A2 12.09 (measured) vs 12.13 | −0.33 % < floor ⇒ REVERT | GslView design documented in the (now-reverted) diff | **reverted+logged** |
+| 7b-B4 | **vaccine_factor hoists** (chosen from fresh `-F 999` record of the B1a A2 binary): `interventions::vaccine_factor` is a pure empty-product over the host's vac column (frozen while the population is scanned) — but called **per infection per tick** (update/Common update loops), **per host×species×genotype** (`vectorUpdate_vector`) and **per host×genotype** (`updateKappa`); with no vaccine deployed the benchmark ran ≈50M empty scans/tick-run (2.8 % + 0.6 % self + call overhead inside `update_descriptive`). Fix = one `Human::has_vaccines()` check hoisted per host at the 4 loops, `anyVac ? call : 1.0` (value-identical: empty ⇒ exactly 1.0; non-empty path byte-for-byte unchanged, no FP touched). Post-fix profile: vaccine_factor below the 0.01 % report floor | +5 (18,646) | 0 | A2 11.98 (MAD .005; raw 11.96–11.99) | **12.13→11.98 = −1.24 % > 1.0 % floor ⇒ KEEP**; vs frozen 11.34 = 0.947 | hoist legality comment at each site; hot non-empty paths untouched | green: ctest 52/52, unittest 94/94, T1 tier-a 53/53 + tier-b s1 on measured A2 bin |
+| 7b-F | **7b final gate + scoreboard**: rebuilt-A2 yardstick progression 12.43 (p7-green) → 12.13 (B1a) → 11.98 (final, MAD .005); B2 reverted at 12.09; B3 premise falsified (no code). Ratio vs frozen baseline-A2 11.34: 0.912 → **0.947** (pre-break target 1.15–1.35 — the remaining gap is exactly the sanctioned phase-8 break: dgemm 19.2 % + dgemv 1.5 % + dcopy ≈ **21 % ≈ 2.5 s lives in the ExactNv0 warmup solver**, flipping to `solve_Nv0_linear` per F3 should land ~9.5 s ≈ ratio 1.19 before FP-reassociation/SIMD-sampler/slot-traversal add on top; LTO+PGO are exhausted on this tree, measured −0.4 %). vs current-tree A0-class 12.47 the 7b A2 is now **1.041×** | **18,646 (+7** vs p7-green 18,639: +2 B1a, +5 B4; B2 reverted Δ0**)** | 3,794 (Δ0) | A2 **11.98** (MAD .005; raw 11.96/11.98/11.98/11.98/11.99) | **0.947 vs frozen 11.34**; stage-B total −3.6 %; census untouched (no files moved) | `// parity:` anchors untouched by all levers; hoist-legality comments at 4 sites | green: **ctest 52/52, unittest 94/94, T1 tiers a+b seeds 1–10: 63/63 bit-identical** (gate build); A2 yardstick binary+recipe re-stamped to `/tmp/opencode/om-ref/A2new/` |
+| 7d-A-amended | **CORRECTION to 7b-A/7b-F "PGO collapsed to 1.003" — that pass-2 never loaded a profile** (independent re-test on p7b-green, branch `p7d-pgo`). Root cause, three layers: ① 7b pass-1 gcda landed in `/tmp/opencode/om-pgo` while pass-2 used bare `-fprofile-use` → searched object-adjacent in `build-p7b-a2` (0 gcda there); ② deeper: cross-build-dir pass-2 can *never* work on this tree — the XSD-codegen `schema/*.cpp` sources are generated inside the build dir and gcov location identity is keyed on their **absolute path** ⇒ any dir change gives `-Werror=coverage-mismatch` (9,407 lines observed); ③ `-Wno-missing-profile` silenced the complaint. ⇒ recorded 7b A2 (12.43→11.98) was **LTO-only**: this session's LTO-only A1 reproduces 11.98 exactly. Correct recipe (proven): single build dir, `-fprofile-generate=<abs pgodir>` pass-1 → reconfigure same dir `-fprofile-use=<same dir> -fprofile-correction` (no `-Wno`), `-fprofile-abs-path` both passes; corpus = ctest 52 + unittest 94 + example@2000 seeds 1–4 + VecFullTest ×2 + example@2000 checkpoint save/restore (81 gcda). Loading proven: 0 profile diagnostics compile+LTRANS; positive control — same-tree LTO-only vs PGO LTRANS inline dumps: "(estimated locally)" static-guess annotations 69,376 → 1,760 (−97.5%), binary 2.00 → 1.67 MB cold-trim. Re-measured p7b-green, c3-pinned, median-of-5, MAD ≤ .010, A0 re-run identical (no drift): **A0 12.23 / A1(LTO) 11.98 / A2true 11.15** ⇒ flags lever is **alive: A2true = −6.9% vs LTO, −8.8% vs A0 (1.097× ≈ the ≥1.10 flags KPI)**; "PGO mined away by the rewrite" is **withdrawn**. A2true **T1 63/63 bit-clean** (tier-a 53 + tier-b s1–10) ⇒ qualifies as yardstick; stamped `/tmp/opencode/om-ref/A2true/` (sha256 1df91b2c…). vs frozen baseline-A2 11.34: 11.34/11.15 = **1.017** — the rewritten tree at true PGO is now *faster* than the pre-rewrite A2 (corrects 7b-F's 0.947). Cross-check: 7c-agent's a2p 11.02 on p7c (incl. C3 ≈ −1%) ⇒ ≈11.13 p7b-green-equivalent ⇒ **confirms** 11.15 within noise | — (flags only, Δ0 LOC) | 0 | A2true **11.15** (raw 11.13/11.15/11.15/11.16/11.16); A0 raw 12.20–12.24; A1 raw 11.98–12.01 | A2true/A1 = 0.931; A2true/A0 = 0.912; **1.017 vs frozen 11.34** | none (no code change); PGO wiring traps documented in HANDOFF 7d addendum | **CORRECTION: 7b PGO verdict invalid; true A2 = 11.15 s (A2/A0 = 1.097 speedup); 7c a2p confirmed** |
+
+## Phase 7c — comparison memo, ISA experiment, vectorization, LOC sweep (branch `p7c-vectorize`)
+
+| Phase | Description | model LOC | unittest LOC | CPU-s | ratio | Readability note | Verdict |
+|---|---|---|---|---|---|---|---|
+| 7c-B | **ISA experiment (`-march=native` pricing — the Rust port's biggest bundled ingredient)**: a2-recipe clone + `-march=native -mtune=native -ffp-contract=off`. FMA guard verified at source: `objdump -d` whole binary ⇒ **0** fma/fmadd/fmsub/fnmadd/fnmsub. **T1 tiers a+b seeds 1–10: 63/63 bit-identical** ⇒ bit-clean, contract=off fully neutralises the FMA hazard. But bench: **12.12 (MAD .010; raw 12.10–12.13) vs a2 baseline 11.98 (MAD .010; re-measured this session, raw 11.96–12.00) = +1.17 % SLOWER**, distributions disjoint. `perf stat`: −1.05 % instructions but +1.28 % cycles — IPC 3.53→3.45, AVX2/alderlake codegen schedules this scalar-FP tree worse. Baseline a2 clone reproduces the yardstick exactly (11.98). **No A2n proposed; the plan's `-march` ban costs nothing on this tree.** Memo: `census/antigravity_comparison.md` | Δ0 (flags only) | Δ0 | a2n **12.12** vs a2 **11.98** | native/a2 = **0.988 (regression)** — ISA edge priced: ≤0 here | none (no code) | **measured+logged, not adopted**; build-p7c-a2n kept for the record |
+| 7c-C3 | `immunitySurvivalFactor` host-tick hoist: per-parasite `exp(−cumJ·k)` recomputed the same value per host ⇒ added `ImmSurvTick` (lazy per-host `immSurvivalTick()` in `update_descriptive` loop, throw-point preserved; `WHFalciparum` +29 LOC). Reduction-chain-free elementwise sweep vectorises afterwards | 18,675 (+29) | 3,794 | a2 **11.85** (n=20; 11.835 re-measured same-session next day) vs 11.975 | 11.85/11.975 = **0.990 (−1.04 %)** — over floor max(1.0 %, 2×MAD .02)=.024 ⇒ win | one small struct + lazy helper, replaces per-element `exp` | **KEPT**, commit c367570c; gate: ctest 52/52, unittest OK, T1 tier-a 53/53 |
+| 7c-C1 | pyrogen-threshold loop-invariant hoist (`updatePyrogenThres`: hoist per-element `p_y·b` pair out of chain) — hoisted+measured | 0 | 0 | a2 11.955 vs 11.975 | **−0.17 %** — under floor | — | **reverted** — loop is a serial recurrence (each element's break depends on running sum); vec-info: "not vectorized: basic block not vectorizable / clobbers memory". Only phase-8 chain-break makes it elementwise |
+| 7c-C2 | `vectorUpdate` age sweep micro-hoist (`ageYears += n/F` base hoisted out of per-parasite loop; `relAge` temp) | 0 | 0 | a2 11.89 vs 11.975 = −0.71 % | under floor max(1.0 %, 2×MAD) | — | **reverted+logged** — runs looked disjoint (10v10) but sub-floor; age loop is store-forward-latency-bound, not FMA-bound |
+| 7c-C6 | `vectorUpdate_vector` two-pass staging (stage s_avail/s_df/s_fec + s_pti/s_ptl/s_tbv slabs [H×n] in reused static scratch, pass-2 scalar host-order reductions) — staged+measured | +50 claimed earlier; net ≈ +37 code lines on re-apply | 0 | quiet: a2 11.78 vs 11.85 (−0.56 %); loaded A/B-interleaved vs a2g: **11.98 vs 12.04 = −0.50 %** | "unknown" band (±1 %) per ruling 2 | stage+reduce shape uniform with the other transmission sweeps | **RESTORED** per user ruling 1 (structural consistency > sub-floor; commit 1fbf788a); pass-2 addend order = old host-major order ⇒ bit-exact (T1 tier-a 53/53, ctest, unittest green). Old verdict "reverted (DRAM-bound)" superseded |
+
+**7c-C ceiling finding**: after C3, remaining hot-soa lanes are (i) RNG-draw-bound (`determineDensities`/lognormal — phase-8 sampler territory), (ii) serial recurrences (pyrogen — unvectorizable even post-break), (iii) DRAM-bound reductions (vectorUpdate — subsumed by phase-8 dgemm move). Vectorizer evidence (artifacts /tmp/opencode/vec_all.txt): the 5 hot TUs (WHFalciparum, TransmissionModel, Pathogenesis, DescriptiveWH, Host) already run **126 auto-vectorized loops at -O3** with **zero missed-loop diagnostics** at default cost model; `-fopt-info-vec-all` reasons for the rest: unsupported control flow ×111 (early-exit/recurrence chains), memory-clobbering statements (exp/pow/lognormal draws, recordStat, trace ostream), "not profitable" ×28. Baseline already auto-vectorizes every pure elementwise SoA loop. No further bit-exact vectorization headroom above floor pre-phase-8.
+
+| 7c-PGO | **PGO re-priced for real (fixes 7b-A audit: p7b's "A2/PGO" binary never read a profile)**: two-pass flow entirely inside `build-p7c-a2p` — pass 1 = a2 recipe + `-fprofile-generate -fprofile-correction` (gcda land beside their own objects, no rename dance), corpus = ctest 52 + unittest + example iseed 1–4, serial; pass 2 = same dir, flags swapped to `-fprofile-use` (no `-Wno-missing-profile` mask). Consumption proven: 81 gcda present, zero missing-profile notices (`-Wmissing-profile` probe fires on the same TU from a wrong cwd ⇒ warning path live), +428 binary symbols (IPA devirt/specialization — the model's virtual hot calls finally get monomorphic targets) | Δ0 | Δ0 | a2p **11.02** (n=20, 10.98–11.09) vs C3-a2 **11.835** (11.81–11.88) | 11.02/11.835 = **0.931 (−6.9 %)** — 6.6× noise floor | zero source change; recipe-only | **KEPT as measurement yardstick**; T1 a+b 63/63 bit-exact, ctest 52/52, unittest OK; gate build stays profile-free (canonical recipe). p7b row 7b-A "PGO collapsed 1.087→1.003" was an untested artifact of the never-consumed profiles — real PGO is the **largest single win of phase 7**; independently confirmed by 7d-A-amended (11.15 on p7b-green) |
+| 7c-Da | **dead-code sweep**: `gen_seed` (also latent-buggy: high==low), `modp`, `drugEffect` friend w/o definition, `initIterateScale` decl (no def anywhere), `getEIPDuration` + `hasHadEvent`/`hasHadRelapse` getters (setters + checkpointed members stay — wire format frozen), 3 dupe includes. Scan method: linker `--print-gc-sections` probe (template-inlining noise, discarded) → token-count deadlist (case-sensitive trap hit once: `setHadEvent` callers nearly deleted — caught by build fail). Whole-program verdict: tree already clean — only ~22 LOC genuine dead | **18,653 (−22)** | 0 | — (dead code, no perf claim; ±0 within unknown band) | — | — | green: ctest 52/52, unittest OK, T1 tier-a 53/53; commit f1f7ab10 |
+| 7c-Db | **dedup sweep**: 12-line + 8-line normalized-window duplicate scan over model/ → after 7 phases of rewrites only one real cluster left: LSTMDrug per-kind `checkpoint_X(istream)/checkpoint_X(ostream)` identical symmetric bodies ×3 pairs (18/7/2 fields) → single `template<class S>` + 2 explicit instantiations (wire bytes unchanged, goldens verify); remaining scan hits = proto-vs-def signature blocks + monitor-name variants (not true dups). **xml/ compaction (4,287 vs 2.6k budget) deliberately NOT attempted**: files reviewed — dense hand-written scnXml conversion, no boilerplate cluster left ≥10 lines; forced cut = restructure of config error paths, zero perf upside, real behaviour-change risk — deferred with this rationale (budget overrun stays declared since row 2) | **18,617 (−36; 7c-D total −58; xml subset 4,287)** | 0 | — (config/checkpoint path only, hot paths untouched, no bench claim) | — | — | green: ctest 52/52, unittest OK, T1 tier-a 53/53; commit (this one) |
+| 7c-ruling | **User contract amendment (mid-7c)**: ① sub-floor levers that buy SoA-shape/pattern consistency are KEPT not reverted (rational: consistency has value of its own; noise-floor-revert now applies only to zero-structure micro-opts) → C6 restored, C1/C2 stay reverted (pure micro); ② ≥3 bench reps always, ±1 % = "unknown" not "no change"; ③ new headline 7c-C-P: profile *why the SoA isn't faster* — evidence not theory (perf stat/caches, cachegrind tiny-scenario per-line misses, callgrind A/B, non-SoA share pricing) | — | — | — | — | — | governs rows above; see 7c-C-P below |
+
+### 7c-C-P — "WHY IS THE SoA NOT FASTER?" (the quantified answer)
+
+Method: `perf stat` example@2000 pinned c5 (a2 bin, cpu_core PMU); `perf record -F 999` (a2g, sym+srcline); cachegrind (D1/L2-sim) + callgrind on `scenarioModelNameManyOverrides.xml` (pop=10, dynamic — same code paths, no dgemm warmup); callgrind A/B vs `build-p5/openMalaria` (pre-SoA, p5-green).
+
+| Lane (example@2000) | % CPU | IPC/misses evidence | verdict |
+|---|---|---|---|
+| dgemm+dgemv (ExactNv0 warmup solver) | **21.2 %** | — | NOT SoA. Phase-8 `solve_Nv0_linear` flip = the single biggest lever |
+| libm+GSL transcendental (exp 3.5, lognormal 2.5, sample01 1.8, Pinv/P 1.8, pow 0.6, cdf internals) | **~12 %** | scalar serial fp chains; callgrind: libm ≈ 48 % Ir in tiny scenario | compute-bound, draw-order-frozen ⇒ SIMD only after phase-8 break |
+| `update_descriptive` (infection tick: RNG draws + densities) | 7.8 % | per-draw recurrence chain | RNG-draw-bound = phase-8/9 (samplers) territory |
+| `run()` inlined host scan — **`updatePyrogenThres` recurrence** | **≈6 %** (PathogenesisModel.cpp:136 alone = 4.1 %) | serial: each iter's `+= td·a/((Y1+td)(Y2+py)) + b·py` feeds next denom — latency-bound div+add chain | C1's −0.17 % explained: removing invariant adds does nothing when the chain, not the issue count, is the cost. **Bit-exactness: unfixable** (no closed form, no reorder); phase-8 value-changing break only |
+| `vectorUpdate_vector` + per-host accessors (entoAvailabilityHetVecItv, probMosqBiting/Resting, relFec) | ≈7 % | cachegrind: #1 D1 **write**-miss source (46.9 % of program D1mw — reused staging vectors + per-species nested vectors) but **0 LL misses**; hw: LLC miss 0.14 %, dTLB 181K | store-miss noise, never leaves L2 — streaming is fine; C6 gave −0.5 % ("unknown" band, kept for consistency) |
+| `probTransmissionToMosquito` + `calculate_eir` + `immunitySurvival` + summarize + erase_at | ≈10.6 % | vec-info: hot loops already auto-vectorized (126 loops, 0 missed at default model) | near floor; C3 took the last hoist |
+| monitoring (recordValue/Stat/writeBinary) | ≈2.8 % | legit bookkeeping | not SoA |
+| everything else (clinical, config, scheduling, long tail) | ≈33 % | — | — |
+
+Machine counters (example@2000): **IPC 3.48**, L1D miss 1.49 % (969M/65G), **LLC miss 0.14 %**, dTLB miss 181K, branch-miss 0.41 % — the run is *issue-bound*, not memory-bound; cachegrind: D1 miss 0.91 %, **LL miss 0.01 % of 1.59G accesses** (and the residual LL traffic is libm tables, 67 %, not SoA columns). Callgrind A/B: p5-green (pre-SoA) 4.305G Ir vs current 4.170G Ir = **−3.1 % instructions** over the whole p5→7c chain.
+
+**Answer**: the SoA layout *worked* — its lanes already stream (LL misses ≈ 0), and its remaining time is not memory traffic but **scalar transcendental + RNG recurrence + serial chains**, which no layout can fix. SoA-shaped loops govern ≈25 % of runtime; within them the bit-exact levers (alloc-kill B1a −2.4 %, vac-hoist B4 −1.24 %, tick-hoist C3 −1.04 %, C6-stage −0.5 %) have taken ≈−5 % of total — that ≈ the headroom above the vectorized floor. The "iv/vac/copula vector-of-vectors defeats streaming" hypothesis is **measured and rejected** at bench scale (0.01 % LL miss rate; a slab arena would chase sub-1 % and is NOT implemented). Max remaining wins are shape-blind: dgemm flip (~20 %), phase-8 FP break → SIMD samplers/chain reassociation (~12 %+6 % unlocked), both already scheduled.
+
+
+| 7c-F | **7c final gate + scoreboard** (branch state = `rewrite` HEAD, p7c-chain + p7d merged): kept code = C3 tick-hoist (+29), C6 stage+reduce (≈+37, structural per ruling), dead-code −22, checkpoint-pair dedup −36. Reverted+logged: C1, C2 (pure micro), ISA a2n (bit-clean but −1.17 % slower — pricing recorded, phase-8 one-flag flip). Yardsticks final tree: **a2 (LTO) 11.835→11.98** (session-load range; C6 interleaved −0.50 % vs a2g), **a2p real-PGO rebuilt on final tree: 11.02 quiet (pre-C6) / 11.235 loaded, −5.9 % vs a2 in-window**; vs frozen baseline-A2 11.34 ≈ **1.03× at true PGO** (corroborates 7d-A-amended 1.017). Fresh a2p profile: dgemm **21.15 %** still top (unchanged — phase-8 flip untouched), run-incl-pyrogen 11.3 %, ClinicalModel::update 7.9 % (PGO outlined), vectorUpdate 4.2 %, libm/GSL ≈ 8 % visible | **18,617 (−29 net vs p7b-green 18,646)** | 3,794 (Δ0) | a2p **≈11.0–11.24** (load-dependent) | ≈**1.03 vs frozen 11.34** at true PGO; pre-break KPI 1.15–1.35 gap = exactly the phase-8 list: dgemm flip ~20 %, FP-break unlocks SIMD samplers/pyrogen/libm ≥18 %, rng/slot work; ISA ≤ 0 (priced) | `// parity:` anchors untouched all phase; T1 + goldens gate every commit | **green: ctest 52/52, unittest 94 OK, T1 tiers a+b seeds 1–10: 63/63 bit-identical on gate AND on a2p**; deviations: xml/ 4,287 > 2.6k budget (deferral reasoned, 7c-Db), 14.0k final cap unmet (phase 8/9 work), bench sessions partly loaded by parallel agent (interleaved A/B discipline applied) |
+
+| 7c-F† | **Post-scoreboard amendment (same day)**: after 7c-F was written, a parallel agent landed `7e-1…7e-6` xml/ compaction on the shared branch (interventions −136, healthSystem −25, entomology −25, util −23, monitoring −9, pharmacology −10 — each per-commit gated). Final re-gate on true HEAD (post-7e): **gate build ctest 52/52, unittest OK, T1 tiers a+b seeds 1–10 = 63/63 bit-identical**. Branch totals now: **model 18,386 (−260 net vs p7b-green 18,646), xml subset 4,050** (7c-Db's "deferred" verdict overtaken by events — the parallel pass found the boilerplate this review said wasn't there; lesson: absence of ≥10-line dup windows ≠ compaction headroom absent). a2p yardstick binary remains stamped at its 13:12 self-consistent tree (63/63 at stamp); incremental a2p rebuild on later trees hits gcda coverage-mismatch on changed TUs — **redo full two-pass once the tree settles** (recipe in HANDOFF) | 18,386 | 3,794 | a2p stamp: 11.02–11.24 session range | — | — | 7c numbers above stand for their stated trees; HEAD-green claim re-proven on post-7e tree |
+
+| 7e-F | **7e xml-layer compaction final (branch p7e-xmlcompact, 9 commits)**: model/xml 4,287→**4,049** code LOC (−238) behavior-frozen: per-file interventions 1236→1100, healthSystem 668→642, entomology 460→435, util 396→373, vivax 119→108, scenario 485→481, pharmacology 311→301, monitoring 251→242, HIC.h 229→226, +latentP.h 9. Every step: file-local helper merges (verbatim messages/order, quirks kept: GVI propActive msg ×3, sugar-slot tag, "intrevention", deterrent a.PF+HF bound), dead code deleted only with grep proof (R_0 `#if 0`, Continuous externs, empty forcedEIR if, require1DayTS loop→direct). String-literal multiset audited baseline-vs-new per touched file (only diffs = intended merges/includes). Quirk honest: 2,600 xml budget **not reachable** without behavior risk — remaining bulk is unique per-reader code (per-line XSD getters + distinct error texts). Model total **18,379**. Runtime path untouched (load-phase layer only); sanity: example_scenario new 12.20 s vs A0 ref 12.29 s, outputs byte-identical | **18,379 (−238 vs 8f132bc4)** | 3,794 (Δ0) | n/a (load-phase only) | — | every commit: ctest 52/52 + unittest OK + T1 tier-a 53/53; final: **T1 tiers a+b 63/63 bit-identical** | 14.0k cap still unmet (−4.38k); that gap is phase-8/9 model-core work, not xml/ |
+| 7f | **Infection de-god-class (branch p7f-infection, 7 commits)**: merged Infection god-class → slim public struct (5 shared fields + kind + inline accessors) + per-kind payload structs + all logic as free functions (`infection_new/new_checkpointed/update/checkpoint` shared dispatch in Infection.cpp; `infection_init_/ctor_`, `update_density_/determine_densities_`, `read_/checkpoint_<kind>` per kind TU). Formula bodies VERBATIM (only `inf.` qualification / alias prologues); RNG draw points+order frozen; checkpoint wire bytes per kind unchanged; `// parity:` comments travelled. Per-kind statics → file scope of owning TU (Descriptive 3, Empirical 20, Penny 2; sole-reader grep-proof, per-run `init_*` re-init kept). Kn() stayed shared (lazy unique_ptr): reached via treatPkPd_common from LSTMDrug TUs for all 4 Common kinds. perf-fix commit: bench caught +2.3 % (heap DescriptiveData = 2nd malloc/infection + dependent load in per-tick `expired()`) → 12-byte payload embedded by value; other payloads stay pointer. Re-bench p7e ≈12.15 vs p7f ≈12.24 = **+0.5 % residual** (perf: layout/inline shift only, ~0.3 pp each in determine_densities_descriptive/update_descriptive) — accepted <1 % band | **18,421 (+4 net vs p7e-green)** | 3,794 (Δ0) | 12.24 (gate build, taskset c5) | ≈0.995 vs p7e | readability phase: header 417→402 lines, class internals → plain struct + namespaced free fns, friend blocks dead | every commit ctest 52/52 + unittest .OK! + T1 tier-a 53/53; **final T1 a+b seeds 1-10 = 63/63 bit-identical** |
+| 7g | **Whole-tree sweep (branch `p7g-sweep`, 7 commits, all T1-gated)**: ① folder folds — single-file dirs `model/humans/` + `model/infections/` (HostColumns.h/SlotAllocator.h → `model/Host/`), `mon/init.h` decls → `mon/Monitoring.h`, `PkPd/Drug/` → `PkPd/`, `WithinHost/Pathogenesis/` → `WithinHost/` (4 dirs gone, pure mv+include, GLOB build); ② dead-code kill with grep/linker-independent proof — 3 zero-caller cts shells, `#if 0` Vaccine::verifyEnabledForR_0, ClinicalEventScheduler's 5 dead instance members (per-instance ES state lives in ClinicalModel es* fields), write-only counters ×2 + dead solver local, 2 dead enum labels, vectors::addTo, DrugRegistry::numDrugTypes, 4 dead fwd decls, dead test struct, 6 dead function params (TransmissionModel ctors ×3, AnophelesModel::initialise, InterventionManager::init, set_liver_stage, make_gsl_rng_type — silenced 100 `-Wunused-parameter`); −Wreorder init-list fixes ×2 (initializers independent); ③ accessor kill ×14 → direct public members (Genotypes/Treatments/LSTMDrugType/AnophelesModel/TransmissionModel/ModelNameProvider/VivaxBrood/Population ×3), + trivial dtor. Method: warnings build (-Wall -Wextra report-only) + whole-tree decl-vs-occurrence scans (fn defs, header decls+inline defs, member fields, types; comments stripped) + read pass; proof quoted per commit. **Honest coverage**: automated scans cover 100 % of model/ symbols (decl-occurrence + compiler warnings); manual file reads ≈60 % by lines (all headers with API surface read or skimmed; full-text read not done for ~35 .cpp bodies whose locals are warning-covered). Kept-with-reason: xoshiro/chacha verbatim internals, CxxTest methods, 6 dont_testMol* fixtures, kind-dispatch one-liners, Human SoA-lookup accessors, formula-named getters (slope/genotype/N/nowOrTs0), timed_deploy_* family signature, write-only-but-wire-streamed hadEvent/hadRelapse, all xml/ measure defs | **18,248 (−84; 139 files, −4 dirs; xml subset 4,034 −15)** | 3,791 (−3) | **12.17** (median of 5 raw 12.11–12.19, taskset c5) | ≈0.998 vs p7f-era ≈12.2 — no regression (many edits are load-path-neutral; reorder/folds touch cold code) | dirs 13 (was 17); zero -Wall -Wextra findings left in model/ except deliberate unused-family-params | every commit: ctest 52/52 + unittest .OK! (94) + T1 tier-a 53/53 (+tier-b s1–4 on Transmission/Clinical-touching commits); **final T1 a+b seeds 1-10 = 63/63 bit-identical**; bench median 12.17 s |
+| p7g-PGO | **True-PGO re-price on the 7g tree (flags only, zero code change)**: single-dir two-pass per 7d-A-amended law (`build-a2p`: pass-1 `-fprofile-generate=<dir> -fprofile-correction -fprofile-abs-path` + LTO, corpus ctest 52 + unittest + example iseed 1-4 + checkpoint save/restore + VecFullTest×2 = **75 gcda** (81 minus 7g-deleted TUs); pass-2 same dir `-fprofile-use=<same>`, no -Wno mask; `make clean` verified gcda-intact). Loading proven: 0 missing-profile diagnostics, 10.73 MB→1.697 MB binary (p7b signature). **T1 a+b 63/63 bit-identical on the a2p binary** — PGO does not touch bits | — | — | quiet-window interleaved medians (taskset c5, MAD ≤.02): A0(p7g) **12.15**, A2true(p7b) **11.10**, **a2p(p7g) 11.17** | flags lever **a2p/A0 = 1.088×** (reproduces p7b 1.095-1.097; ≥1.10 KPI still narrowly missed by flags alone); a2p vs frozen A2true = 0.994 (p7g 0.6 % slower, mirrors A0 drift); **vs pre-rewrite frozen A2 11.34 = 1.015×** (still faster post-rewrite) | yardstick re-stamped `/tmp/opencode/om-ref/A2p7g/` (sha a8053625…); parity.py needed build->build-a2p symlink in worktree (harness-only) | green: gate = agent's own build+corpus+T1; main session verified stamp+sha |
+| p8-CK | **Checkpointing killed (one commit) and redone xml-style per user order — the first sanctioned break fires: old wire format DEAD** (resume-compat vs pre-rewrite checkpoints sacrificed; run-to-run determinism and wire self-consistency are NOT). Kill: util/checkpoint.{h,cpp}+containers (611 LOC) + ~116 operator& sites + checkpoint()/operator& chains in ~30 files + StreamValidator call-site zoo + old CLI. Redo: `model/checkpoint/` module (Stream.h typed primitives + sections.h TOC orchestrator + humans/transmission/statics free fns, ~1.16k lines, versioned magic, corrupt-input rejection incl. version byte), CLI `--save-to/--save-at/--resume`, `test/resume.py` split-run-vs-continuous harness; **12 Resume_* ctest cases (7 scenarios x save-day matrix incl. mid-warmup/pre-intervention/late)**: bit-identical continuation == uninterrupted run. parity tier-a untouched (53 single-run goldens vs A0 still bit-exact); wire-compat tier replaced by resume corpus. KNOWN GAP (HANDOFF): interventions checkpoint/replay partial. Also merged p8-structure first (core/ gone, RunExtensions dissolved, +9); merge traps documented, 26 conflicts resolved | **17,632 (−625 net: kill+redo; from 18,257 post-structure; baseline −1,181)** | checkpoint suites 190 LOC unittest out, resume.py 130 in | — (no bench; structural — but resume adds zero cost to normal runs, tier-a path untouched) | — | model/core/ deleted -> top-level; RunExtensions deleted -> RunContext members (9 raw-ptr tax documented); SlotAllocator -> WithinHost/ | green: ctest **64/64** (52-era minus old ckpt cases, plus 12 Resume + corrupt-suite), unittest .OK!, **T1 a+b 63/63 on merged tree (main session)**, all gates per commit on branch |
+| p8-sweep | **Audit sweep (ponytail-audit T1-safe ledger, minus CalcNvO-pending + factory-redesign-barred)**: erase_at 25-col fold −18; i/l twin-loop merges + y_lag helper −31 (each side draws fully before the next starts - order proof per commit); EmpiricalInfection CSV loop −9; EventScheduler dead branches −7 (the uniform_01 draw KEPT as bare call); 5 single-caller wrappers inlined −18; tautologies×4, WHInterface move-ctor, totalInfectionrateVariance, nYearsWarmupData −4. Factory create* merge skipped honestly: 4 wrappers are live glue for ctx.createInfection (5 run + 2 unittest sites) - removing = redesign, barred | **17,545 (−87; baseline −1,268)** | — | — (structural; tier-a path untouched) | — | ponytail_audit.md ledger executed; audit verdict confirmed: after this, remaining model/ reductions are all [phase8]/[string-audit]-gated | green per commit (stash-sandwich); main session on merged tree: ctest 64/64, unittest .OK!, **T1 a+b 63/63** |
+| p8-files | **File-consolidation pass (user order "merge files that belong" + pragma-once + ck-decls-out + xoshiro merge)**: 16 merge groups / 21 gated commits — cpp→header collapses (SpeciesIndexChecker, DecayFunction, Continuous, NeonatalMortality, IRS/ITN/Vaccine/InterventionManager, Dummy→Infection.cpp), 5-day clinical chain 6→2 files, LSTMDrug 3 kind-cpps→1 TU, run.h→RunContext.h, State.h→PathogenesisModel.h, ESCaseMgmt→EventScheduler, LSTMTreatments→LSTMMedicate, XMLChecker+latentP→DocumentLoader, SlotAllocator→WHInterface (owner-only includer), **xoshiro.h→random.h engine VERBATIM + Blackman-Vigna attribution kept** (RngGoldens = bit-exact proof). `#pragma once` ×90 headers. **model/checkpoint/ now fully self-contained** — every serialization declaration removed from model headers (free fns in module; acceptance grep clean: only run.cpp API calls + RNG export + comments survive). Ruled out w/ proofs in HANDOFF: Human→Population (row facade; 26-TU leaf vs 11-TU consumer), HostColumns→any (42-TU vocabulary), 9 demography-cone traps, IvState leaf, interventions mega-file | **17,192 (−353; baseline −1,621), 115 files (−25)** | — | — (structural; T1-gated all the way) | — | ruled-out list now includes Human/Population ruling + 8-Q1/8-Q2 anchors in HANDOFF | green per commit; main session merged tree: ctest 64/64 incl Resume_*, unittest .OK!, **T1 a+b 63/63** |
+| p8-Q2 | **True polymorphism per user order (Infection + WHInterface)**: Kind-switch facades -> real class hierarchies. Infection: base{seq, inoculation, kind tag, virtual update/expired/clear} + Dummy/Descriptive/Empirical/Molineaux/Penny derived, payloads absorbed by value (per-infection malloc + dependent load gone, +1 vptr). WHInterface: abstract base (common wire block + shared treatment()) -> WHFalciparum mid-layer -> WHCommon/WHDescriptive leaves + WHVivax direct; ALL Kind-switches deleted; ctor layering keeps every RNG draw at its stream position (base draws nothing). Checkpoint module stays free-function: kind-tag static_cast (grep-proved: zero dynamic_cast uses). Factory: one create-line per variant. Second wave LSTMDrug/ClinicalModel NOT done - pattern + anchors HANDOFF'd as 8-Q3 | **17,078 (−114; baseline −1,735)**, 115 files | — | same-window 10 interleaved reps (taskset c5): p7g 12.21 (MAD .03) vs **p8-poly 12.36** (MAD .02) = **+1.3 %** (≤+1.5 % expectation; 9/10 pairs; earlier +27% reading = cross-window -j12 contention artifact, retracted in BENCH_p8poly.md) | A0-class both arms; PGO re-measure queued with 8-Q1 | draw-order proof per ctor; Resume_* green throughout; 1 note: bench hygiene rule now in all briefs (foreground only, same-window interleaved) | green per commit; main session merged tree: ctest 64/64, unittest .OK!, **T1 a+b 63/63** |
+| p8-collapse | **Collapse sweep + 120-col reflow (user: "fix the bug, proceed with the collapse"; punch-list /tmp/opencode/ponytail_collapse.md)**: BUG FIX first — bogus `assert(simulationMode==forcedEIR)` in transientEIRknown branch deleted (reachable via changeEIRIntervention_vector ⇒ every debug build aborted on vector+changeEIR scenarios; NDEBUG-invisible so T1-safe by construction). Then: 9 VecStat cts callbacks→1, nhh reduce-map lambda + erase_if, dead XML_ASSERT/OM_ASSERT_EQ family deleted (grep-zero proof), meanOver fold, cts-header table-drive, range-for/find_if/max_element/any_of collapses, dup-message shared consts (multiset proof). xml/interventions.cpp per user: ITN kill-ladder lambda + read_avail_limits fold + range-fors (−23; percentile-hoist REJECTED — fires earlier on valid inputs). SKIPPED honestly: Deployments try/catch (set_gsl_handler makes beta throws escape guard ⇒ msg/exit change), writeRows/countRows (shared code longer). Reflow @120: .clang-format checked in (LLVM,4sp,120,Left,no-sort,no-reflow-comments,no-split-strings), 134/144 files, 10 macro-heavy/TestPaths.h excluded (backslash-injection + @VAR@ ObjC-attr trap); proof = whitespace-stripped md5 equality per file, 0 mismatches. Merge onto poly: 23 reflow-vs-class conflicts = poly content wins + reflow re-applied with token-identity proof | **16,759 (−319 this branch; baseline −2,054)**, 115 files | — | — (behaviour-neutral; T1 all the way) | — | assert-bug count was 1/132, zero side-effecting asserts; bench re-measure queued with next PGO run | green per commit; MAIN-SESSION merged-tree verify: ctest 64/64, unittest .OK!, **T1 a+b 63/63** (one red scare was the deleted build/schema XSD symlink = harness, fixed, not code) |
+| p8-q3 | **Poly wave 2 (user: continue non-breaking)**: LSTMDrug Kind-switch -> base + OneComp/ThreeComp/Conversion (ctor bodies line-for-line = stream bit-identical; virtual dtor replaces freeLSTMDrug* dispatch; factory one line/variant; GSL workspaces untouched at file scope). ClinicalModel inventory: genuine family Kind{DecisionTree5Day,ImmediateOutcomes,EventScheduler} -> 3 derived, 4 dispatch points virtualized, ES payload+guard into class. Ruled out with reasons: DTKind node-interpreter, static config classes, init/setHS loaders. Also: human-component parse ladder compacted via ComponentConfig::set<T> (−6, main session) | **16,799 (+40 net; +46 = user-ordered shape cost, −6 fold; baseline −2,014)**, 115 files | — | — (structural; storage+call counts unchanged by construction — no bench by design) | — | model-option variant families now ALL class-shaped or ruled-out on record | green per commit; main-session merged-tree: ctest 64/64, unittest .OK!, T1 tier-a 53/53 (parents full a+b) |
+| p8-q1 | **8-Q1 de-GSL RNG — REJECTED by user, NOT MERGED (branch deleted)**: port executed and fully verified on branch p8-q1 (T1 a+b 63/63 through the port, goldens rerouted to gate it, bench −2.6 %: 12.10 vs 12.42, 10/10 pairs, MAD 0.02) — but it costs **+617 model LOC** (verbatim GSL 2.8 closure: gausszig tables, gamma chain, BTPE, two polar variants; re-derivation forbidden by the bit-exact law). User verdict 2026-11-20: "keep GSL if that makes the code smaller... I want my 630 LOC back" — LOC KPI wins over −2.6 %. Knowledge banked: libgsl sampling symbols ≈9 % of CPU; adapter fn-ptr is the PGO/inline blocker. DO NOT RE-ATTEMPT any verbatim-GSL port. Salvageable if ever re-blessing goldens: golden-gen -I contrib recipe fix (commit 3b09ce6e, cherry-pick if needed) | 0 (model stays 16,799) | — | −2.6 % measured then declined | — | rng layer stays: xoshiro engine + RNG<T>+GSL adapter, as shipped | N/A — no merge |
+| p8-xml | **model/xml compaction (user: "compact the xml code")**: −35 (16,799→16,764) — six collapses with first-error-order + string-multiset proofs (locus-mismatch lambda, readDate_steps ×9, enum-name table print_component, nhh resize loop, setHS need(), direct-throw); dead-code hunt empty (grep-zero); 7 rejects measured (Fourier helper +2 net etc.). Big-fish [string-audit] leftovers logged (SurvivalFactor bounds blocks, drug-reader registry) | **16,764 (−35; baseline −2,049)**, 115 files | — | — (cold path, no bench) | — | xml readers now "lean, ship" verdict confirmed by measurement; remaining xml fat needs [string-audit] | green per commit; main-session merged-tree: ctest 64/64, unittest .OK!, **T1 a+b 63/63** |
+| p8-names | **Name shortening (user order, "only if it makes sense")**: RunContext->Context (+RunContext.h->Context.h, 508 refs, zero collisions) + post-rename reflow (-16, md5-proofed, 9 macro traps respected). REJECTED with evidence: TransmissionModel/ClinicalModel->Model (bare Model already = OM::Model + scnXml::Model schema type everywhere -> would add ambiguity, not remove it); ->Sim (reads against sim:: namespace); ->Mosquitos (DotModel/NullModel have no mosquito) | **16,747 (−17 this wave; baseline −2,066)**, 115 files | — | — (identifier+whitespace only) | — | doc prose in old HANDOFF rows keeps historical names | green; full gates on final tree: ctest 64/64, unittest .OK!, **T1 a+b 63/63** |
+| p8-names2 | **Naming wave 2 (user: "reasonable shorter names"): xml_scenario_error->xml_error (250), Transmission::TransmissionModel->Transmission::Model + Clinical::ClinicalModel->Clinical::Model + Pathogenesis::PathogenesisModel->Pathogenesis::Model (files renamed; earlier veto REVERSED with proof - the fwd-decl Model is scnXml::Model, no OM::Model exists, zero bare-Model uses in the namespaces), InfectionIncidenceModel->IncidenceModel, TimedDeploymentKind->DeploymentKind, InfectionOrigin->Origin, OM::sNaN/NaN/INF constants replacing 110 spelled-out numeric_limits sites; final reflow -32. Honest: identifier shortening yields tens of LOC (only >120-wrap lines rejoin), readability is the real dividend | **16,721 (−43 this wave; baseline −2,092)**, 115 files | — | — (identifiers+whitespace only) | — | Model/Sim/Mosquitos veto list of wave 1 superseded where proof changed (Model now OK in-namespace) | full gates final tree: ctest 64/64, unittest .OK!, **T1 a+b 63/63** |
+| p8-ns | **Namespace flattening (user experiment: "get rid of all namespaces, keep a true OpenMalaria instead of OM; revert the name changes")**: all model namespaces (util/Host/WithinHost/Transmission/Anopheles/Clinical/Pathogenesis/interventions/PkPd/checkpoint/mon/internal/sim) flattened into single `namespace OpenMalaria`; naming waves 1-2 REVERTED (RunContext/xml_scenario_error/TransmissionModel etc. are back). Kept nested with reasons: scnXml/xsd (generated), Continuous/Deploy/GT/Error/Messages/UnitTest. Collisions: Episode::State + Pathogenesis State MERGED (by-construction value proof: mirrors were initialized from Pathogenesis by name; additions value-disjoint; underlying type unchanged) ; vaccine_factor/updateCohortSet/measure shadowed by members/params -> qualified/renamed; summarize/update/initVector* audit-benign (free-context call sites, arity mismatch guards). Golden-gen tool silently broken by sweep (outside cmake targets) -> found by audit, fix compile-verified. Reindent: clang-format clean tree-wide except 6 legacy macro-trap files | **16,233 (−488 this wave; baseline 18,813 → −2,580)**, 115 files | — | — (identifiers/braces/whitespace only) | — | free-function overload sets now global-to-model: new duplicate helper names collide at compile time (loud); nm+source collision audit on file; sim:: stripped from comments | per-commit + main-session merged tree: build 0w0e, ctest 64/64 (incl Resume_*), unittest .OK!, **T1 a+b 63/63** (A0 rebuilt from baseline cfc3c8e0 after tmp-GC; rebuild revalidated vs pre-merge tree 53/53 first) |
+
+## Draft-TODO-PR evaluation (upstream PRs #476–#482, b-s-code, 2026-11-23)
+
+Seven DRAFT TODO PRs on OpenMalaria-Org/openmalaria, all branched from the pre-rewrite
+baseline (`upstream/main` = `cfc3c8e0`). Evaluated against `rewrite` HEAD `5ac4a450`
+(16,233 model LOC). Every perf candidate passed the full gate before any timing claim:
+build 0w0e, ctest 64/64, unittest `.OK!`, parity tiers a+b seeds 1–10 **63/63 bit-identical vs B0**.
+Bench: `util/example/example_scenario.xml` @ popSize 2000, core-5 pinned (`taskset`), serialized,
+2 warm + median-of-5 measured rounds, `/usr/bin/time %U`, MAD ≤ 0.01 s (0.08%) — quiet window.
+Parity anchor: B0 (this tree's own binary, itself T1 a+b 63/63 vs A0 at merge); candidate-vs-B0
+is the sharp test for "does this PR change results". (`/tmp/opencode` tmp-GC destroyed the A0
+copy again — rebuild it outside /tmp before the next phase that needs it.)
+
+| PR | Content | Merge into rewrite | Perf (median, this tree) | Verdict |
+|---|---|---|---|---|
+| #476 | hoist `updateKappa` per-genotype vectors | CONFLICT | — superseded: already in tree (`TransmissionModel.h:322`, hoist + `assign` re-zero) | **Close upstream** (duplicate) |
+| #477 | reuse per-genotype EIR vectors in `Human::update` | CONFLICT + modify/delete | — superseded: in tree via persistent `HostScratch.EIR_per_genotype_*` | **Close upstream** (duplicate, ours stronger) |
+| #478 | `util/perf/` bench+golden tools, CI workflow (0 model lines) | clean merge | n/a (no model change) | **Skip** — duplicates `util/parity.py` + pinned bench protocol; CI workflow assumes their tools |
+| #479 | single-pass `Population::update` compaction (move+truncate vs per-death erase) | CONFLICT → hand-ported (commits `d18a18f6`/`5cd2566a` in `fork-wt-bc`) | 12.38 s = **+0.16%** (B0 12.36 s) — under 1% floor | **Reject**: bit-exact and correct, but no measurable gain on the representative scenario; upstream: no effect expected for small per-step removal counts |
+| #480 | compute per-human availability factors once in `vectorUpdate` | modify/delete → hand-ported (commit `d64310c1` in `fork-wt-c`); PR's other hoist already present as `s_tbv` slab | 12.19 s = **−1.38%** | **Accept content**: FP-exact by the inline `entoAvailabilityFull` definition; ready to cherry-pick |
+| #481 | LTO-on-by-default CMake + `util/pgo-build.sh` (0 model lines) | clean merge (script run with `--`-equivalent flags + required `-ffp-contract=off` deviation) | LTO: 12.15 s = −1.70%; LTO+PGO: **11.38 s = −7.93%** (B0/B5 = **1.086×**) | **Accept recipe**: bit-exact both tiers; profile consumption proven (60 gcda + discriminating `-Wmissing-profile` probe) |
+| #482 | `thread_local` y_lag scratch in `WHFalciparum::probTransmissionToMosquito` | CONFLICT | — superseded: in tree as `static` + documented proof (`WHFalciparum.cpp:205`) | **Close upstream** (duplicate; ours fits single-thread contract) |
+
+Combined best recipe (PR-480 + LTO + PGO script) on this tree: **11.25 s = −8.98% vs B0** (B0/B6 = **1.100×**; MAD 0.01 s). The PR-480 delta survives on top of PGO (11.25 vs 11.39 s, −1.2%) — additive, not absorbed.
+
+Notes:
+- All model-touching PRs conflict textually because the rewrite moved/renamed files — a
+  semantic merge = hand-port; ports 479/480 were ported faithfully (479's helper list mirrors
+  the 25-column `erase_at`; `resize` via range-erase because `LocalRng`/`Human` deliberately
+  lack default ctors).
+- PGO training set = script's default 6 scenarios (Genotypes Penny VecFullTest NonHumanHosts
+  MSAT_HRP2 Vivax), not the bench scenario (no benchmark-specific profiling).
+- p7d-era numbers (PGO 11.15 s on the 18.2k-LOC tree) reproduce in shape: here PGO −6.3%
+  on top of LTO (was −6.9%), LTO alone −1.7%.
+- Bench harness: `/home/razlock/git/om-pr-bench.sh` (run dir needs `scenario_50.xsd` —
+  example scenario pins schema v50, not `scenario_current.xsd`).
+- Worktrees left in place for inspection: `fork-wt-bc` (479, 479+480), `fork-wt-c` (480),
+  `fork-wt-de` (LTO/PGO + combined). Delete after decision.
+
+### Round 2 — scaling, ours-vs-theirs, attribution, total chain (2026-11-23)
+
+Durable A0 rebuilt at /home/razlock/git/om-ref/A0 (baseline cfc3c8e0, `-O3 -DNDEBUG
+-ffp-contract=off`, gcc 16.2.1/GSL 2.8, recipe.json stamped; re-validated 63/63 vs B0).
+V477/V482 = upstream PR idioms grafted INTO our tree (`fork-wt-theirs` commits 8b0c7c77/a67e61c5,
+both bit-exact 63/63 + 64/64). Scenario copy popSize=5000 (`/home/razlock/git/bench-scen-5000.xml`,
+throwaway; KPI file untouched). Same-window medians, MAD shown; cross-session numbers NOT comparable
+(older A0 stamp 13.25 s ≠ today's A0 12.24 s — machine state moved, same-window protocol mandatory).
+
+| binary | pop 2000 | pop 5000 | note |
+|---|---|---|---|
+| A0 baseline | 12.24 (0.00) | 27.71 (0.06) | no hoists, AoS, per-call allocs |
+| B0 rewrite | 12.35 (0.01) | 28.51 (0.03) | vs A0: +0.9% (under floor) @2k; **+2.9% slower** @5k |
+| V477 (their function-static EIR idiom) | 12.31 (0.02) | — | −0.3% vs B0 — under floor ⇒ ours≈theirs; ours per-run-scratch-safe (their shape needed `assign(1,0.0)` guards the tree doesn't) |
+| V482 (their thread_local y_lag) | 12.35 (0.02) | — | = B0 exactly (TLS costs nothing single-threaded) |
+| B1 = B0+PR-479 | 12.38 (+0.16%) | 28.46 (−0.18%) | flat at BOTH pops |
+| B2 = B0+PR-480 | 12.19 (−1.38%) | 27.90 (−2.07%) | win grows with pop (per-host loop) |
+| B6 = B0+480+LTO+PGO | 11.24 (−8.98% vs B0) | 25.47 (−10.6% vs B0) | vs A0: **1.089× @2k, 1.088× @5k**, bit-exact |
+
+Why PR-479 can't win (perf -F 999, B0@2000): compaction lane is tiny —
+`HumanColumns::erase_at` 0.72% + `Human::set_row` renumber 0.78% + memmove share <0.7%; the port
+replaces 25 vectorized bulk memmoves per removal with ~n scalar `move_row` steps (worse constant,
+same O(rem×n)) and keeps the renumber loop; ceiling <1% at any removal rate, confirmed flat at
+pop 2000 (+0.16%) and 5000 (−0.18%). **Closed: no performance to gain there.**
+#476/#477/#482 add nothing on merge because their gains are ALREADY IN B0 (A0-vs-B0 carries both
+trees' equivalent hoists; V477/V482 prove ours≈theirs within noise).
+
+Flag ladder on current tree (bit-exact throughout): LTO −1.70%, PGO on top −6.3..−7.5%,
+PR-480 −1.4..−2.1% (additive, survives PGO). **Cumulative chain vs baseline: −13.7% model LOC
+at speed −0.9% (2k, floor) / −2.9% (5k, real); with 480+LTO+PGO recipe: −8.1% faster than
+baseline at both pops.** p7d-era A0→A2true = 1.097× reproduces as 1.099× @2k.
+
+FOLLOW-UP ITEM (new, honest): rewrite-vs-A0 gap grows with pop (+0.9% @2k → +2.9% @5k).
+Perf diff shows no single hot lane (shares move across inlining boundaries; A0 pays
+Population::update 2.7% + cfree 2.4%, tree pays vectorUpdate_vector/probTransmission shares).
+Profile A0-vs-B0 with call graphs if this ever matters; the recipe overpays it at both pops.
+
+### Round 3 — CORRECTION: baseline-relative ladder (author's claims reproduce; structural tax exposed) (2026-11-23)
+
+Rounds 1-2 anchored every candidate on OUR tree, where the PRs' content was already banked — so they
+read ~0%. The fair test the author actually ran: his branches on the CLEAN baseline. Merged all 7
+branches into `eval/bs-all` @ cfc3c8e0 (`fork-wt-bs`, zero conflicts, model union +32/−16 across 6
+files); every tier bit-exact vs A0 (T1 a+b 63/63) + baseline ctest 52/52 + cxxtest OK. His own
+harness (util/perf/bench.py, 7 box scenarios, median-of-5 interleaved, user+sys CPU, mallocs via
+LD_PRELOAD counter) — and our example scenario:
+
+| measurement | base | +model PRs | +LTO | +PGO | ours (rewrite+480+LTO+PGO) |
+|---|---|---|---|---|---|
+| his 7-scenario TOTAL | 23.0 s | **−10.2%** | −12.4% | **−18.7%** | −14.0% |
+| example @2000 | 12.23 s | **−7.7%** | — | **−14.4%** (10.47) | −8.2% (11.23) |
+| example @10000 | 55.7 s | **−12.2%** | — | **−18.9%** (45.1) | −5.6% (52.7) |
+| mallocs / run (Genotypes) | 78.6 M | 6.2 M (−92%) | — | — | 6.2 M |
+
+Verdict corrections:
+1. **The DRAFT PRs are good** — his claims verified (12% bench / 11% at 10k ⇒ measured 10.2/12.2;
+   21% with LTO+PGO ⇒ measured 18.7-18.9). All bit-exact.
+2. **Nothing left for our tree from their content**: our tree matches his malloc counts (~6 M) and
+   all five idioms are already in rewrite (rounds 1-2 A/Bs on our tree were the right test for THAT
+   question — each ~0 by construction).
+3. **NEW #1 finding: the rewrite pays ~9% structural time vs the patched baseline at pop 2000**
+   (patch 11.29 vs B0 12.35 with equal allocs), growing to ~20% at pop 10000 (patch 48.9 vs B0 58.9)
+   — the flat-vs-A0 result was alloc-removal gain cancelling the tax. perf (example@2000, abs s):
+   our `vectorUpdate_vector` 0.54 vs 0.31, `calculateEIR_vector` 0.25 vs 0.16,
+   `probTransmissionToMosquito` 0.61 vs 0.44, `recordStat/Value` +0.4; per-host sweep lanes +
+   SoA-column pressure with pop are prime suspects (two-pass s_* slabs vs his single-pass statics).
+4. Total-vs-baseline restated: ours best = 1.089× @2k / 1.059× @10k; his ladder = 1.168× @2k /
+   1.234× @10k. **His tree is the faster codebase until the tax is found; ours is 13.7% smaller.**
+   New yardstick candidate: /home/razlock/git/fork-wt-bs/build-pgo3 (baseline+PRs+flags, 10.47 s @2k).
+
+Follow-up (FOLLOW-UP ITEM, promoted): profile-driven hunt for the structural tax; targets:
+vectorUpdate single-pass experiment (port PR-480 shape fully, drop slab), calculateEIR lane,
+mon record* cost, column-touch pattern at 10k. Recovering ~9% puts the rewrite recipe at ~1.19× vs
+baseline without giving up the LOC win.
+
+### Round 4 — structural-tax hunt: E-series; tax 9.4/20.4 % → 4.7/7.7 % (2026-11-23)
+
+Hunt targets from round 3 (equal-alloc structural tax vs patched baseline). All experiments:
+worktree off `rewrite`, plain `-O3 -ffp-contract=off` no-LTO build for isolation, full gates
+(0w0e, 64/64, .OK!, T1 63/63), parent-session medians. Counter evidence pre-fix (10k, ours vs
+patched-baseline, both recipe builds): +6.3 % instructions, IPC 2.50→2.31, cache-misses 1.81×,
+dTLB-misses 1.62×, branches flat — memory-traffic tax, pop-scaling as suspected.
+
+| # | change | measured | verdict |
+|---|---|---|---|
+| E1 | fuse `vectorUpdate_vector` two-pass slab sweeps → single host-major pass (addend order per accumulator = ascending host index ⇒ bit-exact); −29 LOC | −2.4 % vs pre-480 default (−1 % on top of 480) | MERGED `4a8001ef` |
+| E4 | `Population::update` batched stable compaction (keep-list, one pass/column/year) replaces per-death `cols.erase_at`+`humans.erase` — 25-column × 10k-row memmove storm (2.4 s erase lanes absent in AoS baseline); self-move guard for nested columns, tail-erase for non-default rows | −4.2 % @10k, every round | MERGED `b5819dd4` |
+| E5 | bind per-host IV/availability rows once per host in `vectorUpdate_vector`/`calculateEIR_vector` — `PerHost` getters re-walked cols→column→row→iv per (host,species) across 3 TUs, LTO could not inline (getter 1.38 s @10k); in-TU `IvRows` view, bodies verbatim | −1.7 % @10k, −1.4 % @2k | MERGED `eac9764b` |
+| E6 | `updatePyrogenThres` zero-numerator fast path (provably bit-exact reduction of the 11-step serial div chain when `td·a==0`; exhaustive guard self-check) | plain: −0.5 % @2k / −0.8 % @10k (14/14 rounds). RECIPE head-to-head: +1.7 % **slower** @10k, 6/7 | REVERTED `8e807739`; kept `fork-wt-hunt4 de21d840`. Lesson: candidates must be gated in RECIPE form — PGO + new branch interacts |
+
+E6 side-product (attribution correction): the 5.2 s `determineMorbidity` lane vs "absent" baseline
+lane was an LTO-inlining artifact — the baseline carries the byte-identical pyrogen recurrence
+(Submodels.cpp:104); WH-descriptive update is at parity (7.0 vs 7.3 s @10k). Latency-bound, both trees.
+
+Final ladder, same windows (example scenario; ours = `build-pgo-ex3` = rewrite+E1+E4+E5+PR-480+LTO+
+example-PGO, all gates green; theirs = `fork-wt-bs/build-pgo3` = baseline+7 PRs+LTO+generic-PGO):
+
+| pop | A0 original | ours | theirs | ours vs A0 | residual gap |
+|---|---|---|---|---|---|
+| 2000 | 12.25 s | **10.98 s** | 10.48 s | **1.116×** | 4.7 % |
+| 10000 | 55.63 s | **48.65 s** | 45.19 s | **1.144×** | 7.7 % |
+
+Tax recovered this round: 9.4→4.7 % @2k, 20.4→7.7 % @10k (vs patched baseline at equal flags the
+latter is 20.4→~11 % @plain -O3, e1→e5 58.38→54.38 s). LOC still −13.6 % vs baseline (16,263).
+
+Remaining suspects (round-5 shortlist): `calculateEIR_vector` still 3.6 % @10k vs baseline lane
+<1 % (E5 absorbed getter cost into it, net −1.7 % but not parity); `expectedNumNewInfections`
++0.4 s; `HumanColumns::compact` 1.3 s irreducible floor ≈ theirs; residual dTLB/column pressure
+(counter re-run vs post-E5 recipe build pending); devirtualisation gap (WHInterface pure-virtual
+trio per host tick — p8-Q2 keeps polymorphism per user order; PGO devirtualises in recipe builds).
+
+### Round 5 — E7 heap-THP: memory side of the tax eliminated; residual is instruction-count-only (2026-11-23)
+
+Post-round-4 state: 3.5 s @10k gap, counters +4.3 % instructions / IPC −3.7 % / dTLB 2.0×.
+Symbol-level attribution declared unusable this deep: (a) LTO inlines differently per tree so
+same-named symbols carry different payloads (E6 correction; expectedNNI annotate showed 41 % in
+divsd = frozen math under whoever owns the symbol); (b) perf-record distorts the two binaries
+differently (record-time gap 0.6 s vs bench gap 3.5 s).
+
+Probe chain: THP=always on the box, but glibc never flags its mmap chunks/heap VMAs
+MADV_HUGEPAGE (defrag=always mode missing). `GLIBC_TUNABLES=glibc.malloc.hugetlb=1` measured on
+BOTH trees: theirs −4.0 % (45.19→43.37), ours −6.1 % (48.54→45.60) — a universal win, ours bigger
+(bigger mapped arrays). Shipped as in-code E7 (no env dependency): `mallopt(M_TOP_PAD=64 MB)` +
+trim-off + `MADV_HUGEPAGE` sweep of rw-anon VMAs at population build / every 52 steps /
+checkpoint load (hint-only, Linux-only, values untouched). Per-column madvise was tried FIRST and
+is a dead mechanism — sub-2 MB malloc VMAs can never host a 2 MB page (measured: 739 madvise calls,
+0 THP); the heap-VMA recipe works (peak AnonHugePages 26 MB vs 0 pre-E7, > env-var version).
+
+E7 (MERGED `eac9764b..`): plain builds −6.1 % @10k / −1.9 % @2k, 7/7 rounds both.
+
+Post-E7 counters @10k (both recipe builds, ours=ex5 vs theirs=pgo3): cycles +2.1 %; instructions
++4.3 % (unchanged — E7 is memory-side); **IPC 2.69 vs 2.64 (we now lead); cache-misses 34 M vs
+61 M (we lead); dTLB-load-misses 0.05 M vs 277 M (5400× lead)**. Memory side of the structural tax:
+CLOSED, all three counters ours.
+
+Final ladder (same window):
+
+| pop | A0 original | theirs (pgo3) | **ours (build-pgo-ex5)** | ours vs A0 | residual gap |
+|---|---|---|---|---|---|
+| 2000 | 12.24 s | 10.47 s | **10.81 s** | **1.132×** | 3.2 % |
+| 10000 | 55.89 s | 45.05 s | **46.51 s** | **1.202×** | 3.2 % |
+
+Tax arc: 9.4/20.4 % → 4.7/7.7 % (round 4) → **3.2/3.2 %**. Shipping binary:
+/home/razlock/git/fork/build-pgo-ex5 (util/pgo-build.sh on rewrite HEAD reproduces it).
+Honesty note: the THP trick is portable — `GLIBC_TUNABLES=glibc.malloc.hugetlb=1` gives THEIR tree
+43.37 s too (env needs no code). Equal-trick comparison: 43.37 vs our 46.51 = 7.2 % — the residual
+instruction surplus (+4.3 %, ≈ SoA indirection + inlining luck) is the real remaining code distance;
+we just happen to have captured the platform win first.
+
+Hunt closed: the residual 3.2 % has no named lane that isn't frozen-formula arithmetic (divsd
+chains) or diffuse SoA indirection. Remaining theoretical levers, all costed and declined:
+per-sweep batch row-pointer flattening of the 5 ragged nested columns (real, ~1 %, high churn),
+devirtualising WHInterface (user veto p8-Q2 keeps the polymorphism; PGO devirtualises at the three
+host-tick calls anyway), SIMD reductions (phase-8 plan, bit-exact-hostile). If a future
+low-density scenario mix materialises, re-evaluate E6 (fork-wt-hunt4) WITHOUT the recipe.
+
+### Round 6 — E8 kills the compaction storm; the method finally works (instruction-count attribution) (2026-11-23)
+
+New attribution tooling (round 5 proved cycles-share useless across trees):
+1. **LD_PRELOAD call-count shim** (callcount.so, /home/razlock/git/): every libm/GSL/BLAS entry
+   counted on all three trees, same scenario: dgemm 405,886 = 405,886; lognormal 56,761,242 =
+   56,761,242; poisson/P/Pinv/pow/log identical to ±1; exp: ours 229.3M vs theirs 272.9M (PGO
+   folds 43.6M — we call LESS). ⇒ zero library-call-count difference anywhere; surplus is model code.
+2. **Retired-instruction sampling** (`perf record -e cpu_core/instructions/ -c 16000003`, flat —
+   LBR/fp callgraphs dead under LTO): histogram in BILLIONS of instructions per run names the lanes
+   despite symbol renames (WH update 69.7 vs 66.7, probTrans 66.8 vs 61.7, host-scan family
+   ~+10 diffuse) — and one monster: **HumanColumns::compact 35.3B = 5.6 % of all instructions.**
+3. **Instrumented counters** (scratch worktree, never merged): compaction ran EVERY step
+   (10,293 steps — the example sim is 140 simulated years incl. 90 warmup, 73 steps/yr, not the
+   ~45 I assumed), full width: 2.57e9 element moves/run, 8.2e8 of them heap-ownership moves of
+   nested columns. Their AoS erase memmoves only the tail — and deaths cluster at the
+   age-ordered tail, so their tails are tiny while our gather was population-proportional regardless.
+
+**E8 (MERGED `8298a431`) — run-based compaction:** keep[] decomposes into contiguous runs
+(`build_compaction_runs`); move only non-leading runs; `memmove` for the 16 trivially-copyable
+columns, elementwise `std::move` for the 9 heap columns; prefix skipped. Final layout identical ⇒
+bit-exact (same stable-order argument as E4/E7). Gated in BOTH forms (plain and LTO+PGO: 64/64,
+.OK!, 63/63) per the E6 lesson. Measured −2.1 % @10k / −1.5 % @2k, recipe form, anchored windows.
+
+**E9 (REJECTED, kept `fork-wt-hunt7 5ed28b7f`):** same run-ification for the humans vector —
+measured FLAT at both pops (+0.2 % 10k, +0.01 s 2k, both 7/7): Human move-assigns were never the
+cost; the columns were. Reverted by the LOC KPI. Its side-product is on file: probTrans +8 %
+instruction surplus mechanism = `this→ctx→subobject` re-materialisation (file-scope statics in the
+old tree are rip-relative single loads) + static-scratch resize-guard reloads — the named mechanism
+behind round 5's "diffuse" surplus; any future pass must attack the ctx indirection class wholesale
+(declined: invasive, high churn, ~1 % ceiling, T1 risk on 140-year sims).
+
+**Dual-PGO training variant:** training on example@2000 + example@10000 (`build-pgo-ex6dual`,
+script /tmp/opencode/pgo-build-dual.sh): −0.7 % @10k (7/7) vs +0.2 % @2k (7/7). KPI pop is 2000 ⇒
+shipping keeps single-training. For large-population fleets the dual profile is the better recipe;
+retraining on a representative workload mix is the honest knob (documented since round 2).
+
+Ladder (pgo3 anchored every window; A0 stable 12.24/55.6–55.9 across windows):
+
+| pop | original A0 | theirs | **ours (build-pgo-ex6)** | ours vs A0 | residual gap |
+|---|---|---|---|---|---|
+| 2000 | 12.24 s | 10.47 s | **10.68 s** | **1.146×** | **2.0 %** |
+| 10000 | 55.6 s | 44.97 s | **45.82 s** | **1.214×** | **1.9 %** |
+
+Tax arc: 9.4/20.4 → 4.7/7.7 → 3.2/3.2 → **2.0/1.9**. Shipping binary:
+/home/razlock/git/fork/build-pgo-ex6 (util/pgo-build.sh on HEAD reproduces it; LOC re-measured at push: 16,317, −13.3 %).
+Residual ~2 % is the ctx-indirection class (named above) + inlining luck; below it, the recipe's
+own cross-window reproducibility (~0.5 %) starts to bite. LOC budget of the hunt: E1 −29, E4 +23,
+E5 +59, E7 +76, E8 +23, E6/E9 rejected ⇒ +152 net against the −2,580 rewrite (−13.6 % intact).
+
+### Round 7 — Baxter-parity investigation (historical brief, superseded below)
+
+The initial brief proposed measurements in fresh
+worktrees `/tmp/opencode/om-perf/{A0,B,R}` (A0 = `main@cfc3c8e0` plain; B = `eval/bs-all` +
+LTO/PGO on its own corpus; R = `rewrite@c7ee853d` + `util/pgo-build.sh`; R2 = rewrite trained on
+B's corpus). Same harness: pinned, interleaved, 2k/10k/7-scenario, T1 63/63 before any claim.
+
+The following were hypotheses at the start of the investigation:
+
+1. **Recipe parity.** At that time `util/pgo-build.sh` trained only on
+   `util/example/example_scenario.xml`; the comparison's B profile came from a multi-scenario mix,
+   and a mismatched profile can mis-order branches and *hurt*. If R2 ≈ B, the fix is the shipping
+   script's corpus, not code.
+2. **Source instruction surplus.** Then attack the named `ctx->`/row-major class with the static
+   audit queue, one gated change at a time (per-host invariant hoists, flat reusable scratch,
+   row-pointer binding, TBV factor hoists). Expected recovery without the flag/PGO work is roughly
+   half the gap; the rest is structural indirection.
+
+Statically verified, bit-exact build levers (no `-march`/`-mtune=native`, no fast-math;
+`-ffp-contract=off` in both PGO phases):
+
+- `-freorder-blocks-and-partition`, `-falign-loops`: already active at `-O3`; nothing to add.
+- `-fno-plt`: **not** default; `probTransmissionToMosquito` calls `log`/`gsl_cdf_ugaussian_P` per
+  host-tick, so this removes a PLT jump per call. Cheap; gate with T1.
+- `-fipa-pta`: **off** by default; under LTO it lets the optimiser prove `ctx.monitoring`/
+  `ctx.genotypes` loads do not alias monitoring stores, so `statSurveyNumber`/`nGenotypes` can hoist
+  out of per-host loops. Bit-exact; costs compile time/memory.
+- `-flto-partition=one`: only if the above is insufficient (peak memory).
+- `-fno-math-errno`: optional, skip unless measured (libm-selection risk on some glibc).
+
+**Known trap (do not do):** reusing `probTransGenotype_*` as the `y_lag` scratch without zeroing on
+the `pTransmit<=0` early return — `updateKappa` reads those vectors unguarded when genotype
+tracking is on. Any such change also needs a genotype-tracking scenario in T1, not just tiers a,b.
+
+**Non-KPI code finds:** the callers `LSTMDrugPD::IC50_pow_slope` and
+`LSTMDrugConversion::setKillingParameters` repeat `std::map` lookups; `Infection::Kn()` itself
+only creates/returns the cache. `AnophelesModel::advancePeriod` copies the full `nhhInstances` map every step
+(empty in the benchmark scenario).
+
+**Close criteria:** R/B ≤ 1.005 @2k and @10k, ≤0.5 % on the 7-scenario total, no >1 % regression
+@5k, T1 63/63, `ctest` 65/65, `unittest` `.OK!`, resume suite green.
+The two-point comparison below does not close these broader criteria.
+
+## Codex review follow-ups (2026-11-25)
+
+| change | model LOC | unittest LOC | performance | readability / gates |
+|---|---:|---:|---|---|
+| suggestions 3–8: fold the seven `HostView` stages back into `update` (explicit plan deviation); keep `HostScratch` EIR vectors but hoist them across ticks; dissolve per-host incidence ownership into two `Human` values + free equations; `RunContext` owning raw pointers → `unique_ptr`; remove global `WHMockHooks`; share the four history-ordered intervention folds; move intervention runtime code out of `xml/HumanInterventionComponents.h` into `interventions/Components.cpp` | **16,257 (−60 vs 16,317; baseline −13.6%)** | **3,593 (−16)** | same generic six-scenario PGO corpus + LTO, alternating A/B order, 2 warm + median-of-5: @2k **10.73 (MAD .020) → 10.64 (MAD .010) s**; @10k **45.23 (.040) → 44.87 (.110) s**. Both −0.8%, below the 1% structural-change floor; kept for LOC/uniformity, not claimed as a standalone optimization. First noisy 10k pass (base MAD 1.66 s) discarded, not used for a decision. | smaller ownership/dispatch surface and exact equation order retained; one new regression test proves independent mock state. Build 0 C++ warnings/errors, unittest `.OK!`, CTest **65/65**, strict A0 parity **63/63** in both plain and LTO+PGO forms. PGO consumption enforced with `-Werror=missing-profile` (and Clang equivalents). |
+
+Measurement tooling now trains on Genotypes/Penny/VecFullTest/NonHumanHosts/MSAT_HRP2/Vivax rather than the scored example; builds only the trained executable so untrained unit-test TUs cannot trigger false missing-profile failures. `bench-om.sh` starts a fresh log, alternates binary order, records binary SHA-256/scenario/core/allocator environment, and reports user median+MAD plus system/elapsed/RSS/page-fault medians. Before/after binaries: `/tmp/opencode/build-codex-base` and `build-codex-new`; raw logs `/tmp/opencode/bench-codex-{2k,10k}-repeat.log`.
+
+## LOC follow-up and isolated perf tests (2026-11-25, current worktree)
+
+The follow-up requested **no CalcNvO changes**; no CalcNvO file was touched. Structural cleanup reduced
+model LOC **16,257 → 16,082 (−175; 18,813 baseline → −14.5%)** while unittest LOC stayed **3,593**.
+Changes: replace `ModelNameProvider` with the enum plus an XML reader; replace Parameters' two maps
+with enum-indexed values and arithmetic XML-ID mapping; share duplicate command-line option/name/print
+handling; use trivially-copyable doses and a vector medication queue with the existing bounds-checked
+checkpoint vector archive (normal wire order preserved); replace per-deployment decay-tree clones with
+the same sampled scalar passed through `eval_with`; delete dead sampler/wrapper state; return the EIR
+imported/local sums already computed by `getEIR` instead of reducing both vectors again in `Human::update`.
+Final gates: **0 C++ warnings/errors, unittest `.OK!`, CTest 65/65, strict A0 parity 63/63 in plain and
+shipping LTO+PGO forms**, including all 12 resume tests.
+
+Shipping measurements used the same generic six-scenario corpus, alternating A/B order, 2 warmups and
+median-of-5. Compiler-flag candidates used the retained EIR-sum source unchanged.
+
+| candidate | user-CPU result | decision |
+|---|---|---|
+| forced/transient age-factor hoists | @2k 10.62 (MAD .000) → 10.61 (.010), −0.1% | **reverted**, pure micro-optimization below floor |
+| no-survey EIR monitoring guard | @2k 10.65 (.020) → 10.66 (.000), +0.1% | **reverted**, flat |
+| return precomputed EIR sums | @2k 10.64 (.020) → 10.62 (.010), −0.2%; @10k 44.70 (.060) → 44.64 (.130), −0.1% | **kept for structure and −1 LOC**, no optimization claim below floor |
+| `-fno-plt` | @2k 10.61 (.010) → 10.64 (.010), +0.3%; @10k 44.66 (.080) → 44.52 (.070), −0.3% | **rejected**, mixed and below floor |
+| `-fipa-pta` | @2k 10.62 (.000) → 10.66 (.010), +0.4%; @10k 44.59 (.060) → 44.77 (.010), +0.4% | **rejected**, slower at both sizes |
+
+Raw logs: `/tmp/opencode/bench-perf-{age,monitor,eir,fnoplt,ipapta}-{2k,10k}.log` where applicable;
+shipping controls `/tmp/opencode/build-loc-clean-pgo` and `/tmp/opencode/build-perf-eir-pgo`. These
+small deltas do not update the historical original-vs-rewrite headline without a fresh same-window A0 run.
+
+## Single-statement `if` compaction (2026-11-25, user-requested presentation pass)
+
+Collapsed only short, single-statement `if` bodies that fit the existing 120-column style: braces were
+removed where present, and no `else` chain, comment-containing span, multiline condition/body, or
+CalcNvO source was touched. Updated `.clang-format` with `AllowShortIfStatementsOnASingleLine:
+WithoutElse` and short-block support so formatting preserves the requested style. **65 model files,
+−367 raw lines; cloc KPI 16,082 → 15,717 (−365; original baseline −16.5%).** No model expression,
+RNG call, FP operation, or condition was edited. Clean build, CTest **65/65**, strict A0 parity **63/63**
+in plain and shipping LTO+PGO forms. This is presentation-only and is not a claim of simpler ownership
+or faster execution.
+
+## Fresh Baxter comparison and selective rebinding (2026-11-25)
+
+Rebuilt `eval/bs-all@6603c79e` and current `rewrite` with the **same generic six-scenario PGO corpus,
+LTO and compiler**. Allocator environment variables matched, but heap policy did not:
+rewrite includes its own `mallopt`/THP hints and Baxter does not. These are **shipped-configuration
+comparisons**, not an equal-heap-policy layout experiment. Initial timings: @2k Baxter **10.49 (MAD .000)** vs
+rewrite **10.61 (.010)**; @10k Baxter **45.24 (.180)** vs rewrite **44.69 (.140)**. This supersedes the
+old residual comparison for these two points: the rewrite already led @10k but trailed @2k.
+
+**Selective post-compaction rebinding (retained):** call `Human::set_row(w)` only inside the existing
+`w != r` move branch, then delete the full-survivor rebind loop. Rows that did not move already had valid
+bindings; the moved row retains RNG, column and submodel identity and is rebound immediately. No new
+algorithmic Baxter content was found elsewhere—the remaining difference is diffuse context/row addressing.
+In the three-binary A/B: @2k Baxter **10.50 (.000)**, prior rewrite **10.64 (.010)**, selective **10.57
+(.010)**; @10k Baxter **45.23 (.030)**, prior **44.69 (.140)**, selective **44.59 (.030)**. The individual
+gain is below the 1% floor, but this removes a population-wide dependent-load/store pass and is retained
+for algorithmic structure, not as a proven standalone optimization. Final position: **rewrite
+0.67% slower @2k, 1.42% faster @10k**. Below the 1% decision floor does not establish a statistical
+tie; the 2k ratio 1.0067 also misses the 1.005 close criterion. Selective gates: CTest **65/65**, plain and shipping
+T1 **63/63**. Model LOC **15,717 → 15,718 (+1)**.
+
+Further candidates were reverted without altering the retained diff: contiguous age-group lookup storage
+(@2k 10.57 → 10.58, flat); persistent survivor `keep` scratch (10.56 → 10.61, slower); sweep-local
+`nGenotypes` (10.56 → 10.58, flat). Raw logs: `/tmp/opencode/bench-baxter-current-{2k,10k}.log`,
+`bench-selective-rebind-{2k,10k}.log`, `bench-age-vector-2k.log`, `bench-keep-reuse-2k.log`, and
+`bench-ngenotype-hoist-2k.log`. `/usr/bin/time %U`, core 5, alternating order, 2 warmups + median-of-5.
+
+### Review evidence corrections
+
+- Full CTest includes unittest in the plain build. `pgo-build.sh` builds the trained
+  `openMalaria` executable and schemas; a fresh PGO directory has 64 runnable
+  harness/box/resume tests and no unittest executable.
+  Historical “65/65 in shipping form” wording does not prove shipping-built unit coverage.
+- The 12 resume cases comprise nine intervention-free scenarios and three with health-system
+  changes. None proves restored per-host intervention deployment state. That state stays off-wire.
+- `RunContext` owns many registries, but mutable configuration globals remain. The original
+  two-runs test repeated only scenario1; it did not prove mixed-scenario isolation.
+- Historical A0 ladder: 12.24→10.68 s @2k and 55.6→45.82 s @10k: 1.146×/1.214×,
+  or 12.7%/17.6% less CPU. There is no fresh current-tree A0 timing headline.
+- Review logs/profiles: `/tmp/opencode/review-20261125/`. Fresh review CTest 65/65;
+  Baxter shipping T1 63/63. Rewrite cycle shares @2k/@10k: matrix multiplication
+  22.27%/4.69%, descriptive update 7.35%/17.49%, morbidity 9.64%/10.93%,
+   infectiousness 5.68%/10.31%. These shares do not establish layout causality.
+
+## Review follow-up: hybrid storage and runtime boundary (2026-11-25)
+
+Review follow-up to `a49f56ec`, including the retained selective-rebinding change.
+CalcNv0/CalcNvO are excluded; both existing `CalcNvO` files match the saved SHA-256 hashes.
+No solver changes, replacement, or caching. F16/F26 are inherited; F73/F100 remain separate.
+
+### Structure, LOC and readability
+
+Canonical `cloc --include-lang="C++,C/C++ Header"` code counts; XML is a subset of model:
+
+| stage | model LOC / files | XML LOC / files | unittest LOC / files |
+|---|---:|---:|---:|
+| review entry (selective rebinding) | 15,718 / 116 | 3,589 / 12 | 3,593 / 29 |
+| initialisation fixes + flat species | 15,716 / 116 | 3,593 / 12 | 3,645 / 30 |
+| hybrid host state | 15,674 / 116 | 3,593 / 12 | 3,648 / 30 |
+| XML/runtime boundary + three folds | 15,605 / 113 | 3,558 / 10 | 3,670 / 30 |
+| cache lookups + non-human-host map-copy removal | **15,598 / 113** | **3,558 / 10** | **3,683 / 30** |
+
+Net review follow-up: **−120 model LOC, −31 XML LOC, −3 model files; +90 unit-test LOC**.
+Against the original 18,813: **−3,215 (−17.1%)**. The hard caps are still unmet:
+**+1,598 total / +958 XML** (non-XML 12,040 versus 11,400). This is not cap completion.
+
+- **Initialisation:** the expanded mixed-scenario test failed before the fix. Reset clinical,
+  within-host, incidence and pathogenesis selection flags and the optional NMF interpolator.
+  The test runs scenario1, then 9/10/NonHumanHosts/Vivax/Penny, then scenario1 again.
+  It proves that sequence, not the isolation of every remaining mutable configuration global.
+- **Flat species:** four nested per-host vectors become one host-major `vector<HostSpecies>`
+  of four doubles per host/species. Construction preserves the original four draw sites and
+  arithmetic order. Compaction applies the same stable survivor runs with a species stride.
+  Spans are reacquired after population changes. A regression covers 0/1/3 species, overlapping
+  moves, gaps, births, all-dead compaction, and exact RNG-byte association.
+- **Hybrid:** immunity/infection counters live on `WHInterface`; clinical clocks live on their
+  clinical models, with ES-only state on `CMEventScheduler`. Nine population columns and two
+  row-rebinding paths disappear. Scan-oriented, RNG and intervention columns remain.
+  The independent-immunity check no longer needs artificial population columns.
+- **XML/runtime boundary:** `run.cpp` receives `ScenarioRuntime` from `initialiseScenario`.
+  Parsing, validation, dependency-ordered initialisation and XSD diagnostics stay in `xml/`.
+  The full schema tree is released before simulation. Compiler dependency files confirm no
+  generated-schema dependency for `run.cpp`, `main.cpp`, or `util/CommandLine.cpp`.
+  Schema-facing conversion declarations still exist in model headers; this is not full
+  plain-config conversion. Deferred change-EIR uses plain `EirSeries` data and validates at
+  deployment. A health-system action owns its XML clone through RAII and releases it on
+  deployment or abandonment. Its conversion remains late to preserve treatment/tree
+  registration and first-error order.
+- **File folds:** `Clinical/Episode.cpp` joins `ClinicalModel.cpp`; XML-only
+  `HumanInterventionComponents.h` and `entomology.h` join `xml/interventions.cpp`.
+- **Smaller follow-ups:** cache hits use one `find` and consume no RNG; correlated parent/
+  metabolite sampling order is unchanged. Non-human hosts use one local record at a time
+  instead of allocating a copy of the entire map each tick. Each field's ordered decay
+  product and each map-ordered sum are unchanged; decay evaluation is pure.
+
+### Correctness gates
+
+Final plain build: **0 C++ warnings/errors, CTest 65/65**, including unittest and all 12
+resume cases. Final shipping LTO+PGO: **64/64 runnable CTest cases**; unit tests are checked
+in the plain build. **Strict A0 parity 63/63 in both forms**, including example@2000 seeds
+1–10. The species, hybrid and XML stages also passed their plain/shipping parity gates.
+Six XML/error-path cases match the preserved pre-follow-up binary in stdout, stderr and
+exit status: missing file, malformed XML, absent schema, future version, bad interval,
+and deployment-time EIP mismatch. Ownership and PK/PD cache RNG checks pass.
+
+Checkpoint format is **3**, with model-owned hybrid state and a validated contiguous
+host/species table. Per-host intervention deployment state remains off-wire. The 12
+resume cases cover nine intervention-free and three health-system-change scenarios,
+not general per-host intervention restoration.
+
+`pgo-build.sh` now regenerates `inlined_xsd` in the final build, fixing missing-schema
+failures in a fresh shipping build. It still builds only the trained executable, not
+untrained unit-test translation units. The six-scenario corpus and frozen FP flags are unchanged.
+
+### Isolated layout measurements
+
+Quiet serialized alternating three-binary windows, core 5, `/usr/bin/time %U`,
+two warmups then five measurements; numbers are median (MAD), seconds. GCC/LTO/PGO
+corpus and built-in heap policy match across these three rewrite stages. `GLIBC_TUNABLES`
+was unset. CPU governor was `powersave`, `intel_pstate/no_turbo=0`, recorded unchanged;
+these are not fixed-frequency/turbo-disabled measurements.
+
+| population | selective baseline | flat species | hybrid |
+|---|---:|---:|---:|
+| 2,000 | 10.57 (.000) | 10.44 (.010) | **10.31 (.000)** |
+| 10,000 | 44.36 (.030) | 44.01 (.140) | **42.88 (.030)** |
+
+Flat species: −1.23% @2k, −0.79% @10k; the latter is below the 1% decision floor,
+retained for ownership/compaction simplification rather than a standalone speed claim.
+Hybrid versus flat: −1.25% / −2.57%. Combined versus selective: **−2.46% / −3.34%**.
+The allocator recipe is held fixed here; these timings still do not isolate the effects
+of allocation count, addressing, cache locality and PGO code generation from one another.
+Peak-RSS medians @10k: 50,352 / 49,336 / 48,212 KiB.
+
+Artifacts: `/tmp/opencode/rewrite-next-20261125/` holds stage source diffs, red/green gate
+logs, `*-counts.json`, `xml-errors.log`, and `bench-layout-{2k,10k}.log` plus its summary.
+Stage binaries: `build-{selective-rebind,flat-species,hybrid-host,xml-boundary,review-final}-pgo`
+under `/tmp/opencode/`; the latter four have immutable sibling source snapshots.
+
+### Final shipping measurements
+
+Same measurement recipe as the layout window; the final candidate includes the XML
+boundary, file folds and cache/NHH changes. Baxter is `eval/bs-all@6603c79e`, built with
+the same compiler, LTO and six-scenario PGO corpus. Built-in heap policy still differs,
+so these compare shipping configurations, not storage layouts in isolation.
+
+| population | Baxter CPU s (MAD) | hybrid stage CPU s (MAD) | final CPU s (MAD) | final/Baxter | CPU reduction |
+|---|---:|---:|---:|---:|---:|
+| 2,000 | 10.47 (.000) | 10.33 (.010) | **10.30 (.010)** | **0.9838** | **1.62%** |
+| 5,000 | 23.17 (.020) | — | **22.56 (.010)** | **0.9737** | **2.63%** |
+| 10,000 | 45.11 (.100) | 42.92 (.090) | **42.89 (.030)** | **0.9508** | **4.92%** |
+
+The 2k/10k points meet R/B ≤1.005, and the 5k point passes the ≤1% regression gate.
+Final versus hybrid @2k/10k is −0.29% / −0.07%, below the decision floor: the XML/file-fold
+cleanup is retained for structure/LOC, with no standalone speed claim.
+Final/Baxter peak-RSS medians: 34,820/33,364 KiB @2k, 41,068/37,136 KiB @5k and
+48,268/45,484 KiB @10k.
+MAD .000 reflects the timer's 0.01-second resolution, not proof of zero variance.
+
+The outer 1,200-second job limit interrupted the 5k window during warmup. Its partial
+log is preserved as `bench-final-5k-timeout.log`; no timing decision uses it. The complete
+5k and seven-scenario windows were then run with the same recipe and a longer limit.
+
+Small-population seven-scenario mix (original scenario populations), median (MAD) CPU seconds:
+
+| scenario | Baxter | XML stage (before cache/NHH edits) | final | final vs Baxter |
+|---|---:|---:|---:|---:|
+| Genotypes | 5.47 (.000) | 5.47 (.000) | 5.49 (.010) | +0.37% |
+| Penny | 2.43 (.000) | 2.54 (.000) | 2.53 (.010) | +4.12% |
+| MSAT_HRP2 | 2.50 (.000) | 2.53 (.000) | 2.54 (.000) | +1.60% |
+| TBV | 2.95 (.000) | 2.98 (.000) | 2.99 (.000) | +1.36% |
+| VecFullTest | 1.99 (.000) | 1.92 (.000) | 1.92 (.000) | −3.52% |
+| NonHumanHosts | 1.95 (.000) | 1.97 (.000) | 1.97 (.000) | +1.03% |
+| Molineaux | 1.55 (.000) | 1.60 (.000) | 1.60 (.000) | +3.23% |
+| **sum of scenario medians** | **18.84** | **19.01** | **19.04** | **+1.06%** |
+
+**Overall performance closure remains open:** the seven-scenario total misses the
+≤0.5% regression allowance. This is not a universal rewrite win. The larger residuals
+in Penny and Molineaux are observations, not attribution to the new layout: this window
+does not include the pre-follow-up selective build. Equal-heap-policy profiling is still
+needed before claiming a layout-specific cause.
+
+Cache/NHH changes versus the XML stage: +0.16% on the total, below the decision floor;
+NonHumanHosts is unchanged at timer resolution. Retained for simpler cache access,
+removal of the whole-map allocation/copy, and −7 model LOC; no standalone speed claim.
+
+Completed logs: `bench-final-{2k,5k,10k,Genotypes,Penny,MSAT_HRP2,TBV,VecFullTest,NonHumanHosts,Molineaux}.log`,
+`bench-final-summary.log`, `bench-final-rest-summary.log`. Machine-readable medians, MAD
+and all five retained samples are in `final-benchmark-results.json`, alongside the logs.

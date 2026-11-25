@@ -1,0 +1,153 @@
+kind,module,type,target_xml_file,ref_count,sites,consumers,review
+type,interventions,AddNonHumanHosts,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1506,init,ok
+type,healthSystem,Age,model/xml/healthSystem.cpp,1,model/xml/healthSystem.cpp:949,create,hoist: 1/1 refs outside *FromXML/init readers
+type,util,AgeGroupValues,model/xml/util.cpp,8,model/Transmission/PerHost.h:239;model/util/AgeGroupInterpolation.h:66;model/xml/util.cpp:503;model/xml/util.cpp:566;model/xml/util.cpp:621;model/xml/util.cpp:659;model/xml/util.cpp:663;model/xml/entomology.cpp:528,(file-scope);AgeGroupInterpolationPoints;AgeGroupInterpolator;AgeGroupPiecewiseConstant;AgeGroupPiecewiseLinear;PerHost;…,hoist: 5/8 refs outside *FromXML/init readers
+type,entomology,AnophelesParams,model/xml/entomology.cpp,7,model/Transmission/transmission.h:62;model/Transmission/transmission.h:62;model/Transmission/transmission.h:63;model/xml/entomology.cpp:105;model/xml/entomology.cpp:105;model/xml/entomology.cpp:110;model/xml/entomology.cpp:328,(file-scope);createAnophelesModel,hoist: 1/7 refs outside *FromXML/init readers
+type,interventions,AnophelesParams1,model/xml/interventions.cpp,1,model/interventions/ITN.h:179,ITNAnopheles,hoist: 1/1 refs outside *FromXML/init readers
+type,interventions,AnophelesParams11,model/xml/interventions.cpp,1,model/interventions/GVI.h:74,GVIAnopheles,hoist: 1/1 refs outside *FromXML/init readers
+type,interventions,AnophelesParams2,model/xml/interventions.cpp,1,model/interventions/IRS.h:66,IRSAnopheles,hoist: 1/1 refs outside *FromXML/init readers
+type,interventions,AvailabilityReduction,model/xml/interventions.cpp,1,model/xml/interventions.cpp:281,TimedNonHumanHostsDeployment,hoist: 1/1 refs outside *FromXML/init readers
+type,util,BetaMeanSample,model/xml/util.cpp,2,model/util/sampler.h:315;model/xml/util.cpp:139,BetaSampler;setParams,hoist: 2/2 refs outside *FromXML/init readers
+type,interventions,ChangeEIR,model/xml/interventions.cpp,2,model/xml/interventions.cpp:130;model/xml/interventions.cpp:1197,TimedChangeEIRDeployment;init,hoist: 1/2 refs outside *FromXML/init readers
+type,interventions,ChangeHS,model/xml/interventions.cpp,2,model/xml/interventions.cpp:111;model/xml/interventions.cpp:1177,TimedChangeHSDeployment;init,hoist: 1/2 refs outside *FromXML/init readers
+type,healthSystem,Clinical,model/xml/healthSystem.cpp,9,model/Clinical/EventScheduler.h:50;model/Host/NeonatalMortality.h:42;model/Host/WithinHost/Pathogenesis/PathogenesisModel.h:48;model/xml/healthSystem.cpp:82;model/xml/healthSystem.cpp:87;model/xml/healthSystem.cpp:164;model/xml/healthSystem.cpp:968;model/xml/healthSystem.cpp:986;…,(file-scope);ClinicalEventScheduler;NeonatalMortality;PathogenesisModel;init,hoist: 3/9 refs outside *FromXML/init readers
+type,vivax,ClinicalEvents,model/xml/vivax.cpp,1,model/xml/vivax.cpp:117,init,ok
+type,healthSystem,ClinicalOutcomes,model/xml/healthSystem.cpp,1,model/xml/healthSystem.cpp:1000,setParameters,hoist: 1/1 refs outside *FromXML/init readers
+type,monitoring,Cohorts,model/xml/monitoring.cpp,1,model/xml/monitoring.cpp:232,initCohorts,ok
+type,util,Component,model/xml/util.cpp,4,model/interventions/Interfaces.h:164;model/interventions/Interfaces.h:168;model/xml/HumanInterventionComponents.h:52;model/xml/HumanInterventionComponents.h:74,(file-scope);HumanIntervention,hoist: 2/4 refs outside *FromXML/init readers
+type,interventions,Condition,model/xml/interventions.cpp,2,model/interventions/Interfaces.h:169;model/xml/HumanInterventionComponents.h:75,(file-scope);HumanIntervention,hoist: 1/2 refs outside *FromXML/init readers
+type,interventions,ContinuousDeployment,model/xml/interventions.cpp,2,model/interventions/Deployments.h:356;model/xml/interventions.cpp:220,(file-scope);ContinuousHumanDeployment,hoist: 1/2 refs outside *FromXML/init readers
+type,interventions,ContinuousList,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1325,init,ok
+type,pharmacology,Conversion,model/xml/pharmacology.cpp,1,model/xml/pharmacology.cpp:127,(file-scope),ok
+type,interventions,CumulativeCoverage,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1412,init,ok
+type,healthSystem,DTAge,model/xml/healthSystem.cpp,3,model/xml/healthSystem.cpp:495;model/xml/healthSystem.cpp:850;model/xml/healthSystem.cpp:944,CMDTAge;create,hoist: 3/3 refs outside *FromXML/init readers
+type,healthSystem,DTCaseType,model/xml/healthSystem.cpp,3,model/xml/healthSystem.cpp:256;model/xml/healthSystem.cpp:831;model/xml/healthSystem.cpp:871,CMDTCaseType;create,hoist: 3/3 refs outside *FromXML/init readers
+type,healthSystem,DTCohort,model/xml/healthSystem.cpp,3,model/xml/healthSystem.cpp:741;model/xml/healthSystem.cpp:853;model/xml/healthSystem.cpp:912,CMDTCohort;create,hoist: 3/3 refs outside *FromXML/init readers
+type,healthSystem,DTDeploy,model/xml/healthSystem.cpp,2,model/interventions/Interfaces.h:173;model/xml/HumanInterventionComponents.h:102,HumanIntervention,hoist: 2/2 refs outside *FromXML/init readers
+type,healthSystem,DTDiagnostic,model/xml/healthSystem.cpp,3,model/xml/healthSystem.cpp:329;model/xml/healthSystem.cpp:838;model/xml/healthSystem.cpp:889,CMDTDiagnostic;create,hoist: 3/3 refs outside *FromXML/init readers
+type,healthSystem,DTInfectionOrigin,model/xml/healthSystem.cpp,3,model/xml/healthSystem.cpp:291;model/xml/healthSystem.cpp:835;model/xml/healthSystem.cpp:881,CMDTInfectionOrigin;create,hoist: 3/3 refs outside *FromXML/init readers
+type,healthSystem,DTMultiple,model/xml/healthSystem.cpp,2,model/xml/healthSystem.cpp:217;model/xml/healthSystem.cpp:829,CMDTMultiple;create,hoist: 2/2 refs outside *FromXML/init readers
+type,healthSystem,DTRandom,model/xml/healthSystem.cpp,3,model/xml/healthSystem.cpp:458;model/xml/healthSystem.cpp:847;model/xml/healthSystem.cpp:922,(file-scope);CMDTRandom;create,hoist: 2/3 refs outside *FromXML/init readers
+type,healthSystem,DTReport,model/xml/healthSystem.cpp,1,model/xml/healthSystem.cpp:549,CMDTReport,hoist: 1/1 refs outside *FromXML/init readers
+type,healthSystem,DTSevere,model/xml/healthSystem.cpp,3,model/xml/healthSystem.cpp:414;model/xml/healthSystem.cpp:844;model/xml/healthSystem.cpp:905,CMDTSevere;create,hoist: 3/3 refs outside *FromXML/init readers
+type,healthSystem,DTTreatPKPD,model/xml/healthSystem.cpp,2,model/xml/healthSystem.cpp:599;model/xml/HumanInterventionComponents.h:296,CMDTTreatPKPD;TreatPKPDComponent,hoist: 2/2 refs outside *FromXML/init readers
+type,healthSystem,DTTreatSimple,model/xml/healthSystem.cpp,1,model/xml/HumanInterventionComponents.h:255,TreatSimpleComponent,hoist: 1/1 refs outside *FromXML/init readers
+type,healthSystem,DTUncomplicated,model/xml/healthSystem.cpp,3,model/xml/healthSystem.cpp:369;model/xml/healthSystem.cpp:841;model/xml/healthSystem.cpp:897,CMDTUncomplicated;create,hoist: 3/3 refs outside *FromXML/init readers
+type,entomology,DailyValues,model/xml/entomology.cpp,4,model/xml/entomology.cpp:79;model/xml/entomology.cpp:84;model/xml/entomology.cpp:268;model/xml/entomology.cpp:269,(file-scope);averageEIR;createAnophelesModel,hoist: 3/4 refs outside *FromXML/init readers
+type,util,DecayFunction,model/xml/util.cpp,17,model/util/SimpleDecayingValue.h:47;model/util/DecayFunction.h:64;model/xml/util.cpp:149;model/xml/util.cpp:158;model/xml/util.cpp:181;model/xml/util.cpp:209;model/xml/util.cpp:238;model/xml/util.cpp:263;…,(file-scope);ConstantDecayFunction;DecayFunction;EmaxFunction;ExponentialDecayFunction;HillDecayFunction;…,hoist: 15/17 refs outside *FromXML/init readers
+type,healthSystem,DecisionTree,model/xml/healthSystem.cpp,7,model/Clinical/CMDecisionTree.h:78;model/xml/healthSystem.cpp:547;model/xml/healthSystem.cpp:597;model/xml/healthSystem.cpp:653;model/xml/healthSystem.cpp:709;model/xml/healthSystem.cpp:804;model/xml/HumanInterventionComponents.h:324,CMDTDeploy;CMDTReport;CMDTTreatPKPD;CMDTTreatSimple;CMDecisionTree;DecisionTreeComponent;…,hoist: 7/7 refs outside *FromXML/init readers
+type,demography,DemogAgeGroup,model/xml/demography.cpp,1,model/xml/demography.cpp:47,estimateRemovalRates,hoist: 1/1 refs outside *FromXML/init readers
+type,demography,Demography,model/xml/demography.cpp,4,model/PopulationAgeStructure.cpp:46;model/PopulationAgeStructure.h:37;model/PopulationAgeStructure.h:51;model/xml/demography.cpp:40,AgeStructure;estimateRemovalRates;init,hoist: 3/4 refs outside *FromXML/init readers
+type,util,Deploy,model/xml/util.cpp,2,model/interventions/Interfaces.h:199;model/xml/HumanInterventionComponents.h:163,(file-scope);SubList,hoist: 1/2 refs outside *FromXML/init readers
+type,interventions,Deploy1,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1567,init,ok
+type,interventions,Deploy2,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1514,init,ok
+type,interventions,Deployment,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1310,init,ok
+type,interventions,DeploymentBase,model/xml/interventions.cpp,4,model/interventions/Deployments.h:117;model/interventions/Interfaces.h:72;model/xml/interventions.cpp:147;model/xml/interventions.cpp:160,(file-scope);HumanDeploymentBase;VaccineLimits;set,hoist: 3/4 refs outside *FromXML/init readers
+type,interventions,Description,model/xml/interventions.cpp,2,model/xml/entomology.cpp:532;model/xml/entomology.h:41,(file-scope),ok
+type,interventions,Description1,model/xml/interventions.cpp,3,model/Transmission/Anopheles/AnophelesModel.h:276;model/xml/entomology.cpp:552;model/xml/entomology.cpp:609,(file-scope);AnophelesModel;initVectorTrap,hoist: 1/3 refs outside *FromXML/init readers
+type,interventions,Description2,model/xml/interventions.cpp,1,model/xml/interventions.cpp:257,TimedNonHumanHostsDeployment,hoist: 1/1 refs outside *FromXML/init readers
+type,interventions,Description3,model/xml/interventions.cpp,1,model/xml/interventions.cpp:349,TimedAddNonHumanHostsDeployment,hoist: 1/1 refs outside *FromXML/init readers
+type,scenario,Diagnostic,model/xml/scenario.cpp,3,model/Host/WithinHost/Diagnostic.h:60;model/xml/scenario.cpp:388;model/xml/scenario.cpp:452,Diagnostic;init,hoist: 2/3 refs outside *FromXML/init readers
+type,pharmacology,Drugs,model/xml/pharmacology.cpp,1,model/PkPd/Drug/LSTMDrugType.h:111,LSTMDrugType,hoist: 1/1 refs outside *FromXML/init readers
+type,interventions,EmergenceReduction,model/xml/interventions.cpp,1,model/xml/entomology.cpp:581,initVectorInterv,ok
+type,entomology,Entomology,model/xml/entomology.cpp,8,model/Transmission/transmission.h:61;model/Transmission/transmission.h:64;model/Transmission/transmission.h:65;model/Transmission/NonVectorModel.h:46;model/xml/entomology.cpp:92;model/xml/entomology.cpp:358;model/xml/entomology.cpp:408;model/xml/entomology.cpp:440,(file-scope);NonVectorModel,hoist: 1/8 refs outside *FromXML/init readers
+type,interventions,FecundityReduction,model/xml/interventions.cpp,1,model/xml/interventions.cpp:308,TimedNonHumanHostsDeployment,hoist: 1/1 refs outside *FromXML/init readers
+type,entomology,FourierSeries,model/xml/entomology.cpp,2,model/xml/entomology.cpp:165;model/xml/entomology.cpp:166,createAnophelesModel,hoist: 2/2 refs outside *FromXML/init readers
+type,util,Function,model/xml/util.cpp,1,model/xml/util.cpp:466,(file-scope),ok
+type,interventions,GVIDescription,model/xml/interventions.cpp,4,model/interventions/GVI.h:50;model/xml/interventions.cpp:1024;model/xml/interventions.cpp:1041;model/xml/interventions.cpp:1054,(file-scope);GVIComponent;HumanVectorInterventionComponent,hoist: 2/4 refs outside *FromXML/init readers
+type,util,Group,model/xml/util.cpp,1,model/xml/util.cpp:514,AgeGroupPiecewiseConstant,hoist: 1/1 refs outside *FromXML/init readers
+type,healthSystem,HSDT5Day,model/xml/healthSystem.cpp,2,model/Clinical/DecisionTree5Day.h:52;model/xml/healthSystem.cpp:1182,DecisionTree5Day;setHealthSystem,hoist: 2/2 refs outside *FromXML/init readers
+type,healthSystem,HSESNMF,model/xml/healthSystem.cpp,1,model/xml/healthSystem.cpp:1033,setParameters,hoist: 1/1 refs outside *FromXML/init readers
+type,healthSystem,HSEventScheduler,model/xml/healthSystem.cpp,4,model/Clinical/EventScheduler.h:51;model/Clinical/ESCaseManagement.h:42;model/xml/healthSystem.cpp:999;model/xml/healthSystem.cpp:1045,ClinicalEventScheduler;ESCaseManagement;setHealthSystem;setParameters,hoist: 4/4 refs outside *FromXML/init readers
+type,healthSystem,HSImmediateOutcomes,model/xml/healthSystem.cpp,2,model/Clinical/ImmediateOutcomes.h:53;model/xml/healthSystem.cpp:1105,ImmediateOutcomes;setHealthSystem,hoist: 2/2 refs outside *FromXML/init readers
+type,healthSystem,HealthSystem,model/xml/healthSystem.cpp,3,model/Clinical/ClinicalModel.h:59;model/xml/interventions.cpp:125;model/xml/healthSystem.cpp:1246,ClinicalModel;TimedChangeHSDeployment;setHS,hoist: 3/3 refs outside *FromXML/init readers
+type,scenario,Human,model/xml/scenario.cpp,1,model/xml/scenario.cpp:161,init,ok
+type,interventions,HumanInterventionComponent,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1231,init,ok
+type,interventions,HumanInterventions,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1226,init,ok
+type,vivax,HypnozoiteRelease,model/xml/vivax.cpp,1,model/xml/vivax.cpp:107,init,ok
+type,vivax,HypnozoiteReleaseDistribution,model/xml/vivax.cpp,1,model/xml/vivax.cpp:65,(file-scope),ok
+type,interventions,IRSDescription,model/xml/interventions.cpp,4,model/interventions/IRS.h:46;model/xml/interventions.cpp:883;model/xml/interventions.cpp:904;model/xml/interventions.cpp:918,(file-scope);HumanVectorInterventionComponent;IRSComponent,hoist: 2/4 refs outside *FromXML/init readers
+type,interventions,IRSDeterrency,model/xml/interventions.cpp,2,model/interventions/IRS.h:103;model/xml/interventions.cpp:941,RelativeAttractiveness;init,hoist: 1/2 refs outside *FromXML/init readers
+type,interventions,IRSKillingEffect,model/xml/interventions.cpp,2,model/interventions/IRS.h:125;model/xml/interventions.cpp:970,(file-scope);SurvivalFactor,hoist: 1/2 refs outside *FromXML/init readers
+type,interventions,ITNDescription,model/xml/interventions.cpp,4,model/interventions/ITN.h:159;model/xml/interventions.cpp:771;model/xml/interventions.cpp:798;model/xml/interventions.cpp:812,(file-scope);ITNComponent,hoist: 1/4 refs outside *FromXML/init readers
+type,interventions,ITNDeterrency,model/xml/interventions.cpp,2,model/interventions/ITN.h:114;model/xml/interventions.cpp:637,(file-scope);RelativeAttractiveness,hoist: 1/2 refs outside *FromXML/init readers
+type,interventions,ITNEffectLogit,model/xml/interventions.cpp,2,model/interventions/ITN.h:72;model/xml/interventions.cpp:608,(file-scope);SurvivalFactor,hoist: 1/2 refs outside *FromXML/init readers
+type,interventions,ITNKillingEffect,model/xml/interventions.cpp,2,model/interventions/ITN.h:63;model/xml/interventions.cpp:424,(file-scope);SurvivalFactor,hoist: 1/2 refs outside *FromXML/init readers
+type,interventions,ImportedInfections,model/xml/interventions.cpp,4,model/Host/ImportedInfections.h:48;model/xml/interventions.cpp:60;model/xml/interventions.cpp:62;model/xml/interventions.cpp:1438,(file-scope);ImportedInfections;init,hoist: 1/4 refs outside *FromXML/init readers
+type,interventions,InsertR_0Case,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1449,init,ok
+type,interventions,Interventions,model/xml/interventions.cpp,2,model/interventions/InterventionManager.h:47;model/xml/interventions.cpp:1170,(file-scope);InterventionManager,hoist: 1/2 refs outside *FromXML/init readers
+type,healthSystem,LiverStageDrug,model/xml/healthSystem.cpp,2,model/Host/WithinHost/WHVivax.h:180;model/xml/vivax.cpp:140,WHVivax;setHSParameters,hoist: 2/2 refs outside *FromXML/init readers
+type,interventions,MassDeployment,model/xml/interventions.cpp,4,model/interventions/Deployments.h:146;model/interventions/Deployments.h:256;model/xml/interventions.cpp:193;model/xml/interventions.cpp:1361,(file-scope);TimedCumulativeHumanDeployment;TimedHumanDeployment;init,hoist: 2/4 refs outside *FromXML/init readers
+type,scenario,Model,model/xml/scenario.cpp,8,model/util/ModelNameProvider.h:54;model/Host/WithinHost/WHFalciparum.h:52;model/Host/WithinHost/WHVivax.h:174;model/xml/util.cpp:764;model/xml/scenario.cpp:125;model/xml/scenario.cpp:577;model/xml/scenario.cpp:602;model/xml/vivax.cpp:84,(file-scope);ModelNameProvider;WHFalciparum;WHVivax;init,hoist: 3/8 refs outside *FromXML/init readers
+type,monitoring,MonAgeGroup,model/xml/monitoring.cpp,1,model/xml/monitoring.cpp:77,initAgeGroups,ok
+type,monitoring,Monitoring,model/xml/monitoring.cpp,8,model/mon/Continuous.h:50;model/mon/init.h:36;model/mon/init.h:38;model/xml/monitoring.cpp:75;model/xml/monitoring.cpp:150;model/xml/monitoring.cpp:226;model/xml/monitoring.cpp:260;model/xml/monitoring.cpp:261,(file-scope);init,ok
+type,monitoring,MonitoringOption,model/xml/monitoring.cpp,1,model/xml/monitoring.cpp:99,initReporting,ok
+type,monitoring,MonitoringOptions,model/xml/monitoring.cpp,1,model/xml/monitoring.cpp:94,initReporting,ok
+type,entomology,MonthlyValues,model/xml/entomology.cpp,2,model/xml/entomology.cpp:196;model/xml/entomology.cpp:200,createAnophelesModel,hoist: 2/2 refs outside *FromXML/init readers
+type,entomology,Mosq,model/xml/entomology.cpp,4,model/Transmission/PerHost.h:51;model/Transmission/PerHost.h:59;model/xml/entomology.cpp:304;model/xml/entomology.cpp:518,PerHostAnophParams;createAnophelesModel,hoist: 4/4 refs outside *FromXML/init readers
+type,entomology,NonHumanHosts,model/xml/entomology.cpp,1,model/xml/entomology.cpp:331,createAnophelesModel,hoist: 1/1 refs outside *FromXML/init readers
+type,interventions,NonHumanHosts2,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1511,init,ok
+type,interventions,NonHumanHostsIntervention,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1538,init,ok
+type,interventions,NonHumanHostsModifications,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1533,init,ok
+type,interventions,NonHumanHostsSpeciesIntervention,model/xml/interventions.cpp,1,model/xml/interventions.cpp:266,TimedNonHumanHostsDeployment,hoist: 1/1 refs outside *FromXML/init readers
+type,interventions,NonHumanHostsVectorSpecies,model/xml/interventions.cpp,1,model/xml/interventions.cpp:356,TimedAddNonHumanHostsDeployment,hoist: 1/1 refs outside *FromXML/init readers
+type,entomology,NonVector,model/xml/entomology.cpp,16,model/Transmission/VectorModel.h:74;model/Transmission/TransmissionModel.h:187;model/Transmission/NonVectorModel.h:46;model/Transmission/NonVectorModel.h:83;model/Transmission/Anopheles/AnophelesModel.h:354;model/xml/entomology.cpp:66;model/xml/entomology.cpp:71;model/xml/entomology.cpp:94;…,(file-scope);AnophelesModel;NonVectorModel;TimedChangeEIRDeployment;TransmissionModel;VectorModel;…,hoist: 11/16 refs outside *FromXML/init readers
+type,util,OptionSet,model/xml/util.cpp,2,model/util/ModelOptions.h:304;model/xml/util.cpp:791,ModelOptions;init,hoist: 1/2 refs outside *FromXML/init readers
+type,healthSystem,Outcome,model/xml/healthSystem.cpp,1,model/xml/healthSystem.cpp:927,create,hoist: 1/1 refs outside *FromXML/init readers
+type,pharmacology,PD,model/xml/pharmacology.cpp,1,model/xml/pharmacology.cpp:157,(file-scope),ok
+type,pharmacology,PK,model/xml/pharmacology.cpp,1,model/xml/pharmacology.cpp:91,(file-scope),ok
+type,pharmacology,PKPDDosageRange,model/xml/pharmacology.cpp,2,model/xml/pharmacology.cpp:319;model/xml/pharmacology.cpp:323,read_dosage_table,hoist: 2/2 refs outside *FromXML/init readers
+type,pharmacology,PKPDDosages,model/xml/pharmacology.cpp,1,model/xml/pharmacology.cpp:350,init,ok
+type,pharmacology,PKPDDrug,model/xml/pharmacology.cpp,3,model/PkPd/Drug/LSTMDrugType.h:143;model/xml/pharmacology.cpp:70;model/xml/pharmacology.cpp:82,(file-scope);LSTMDrugType;init,hoist: 1/3 refs outside *FromXML/init readers
+type,pharmacology,PKPDMedication,model/xml/pharmacology.cpp,3,model/PkPd/LSTMModel.h:48;model/xml/pharmacology.cpp:304;model/xml/pharmacology.cpp:313,MedicateData;load;read_schedule,hoist: 2/3 refs outside *FromXML/init readers
+type,pharmacology,PKPDSchedule,model/xml/pharmacology.cpp,2,model/xml/pharmacology.cpp:310;model/xml/pharmacology.cpp:342,init;read_schedule,hoist: 1/2 refs outside *FromXML/init readers
+type,scenario,Parameters,model/xml/scenario.cpp,4,model/Parameters.h:150;model/Parameters.h:183;model/xml/scenario.cpp:638;model/xml/scenario.cpp:640,(file-scope);Parameters;initializeParamsFromXML,hoist: 2/4 refs outside *FromXML/init readers
+type,scenario,ParasiteAllele,model/xml/scenario.cpp,1,model/xml/scenario.cpp:201,LocusSet,hoist: 1/1 refs outside *FromXML/init readers
+type,scenario,ParasiteGenetics,model/xml/scenario.cpp,1,model/xml/scenario.cpp:241,init,ok
+type,scenario,ParasiteLocus,model/xml/scenario.cpp,1,model/xml/scenario.cpp:198,LocusSet,hoist: 1/1 refs outside *FromXML/init readers
+type,pharmacology,Pharmacology,model/xml/pharmacology.cpp,1,model/xml/pharmacology.cpp:68,init,ok
+type,pharmacology,Phenotype,model/xml/pharmacology.cpp,3,model/PkPd/Drug/LSTMDrugType.h:64;model/xml/pharmacology.cpp:62;model/xml/pharmacology.cpp:168,(file-scope);LSTMDrugPD,hoist: 2/3 refs outside *FromXML/init readers
+type,interventions,PostprandialKillingEffect,model/xml/interventions.cpp,1,model/xml/interventions.cpp:294,TimedNonHumanHostsDeployment,hoist: 1/1 refs outside *FromXML/init readers
+type,interventions,PreprandialKillingEffect,model/xml/interventions.cpp,1,model/xml/interventions.cpp:287,TimedNonHumanHostsDeployment,hoist: 1/1 refs outside *FromXML/init readers
+type,interventions,ProbAdditionalDeathSugarFeeding,model/xml/interventions.cpp,1,model/xml/entomology.cpp:591,initVectorInterv,ok
+type,interventions,ProbDeathOvipositing,model/xml/interventions.cpp,1,model/xml/entomology.cpp:603,initVectorInterv,ok
+type,interventions,RestingKillingEffect,model/xml/interventions.cpp,1,model/xml/interventions.cpp:301,TimedNonHumanHostsDeployment,hoist: 1/1 refs outside *FromXML/init readers
+type,pharmacology,Restriction,model/xml/pharmacology.cpp,3,model/xml/pharmacology.cpp:174;model/xml/pharmacology.cpp:179;model/xml/pharmacology.cpp:207,(file-scope),ok
+type,util,SampledValueCV,model/xml/util.cpp,4,model/util/sampler.h:284;model/xml/util.cpp:67;model/xml/util.cpp:120;model/xml/util.cpp:135,(file-scope);createSampler,hoist: 1/4 refs outside *FromXML/init readers
+type,util,SampledValueLN,model/xml/util.cpp,2,model/util/sampler.h:287;model/xml/util.cpp:133,(file-scope),ok
+type,util,SampledValueN,model/xml/util.cpp,2,model/util/sampler.h:87;model/xml/util.cpp:46,NormalSampler;setParams,hoist: 2/2 refs outside *FromXML/init readers
+type,scenario,Scenario,model/xml/scenario.cpp,24,model/sim.h:232;model/sim.h:238;model/main.cpp:147;model/PkPd/LSTMModel.h:90;model/mon/init.h:37;model/Clinical/ClinicalModel.h:54;model/Host/WithinHost/WHInterface.h:82;model/Host/WithinHost/Diagnostic.h:81;…,(file-scope);ClinicalModel;CommonWithinHost;Genotypes;LSTMModel;WHInterface;…,hoist: 9/24 refs outside *FromXML/init readers
+type,interventions,Screen,model/xml/interventions.cpp,1,model/xml/HumanInterventionComponents.h:225,ScreenComponent,hoist: 1/1 refs outside *FromXML/init readers
+type,entomology,Seasonality,model/xml/entomology.cpp,1,model/xml/entomology.cpp:154,createAnophelesModel,hoist: 1/1 refs outside *FromXML/init readers
+type,interventions,SeekingDeathRateIncrease,model/xml/interventions.cpp,1,model/xml/entomology.cpp:597,initVectorInterv,ok
+type,entomology,SimpleMPD,model/xml/entomology.cpp,1,model/xml/entomology.cpp:134,createAnophelesModel,hoist: 1/1 refs outside *FromXML/init readers
+type,interventions,SubPopRemoval,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1245,init,ok
+type,monitoring,SurveyTime,model/xml/monitoring.cpp,1,model/xml/monitoring.cpp:161,readSurveyDates,hoist: 1/1 refs outside *FromXML/init readers
+type,monitoring,Surveys,model/xml/monitoring.cpp,2,model/xml/scenario.cpp:461;model/xml/monitoring.cpp:152,init;readSurveyDates,hoist: 1/2 refs outside *FromXML/init readers
+type,interventions,TimedBaseList,model/xml/interventions.cpp,2,model/xml/interventions.cpp:1488;model/xml/interventions.cpp:1542,init,ok
+type,healthSystem,TreatmentActions,model/xml/healthSystem.cpp,4,model/xml/healthSystem.cpp:1083;model/xml/healthSystem.cpp:1084;model/xml/healthSystem.cpp:1094;model/xml/healthSystem.cpp:1096,(file-scope);getHealthSystemTreatmentByName,hoist: 1/4 refs outside *FromXML/init readers
+type,healthSystem,TreatmentDetails,model/xml/healthSystem.cpp,1,model/xml/healthSystem.cpp:1055,(file-scope),ok
+type,healthSystem,TreatmentOption,model/xml/healthSystem.cpp,6,model/Host/WithinHost/WHInterface.h:86;model/Host/WithinHost/Treatments.h:48;model/Host/WithinHost/Treatments.h:87;model/Host/WithinHost/WHInterface.cpp:53;model/xml/healthSystem.cpp:113;model/xml/healthSystem.cpp:126,(file-scope);Treatments;WHInterface;addTreatment,hoist: 5/6 refs outside *FromXML/init readers
+type,pharmacology,Treatments,model/xml/pharmacology.cpp,2,model/PkPd/LSTMTreatments.h:46;model/xml/pharmacology.cpp:339,LSTMTreatments;init,hoist: 1/2 refs outside *FromXML/init readers
+type,util,TriggeredDeployments,model/xml/util.cpp,2,model/interventions/Interfaces.h:192;model/xml/HumanInterventionComponents.h:149,TriggeredDeployments,hoist: 2/2 refs outside *FromXML/init readers
+type,interventions,TwoStageDeterrency,model/xml/interventions.cpp,2,model/interventions/ITN.h:121;model/xml/interventions.cpp:706,(file-scope);RelativeAttractiveness,hoist: 1/2 refs outside *FromXML/init readers
+type,interventions,UninfectVectors,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1462,init,ok
+type,interventions,VaccineDescription,model/xml/interventions.cpp,4,model/interventions/Vaccine.h:49;model/xml/interventions.cpp:1073;model/xml/interventions.cpp:1089;model/xml/interventions.cpp:1090,(file-scope);VaccineComponent,hoist: 1/4 refs outside *FromXML/init readers
+type,interventions,VaccinePhenotype,model/xml/interventions.cpp,2,model/xml/interventions.cpp:1111;model/xml/interventions.cpp:1112,(file-scope),ok
+type,entomology,Vector,model/xml/entomology.cpp,2,model/xml/entomology.cpp:360;model/xml/entomology.cpp:361,createVectorModel,hoist: 2/2 refs outside *FromXML/init readers
+type,interventions,VectorIntervention,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1483,init,ok
+type,interventions,VectorPop,model/xml/interventions.cpp,1,model/xml/interventions.cpp:1478,init,ok
+type,interventions,VectorSpeciesIntervention,model/xml/interventions.cpp,3,model/Transmission/Anopheles/AnophelesModel.h:273;model/xml/entomology.cpp:535;model/xml/entomology.cpp:575,(file-scope);AnophelesModel;initVectorInterv,hoist: 1/3 refs outside *FromXML/init readers
+type,interventions,VectorTrap,model/xml/interventions.cpp,5,model/xml/entomology.cpp:542;model/xml/entomology.cpp:543;model/xml/interventions.cpp:1562;model/xml/entomology.h:42;model/xml/entomology.h:42,(file-scope);init,ok
+type,vivax,Vivax,model/xml/vivax.cpp,1,model/xml/vivax.cpp:103,init,ok
+type,util,WeibullSample,model/xml/util.cpp,2,model/util/sampler.h:341;model/xml/util.cpp:143,WeibullSampler;setParams,hoist: 2/2 refs outside *FromXML/init readers
+fn,scenario,parseScenario,model/xml/scenario.cpp,1,model/xml/DocumentLoader.cpp:45,loadScenario,ok
+include,scenario,scenario.h,model/xml/scenario.cpp,1,model/xml/entomology.cpp:49,,
+include,interventions,interventions.h,model/xml/interventions.cpp,1,model/xml/entomology.cpp:50,,
+include,interventions,interventions.h,model/xml/interventions.cpp,1,model/xml/entomology.h:31,,
+include,healthSystem,healthSystem.h,model/xml/healthSystem.cpp,1,model/xml/healthSystem.cpp:57,,
+include,scenario,scenario.h,model/xml/scenario.cpp,1,model/xml/healthSystem.cpp:58,,
+include,interventions,interventions.h,model/xml/interventions.cpp,1,model/xml/interventions.cpp:49,,
+include,healthSystem,healthSystem.h,model/xml/healthSystem.cpp,1,model/xml/interventions.cpp:50,,
+include,scenario,scenario.h,model/xml/scenario.cpp,1,model/xml/scenario.cpp:55,,
+include,scenario,scenario.h,model/xml/scenario.cpp,1,model/xml/vivax.cpp:36,,
