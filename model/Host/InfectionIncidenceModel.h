@@ -23,7 +23,8 @@
 #ifndef Hmod_InfectionIncidence
 #define Hmod_InfectionIncidence
 
-#include "Global.h"
+#include "Clock.h"
+#include "util/checkpoint.h"
 #include "Transmission/PerHost.h"
 #include "util/random.h"
 

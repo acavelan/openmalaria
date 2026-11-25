@@ -45,7 +45,7 @@
 #include <limits>
 
 // util/xoshiro.h (lines 92-98) uses unqualified ostream/istream/runtime_error;
-// the model gets these from Global.h via sim.h → util/checkpoint.h. Provide
+// the model gets these via Clock.h / util/checkpoint.h. Provide
 // the same before including it:
 using std::istream;
 using std::ostream;

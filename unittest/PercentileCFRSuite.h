@@ -58,7 +58,7 @@ class PercentileCFRSuite : public CxxTest::TestSuite
 public:
     void testEntoAvailabilityPercentiles () {
         UnittestUtil::initTime( 5 );
-        UnittestUtil::DescriptiveInfection_init();  // = ModelOptions::reset() (friend-only private)
+        UnittestUtil::DescriptiveInfection_init();  // = ModelOptions::reset()
         if (Transmission::PerHostAnophParams::numSpecies(UnittestUtil::ctx()) == 0) {
             // minimal in-memory scnXml::Mosq (schema classes are constructible
             // programmatically — pattern used by UnittestUtil for PKPD types)

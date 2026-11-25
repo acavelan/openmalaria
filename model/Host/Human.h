@@ -22,7 +22,7 @@
 
 #ifndef Hmod_human
 #define Hmod_human
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "humans/HostColumns.h"
 #include "Transmission/PerHost.h"

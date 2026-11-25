@@ -23,7 +23,7 @@
 #ifndef Hmod_LSTMDrugType
 #define Hmod_LSTMDrugType
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/sampler.h"
 
 #include <string>
@@ -106,7 +106,6 @@ private:
 struct DrugRegistry;
 
 class LSTMDrugType {
-friend struct DrugRegistry;   // registry owns the list; reads type internals
 public:
     ///@brief Static functions
     //@{
@@ -162,7 +161,7 @@ public:
     const LSTMDrugPD& getPD( uint32_t genotype ) const;
     //@}
   
-private:
+public:	// DrugRegistry (LSTMDrugType.cpp) and LSTMDrugPD read these directly
     // non-copyable (due to allocation of members of drugPhenotype)
     LSTMDrugType( const LSTMDrugType& ) = delete;
     LSTMDrugType& operator= ( const LSTMDrugType& ) = delete;
@@ -210,8 +209,7 @@ private:
     /// Parameters for absorption rates in two- and three-compartment models.
     std::unique_ptr<Sampler> k12, k21, k13, k31;
     
-    // Allow LSTMDrug to access private members
-    friend class LSTMDrugPD;
+    // Allow LSTMDrugPD to read the parameters above (plain public members).
 };
 
 

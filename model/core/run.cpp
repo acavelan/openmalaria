@@ -23,7 +23,7 @@
 // Engine driver — body moved verbatim from main.cpp (phase 3, plan §5: one
 // init/run sequence shared by main() and unittest/TwoRunsSuite.h).
 
-#include "Global.h"
+#include "Clock.h"
 
 #include "core/run.h"
 

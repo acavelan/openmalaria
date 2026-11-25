@@ -23,7 +23,7 @@
 #ifndef Hmod_EmergenceRateEstimator
 #define Hmod_EmergenceRateEstimator
 
-#include "Global.h"
+#include "Clock.h"
 #include "Transmission/PerHost.h"
 #include "util/SimpleDecayingValue.h"
 #include "util/vectors.h"

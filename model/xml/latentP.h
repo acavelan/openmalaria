@@ -26,7 +26,7 @@
 #ifndef Hmod_xml_latentP
 #define Hmod_xml_latentP
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "schema/scenario.h"
 

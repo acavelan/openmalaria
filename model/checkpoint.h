@@ -23,7 +23,7 @@
 #ifndef Hmod_GeneralCheckpoint_H
 #define Hmod_GeneralCheckpoint_H
 
-#include "Global.h"
+#include "Clock.h"
 #include "Population.h"
 #include "Transmission/transmission.h"
 

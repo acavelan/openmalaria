@@ -23,7 +23,8 @@
 #ifndef Hmod_PathogenesisModel
 #define Hmod_PathogenesisModel
 
-#include "Global.h"
+#include "Clock.h"
+#include "util/checkpoint.h"
 #include "Parameters.h"
 #include "Host/WithinHost/Pathogenesis/State.h"
 #include "util/random.h"

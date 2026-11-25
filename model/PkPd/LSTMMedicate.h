@@ -27,7 +27,7 @@
 #ifndef Hmod_LSTMMedicate
 #define Hmod_LSTMMedicate
 
-#include "Global.h"
+#include "Clock.h"
 #include "PkPd/LSTMModel.h"
 #include "util/errors.h"
 
@@ -66,13 +66,38 @@ struct DosageTable {
 };
 
 /** Treatment courses of the current run (was: LSTMTreatments statics). */
+inline void invalidModel(){
+    throw util::xml_scenario_error( "use of PK/PD treatment requires use of a compatible infection model and specification of pharmacology/treatments" );
+}
+
 struct TreatmentRegistry {
     /** Clear previous data. Only needed for testing. */
-    void clear();
+    void clear(){
+        schedules.clear();
+        scheduleNames.clear();
+        dosages.clear();
+        dosagesNames.clear();
+    }
     /** Get the index of a named schedule. */
-    size_t findSchedule( const std::string& name );
+    size_t findSchedule( const std::string& name ){
+        if( scheduleNames.size() == 0 ) invalidModel();
+        auto iter = scheduleNames.find( name );
+        if( iter == scheduleNames.end() ){
+            throw util::xml_scenario_error(string("no treatment schedule with this name: ")
+                .append(name));
+        }
+        return iter->second;
+    }
     /** Get the index of a named dosage table. */
-    size_t findDosages( const std::string& name );
+    size_t findDosages( const std::string& name ){
+        if( dosagesNames.size() == 0 ) invalidModel();
+        auto iter = dosagesNames.find( name );
+        if( iter == dosagesNames.end() ){
+            throw util::xml_scenario_error(string("no dosage table with this name: ")
+                .append(name));
+        }
+        return iter->second;
+    }
     
     vector<Schedule> schedules;
     map<string,size_t> scheduleNames;

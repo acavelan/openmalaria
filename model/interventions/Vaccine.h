@@ -51,7 +51,6 @@ class VaccineParams {
 public:
     VaccineParams( RunContext& ctx, ComponentId id, const scnXml::VaccineDescription& seq, Vaccine::Types type );
     
-private:
     /** Get the initial efficacy of the vaccine.
      *
      * @param numPrevDoses The number of prior vaccinations of the individual. */
@@ -83,8 +82,6 @@ private:
 
     // per-human state is the VacRecord column (humans/HostColumns.h); these
     // free functions (below) read it and the registries:
-    friend double vaccine_factor( RunContext&, const std::vector<VacRecord>&, Vaccine::Types, uint32_t );
-    friend bool vaccinate( RunContext&, Host::Human&, ComponentId, VaccineLimits );
 };
 
 /** Get one minus the (decayed) efficacy of the given vaccine type: product

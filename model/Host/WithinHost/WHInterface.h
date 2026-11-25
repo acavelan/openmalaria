@@ -23,7 +23,7 @@
 #ifndef Hmod_WithinHost_Interface
 #define Hmod_WithinHost_Interface
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "humans/HostColumns.h"
 #include "infections/SlotAllocator.h"
@@ -359,7 +359,7 @@ public:
      * SlotAllocator (model/infections/SlotAllocator.h), the single clamp
      * owner; see its comment for the two RNG-visible modes. */
 
-private:
+public:	// simple data + per-kind fragments (test suites and WH models touch these directly)
     /// @brief Per-kind constructor/destructor fragments
     //@{
     /// Shared P. falciparum immunity state; draws from rng (stream order fixed).
@@ -576,9 +576,6 @@ private:
     // Used for reporting; updated by update()
     double pSevere = 0.0;
     //@}
-
-    friend class ::UnittestUtil;
-    friend class ::InfectionImmunitySuite;
 };
 
 }

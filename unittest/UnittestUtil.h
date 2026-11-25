@@ -20,12 +20,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-// Utility for unittests, which is granted "friend" access where necessary in the model.
+// Utility for unittests: touches model state directly (model types are plain
+// structs/classes with public state; no "friend" grants exist in the model).
 
 #ifndef Hmod_UnittestUtil
 #define Hmod_UnittestUtil
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/ModelOptions.h"
 
 #include "core/RunExtensions.h"
@@ -492,9 +493,7 @@ public:
         return &*human.withinHostModel;
     }
     /// Slot-capsule access for the slot clamp contract (SlotAllocatorSuite)
-    static void setNumInfs(WithinHost::WHInterface& wh, int n){ wh.numInfs = n; }
-    static int getNumInfs(const WithinHost::WHInterface& wh){ return wh.numInfs; }
-    /// ModelOptions::reset is friend-gated; expose for suites needing a clean slate.
+    /// One reset point for suites needing a clean slate (ModelOptions::reset is public).
     static void resetModelOptions(){ util::ModelOptions::reset(); }
 };
 

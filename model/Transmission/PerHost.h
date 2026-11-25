@@ -23,7 +23,8 @@
 #ifndef Hmod_PerHost
 #define Hmod_PerHost
 
-#include "Global.h"
+#include "Clock.h"
+#include "util/checkpoint.h"
 #include "core/RunContext.h"
 #include "humans/HostColumns.h"  // leaf: SoA columns owned by Population (IvRecord)
 #include "interventions/ComponentId.h"  // leaf: Component::Type + ComponentId only

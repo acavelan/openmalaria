@@ -23,7 +23,7 @@
 #ifndef Hmod_LSTMDrug
 #define Hmod_LSTMDrug
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/checkpoint_containers.h"
 #include "util/random.h"
 
@@ -118,7 +118,6 @@ private:
     double drugFactor_threeComp(LocalRng& rng, WithinHost::Infection *inf, double body_mass) const;
     void updateConcentration_threeComp(double body_mass);
     template<class S> void checkpoint_threeComp(S& stream);
-    friend double func_fC( double t, void* pp );        // function used in calculateFactor_fC
 
     // ---- Conversion kind (LSTMDrugConversion.cpp) ----
     double getParentConcentration() const;

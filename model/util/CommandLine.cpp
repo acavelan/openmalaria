@@ -20,7 +20,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include "Global.h"
+#include "Clock.h"
+#include "util/checkpoint.h"
 #include "util/CommandLine.h"
 #include "util/errors.h"
 #include "util/StreamValidator.h"

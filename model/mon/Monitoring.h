@@ -23,7 +23,7 @@
 #ifndef H_OM_mon_Monitoring
 #define H_OM_mon_Monitoring
 
-#include "Global.h"
+#include "Clock.h"
 #include "mon/OutMeasures.h"
 #include <cassert>
 #include <cstdint>

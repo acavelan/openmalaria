@@ -25,7 +25,7 @@
 // mon/init.cpp (initAgeGroups/initReporting/readSurveyDates/initCohorts) and
 // mon/Continuous.cpp (Continuous::init). Declarations stay in the mon headers.
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunExtensions.h"
 #include "Host/WithinHost/Diagnostic.h"
 #include "interventions/InterventionManager.h"

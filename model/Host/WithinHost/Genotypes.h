@@ -23,7 +23,7 @@
 #ifndef Hmod_WH_Genotypes
 #define Hmod_WH_Genotypes
 
-#include "Global.h"
+#include "Clock.h"
 #include "util/random.h"
 #include <iostream>
 #include <map>

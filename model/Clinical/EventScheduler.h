@@ -23,7 +23,7 @@
 #ifndef Hmod_ClinicalEventSchduler
 #define Hmod_ClinicalEventSchduler
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "Clinical/ClinicalModel.h"
 #include "Clinical/ESCaseManagement.h"
@@ -51,10 +51,8 @@ public:
     static void init (RunContext& ctx, const OM::Parameters& parameters, const scnXml::Clinical& clinical);
     static void setParameters (const SimClock& clock, const scnXml::HSEventScheduler& esData);
 
-private:
-    friend void esClinicalUpdate (ClinicalModel&, RunContext&, Human&, double,
-                                  WithinHost::Pathogenesis::StatePair&);
-
+    // All remaining statics are run-parameter state, read directly by
+    // esClinicalUpdate (EventScheduler.cpp) and the readers:
     /// Maximum number of time steps (including first of case) an individual
     /// will remember they are sick before resetting.
     static SimTime maxUCSeekingMemory;

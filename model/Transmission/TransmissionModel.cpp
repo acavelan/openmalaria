@@ -21,6 +21,7 @@
  */
 
 #include "core/RunContext.h"
+#include "util/checkpoint.h"
 #include "Transmission/TransmissionModel.h"
 #include "Population.h"
 #include "Host/WithinHost/WHInterface.h"

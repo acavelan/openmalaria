@@ -26,7 +26,7 @@
 // moved VERBATIM from the noted origin files; declarations stay in the normal
 // model headers (scnXml types forward-declared there). Call sites unchanged.
 
-#include "Global.h"
+#include "Clock.h"
 #include "core/RunContext.h"
 #include "util/AgeGroupInterpolation.h"
 #include "util/CommandLine.h"
@@ -34,7 +34,6 @@
 #include "util/UnitParse.h"
 #include "util/errors.h"
 #include "util/ModelOptions.h"
-#include "sim.h"
 #include "util/sampler.h"
 #include <schema/healthSystem.h>
 #include <schema/scenario.h>
