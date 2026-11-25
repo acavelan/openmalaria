@@ -93,9 +93,28 @@ string CommandLine::parse(int argc, char* argv[]) {
     // Set DEPRECATION_WARNINGS to ON by default
     options.set(DEPRECATION_WARNINGS);
 
+    int i = 1;
+    auto parseUnique = [&](string& value, const char* duplicateError) -> string& {
+        if (!value.empty())
+            throw cmd_exception(duplicateError);
+        return value = parseNextArg(argc, argv, i);
+    };
+    auto parseName = [&] {
+        if (!ctsoutName.empty() || !outputName.empty() || !scenarioFile.empty())
+            throw cmd_exception("--name may not be used along with --scenario, --output or --ctsout");
+        const string name = parseNextArg(argc, argv, i);
+        scenarioFile = "scenario" + name + ".xml";
+        outputName = "output" + name;
+        ctsoutName = "ctsout" + name + ".txt";
+    };
+    auto skipWith = [](Options option) {
+        options.set(option);
+        options.set(SKIP_SIMULATION);
+    };
+
     /* Simple command line parser. Seems to work fine.
 	* If an extension is wanted, http://tclap.sourceforge.net/ looks good. */
-    for (int i = 1; i < argc; ++i) {
+    for (; i < argc; ++i) {
         string clo = argv[i];
 
         // starts "--"
@@ -106,19 +125,11 @@ string CommandLine::parse(int argc, char* argv[]) {
             } else if (clo == "progress") {
                 options.set(PROGRESS);
             } else if (clo == "resource-path") {
-                if (resourcePath.size())
-                    throw cmd_exception("--resource-path (or -p) may only be given once");
-                resourcePath = parseNextArg(argc, argv, i).append("/");
+                parseUnique(resourcePath, "--resource-path (or -p) may only be given once").append("/");
             } else if (clo == "scenario") {
-                if (scenarioFile != "") {
-                    throw cmd_exception("--scenario argument may only be given once");
-                }
-                scenarioFile = parseNextArg(argc, argv, i);
+                parseUnique(scenarioFile, "--scenario argument may only be given once");
             } else if (clo == "output") {
-                if (outputName != "") {
-                    throw cmd_exception("--output argument may only be given once");
-                }
-                outputName = parseNextArg(argc, argv, i);
+                parseUnique(outputName, "--output argument may only be given once");
             } else if (clo == "output-format") {
                 string format = parseNextArg(argc, argv, i);
                 if (format == "txt") {
@@ -131,15 +142,9 @@ string CommandLine::parse(int argc, char* argv[]) {
             } else if (clo == "compress-output") {
                 options.set(COMPRESS_OUTPUT);
             } else if (clo == "ctsout") {
-                if (ctsoutName != "") {
-                    throw cmd_exception("--ctsout argument may only be given once");
-                }
-                ctsoutName = parseNextArg(argc, argv, i);
+                parseUnique(ctsoutName, "--ctsout argument may only be given once");
             } else if (clo == "save-to") {
-                if (saveName != "") {
-                    throw cmd_exception("--save-to argument may only be given once");
-                }
-                saveName = parseNextArg(argc, argv, i);
+                parseUnique(saveName, "--save-to argument may only be given once");
             } else if (clo == "save-at") {
                 saveAt = parseNextArg(argc, argv, i);
                 if (saveAt != "main") {
@@ -152,18 +157,9 @@ string CommandLine::parse(int argc, char* argv[]) {
                         throw cmd_exception("--save-at must be a non-negative day or 'main'");
                 }
             } else if (clo == "resume") {
-                if (resumeName != "") {
-                    throw cmd_exception("--resume argument may only be given once");
-                }
-                resumeName = parseNextArg(argc, argv, i);
+                parseUnique(resumeName, "--resume argument may only be given once");
             } else if (clo == "name") {
-                if (ctsoutName != "" || outputName != "" || scenarioFile != "") {
-                    throw cmd_exception("--name may not be used along with --scenario, --output or --ctsout");
-                }
-                string name = parseNextArg(argc, argv, i);
-                (scenarioFile = "scenario").append(name).append(".xml");
-                (outputName = "output").append(name);
-                (ctsoutName = "ctsout").append(name).append(".txt");
+                parseName();
             } else if (clo == "seed") {
                 if (seedOverride >= 0)
                     throw cmd_exception("--seed may only be given once");
@@ -180,30 +176,22 @@ string CommandLine::parse(int argc, char* argv[]) {
             } else if (clo == "no-deprecation-warnings") {
                 options.reset(DEPRECATION_WARNINGS);
             } else if (clo == "print-model") {
-                options.set(PRINT_MODEL_OPTIONS);
-                options.set(SKIP_SIMULATION);
+                skipWith(PRINT_MODEL_OPTIONS);
             } else if (clo == "print-EIR") {
-                options.set(PRINT_ANNUAL_EIR);
-                options.set(SKIP_SIMULATION);
+                skipWith(PRINT_ANNUAL_EIR);
             } else if (clo == "print-interventions") {
-                options.set(PRINT_INTERVENTIONS);
-                options.set(SKIP_SIMULATION);
+                skipWith(PRINT_INTERVENTIONS);
             } else if (clo == "print-survey-times") {
-                options.set(PRINT_SURVEY_TIMES);
-                options.set(SKIP_SIMULATION);
+                skipWith(PRINT_SURVEY_TIMES);
             } else if (clo == "print-genotypes") {
-                options.set(PRINT_GENOTYPES);
-                options.set(SKIP_SIMULATION);
+                skipWith(PRINT_GENOTYPES);
             } else if (clo == "sample-interpolations") {
-                options.set(SAMPLE_INTERPOLATIONS);
-                options.set(SKIP_SIMULATION);
+                skipWith(SAMPLE_INTERPOLATIONS);
             } else if (clo == "debug-vector-fitting") {
                 options.set(DEBUG_VECTOR_FITTING);
 #ifdef OM_STREAM_VALIDATOR
             } else if (clo == "stream-validator") {
-                if (sVFile.size())
-                    throw cmd_exception("--stream-validator may only be given once");
-                sVFile = parseNextArg(argc, argv, i);
+                parseUnique(sVFile, "--stream-validator may only be given once");
 #endif
             } else if (clo == "version") {
                 cloVersion = true;
@@ -220,30 +208,15 @@ string CommandLine::parse(int argc, char* argv[]) {
                 } else if (clo[j] == 'p') {
                     if (j + 1 != clo.size())
                         throw cmd_exception("a path must be given as next argument after -p");
-                    if (resourcePath.size())
-                        throw cmd_exception("--resource-path (or -p) may only be given once");
-                    resourcePath = parseNextArg(argc, argv, i).append("/");
+                    parseUnique(resourcePath, "--resource-path (or -p) may only be given once").append("/");
                 } else if (clo[j] == 'm') {
-                    options.set(PRINT_MODEL_OPTIONS);
-                    options.set(SKIP_SIMULATION);
+                    skipWith(PRINT_MODEL_OPTIONS);
                 } else if (clo[j] == 's') {
-                    if (scenarioFile != "") {
-                        throw cmd_exception("-s argument may only be given once");
-                    }
-                    scenarioFile = parseNextArg(argc, argv, i);
+                    parseUnique(scenarioFile, "-s argument may only be given once");
                 } else if (clo[j] == 'o') {
-                    if (outputName != "") {
-                        throw cmd_exception("-o argument may only be given once");
-                    }
-                    outputName = parseNextArg(argc, argv, i);
+                    parseUnique(outputName, "-o argument may only be given once");
                 } else if (clo[j] == 'n') {
-                    if (ctsoutName != "" || outputName != "" || scenarioFile != "") {
-                        throw cmd_exception("--name may not be used along with --scenario, --output or --ctsout");
-                    }
-                    string name = parseNextArg(argc, argv, i);
-                    (scenarioFile = "scenario").append(name).append(".xml");
-                    (outputName = "output").append(name);
-                    (ctsoutName = "ctsout").append(name).append(".txt");
+                    parseName();
                 } else if (clo[j] == 'v') {
                     cloVersion = true;
                 } else if (clo[j] == 'z') {

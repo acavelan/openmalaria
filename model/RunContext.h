@@ -60,7 +60,6 @@ struct GVIParams;
 class VaccineParams;
 struct RuntimeState;
 class Population;
-class ModelNameProvider;
 class Treatments;
 struct Infection;
 

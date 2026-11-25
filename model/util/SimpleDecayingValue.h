@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "Clock.h"
 #include "util/DecayFunction.h"
 
@@ -52,17 +54,17 @@ class SimpleDecayingValue {
         if (decay.get() == 0)
             return; // cannot deploy
         deploy_t = time;
-        het = decay->hetSample(rng);
+        decay_factor = decay->sample_het_factor(rng);
     }
 
     /** Get the value (0 if before any deployment or after complete decay,
      * also 0 if no decay function or initial value was set,
      * otherwise between zero and the inital value). */
     inline double current_value(SimTime time) const {
-        if (decay.get() == 0 || het == nullptr)
-            return 0.0; // decay wasn't set: the always return 0
+        if (decay.get() == 0 || !decay_factor)
+            return 0.0; // decay wasn't set or no deployment occurred
         else
-            return initial * het->eval(time - deploy_t);
+            return initial * decay->eval_with(time - deploy_t, *decay_factor);
     }
 
     /** Checkpointing: only checkpoint parameters which change after initial
@@ -76,8 +78,8 @@ class SimpleDecayingValue {
     double initial;
 
   public: // wire state (checkpoint/transmission.cpp)
-    /** Description of larviciding decay. */
-    unique_ptr<DecayFunction> het;
+    /// Per-deployment heterogeneity sample.
+    std::optional<double> decay_factor;
 
     /** Time of larviciding deployment. */
     SimTime deploy_t = never();

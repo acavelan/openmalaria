@@ -464,7 +464,7 @@ void AnophelesModel::deployVectorTrap(LocalRng& rng, size_t species, size_t inst
     const PerHostAnophParams& anophParams = PerHostAnophParams::get(ctx, species);
     const double adultAvail = anophParams.entoAvailability->mean() * anophParams.entoAvailabilityFactor;
     data.initialAvail = popSize * adultAvail * trapParams[instance].relAvail;
-    data.availHet = trapParams[instance].availDecay->hetSample(rng);
+    data.availHet = trapParams[instance].availDecay->sample_het_factor(rng);
     data.deployTime = ctx.clock.now();
     data.expiry = ctx.clock.now() + lifespan;
     baitedTraps.push_back(std::move(data));
@@ -560,7 +560,7 @@ void AnophelesModel::advancePeriod(double sum_avail, double sigma_df, vector<dou
             continue;
         }
         SimTime age = ctx.clock.ts0() - it->deployTime;
-        double decayCoeff = it->availHet->eval(age);
+        double decayCoeff = trapParams[it->instance].availDecay->eval_with(age, it->availHet);
         leaveRate += it->initialAvail * decayCoeff;
         // sigma_df doesn't change: mosquitoes do not survive traps
         it++;

@@ -234,8 +234,8 @@ class UnittestUtil {
         dummyXML::surveys.getSurveyTime().push_back(scnXml::SurveyTime("1t"));
         dummyXML::monitoring.setSurveys(dummyXML::surveys);
         dummyXML::scenario.setMonitoring(dummyXML::monitoring);
-        ModelNameProvider modelNameProvider(dummyXML::scenario.getModel());
-        ctx().clock.init(ctx(), dummyXML::scenario, modelNameProvider);
+        const ModelNames modelName = read_model_name(dummyXML::scenario.getModel());
+        ctx().clock.init(ctx(), dummyXML::scenario, modelName);
 
         // we could just use zero, but we may spot more errors by using some weird number
         ctx().clock.t0 = ctx().clock.from_years_n(83.2591);
@@ -277,7 +277,7 @@ class UnittestUtil {
         diagsElt.getDiagnostic().push_back(microscopy);
         diagsElt.getDiagnostic().push_back(rdt);
         dummyXML::model.setParameters(prepareParameters());
-        Parameters parameters(dummyXML::model.getParameters(), ModelNameProvider(dummyXML::model));
+        Parameters parameters(dummyXML::model.getParameters(), read_model_name(dummyXML::model));
         dummyXML::scenario.setDiagnostics(diagsElt);
         dummyXML::surveys.setDetectionLimit(numeric_limits<double>::quiet_NaN());
         dummyXML::monitoring.setSurveys(dummyXML::surveys);
@@ -404,7 +404,7 @@ class UnittestUtil {
 
         // Set parameters; all of these were estimated externally from OpenMalaria
         dummyXML::model.setParameters(prepareParameters());
-        Parameters parameters(dummyXML::model.getParameters(), ModelNameProvider(dummyXML::model));
+        Parameters parameters(dummyXML::model.getParameters(), read_model_name(dummyXML::model));
 
         // This sets up the model based on parameters and options
         MolineauxInfection::init(ctx(), parameters);

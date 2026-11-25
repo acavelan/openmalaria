@@ -687,7 +687,7 @@ TreatmentId getHealthSystemTreatmentByName(RunContext& ctx, const scnXml::Treatm
     const scnXml::TreatmentActions::CQOptional& elt = getHealthSystemTreatmentOptional(treatActs, drug);
     if (!elt.present())
         throw xml_scenario_error(string("healthSystem.treatmentActions: description required for ").append(drug));
-    return WHInterface::addTreatment(ctx, elt.get());
+    return Treatments::addTreatment(ctx, elt.get());
 }
 
 // ———  static, init  ———
@@ -796,7 +796,7 @@ void DecisionTree5Day::setHealthSystem(RunContext& ctx, const scnXml::HSDT5Day& 
     treeUCSelfTreat = &compile_decision_tree(ctx, hsDescription.getTreeUCSelfTreat(), true);
 
     CM5DayCommon::cureRateSevere = hsDescription.getCureRateSevere().getValue();
-    CM5DayCommon::treatmentSevere = WHInterface::addTreatment(ctx, hsDescription.getTreatmentSevere());
+    CM5DayCommon::treatmentSevere = Treatments::addTreatment(ctx, hsDescription.getTreatmentSevere());
 
     set_liver_stage(hsDescription.getLiverStageDrug());
 }

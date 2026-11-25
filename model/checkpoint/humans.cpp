@@ -93,24 +93,8 @@ void checkpoint(Archive& a, Infection& inf) {
             a.value(f);
         a.value(m.Pc_star);
         a.value(m.Pm_star);
-        { // variants grow with infection age (clone per relapse), so the
-            // count goes on the wire; Variant has a user default ctor (not
-            // trivially copyable) hence field-by-field.
-            uint64_t nv = m.variants.size();
-            a.value(nv);
-            if (a.reading()) {
-                if (nv > uint64_t(a.remaining()) / 64u)
-                    throw checkpoint_error("variant count too large");
-                m.variants.resize(size_t(nv));
-            }
-            for (auto& v : m.variants) {
-                a.value(v.Pi1);
-                a.value(v.Pi2);
-                a.value(v.Si_summation);
-                for (float& f : v.lagged_Pi)
-                    a.value(f);
-            }
-        }
+        static_assert(sizeof(MolineauxInfection::Variant) == 7 * sizeof(float));
+        a.vector(m.variants);
         break;
     }
     case Infection::Kind::Penny: {
@@ -136,24 +120,8 @@ void checkpoint(Archive& a, LSTMDrug& drug) {
     // classes). Read value discarded: the factory already built the same kind.
     LSTMDrug::Kind kind = drug.kind;
     a.enumerated(kind);
-    { // pair isn't trivially copyable: element-wise
-        uint64_t n = drug.doses.size();
-        a.value(n);
-        if (a.reading()) {
-            drug.doses.clear();
-            for (uint64_t i = 0; i < n; ++i) {
-                LSTMDrug::DoseVec::value_type d;
-                a.value(d.first);
-                a.value(d.second);
-                drug.doses.push_back(d);
-            }
-        } else {
-            for (auto& d : drug.doses) {
-                a.value(d.first);
-                a.value(d.second);
-            }
-        }
-    }
+    static_assert(sizeof(LSTMDrug::Dose) == 2 * sizeof(double));
+    a.vector(drug.doses);
     a.value(drug.vol_dist);
     switch (drug.kind) {
     case LSTMDrug::Kind::OneComp: {
@@ -220,24 +188,8 @@ void ckLSTM(Archive& a, RunContext& ctx, LSTMModel& m, LocalRng& hostRng) {
         }
     }
     // Pending medications (queue order matters: medicate() consumes front).
-    uint64_t q = m.medicateQueue.size();
-    a.value(q);
-    if (a.reading()) {
-        m.medicateQueue.clear();
-        for (uint64_t i = 0; i < q; ++i) {
-            MedicateData md;
-            a.value(md.drug);
-            a.value(md.qty);
-            a.value(md.time);
-            m.medicateQueue.push_back(md);
-        }
-    } else {
-        for (auto& md : m.medicateQueue) {
-            a.value(md.drug);
-            a.value(md.qty);
-            a.value(md.time);
-        }
-    }
+    static_assert(sizeof(MedicateData) == sizeof(size_t) + 2 * sizeof(double));
+    a.vector(m.medicateQueue);
 }
 } // namespace
 

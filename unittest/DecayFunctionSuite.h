@@ -52,9 +52,9 @@ class DecayFunctionSuite : public CxxTest::TestSuite {
         dfElt.setFunction("constant");
         df = DecayFunction::makeObject(UnittestUtil::clock(), dfElt, "DecayFunctionSuite");
         // Second test: with an appropriately sampled helper value, we should get the results we want
-        unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
-        TS_ASSERT_APPROX(dHet->eval(zero()), 1.0);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(10)), 1.0);
+        const double factor = df->sample_het_factor(m_rng);
+        TS_ASSERT_APPROX(df->eval_with(zero(), factor), 1.0);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(10), factor), 1.0);
         // Third test: time of decay (age plus now) should always be in the future
         TS_ASSERT_EQUALS(df->sampleAgeOfDecay(m_rng), future());
     }
@@ -62,56 +62,56 @@ class DecayFunctionSuite : public CxxTest::TestSuite {
     void testStep() {
         dfElt.setFunction("step");
         df = DecayFunction::makeObject(UnittestUtil::clock(), dfElt, "DecayFunctionSuite");
-        unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
-        TS_ASSERT_APPROX(dHet->eval(zero()), 1.0);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(6)), 1.0);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(20)), 0.0);
+        const double factor = df->sample_het_factor(m_rng);
+        TS_ASSERT_APPROX(df->eval_with(zero(), factor), 1.0);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(6), factor), 1.0);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(20), factor), 0.0);
         TS_ASSERT_EQUALS(df->sampleAgeOfDecay(m_rng), fromYearsI(10));
     }
 
     void testLinear() {
         dfElt.setFunction("linear");
         df = DecayFunction::makeObject(UnittestUtil::clock(), dfElt, "DecayFunctionSuite");
-        unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
-        TS_ASSERT_APPROX(dHet->eval(zero()), 1.0);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(6)), 0.4);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(20)), 0.0);
+        const double factor = df->sample_het_factor(m_rng);
+        TS_ASSERT_APPROX(df->eval_with(zero(), factor), 1.0);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(6), factor), 0.4);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(20), factor), 0.0);
     }
 
     void testExponential() {
         dfElt.setFunction("exponential");
         df = DecayFunction::makeObject(UnittestUtil::clock(), dfElt, "DecayFunctionSuite");
-        unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
-        TS_ASSERT_APPROX(dHet->eval(zero()), 1.0);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(6)), 0.65975394736842108);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(20)), 0.25);
+        const double factor = df->sample_het_factor(m_rng);
+        TS_ASSERT_APPROX(df->eval_with(zero(), factor), 1.0);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(6), factor), 0.65975394736842108);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(20), factor), 0.25);
     }
 
     void testWeibull() {
         dfElt.setFunction("weibull");
         df = DecayFunction::makeObject(UnittestUtil::clock(), dfElt, "DecayFunctionSuite");
-        unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
-        TS_ASSERT_APPROX(dHet->eval(zero()), 1.0);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(6)), 0.73631084210526321);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(20)), 0.122306);
+        const double factor = df->sample_het_factor(m_rng);
+        TS_ASSERT_APPROX(df->eval_with(zero(), factor), 1.0);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(6), factor), 0.73631084210526321);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(20), factor), 0.122306);
     }
 
     void testHill() {
         dfElt.setFunction("hill");
         df = DecayFunction::makeObject(UnittestUtil::clock(), dfElt, "DecayFunctionSuite");
-        unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
-        TS_ASSERT_APPROX(dHet->eval(zero()), 1.0);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(6)), 0.6936673684210527);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(20)), 0.24805074736842106);
+        const double factor = df->sample_het_factor(m_rng);
+        TS_ASSERT_APPROX(df->eval_with(zero(), factor), 1.0);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(6), factor), 0.6936673684210527);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(20), factor), 0.24805074736842106);
     }
 
     void testSmoothCompact() {
         dfElt.setFunction("smooth-compact");
         df = DecayFunction::makeObject(UnittestUtil::clock(), dfElt, "DecayFunctionSuite");
-        unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
-        TS_ASSERT_APPROX(dHet->eval(zero()), 1.0);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(6)), 0.40656965789473687);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(20)), 0.0);
+        const double factor = df->sample_het_factor(m_rng);
+        TS_ASSERT_APPROX(df->eval_with(zero(), factor), 1.0);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(6), factor), 0.40656965789473687);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(20), factor), 0.0);
     }
 
     void testEmax() {
@@ -126,10 +126,10 @@ class DecayFunctionSuite : public CxxTest::TestSuite {
         dfElt.getDecay().push_back(inner);
 
         df = DecayFunction::makeObject(UnittestUtil::clock(), dfElt, "DecayFunctionSuite");
-        unique_ptr<DecayFunction> dHet = df->hetSample(m_rng);
-        TS_ASSERT_APPROX(dHet->eval(zero()), 0.5333333333333333);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(10)), 0.4);
-        TS_ASSERT_APPROX(dHet->eval(fromYearsI(20)), 0.26666666666666666);
+        const double factor = df->sample_het_factor(m_rng);
+        TS_ASSERT_APPROX(df->eval_with(zero(), factor), 0.5333333333333333);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(10), factor), 0.4);
+        TS_ASSERT_APPROX(df->eval_with(fromYearsI(20), factor), 0.26666666666666666);
     }
 
     void testEmaxBadIC50() {

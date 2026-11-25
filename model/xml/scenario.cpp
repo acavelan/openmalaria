@@ -482,8 +482,8 @@ SimTime read_latentP(const SimClock& clock, const scnXml::Model& model) {
 
 namespace OpenMalaria {
 
-void SimClock::init(RunContext& ctx, const scnXml::Scenario& scenario, ModelNameProvider mnp) {
-    initInterval(scenario, mnp);
+void SimClock::init(RunContext& ctx, const scnXml::Scenario& scenario, ModelNames modelName) {
+    initInterval(scenario, modelName);
     steps_per_year = inSteps(oneYear());
     years_per_step = 1.0 / steps_per_year;
     max_human_age = from_years_d(scenario.getDemography().getMaximumAgeYrs());
@@ -506,12 +506,12 @@ void SimClock::init(RunContext& ctx, const scnXml::Scenario& scenario, ModelName
     end_date = readSurveyDates(ctx, mon);
 }
 
-void SimClock::initInterval(const scnXml::Scenario& scenario, ModelNameProvider mnp) {
+void SimClock::initInterval(const scnXml::Scenario& scenario, ModelNames modelName) {
     // If scenario states to use a named model, set the relevant time step duration for
     // that named model here.  It may possibly get overwritten later in this method if
     // the scenario also states an explicit interval value - a behaviour that exists so
     // that users have the ability to override the time step duration if they need to.
-    const ModelNames namedModelToUse = mnp.modelInUse;
+    const ModelNames namedModelToUse = modelName;
     const bool useNamedModel = namedModelToUse != ModelNames::none;
     if (useNamedModel) {
         if (namedModelToUse == ModelNames::base) {
@@ -532,16 +532,13 @@ void SimClock::initInterval(const scnXml::Scenario& scenario, ModelNameProvider 
     }
 }
 
-ModelNameProvider::ModelNameProvider(const scnXml::Model& model) {
-    const bool useNamedModel = model.getModelName().present();
-    if (useNamedModel) {
-        const std::string nameFromXML = model.getModelName().get().getName();
-        if (nameFromXML == "base") {
-            modelInUse = ModelNames::base;
-        } else {
-            throw xml_scenario_error("Unrecognized model name: " + nameFromXML);
-        }
-    }
+ModelNames read_model_name(const scnXml::Model& model) {
+    if (!model.getModelName().present())
+        return ModelNames::none;
+    const std::string name = model.getModelName().get().getName();
+    if (name == "base")
+        return ModelNames::base;
+    throw xml_scenario_error("Unrecognized model name: " + name);
 }
 
 }
@@ -550,13 +547,8 @@ ModelNameProvider::ModelNameProvider(const scnXml::Model& model) {
 
 namespace OpenMalaria {
 
-Parameters::Parameters(const scnXml::Model::ParametersOptional& xmlParameterValues, ModelNameProvider mnp) {
-    for (const std::pair<int, Parameter> pair : idCodeToNameMap) {
-        const Parameter name = pair.second;
-        nameToValueMap[name] = std::nullopt;
-    }
-
-    const ModelNames namedModelToUse = mnp.modelInUse;
+Parameters::Parameters(const scnXml::Model::ParametersOptional& xmlParameterValues, ModelNames modelName) {
+    const ModelNames namedModelToUse = modelName;
     const bool useNamedModel = namedModelToUse != ModelNames::none;
     if (useNamedModel) {
         if (namedModelToUse == ModelNames::base) {
@@ -591,7 +583,8 @@ void Parameters::initializeParamsFromXML(const scnXml::Parameters& parameters) {
         const double paramValueFromXML = param.getValue();
 
         // C++20 offers "contains" which would be more expressive than "count" here.
-        const bool paramIdIsValid = idCodeToNameMap.count(paramId);
+        const auto nameOfParamToSet = fromId(paramId);
+        const bool paramIdIsValid = nameOfParamToSet.has_value();
         if (!paramIdIsValid) {
             if (CommandLine::option(CommandLine::DEPRECATION_WARNINGS)) {
                 cerr << "Deprecation warning: <parameter> index" << to_string(paramId) << " is no longer used" << endl;
@@ -604,14 +597,12 @@ void Parameters::initializeParamsFromXML(const scnXml::Parameters& parameters) {
             // deprecated some parameters.
             continue;
         }
-        const Parameter nameOfParamToSet = idCodeToNameMap.at(paramId);
-
         const bool paramValueAlreadySet = !paramIdsSetByUser.insert(paramId).second;
         if (paramValueAlreadySet) {
             throw xml_scenario_error("Parameter with index " + to_string(paramId) + " described twice in XML.");
         }
 
-        nameToValueMap[nameOfParamToSet] = paramValueFromXML;
+        values[static_cast<size_t>(*nameOfParamToSet)] = paramValueFromXML;
     }
 }
 

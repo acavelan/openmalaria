@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include <list>
+#include <vector>
 #include <memory>
 #include "PkPd/LSTMDrug.h"
 
@@ -136,7 +136,7 @@ class LSTMModel {
     vector<unique_ptr<LSTMDrug>> m_drugs;
 
     /// All pending medications
-    list<MedicateData> medicateQueue;
+    vector<MedicateData> medicateQueue;
 };
 
 }

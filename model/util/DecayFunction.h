@@ -42,11 +42,9 @@ class SimClock;
  * enum-tagged value type — behaviour is chosen by DATA (Kind switch in
  * compute()/sampleAgeOfDecay(), one case per formula), no class hierarchy.
  *
- * Config vs State: the XML layer builds one configured instance per component
- * parameter (config; hetFactor==0, never eval'd). hetSample() clones it into a
- * per-individual State carrying that individual's hetFactor. Operator/Emax
- * nest child configs; the factor applies to EVERY node of a sampled copy
- * (parity: old makeHetSample recursed hetSample(factor) into children).
+ * Config vs state: the XML layer builds one configured instance per component
+ * parameter. Each deployment samples a scalar heterogeneity factor; eval_with
+ * applies it at every nested node without cloning the configuration tree.
  *****************************************************************************/
 class DecayFunction {
   public:
@@ -79,52 +77,19 @@ class DecayFunction {
     static unique_ptr<DecayFunction> makeObject(const SimClock& clock, const scnXml::DecayFunction& elt,
                                                 const char* eltName);
 
-    DecayFunction(const DecayFunction& other)
-        : kind(other.kind), increasing(other.increasing), initialEfficacy(other.initialEfficacy),
-          het(other.het ? other.het->clone() : nullptr), hetFactor(other.hetFactor), invL(other.invL), k(other.k),
-          Emax(other.Emax), IC50(other.IC50), slope(other.slope), initialConcentration(other.initialConcentration),
-          f1(other.f1 ? make_unique<DecayFunction>(*other.f1) : nullptr),
-          f2(other.f2 ? make_unique<DecayFunction>(*other.f2) : nullptr), simClock(other.simClock) {}
-
-    /** Sample a DecayFunction value (should be stored per individual).
-     *
-     * Note that a DecayFunction is needed to call eval() even if heterogeneity
-     * is not wanted. If sigma = 0 then the random number stream will not be
-     * touched. */
-    unique_ptr<DecayFunction> hetSample(LocalRng& rng) const { return hetSample(het->sample(rng)); }
-
-    /** Generate a DecayFunction value from an existing sample. */
-    std::unique_ptr<DecayFunction> hetSample(NormalSample sample) const { return hetSample(het->sample(sample)); }
-
-    /** Generate a DecayFunction value from an existing sample: per-individual
-     * State = config clone with factor set recursively (Operator/Emax share it). */
-    unique_ptr<DecayFunction> hetSample(double factor) const {
-        unique_ptr<DecayFunction> sample = make_unique<DecayFunction>(*this);
-        sample->setFactor(factor);
-        return sample;
-    }
-
     /** Say you have a population of objects which each have two states:
      * decayed and not decayed. If you want to use a DecayFunction to model
      * the proportion of objects which have decayed, you need to work out per
      * object the age of decay. This function does that.
      *
-     * This is only valid where mu and sigma parameters are zero. hetFactor is
-     * irrelevant here (every kind's draw is of the unscaled age).
+     * This is only valid where mu and sigma parameters are zero. The sampled
+     * heterogeneity factor is irrelevant (every kind draws an unscaled age).
      *
      * @returns Age at which an object should decay. */
     SimTime sampleAgeOfDecay(LocalRng& rng) const;
 
-    inline double eval(double ageDays) const {
-        if (increasing)
-            return 1.0 - compute_with(ageDays, hetFactor) * initialEfficacy;
-        else
-            return compute_with(ageDays, hetFactor) * initialEfficacy;
-    }
-
-    /** eval() with an explicit heterogeneity factor: applies `factor` at
-     * EVERY node (like a hetSample clone's recursive setFactor) without
-     * cloning. Used by per-host IvRecords (old insecticideDecayHet clones). */
+    /** Evaluate with an explicit heterogeneity factor, applied at EVERY
+     * nested node without cloning the configured function tree. */
     inline double eval_with(double ageDays, double factor) const {
         if (increasing)
             return 1.0 - compute_with(ageDays, factor) * initialEfficacy;
@@ -132,32 +97,20 @@ class DecayFunction {
             return compute_with(ageDays, factor) * initialEfficacy;
     }
 
-    /// Sample just the heterogeneity factor (what hetSample() would clone in).
+    /// Sample the per-deployment heterogeneity factor.
     double sample_het_factor(LocalRng& rng) const { return het->sample(rng); }
     double sample_het_factor(NormalSample sample) const { return het->sample(sample); }
-
-    /** Checkpoint a sampled copy, recreating it from this configured function.
-     * Wire format frozen: bool present + double hetFactor. */
 
   private:
     /// The formula switch: one case per Kind (was one virtual per subclass).
     /// `factor` is the heterogeneity factor applied at every node.
     double compute_with(double ageDays, double factor) const;
 
-    void setFactor(double factor) {
-        hetFactor = factor;
-        if (f1)
-            f1->setFactor(factor);
-        if (f2)
-            f2->setFactor(factor);
-    }
-
     Kind kind;
     bool increasing;
     double initialEfficacy;
     std::unique_ptr<Sampler> het;
 
-    double hetFactor = 0.0;
     /// Precomputed scale: 1/L days (Step/Linear/Hill/SmoothCompact),
     /// log(2)/L (Exponential), pow(log 2, 1/k)/L (Weibull). Was per-subclass invL.
     double invL = 0.0;
