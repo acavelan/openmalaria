@@ -113,6 +113,7 @@ if (MSVC)
 endif (MSVC)
 
 add_test (unittest unittest)
+add_test (harness_scripts ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/HarnessScriptsTest.py)
 
 mark_as_advanced (
   OM_CXXTEST_OPTIONS
