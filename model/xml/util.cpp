@@ -63,58 +63,48 @@ void NormalSampler::setParams(const scnXml::SampledValueN& elt){
     sigma = elt.getSD().get();
 }
 
-    /** Create a new <SamplerT> from a xml snippet. */
-    template <typename SamplerT>
-    inline unique_ptr<SamplerT> createSampler(double mean, const scnXml::SampledValueCV& elt)
+    /** Create a Sampler of the given kind from a SampledValueCV xml snippet. */
+    inline unique_ptr<Sampler> createSampler(Sampler::Kind kind, double mean, const scnXml::SampledValueCV& elt)
     {
-        // 1.  Compile‑time identify which concrete sampler we are handling ─────
-        constexpr bool isLognormal = std::is_same_v<SamplerT, LognormalSampler>;
-        constexpr bool isGamma     = std::is_same_v<SamplerT, GammaSampler>;
-        constexpr const char* expectedDistr =
-            isLognormal ? "lognormal" :
-            isGamma     ? "gamma"
-                        : nullptr;
+        const bool isLognormal = kind == Sampler::Kind::Lognormal;
+        const char* expectedDistr = isLognormal ? "lognormal" : "gamma";
 
         const std::string& d = elt.getDistr();
 
-        // 2. Special handling for the “const” alias (lognormal with CV = 0)
+        // Special handling for the "const" alias (lognormal with CV = 0)
         if( d == "const" )
         {
-            if constexpr (!isLognormal) // only allowed for lognormal
+            if (!isLognormal) // only allowed for lognormal
                 throw util::xml_scenario_error("\"distr=\"const\": expected \"lognormal\"");
 
             if( elt.getCV().present() && elt.getCV().get() != 0.0 )
                 throw util::xml_scenario_error( "\"distr="+d+"\": attribute \"CV\" must be zero or omitted when distr=\"const\" or is omitted" );
             if( elt.getVariance().present() && elt.getVariance().get() != 0.0 )
                 throw util::xml_scenario_error( "\"distr="+d+"\": attribute \"variance\" must be zero or omitted when distr=\"const\" or is omitted" );
-            
-            return SamplerT::fromMeanCV(mean, 0.0);
+
+            return Sampler::fromMeanCV(Sampler::Kind::Lognormal, mean, 0.0);
         }
 
-        // 3. Check that XML 'distr' matches the compile‑time sampler type
-        if (expectedDistr == nullptr)
-            throw util::xml_scenario_error("createSampler<SamplerT>: expected SamplerT to be a valid Sampler");
-
+        // Check that XML 'distr' matches the sampler kind
         if (d != expectedDistr)
             throw util::xml_scenario_error("\"distr=" + d + "\": expected \"" + expectedDistr + "\" or \"const\"");
 
-        // 4. Exactly one of CV / variance must be supplied
+        // Exactly one of CV / variance must be supplied
         const bool hasCV  = elt.getCV().present();
         const bool hasVar = elt.getVariance().present();
 
         if (hasCV == hasVar)   // both present or both absent
             throw util::xml_scenario_error("\"distr=" + d + "\": exactly one of attributes \"CV\" or \"variance\" must be specified");
 
-        // 5. Check for the optional truncation parameter
+        // The optional truncation parameter
         std::optional<double> truncate = elt.getTruncate().present()
             ? std::optional<double>{elt.getTruncate().get()}
             : std::nullopt;
 
-        // 6. Build the sampler
         if(hasCV)
-            return SamplerT::fromMeanCV(mean, elt.getCV().get(), truncate);
+            return Sampler::fromMeanCV(kind, mean, elt.getCV().get(), truncate);
         else
-            return SamplerT::fromMeanVariance(mean, elt.getVariance().get(), truncate);
+            return Sampler::fromMeanVariance(kind, mean, elt.getVariance().get(), truncate);
     }
 
     /** Create a Sampler from a SampledValueCV xml snippet. */
@@ -123,17 +113,17 @@ void NormalSampler::setParams(const scnXml::SampledValueN& elt){
         const std::string& d = elt.getDistr();
 
         if (d == "const" || d == "lognormal")
-            return createSampler<util::LognormalSampler>(mean, elt);
+            return createSampler(Sampler::Kind::Lognormal, mean, elt);
         else if (d == "gamma")
-            return createSampler<util::GammaSampler>(mean,  elt);
+            return createSampler(Sampler::Kind::Gamma, mean, elt);
         else
             throw util::xml_scenario_error("\"distr=" + d + "\": expected \"const\", \"lognormal\" or \"gamma\"");
     }
 
-    /** Create a LognormalSampler from a SampledValueLN xml snippet. */
-    std::unique_ptr<LognormalSampler> createSampler(const scnXml::SampledValueLN& elt)
+    /** Create a lognormal Sampler from a SampledValueLN xml snippet. */
+    std::unique_ptr<Sampler> createSampler(const scnXml::SampledValueLN& elt)
     {
-        return createSampler<LognormalSampler>(elt.getMean(), static_cast<const scnXml::SampledValueCV&>(elt));
+        return createSampler(Sampler::Kind::Lognormal, elt.getMean(), static_cast<const scnXml::SampledValueCV&>(elt));
     }
 
 // ---- BetaSampler / WeibullSampler XML readers (origin: util/sampler.h) ----

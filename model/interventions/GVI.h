@@ -36,7 +36,6 @@ namespace scnXml
 
 namespace OM { namespace interventions {
     using util::DecayFunction;
-    using util::LognormalSampler;
     using util::LocalRng;
     using Transmission::PerHostInterventionData;
 

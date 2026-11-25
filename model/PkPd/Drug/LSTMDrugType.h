@@ -46,7 +46,7 @@ namespace WithinHost {
     class CommonInfection;
 }
 namespace PkPd {
-using util::LognormalSampler;
+using util::Sampler;
 using util::NormalSample;
 using util::LocalRng;
 
@@ -90,7 +90,7 @@ private:
     /// Slope of the dose response curve (no unit)
     double n;   // slope
     /// Concentration with 50% of the maximal parasite killing
-    std::unique_ptr<LognormalSampler> IC50;  // IC50
+    std::unique_ptr<Sampler> IC50;  // IC50
     /// Maximal drug killing rate per day (units: 1/days)
     double V;   // max_killing_rate;
 };
@@ -195,20 +195,20 @@ private:
     double ic50_corr_factor;
     
     /// Volume of distribution (l/kg)
-    std::unique_ptr<LognormalSampler> vol_dist;
+    std::unique_ptr<Sampler> vol_dist;
 
     /// Absorbtion rate
-    std::unique_ptr<LognormalSampler> absorption_rate;
+    std::unique_ptr<Sampler> absorption_rate;
 
     /** Terminal elimination rate constant (k). Equals ln(2)/half_life.
      * Units: (1 / days) */
-    std::unique_ptr<LognormalSampler> elimination_rate;
+    std::unique_ptr<Sampler> elimination_rate;
 
     /// Convertion rate
-    std::unique_ptr<LognormalSampler> conversion_rate;
+    std::unique_ptr<Sampler> conversion_rate;
 
     /// Parameters for absorption rates in two- and three-compartment models.
-    std::unique_ptr<LognormalSampler> k12, k21, k13, k31;
+    std::unique_ptr<Sampler> k12, k21, k13, k31;
     
     // Allow LSTMDrug to access private members
     friend class LSTMDrugPD;

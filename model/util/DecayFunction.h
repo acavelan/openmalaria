@@ -55,7 +55,7 @@ public:
     /// Plain-data construction; XML-driven builds go through makeObject.
     DecayFunction(Kind kind, bool increasing, double initialEfficacy, double CV) :
         kind(kind), increasing(increasing), initialEfficacy(initialEfficacy),
-        het(std::move(LognormalSampler::fromMeanCV(1.0, CV))) {}
+        het(Sampler::fromMeanCV(Sampler::Kind::Lognormal, 1.0, CV)) {}
 
     /** Return a new decay function, constructed from an XML element
      * (definition: model/xml/util.cpp — the only code reading the schema).

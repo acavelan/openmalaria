@@ -52,7 +52,7 @@ struct HypnozoiteReleaseDistribution {
     /// The run this sampler serves (clock accessed as ctx.clock).
     RunContext& ctx;
 
-    HypnozoiteReleaseDistribution(RunContext& ctx, std::unique_ptr<util::LognormalSampler> sampler, double latentRelapse) :
+    HypnozoiteReleaseDistribution(RunContext& ctx, std::unique_ptr<util::Sampler> sampler, double latentRelapse) :
         ctx(ctx),
         sampler(std::move(sampler)),
         latentRelapse(latentRelapse)
@@ -79,7 +79,7 @@ struct HypnozoiteReleaseDistribution {
     }
     
 private:
-    std::unique_ptr<util::LognormalSampler> sampler;
+    std::unique_ptr<util::Sampler> sampler;
     double latentRelapse;   // days
 };
 /**

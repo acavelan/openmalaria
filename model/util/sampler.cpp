@@ -62,10 +62,30 @@ double NormalSampler::sample(LocalRng& rng) const{
     return rng.gauss( mu, sigma );
 }
 
-unique_ptr<util::LognormalSampler> LognormalSampler::fromMeanCV( double mean, double CV, std::optional<double> truncate )
+unique_ptr<Sampler> Sampler::fromMeanCV( Kind kind, double mean, double CV, std::optional<double> truncate )
 {
-    unique_ptr<LognormalSampler> sampler = std::make_unique<LognormalSampler>();
+    unique_ptr<Sampler> sampler = std::make_unique<Sampler>();
+    sampler->kind = kind;
     sampler->truncate = truncate;
+
+    if( kind == Kind::Gamma )
+    {
+        if( mean <= 0 )
+            throw util::xml_scenario_error( "gamma: required mean > 0" );
+        if( CV < 0 )
+            throw util::xml_scenario_error( "gamma: required CV >= 0" );
+
+        sampler->mu = mean;
+        sampler->CV = CV;
+
+        if( CV == 0.0 )
+            return sampler;
+
+        // 1 / sqrt(k) = CV; k * theta = mean:
+        sampler->k = 1.0/(CV*CV);
+        sampler->theta = sampler->mu / sampler->k;
+        return sampler;
+    }
 
     // The distribution is "const"
     if( CV == 0.0 )
@@ -86,7 +106,7 @@ unique_ptr<util::LognormalSampler> LognormalSampler::fromMeanCV( double mean, do
         throw util::xml_scenario_error( "log-normal: required mean > 0" );
     if( CV < 0 )
         throw util::xml_scenario_error( "log-normal: required CV >= 0" );
-    
+
     // The following formulae are derived from:
     // X ~ lognormal(μ, σ)
     // E(X) = exp(μ + σ² / 2)
@@ -101,9 +121,29 @@ unique_ptr<util::LognormalSampler> LognormalSampler::fromMeanCV( double mean, do
     return sampler;
 }
 
-unique_ptr<util::LognormalSampler> LognormalSampler::fromMeanVariance( double mean, double variance, std::optional<double> truncate ){
-    unique_ptr<LognormalSampler> sampler = std::make_unique<LognormalSampler>();
+unique_ptr<Sampler> Sampler::fromMeanVariance( Kind kind, double mean, double variance, std::optional<double> truncate ){
+    unique_ptr<Sampler> sampler = std::make_unique<Sampler>();
+    sampler->kind = kind;
     sampler->truncate = truncate;
+
+    if( kind == Kind::Gamma )
+    {
+        if( mean <= 0 )
+            throw util::xml_scenario_error( "gamma: required mean > 0" );
+        if( variance < 0 )
+            throw util::xml_scenario_error( "gamma: required variance >= 0" );
+
+        sampler->mu = mean;
+        sampler->variance = variance;
+
+        if( variance == 0.0 )
+            return sampler;
+
+        // k = mu^2 / variance; k * theta = mean:
+        sampler->k = (sampler->mu*sampler->mu)/sampler->variance;
+        sampler->theta = sampler->mu / sampler->k;
+        return sampler;
+    }
 
     // The distribution is "const"
     if( variance == 0.0)
@@ -135,18 +175,27 @@ unique_ptr<util::LognormalSampler> LognormalSampler::fromMeanVariance( double me
     return sampler;
 }
 
-void LognormalSampler::scaleMean(double scalar){
+void Sampler::scaleMean(double scalar){
     mu += log(scalar);
 }
 
-double LognormalSampler::mean() const{
+double Sampler::mean() const{
+    if( kind == Kind::Gamma ) return mu;
     return exp(mu + 0.5*sigma*sigma);
 }
 
-double LognormalSampler::sample(LocalRng& rng) const{
-     double value;
+double Sampler::sample(LocalRng& rng) const{
+    double value;
 
-    if( sigma == 0.0 )
+    if( kind == Kind::Gamma )
+    {
+        if (std::isnan(theta)) // CV=0
+            value = mu;
+        else
+            // parity: order — local RNG stream: draw call order fixes stream state
+            value = rng.gamma(k, theta);
+    }
+    else if( sigma == 0.0 )
         value = exp( mu );
     else
         // parity: order — local RNG stream: draw call order fixes stream state
@@ -158,10 +207,22 @@ double LognormalSampler::sample(LocalRng& rng) const{
     return value;
 }
 
-double LognormalSampler::cdf(double x) const {
+double Sampler::cdf(double x) const {
     // 1) anything at or below 0 has CDF = 0
     if (x <= 0.0)
         return 0.0;
+
+    if( kind == Kind::Gamma )
+    {
+        // 2) Degenerate case
+        if(isnan(theta)) // CV=0 or variance=0
+        {
+            if(x >= mu) return 1.0;
+            else return 0.0;
+        }
+        // parity: order — pure GSL CDF/quantile call (no stream consumption); keep the identical GSL function (F2)
+        return gsl_cdf_gamma_P(x, k, theta);
+    }
 
     // 2) Degenerate case
     if (sigma == 0.0)
@@ -173,93 +234,6 @@ double LognormalSampler::cdf(double x) const {
     return gsl_cdf_lognormal_P(x, mu, sigma);
 }
 
-unique_ptr<util::GammaSampler> GammaSampler::fromMeanCV( double mean, double CV, std::optional<double> truncate )
-{
-    if( mean <= 0 )
-        throw util::xml_scenario_error( "gamma: required mean > 0" );
-    if( CV < 0 )
-        throw util::xml_scenario_error( "gamma: required CV >= 0" );
-
-    unique_ptr<GammaSampler> sampler = std::make_unique<GammaSampler>();
-    sampler->truncate = truncate;
-    sampler->mu = mean;
-    sampler->CV = CV;
-
-    if( CV == 0.0 )
-        return sampler;
-
-    // 1 / sqrt(k) = CV
-    // sqrt(k) = 1/CV
-    // k = 1 / CV^2
-    sampler->k = 1.0/(CV*CV);
-    // k * theta = mean
-    // theta = mean / k
-    sampler->theta = sampler->mu / sampler->k;
-
-    return sampler;
-}
-
-unique_ptr<util::GammaSampler> GammaSampler::fromMeanVariance( double mean, double variance, std::optional<double> truncate )
-{
-    if( mean <= 0 )
-        throw util::xml_scenario_error( "gamma: required mean > 0" );
-    if( variance < 0 )
-        throw util::xml_scenario_error( "gamma: required variance >= 0" );
-
-    unique_ptr<GammaSampler> sampler = std::make_unique<GammaSampler>();
-    sampler->truncate = truncate;
-    sampler->mu = mean;
-    sampler->variance = variance;
-
-    if( variance == 0.0 )
-        return sampler;
-
-    // sigma / mu = 1 / sqrt(k)
-    // sqrt(k) = mu / sigma
-    // k = mu^2 / variance
-    sampler->k = (sampler->mu*sampler->mu)/sampler->variance;
-    // k * theta = mean
-    // theta = mean / k
-    sampler->theta = sampler->mu / sampler->k;
-
-    return sampler;
-}
-
-double GammaSampler::mean() const {
-    return mu;
-}
-
-double GammaSampler::sample(LocalRng& rng) const{
-    double value;
-
-    if (std::isnan(theta)) // CV=0
-        value = mu;
-    else
-        // parity: order — local RNG stream: draw call order fixes stream state
-        value = rng.gamma(k, theta);
-
-    if (truncate && value > *truncate)
-        return *truncate;
-
-    return value;
-}
-
-double GammaSampler::cdf(double x) const {
-    // 1) anything at or below 0 has CDF = 0
-    if (x <= 0.0)
-        return 0.0;
-
-    // 2) Degenerate case
-    if(isnan(theta)) // CV=0 or variance=0
-    {
-        if(x >= mu) return 1.0;
-        else return 0.0;
-    }
-
-    // parity: order — pure GSL CDF/quantile call (no stream consumption); keep the identical GSL function (F2)
-    return gsl_cdf_gamma_P(x, k, theta);
-}
-        
 void BetaSampler::setParamsMV( double mean, double variance ){
     if( variance > 0.0 ){
         // double c = mean / (1.0 - mean);
