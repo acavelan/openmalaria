@@ -27,7 +27,7 @@
 // NonVectorModel.h (constructor and changeEIRIntervention bodies),
 // PerHost.cpp, VectorModel.cpp (per-species intervention loops became the
 // free initVectorInterv/initVectorTrap functions, called via
-// model/xml/entomology.h) and Anopheles/AnophelesModel.cpp.
+// model/xml/interventions.cpp) and Anopheles/AnophelesModel.cpp.
 
 #include "Clock.h"
 #include "RunContext.h"
@@ -428,53 +428,6 @@ TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, in
     initialKappa.assign(ctx.clock.inSteps(fromYearsI(5)), 0.0); // 5y warmup data (was nYearsWarmupData)
 }
 
-// Shared loop tail of both changeEIRIntervention variants: fills
-// interventionEIR with the per-interval mean of max(daily, minEIR). The
-// days_cerr flag reproduces the extra diagnostic of the non-vector variant.
-static void fill_intervention_eir(RunContext& ctx, vector<double>& interventionEIR,
-                                  const scnXml::NonVector::EIRDailySequence& daily, double minEIR, bool days_cerr) {
-    vector<int> nDays(ctx.clock.inSteps(fromDays(daily.size() - 1)) + 1, 0);
-    interventionEIR.assign(nDays.size(), 0.0);
-    size_t required_days = static_cast<size_t>((ctx.clock.end_date - ctx.clock.start_date) + 1);
-    if (daily.size() < required_days) {
-        if (days_cerr)
-            cerr << "Days: " << daily.size() << "\nIntervals: " << nDays.size() << "\nRequired: " << required_days
-                 << endl;
-        throw xml_scenario_error("Insufficient intervention phase EIR values provided");
-    }
-    // The minimum EIR allowed in the array. The product of the average EIR and a constant.
-    for (SimTime mpcday = zero(), endDay = fromDays(daily.size()); mpcday < endDay; mpcday = mpcday + oneDay()) {
-        double EIRdaily = std::max(static_cast<double>(daily[mpcday]), minEIR);
-
-        // istep is the time period to which the day is assigned.
-        size_t istep = ctx.clock.inSteps(mpcday);
-        nDays[istep]++;
-        interventionEIR[istep] += EIRdaily;
-    }
-    // divide by number of records assigned to each interval (usually one per day)
-    for (size_t i = 0; i < interventionEIR.size(); ++i) {
-        interventionEIR[i] *= ctx.clock.one_TS() / static_cast<double>(nDays[i]);
-    }
-}
-
-void TransmissionModel::changeEIRIntervention_nonVector(const scnXml::NonVector& nonVectorData) {
-    // Note: requires ctx.clock.interv >= zero(), but this can only be
-    // called in intervention period anyway.
-    simulationMode = transientEIRknown;
-
-    if (nSpore != fromDays(nonVectorData.getEipDuration()))
-        throw xml_scenario_error("change-of-EIR intervention cannot change EIP duration");
-
-    // EIRDaily is schema-required (minOccurs=1), so computing the average
-    // before the insufficient-days check cannot change which error is seen.
-    fill_intervention_eir(ctx, interventionEIR, nonVectorData.getEIRDaily(), min_EIR_mult * averageEIR(nonVectorData),
-                          true);
-
-    // I've no idea what this should be, so until someone asks it can be NaN.
-    // It was -9.99 and later 0.0. It could of course be recalculated from interventionEIR.
-    annualEIR = numeric_limits<double>::quiet_NaN();
-}
-
 PerHostAnophParams::PerHostAnophParams(const scnXml::Mosq& mosq) {
     if (mosq.getAvailability().getDistr() != "const" &&
         (ModelOptions::option(NEGATIVE_BINOMIAL_MASS_ACTION) || ModelOptions::option(LOGNORMAL_MASS_ACTION) ||
@@ -515,18 +468,6 @@ void initVectorTrap(TransmissionModel& vm, const scnXml::VectorTrap::Description
         vm.species[checker.getIndex(mosq)]->initVectorTrap(anoph, instance);
     }
     checker.checkNoneMissed();
-}
-
-void TransmissionModel::changeEIRIntervention_vector(const scnXml::NonVector& nonVectorData) {
-    if ((simulationMode != forcedEIR) && (simulationMode != transientEIRknown))
-        throw xml_scenario_error("changeEIR intervention can only be used in forced EIR mode");
-
-    simulationMode = transientEIRknown;
-
-    if (speciesIndex.size() != 1)
-        throw xml_scenario_error("changeEIR intervention can only be used with a single anopheles species");
-
-    species[0]->changeEIRIntervention(nonVectorData);
 }
 
 // Shared range-check + set of the four initVectorInterv decay slots (the
@@ -573,19 +514,6 @@ void AnophelesModel::initVectorTrap(const scnXml::Description1& desc, size_t ins
     params.relAvail = desc.getRelativeAvailability().getValue();
     params.availDecay = DecayFunction::makeObject(ctx.clock, desc.getDecayOfAvailability(), "decayOfAvailability");
     trapParams.push_back(std::move(params));
-}
-
-void AnophelesModel::changeEIRIntervention(const scnXml::NonVector& nonVectorData) {
-    // assert(nonVectorData.getEIRDaily().present()); // XML loading code should enforce this
-    const scnXml::NonVector::EIRDailySequence& daily = nonVectorData.getEIRDaily();
-
-    // The minimum EIR allowed in the array. The product of the average EIR and a constant.
-    double minEIR = 0.01 * averageEIR(nonVectorData);
-
-    if (daily.size() < static_cast<size_t>(oneYear()))
-        throw xml_scenario_error("entomology.anopheles.seasonality.dailyValues insufficient daily data for a year");
-
-    fill_intervention_eir(ctx, interventionEIR, daily, minEIR, false);
 }
 
 }

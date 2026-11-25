@@ -43,12 +43,11 @@
 #include <map>
 #include <string>
 #include <variant>
+#include <functional>
 namespace scnXml {
 class DeploymentBase;
 class MassDeployment;
 class ContinuousDeployment;
-class HealthSystem;
-class NonVector;
 }
 
 #include "util/SpeciesIndexChecker.h"
@@ -149,20 +148,18 @@ struct AddNhhDeployParams {
     SimTime lifespan = never();
     std::map<std::string, NhhSpec> bySpecies;
 };
-/// ChangeHS/ChangeEIR clones are consumed (deleted) on deploy. Raw pointers:
-/// never-deployed clones leak at exit — exactly the old classes' behaviour
-/// (their destructors never freed these).
+/// XML owns the captured health-system description. Both deployment and
+/// abandonment release it; the runtime never sees a schema object.
 struct ChangeHsDeployParams {
-    scnXml::HealthSystem* newHS = nullptr;
-};
-struct ChangeEirDeployParams {
-    scnXml::NonVector* newEIR = nullptr;
+    std::function<void(RunContext&)> apply;
+    void deploy(RunContext& ctx) {
+        apply(ctx);
+        apply = {};
+    }
 };
 
 // Definitions in xml/interventions.cpp (they need the schema/clinical includes
 // this header must not pull in):
-void timed_deploy_change_hs(RunContext&, TransmissionModel&, ChangeHsDeployParams&);
-void timed_deploy_change_eir(RunContext&, TransmissionModel&, ChangeEirDeployParams&);
 void timed_deploy_add_nhh(RunContext&, std::vector<Human>&, TransmissionModel&, AddNhhDeployParams&);
 void timed_deploy_nhh_mods(RunContext&, std::vector<Human>&, TransmissionModel&, const NhhModsDeployParams&);
 
@@ -291,7 +288,7 @@ struct TimedDeployment {
     SimTime date = never();
     TimedDeploymentKind kind = TimedDeploymentKind::DUMMY;
     std::variant<std::monostate, TimedHumanParams, CumulativeHumanParams, VectorDeployParams, TrapDeployParams,
-                 AddNhhDeployParams, NhhModsDeployParams, ChangeHsDeployParams, ChangeEirDeployParams>
+                 AddNhhDeployParams, NhhModsDeployParams, ChangeHsDeployParams, EirSeries>
         p;
 
     TimedDeployment() = default;
@@ -335,10 +332,11 @@ inline void TimedDeployment::deploy(RunContext& ctx, std::vector<Human>& populat
         timed_deploy_nhh_mods(ctx, population, transmission, std::get<NhhModsDeployParams>(p));
         break;
     case TimedDeploymentKind::CHANGE_HS:
-        timed_deploy_change_hs(ctx, transmission, std::get<ChangeHsDeployParams>(p));
+        std::get<ChangeHsDeployParams>(p).deploy(ctx);
         break;
     case TimedDeploymentKind::CHANGE_EIR:
-        timed_deploy_change_eir(ctx, transmission, std::get<ChangeEirDeployParams>(p));
+        transmission.changeEIRIntervention(std::get<EirSeries>(p));
+        p = std::monostate{};
         break;
     default:
         throw SWITCH_DEFAULT_EXCEPTION;

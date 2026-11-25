@@ -29,10 +29,8 @@
 
 #include "util/errors.h"
 #include "util/CommandLine.h"
-#include "util/ModelOptions.h"
-#include "util/ModelNameProvider.h"
 #include "util/StreamValidator.h"
-#include "xml/DocumentLoader.h" // + XMLChecker + (not latentP)
+#include "xml/DocumentLoader.h"
 
 #include "checkpoint/checkpoint.h"
 #include "mon/Continuous.h"
@@ -189,88 +187,12 @@ const Treatments& Treatments::select(RunContext& ctx, TreatmentId treatId) {
 
 /// run_simulation() — loads scenario XML and runs the simulation (was main())
 void run_simulation(RunContext& ctx, const std::string& scenarioFile) {
-    SimTime estEndTime, endTime;
-
     set_gsl_handler();
-
-    unique_ptr<scnXml::Scenario> scenario = loadScenario(scenarioFile);
-
-    XMLChecker().PerformPostValidationChecks(*scenario);
-
-    // 1) elements with no dependencies on other elements initialised here:
-    Genotypes::init(ctx.genotypes, *scenario);
-    {
-        const int seedOverride = CommandLine::getSeedOverride();
-        const unsigned iseed =
-            seedOverride >= 0 ? unsigned(seedOverride) : scenario->getModel().getComputationParameters().getIseed();
-        // parity: f — validation completes BEFORE ctx.master_RNG.seed(): load->check->seed (plan §3f); never seed before checks
-        ctx.master_RNG.seed(iseed, 0); // Init RNG with Iseed (--seed overrides)
-    }
-    const ModelNames modelName = read_model_name(scenario->getModel());
-
-    // 2) elements depending on only elements initialised in (1):
-    ctx.clock.init(ctx, *scenario, modelName); // Also reads survey dates.
-
-    // 3) elements depending on only elements initialised in (2).
-    Parameters parameters(scenario->getModel().getParameters(), modelName);
-    ModelOptions::init(ctx.clock, scenario->getModel().getModelOptions(), modelName);
-
-    // 4) elements depending on only elements initialised in (3).
-    diagnostics::init(ctx, parameters, *scenario); // Depends on Parameters.
-
-    // 5) elements depending on only elements initialised in (4).
-    initReporting(ctx, *scenario); // Reporting init depends on diagnostics and monitoring
-
-    // Init models used by humans
-    PerHost::init(ctx, scenario->getModel().getHuman().getAvailabilityToMosquitoes());
-    InfectionIncidenceModel::init(ctx, parameters);
-    WHInterface::init(ctx, parameters, *scenario);
-    ClinicalModel::init(ctx, parameters, *scenario);
-    NeonatalMortality::init(ctx, scenario->getModel().getClinical());
-    AgeStructure::init(ctx, scenario->getDemography());
-
-    // 3) elements depending on other elements; dependencies on (1) are not mentioned:
-    // Transmission model initialisation depends on PerHost and
-    // genotypes (both from Human, from Population::init()) and
-    // monitoring age groups (from Surveys.init()):
-    // Note: PerHost dependency can be postponed; it is only used to set adultAge
-    size_t popSize = scenario->getDemography().getPopSize();
-
-    std::unique_ptr<Population> population = std::unique_ptr<Population>(new Population(ctx, popSize));
-    std::unique_ptr<TransmissionModel> transmission =
-        std::unique_ptr<TransmissionModel>(createTransmissionModel(ctx, scenario->getEntomology(), popSize));
-
-    registerContinousPopulationCallbacks(ctx);
-
-    // Depends on transmission model (for species indexes):
-    // MDA1D may depend on health system (too complex to verify)
-    InterventionManager::init(ctx, scenario->getInterventions(), *transmission);
-    ClinicalModel::setHS(ctx, scenario->getHealthSystem()); // Depends on interventions, PK/PD (from humanPop)
-    initCohorts(ctx, scenario->getMonitoring());            // Depends on interventions
-
-    bool surveyOnlyNewEp = scenario->getMonitoring().getSurveyOptions().getOnlyNewEpisode();
-
-    ctx.clock.t0 = zero();
-    ctx.clock.t1 = zero();
-
-    // Make sure warmup period is at least as long as a human lifespan, as the
-    // length required by vector warmup, and is a whole number of years.
-    SimTime humanWarmupLength = ctx.clock.max_human_age;
-    if (transmission->interventionMode != forcedEIR)
-        humanWarmupLength = max(humanWarmupLength,
-                                fromYearsI(55)); // Data is summed over 5 years; add an extra 50 for stabilization.
-
-    humanWarmupLength = fromYearsI(static_cast<int>(ceil(inYears(humanWarmupLength))));
-
-    // ———  End of static data initialisation  ———
-
-    estEndTime = humanWarmupLength + (ctx.clock.end_date - ctx.clock.start_date) + ctx.clock.one_TS();
-    assert(estEndTime + never() < zero());
-
     const bool resuming = !CommandLine::getResumeName().empty();
+    auto [population, transmission, surveyOnlyNewEp, humanWarmupLength, estEndTime] =
+        initialiseScenario(ctx, scenarioFile, resuming);
+    SimTime endTime;
     Phase phase = Phase::Warmup;
-
-    Continuous::init(ctx, scenario->getMonitoring(), resuming);
     if (resuming) {
         // Everything config-derived was just rebuilt from the scenario; only
         // run state comes off the wire (clock, statics, monitoring,

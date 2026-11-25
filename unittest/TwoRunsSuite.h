@@ -39,6 +39,7 @@
 #include "RunContext.h"
 #include "util/CommandLine.h"
 #include "mon/Monitoring.h"
+#include "interventions/Deployments.h"
 
 #include <cstdio>
 #include <cstring>
@@ -91,6 +92,28 @@ RunCapture captureRun(RunContext& ctx, const std::string& surveyFile) {
 
 class TwoRunsSuite : public CxxTest::TestSuite {
   public:
+    void testDeferredHealthSystemLifetime() {
+        RunContext ctx;
+        for (bool deploy : {false, true}) {
+            std::weak_ptr<int> lifetime;
+            ctx.nextTimed = 0;
+            {
+                auto state = std::make_shared<int>(7);
+                lifetime = state;
+                ChangeHsDeployParams change{[state](RunContext& run) { run.nextTimed = *state; }};
+                state.reset();
+                TS_ASSERT(!lifetime.expired());
+                TS_ASSERT_EQUALS(ctx.nextTimed, 0u);
+                if (deploy) {
+                    change.deploy(ctx);
+                    TS_ASSERT_EQUALS(ctx.nextTimed, 7u);
+                    TS_ASSERT(lifetime.expired());
+                }
+            }
+            TS_ASSERT(lifetime.expired()); // also when the event never occurs
+        }
+    }
+
     void testCaptureRejectsMissingOrEmptyOutput() {
         RunContext ctx;
         const auto path = std::filesystem::temp_directory_path() / "om-tworuns-empty.bin";

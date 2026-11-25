@@ -192,7 +192,7 @@ class SimClock {
 
     /** Sets up time step duration: either a named model's interval or the
      * scenario's explicit interval. Must be 1 or 5 days (checked by
-     * XMLChecker::PerformPostValidationChecks before seeding). */
+      * initialiseScenario before seeding). */
     void initInterval(const scnXml::Scenario& scenario, ModelNames modelName);
 
     /// Start of update: called by the update loop.

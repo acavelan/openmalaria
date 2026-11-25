@@ -35,8 +35,49 @@
 #include <map>
 #include <cmath>
 #include <set>
+#include <numeric>
 
 namespace OpenMalaria {
+
+void TransmissionModel::changeEIRIntervention(const EirSeries& eir) {
+    // parity: xml/entomology.cpp changeEIR variants — preserve validation and
+    // mutation order. Each sum is a left fold in day order; no RNG draws.
+    if (isVector() && simulationMode != forcedEIR && simulationMode != transientEIRknown)
+        throw xml_scenario_error("changeEIR intervention can only be used in forced EIR mode");
+    simulationMode = transientEIRknown;
+    if (isVector()) {
+        if (speciesIndex.size() != 1)
+            throw xml_scenario_error("changeEIR intervention can only be used with a single anopheles species");
+    } else if (nSpore != eir.eipDuration) {
+        throw xml_scenario_error("change-of-EIR intervention cannot change EIP duration");
+    }
+
+    const auto& daily = eir.daily;
+    if (daily.empty()) throw xml_scenario_error("no EIRDaily values given");
+    const double minEIR = min_EIR_mult * (std::accumulate(daily.begin(), daily.end(), 0.0) / daily.size());
+    if (isVector() && daily.size() < static_cast<size_t>(oneYear()))
+        throw xml_scenario_error("entomology.anopheles.seasonality.dailyValues insufficient daily data for a year");
+
+    auto& values = isVector() ? species[0]->interventionEIR : interventionEIR;
+    vector<int> nDays(ctx.clock.inSteps(fromDays(daily.size() - 1)) + 1, 0);
+    values.assign(nDays.size(), 0.0);
+    size_t required_days = static_cast<size_t>((ctx.clock.end_date - ctx.clock.start_date) + 1);
+    if (daily.size() < required_days) {
+        if (!isVector())
+            cerr << "Days: " << daily.size() << "\nIntervals: " << nDays.size() << "\nRequired: " << required_days
+                 << endl;
+        throw xml_scenario_error("Insufficient intervention phase EIR values provided");
+    }
+    for (SimTime day = zero(), end = fromDays(daily.size()); day < end; day = day + oneDay()) {
+        double value = std::max(daily[day], minEIR);
+        size_t step = ctx.clock.inSteps(day);
+        ++nDays[step];
+        values[step] += value;
+    }
+    for (size_t i = 0; i < values.size(); ++i)
+        values[i] *= ctx.clock.one_TS() / static_cast<double>(nDays[i]);
+    if (!isVector()) annualEIR = numeric_limits<double>::quiet_NaN();
+}
 
 void TransmissionModel::ctsCbN_v0(ostream& stream) {
     for (auto& s : species)

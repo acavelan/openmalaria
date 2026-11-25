@@ -45,6 +45,11 @@
 #include "util/errors.h"
 #include "xml/DocumentLoader.h"
 #include "schema/scenario.h"
+#include "Clinical/ClinicalModel.h"
+#include "Host/NeonatalMortality.h"
+#include "interventions/InterventionManager.h"
+#include "Transmission/transmission.h"
+#include "mon/Continuous.h"
 
 #include <cassert>
 #include <algorithm>
@@ -58,6 +63,91 @@
 using namespace std;
 
 namespace OpenMalaria {
+
+SimTime read_latentP(const SimClock& clock, const scnXml::Model& model);
+
+ScenarioRuntime initialiseScenario(RunContext& ctx, const std::string& path, bool resuming) {
+    std::ifstream file(path, ios::binary);
+    if (!file.good()) throw xml_scenario_error("Error: unable to open " + path);
+    auto scenario = scnXml::parseScenario(file);
+    file.close();
+    const int version = scenario->getSchemaVersion();
+    if (version < SCHEMA_VERSION)
+        cerr << "Warning: " << path << " uses an old schema version (latest is " << SCHEMA_VERSION << ")." << endl;
+    else if (version > SCHEMA_VERSION)
+        throw xml_scenario_error("Error: new schema version unsupported");
+
+    auto& model = scenario->getModel();
+    if (!model.getModelName().present() && (!model.getParameters().present() || !model.getModelOptions().present()))
+        throw xml_scenario_error(
+            "If a model name is not specified then both <ModelOptions> and <parameters> must be specified");
+    if (model.getParameters().present()) {
+        const int interval = model.getParameters().get().getInterval();
+        if (interval != 1 && interval != 5)
+            throw xml_scenario_error("Time step set to " + std::to_string(interval) +
+                                     " days but only 1 and 5 days are supported.");
+    }
+
+    Genotypes::init(ctx.genotypes, *scenario);
+    const int seedOverride = CommandLine::getSeedOverride();
+    const unsigned iseed = seedOverride >= 0 ? unsigned(seedOverride) : model.getComputationParameters().getIseed();
+    // parity: f — run.cpp:196-207, load/check/genotypes BEFORE seeding.
+    ctx.master_RNG.seed(iseed, 0);
+    const ModelNames modelName = read_model_name(model);
+    ctx.clock.init(ctx, *scenario, modelName);
+    Parameters parameters(model.getParameters(), modelName);
+    ModelOptions::init(ctx.clock, model.getModelOptions(), modelName);
+    diagnostics::init(ctx, parameters, *scenario);
+    initReporting(ctx, *scenario);
+    PerHost::init(ctx, model.getHuman().getAvailabilityToMosquitoes());
+    InfectionIncidenceModel::init(ctx, parameters);
+    WHInterface::init(ctx, parameters, *scenario);
+    ClinicalModel::init(ctx, parameters, *scenario);
+    NeonatalMortality::init(ctx, model.getClinical());
+    AgeStructure::init(ctx, scenario->getDemography());
+
+    ScenarioRuntime runtime;
+    const size_t popSize = scenario->getDemography().getPopSize();
+    runtime.population = std::make_unique<Population>(ctx, popSize);
+    runtime.transmission.reset(createTransmissionModel(ctx, scenario->getEntomology(), popSize));
+    registerContinousPopulationCallbacks(ctx);
+    // parity: interventions register before health-system trees and cohorts.
+    InterventionManager::init(ctx, scenario->getInterventions(), *runtime.transmission);
+    ClinicalModel::setHS(ctx, scenario->getHealthSystem());
+    initCohorts(ctx, scenario->getMonitoring());
+    runtime.surveyOnlyNewEp = scenario->getMonitoring().getSurveyOptions().getOnlyNewEpisode();
+
+    ctx.clock.t0 = zero();
+    ctx.clock.t1 = zero();
+    runtime.humanWarmupLength = ctx.clock.max_human_age;
+    if (runtime.transmission->interventionMode != forcedEIR)
+        runtime.humanWarmupLength = max(runtime.humanWarmupLength, fromYearsI(55));
+    runtime.humanWarmupLength = fromYearsI(static_cast<int>(ceil(inYears(runtime.humanWarmupLength))));
+    runtime.estEndTime = runtime.humanWarmupLength + (ctx.clock.end_date - ctx.clock.start_date) + ctx.clock.one_TS();
+    assert(runtime.estEndTime + never() < zero());
+    Continuous::init(ctx, scenario->getMonitoring(), resuming);
+    return runtime;
+}
+
+bool reportXmlException(std::exception_ptr error) {
+    try {
+        std::rethrow_exception(error);
+    } catch (const ::xsd::cxx::tree::exception<char>& e) {
+        if (errno == 2) {
+            cerr << "Parsing scenario file failed.\n\t"
+                    "Likely the XSD schema file is not present at an expected location/with expected filename."
+                 << endl;
+        } else {
+            cerr << "XSD error: " << e.what() << '\n' << e << endl;
+            cerr << "Parsing scenario file failed.\n\t"
+                    "Likely the XSD schema is named/located correctly but the scenario does not conform to the schema."
+                 << endl;
+        }
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
 
 // State defined in WHInterface.cpp (external linkage):
 extern bool reportInfectionsByGenotype;

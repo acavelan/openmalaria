@@ -39,10 +39,6 @@
 #include <tuple>
 #include <vector>
 
-namespace scnXml {
-class Scenario;
-}
-
 namespace OpenMalaria {
 
 // Forward declarations for the registry members below: their defining headers
@@ -159,8 +155,8 @@ class RunContext {
  * calibration, main phase, survey output) — the whole of the old main()
  * body after command-line parsing, in the frozen order (plan §3).
  *
- * All state lives in ctx, owned by the caller, so one process can run the
- * model any number of times independently. Exceptions are not caught:
+ * ctx owns the per-run registries and state. Legacy model configuration
+ * globals are reinitialised on each call. Exceptions are not caught:
  * main() (and TwoRunsSuite) own the error reporting. Assumes
  * CommandLine::parse() has already been called. */
 void run_simulation(RunContext& ctx, const std::string& scenarioFile);
