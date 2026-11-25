@@ -39,21 +39,17 @@ using util::LocalRng;
     
 /** Vaccine intervention parameters.
  *
- * Used to represent PEV, BSV and TBV vaccines.
+ * Used to represent PEV, BSV and TBV vaccines (kind selects the type).
  * Each that has a descriptor is applied
  * simultaneously by a continuous or timed intervention strategy (no
  * way to determine which are used).
  *
+ * Phase 7.2b: plain payload struct of Component (no base class, no virtuals);
+ * deployment moved to the deploy_component switch.
  * All parameters (inc. non-static) are only set by initParameters(). */
-class VaccineComponent : public HumanInterventionComponent {
+class VaccineParams {
 public:
-    VaccineComponent( RunContext& ctx, ComponentId id, const scnXml::VaccineDescription& seq, Vaccine::Types type );
-    
-    void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits )const;
-    
-    virtual Component::Type componentType() const;
-    
-    virtual void print_details( std::ostream& out )const;
+    VaccineParams( RunContext& ctx, ComponentId id, const scnXml::VaccineDescription& seq, Vaccine::Types type );
     
 private:
     /** Get the initial efficacy of the vaccine.
@@ -62,8 +58,8 @@ private:
     double getInitialEfficacy (LocalRng& rng, size_t numPrevDoses, uint32_t genotype ) const;
 
     /** Look up a component's parameters (registry: ctx.ext->vaccineComponents;
-     * built while reading XML). */
-    static const VaccineComponent& getParams( RunContext& ctx, ComponentId component );
+     * filled after all components are read). */
+    static const VaccineParams& getParams( RunContext& ctx, ComponentId component );
     
     /// Vaccine component type
     Vaccine::Types type;
@@ -81,24 +77,14 @@ private:
     // VACCINE_GENOTYPE option
     bool opt_vaccine_genotype = false;
     
-    /** @brief Vaccine static parameters
-     * 
-     * Each instance is either null or points to data for the vaccine component
-     * with the given component ID.
-     *
-     * No memory management (only leak is at exit which OS deals with). */
-
-    
     //TODO(monitoring):
     /** Until the monitoring system is updated, only one type of vaccination
      * delivery can be reported. This is whichever is first configured. */
 
     // per-human state is the VacRecord column (humans/HostColumns.h); these
-    // free functions (below, same file) read it and the registries:
+    // free functions (below) read it and the registries:
     friend double vaccine_factor( RunContext&, const std::vector<VacRecord>&, Vaccine::Types, uint32_t );
     friend bool vaccinate( RunContext&, Host::Human&, ComponentId, VaccineLimits );
-    friend void vac_checkpoint( RunContext&, std::vector<VacRecord>&, ostream& );
-    friend void vac_checkpoint( RunContext&, std::vector<VacRecord>&, istream& );
 };
 
 /** Get one minus the (decayed) efficacy of the given vaccine type: product
@@ -113,10 +99,6 @@ double vaccine_factor( RunContext& ctx, const std::vector<VacRecord>& vac,
  * @returns true when the vaccine is administered */
 bool vaccinate( RunContext& ctx, Host::Human& human, ComponentId componentId,
                 VaccineLimits vaccLimits );
-
-/// Dose-record checkpointing (wire NOT frozen: uniform record layout).
-void vac_checkpoint( RunContext& ctx, std::vector<VacRecord>& vac, ostream& stream );
-void vac_checkpoint( RunContext& ctx, std::vector<VacRecord>& vac, istream& stream );
 
 }
 }

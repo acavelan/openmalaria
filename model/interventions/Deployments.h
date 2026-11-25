@@ -199,15 +199,16 @@ inline void timed_human_deploy( RunContext& ctx, std::vector<Host::Human>& popul
 
                         /** human.rng().gauss(0.0, 1.0) is calculated once per component and per human. Re-deployment of
                          * the same component on the same human must use the same gaussian sample. Therefore we store
-                         * this value in the human the first time it is calculated. */
+                         * this value in the human the first time it is calculated (copula_g column, 7.4). */
+                        auto& cg = human.cols->copula_g[human.row];
+                        const auto it = cg.find(cid);
                         double g = 0.0;
-                        const auto it = human.perHostTransmission.copulaGaussianSamples.find(cid);
-                        if (it != human.perHostTransmission.copulaGaussianSamples.end())
+                        if (it != cg.end())
                             g = it->second;
                         else
                         {
                             g = human.rng().gauss(0.0, 1.0);
-                            human.perHostTransmission.copulaGaussianSamples[cid] = g;
+                            cg[cid] = g;
                         }
                         const double yy = d.coverageCorr * xx + g * sqrt(1 - d.coverageCorr * d.coverageCorr);
 

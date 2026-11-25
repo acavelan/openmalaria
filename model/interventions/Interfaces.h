@@ -46,9 +46,6 @@ namespace OM {
 namespace Host {
     class Human;
 }
-namespace Transmission {
-    class HumanVectorInterventionComponent;
-}
 namespace interventions {
 
 /// Component::Type and ComponentId live in the leaf header ComponentId.h
@@ -63,70 +60,9 @@ struct VaccineLimits{
     uint32_t minPrevDoses, maxCumDoses;
 };
 
-/** A description of one component of a human intervention.
- * 
- * Note that one component can have several "actions", but that deployment and
- * decay of these "actions" is usually related.
- * 
- * This is a base class. */
-class HumanInterventionComponent {
-public:
-    virtual ~HumanInterventionComponent() {}
-    
-    /** Deploy the component to a pre-selected human.
-     * 
-     * This may be called between updates (usual intervention deployment time)
-     * or from case management. It should use time ctx.clock.nowOrTs1().
-     * 
-     * @param human Individual receiving the intervention
-     * @param method Channel of deployment (mass, continuous)
-     */
-    virtual void deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method,
-        VaccineLimits vaccLimits ) const =0;
-    
-    /** Get the component identifier. */
-    inline ComponentId id()const{ return m_id; }
-    
-    /** Type-safe downcast seam to the vector-intervention base (phase-5:
-     * replaces the dynamic_cast in PerHost's checkpoint restore; overridden
-     * by Transmission::HumanVectorInterventionComponent, null otherwise). */
-    virtual const Transmission::HumanVectorInterventionComponent* asVectorIntervention() const{
-        return nullptr;
-    }
-    
-    /** Get the duration. */
-    inline SimTime duration()const{ return m_duration; }
-    
-    /** Returns the appropriate descriptor from the Component::Type enum.
-     * 
-     * This is only used a small number of times during setup, so doesn't need
-     * to be fast. */
-    virtual Component::Type componentType() const=0;
-    
-    virtual void print_details( std::ostream& out )const =0;
-    
-    // Only for use by InterventionManager:
-    inline void setExpireAfter( SimTime duration ){
-        m_duration = duration;
-    }
-    
-protected:
-    /** Construct (from a derived class).
-     * 
-     * @param id Component identifier; used as an identifier for cumulative
-     *  deployment as well as to match human-specific components to general
-     *  parameters (i.e. objects of the class extending this one).
-     */
-    explicit HumanInterventionComponent(ComponentId id) : m_id(id) {}
-    
-private:
-    /** Don't copy (this may be possible but shouldn't be needed). */
-    HumanInterventionComponent( const HumanInterventionComponent& ) = delete;
-    HumanInterventionComponent& operator= ( const HumanInterventionComponent& ) = delete;
-    
-    ComponentId m_id;
-    SimTime m_duration = sim::never();
-};
+/* Phase 7.2b: the HumanInterventionComponent class tree is gone. A component
+ * is a plain Component {id, kind, duration, variant payload} — see
+ * interventions/Components.h; deployment is the deploy_component() switch. */
 
 /** A description of a human intervention (as a list of components). */
 class HumanIntervention {
@@ -159,8 +95,9 @@ public:
     void print_details( std::ostream& out )const;
     
 protected:
-    // List of pointers to components. Does not manage memory (InterventionManager::humanComponents does that).
-    vector<const HumanInterventionComponent*> components;
+    // Components to deploy, in type-rank order (contract b). Resolved by id
+    // against the run registry at deploy time (InterventionManager owns them).
+    vector<ComponentId> components;
     // List of conditions of deployment. All must be satisfied to deploy.
     vector<size_t> conditions;
 };

@@ -41,37 +41,13 @@ namespace interventions {
 using namespace OM::util;
 
 
-const VaccineComponent& VaccineComponent::getParams( RunContext& ctx, ComponentId component ){
+const VaccineParams& VaccineParams::getParams( RunContext& ctx, ComponentId component ){
     auto& params = ctx.ext->vaccineComponents;
     assert( component.id < params.size() && params[component.id] != 0 );
     return *params[component.id];
 }
 
-void VaccineComponent::deploy(RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits) const
-{
-    bool administered = vaccinate( ctx, human, id(), vaccLimits );
-    if( administered && ctx.ext->vaccineReportComponent == id() ){
-        mon::recordDeploy(mon::measure("nMassVaccinations"), mon::measure("nEPIVaccinations"), human, method);
-    }
-    assert(type == Vaccine::PEV || type == Vaccine::BSV || type == Vaccine::TBV);
-    if (method == mon::Deploy::TREAT)
-        mon::recordEvent(mon::measure("nTreatDeployments"), human);
-}
-
-Component::Type VaccineComponent::componentType() const
-{
-    if( type == Vaccine::PEV ) return Component::PEV;
-    else if( type == Vaccine::BSV ) return Component::BSV;
-    else if( type == Vaccine::TBV ) return Component::TBV;
-    else throw SWITCH_DEFAULT_EXCEPTION;
-}
-
-void VaccineComponent::print_details(ostream& out) const
-{
-        out << id().id << "\t" << (type == Vaccine::PEV ? "PEV" : (type == Vaccine::BSV ? "BSV" : "TBV"));
-}
-
-double VaccineComponent::getInitialEfficacy (LocalRng& rng, size_t numPrevDoses, uint32_t genotype) const
+double VaccineParams::getInitialEfficacy (LocalRng& rng, size_t numPrevDoses, uint32_t genotype) const
 {
     /* If initialMeanEfficacy.size or more doses have already been given, use
      * the last efficacy. */
@@ -117,7 +93,7 @@ double vaccine_factor( RunContext& ctx, const std::vector<VacRecord>& vac,
     // parity: c — records multiply in insertion (deployment) order
     double factor = 1.0;
     for( const VacRecord& r : vac ){
-        if( VaccineComponent::getParams(ctx, r.id).type == type ){
+        if( VaccineParams::getParams(ctx, r.id).type == type ){
             SimTime age = ctx.clock.ts1() - r.time_last;  // implies age 1 TS on first use
             double decayFactor = r.decay->eval_with( age, r.decay_factor );
             factor *= 1.0 - r.per_genotype_eff[genotype] * decayFactor;
@@ -143,7 +119,7 @@ bool vaccinate( RunContext& ctx, Host::Human& human,
         numDosesAdministered >= vaccLimits.maxCumDoses )
         return false;   // no vaccination (this replaces the old schedule for continuous doses)
     
-    const VaccineComponent& params = VaccineComponent::getParams( ctx, componentId );
+    const VaccineParams& params = VaccineParams::getParams( ctx, componentId );
     
     if( record == 0 ){
         // parity: draw order — first dose per component samples the decay het
@@ -167,41 +143,6 @@ bool vaccinate( RunContext& ctx, Host::Human& human,
     record->time_last = ctx.clock.nowOrTs1();
     
     return true;
-}
-
-void vac_checkpoint( RunContext&, std::vector<VacRecord>& vac, ostream& stream )
-{
-    using namespace OM::util::checkpoint;
-    vac.size() & stream;
-    for( VacRecord& r : vac ) {   // non-const: the vector wire template takes by ref
-        r.id & stream;
-        r.num_doses & stream;
-        r.time_last & stream;
-        r.per_genotype_eff & stream;
-        r.decay_factor & stream;
-    }
-}
-
-void vac_checkpoint( RunContext& ctx, std::vector<VacRecord>& vac, istream& stream )
-{
-    using namespace OM::util::checkpoint;
-    size_t n;
-    n & stream;
-    validateListSize( n );
-    vac.clear();
-    for( size_t i = 0; i < n; ++i ) {
-        VacRecord r;
-        r.id & stream;
-        r.num_doses & stream;
-        r.time_last & stream;
-        r.per_genotype_eff & stream;
-        r.decay_factor & stream;
-        // decay config pointer: from the registry (bad value = old error)
-        if( r.id.id < ctx.ext->vaccineComponents.size() && ctx.ext->vaccineComponents[r.id.id] )
-            r.decay = ctx.ext->vaccineComponents[r.id.id]->decayFunc.get();
-        else throw util::checkpoint_error( "bad value in checkpoint file" );
-        vac.push_back( r );
-    }
 }
 
 }

@@ -33,16 +33,8 @@
 namespace OM { namespace interventions {
 
 
-void GVIComponent::deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
-    iv_deploy( ctx, human, *this );
-    mon::recordDeploy(mon::measure("nMassGVI"), mon::measure("nCtsGVI"), human, method);
-}
-
-Component::Type GVIComponent::componentType()const{ return Component::GVI; }
-
-void GVIComponent::print_details( std::ostream& out )const{
-    out << id().id << "\tGVI";
-}
+// (phase 7.2b: deploy/componentType/print_details virtuals are gone — the
+// deploy_component switch calls iv_deploy + the mon report)
 
 
 // ———  per-human data  ———

@@ -45,12 +45,6 @@ void InterventionManager::checkpoint (RunContext& ctx, std::ostream& stream) {
     ctx.ext->importedInfections & stream;
 }
 
-const HumanInterventionComponent& InterventionManager::getComponent( RunContext& ctx, ComponentId id ){
-    if( id.id >= ctx.ext->humanComponents.size() )
-        throw util::base_exception( "invalid component id" );
-    return *ctx.ext->humanComponents[id.id];
-}
-
 ComponentId InterventionManager::getComponentId(RunContext& ctx, const string textId)
 {
     auto it = ctx.ext->identifierMap.find(textId);

@@ -27,7 +27,6 @@
 #include "core/RunContext.h"
 #include "humans/HostColumns.h"  // leaf: SoA columns owned by Population (IvRecord)
 #include "interventions/ComponentId.h"  // leaf: Component::Type + ComponentId only
-#include "interventions/IvState.h"  // iv_checkpoint used by the wire template below
 #include "util/AgeGroupInterpolation.h"
 #include "util/sampler.h"
 #include "util/checkpoint_containers.h"
@@ -42,7 +41,6 @@ namespace Transmission {
 using util::AgeGroupInterpolator;
 using util::LocalRng;
 
-class HumanVectorInterventionComponent;
 
 /** Stores vector model data applicable between a category of host and a
  * mosquito species: intervention descriptions and model parameters.
@@ -228,8 +226,12 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
         anoph_prob_resting() & stream;
         rel_avail_het() & stream;
         outside_trans() & stream;
-        copulaGaussianSamples & stream;
-        interventions::iv_checkpoint( *ctx, cols->iv[row], stream );
+        // 7.4: copulaGaussianSamples moved to the copula_g column (and its
+        // wire entry deleted: interventions carry zero checkpoint bytes —
+        // user invariant; restore re-applies via event replay).
+        // iv records not on the wire: interventions carry zero checkpoint
+        // bytes (restore re-applies by event replay; checkpoint is
+        // pre-intervention — user invariant).
     }
     //@}
     
@@ -253,12 +255,6 @@ RunContext* ctx = nullptr;  ///< set by the owning Human ctor; used on checkpoin
     /// The host human's SoA columns/row (see bind_columns).
     HumanColumns* cols = nullptr;
     size_t row = 0;
-
-    /** @brief gaussian sample used in the deployment of intervention 
-     * components using the gaussian copula transformation. The factors are 
-     * component specific and are sampled once per human during the first 
-     * deployment attempt. */
-    std::map<interventions::ComponentId, double> copulaGaussianSamples; 
 
 private:
     static AgeGroupInterpolator relAvailAge;
