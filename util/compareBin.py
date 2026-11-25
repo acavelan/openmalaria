@@ -12,7 +12,9 @@
 
 Reads binary output (output.bin, format v2, optionally .gz) or text output
 (survey<tab>group<tab>measure<tab>value rows), keyed on
-(survey, group, measure). Binary values are compared bit-exactly (NaN==NaN).
+(survey, group, measure). Two binary files must have identical uncompressed
+bytes, including row order, signed zeros and NaN payloads. Comparisons involving
+text use numeric equality (NaN==NaN). Parsed values explain differences.
 
 Usage: compareBin.py FILE1 FILE2
 Exit status: 0 identical, 1 differ, 2 unreadable/unparsable.
@@ -70,9 +72,16 @@ def equal(a, b):
     return a == b or (a != a and b != b) # NaN equals itself
 
 def compare(file1, file2, report=sys.stderr):
-    """Return True iff every value is exactly equal."""
+    """Compare binary bytes strictly; use keyed values for text and diagnostics."""
     d1, d2 = load(file1), load(file2)
     ok = True
+    if all(p.endswith((".bin", ".bin.gz")) for p in (file1, file2)):
+        open1 = gzip.open if file1.endswith(".gz") else open
+        open2 = gzip.open if file2.endswith(".gz") else open
+        with open1(file1, "rb") as a, open2(file2, "rb") as b:
+            ok = a.read() == b.read()
+        if not ok:
+            print("binary output bytes differ", file=report)
     for key in sorted(set(d1) ^ set(d2)):
         print("%s: missing in %s" % (key, file1 if key in d2 else file2), file=report)
         ok = False

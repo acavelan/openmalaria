@@ -45,6 +45,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -78,7 +79,11 @@ RunCapture captureRun(RunContext& ctx, const std::string& surveyFile) {
     RunCapture c;
     captureMonStores(ctx, c.monValues);
     std::ifstream in(surveyFile, std::ios::in | std::ios::binary);
+    if (!in.is_open())
+        throw std::runtime_error("cannot open survey output: " + surveyFile);
     c.surveyBytes.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+    if (in.bad() || c.surveyBytes.empty())
+        throw std::runtime_error("unreadable or empty survey output: " + surveyFile);
     return c;
 }
 
@@ -86,6 +91,16 @@ RunCapture captureRun(RunContext& ctx, const std::string& surveyFile) {
 
 class TwoRunsSuite : public CxxTest::TestSuite {
   public:
+    void testCaptureRejectsMissingOrEmptyOutput() {
+        RunContext ctx;
+        const auto path = std::filesystem::temp_directory_path() / "om-tworuns-empty.bin";
+        std::filesystem::remove(path);
+        TS_ASSERT_THROWS(captureRun(ctx, path.string()), const std::runtime_error&);
+        { std::ofstream empty(path, std::ios::binary); }
+        TS_ASSERT_THROWS(captureRun(ctx, path.string()), const std::runtime_error&);
+        std::filesystem::remove(path);
+    }
+
     void testTwoRunsInOneProcessAreBitIdentical() {
         const std::string src(UnittestSourceDir); // <repo>/unittest/
         const std::string scenario = src + "../test/scenario1.xml";
@@ -107,7 +122,7 @@ class TwoRunsSuite : public CxxTest::TestSuite {
                               "--output-format", "bin",        "--output",       "tworuns.bin"};
         std::string scenarioFile;
         try {
-            scenarioFile = CommandLine::parse(5, const_cast<char**>(argv));
+            scenarioFile = CommandLine::parse(std::size(argv), const_cast<char**>(argv));
         } catch (const std::exception& e) {
             std::filesystem::current_path(oldCwd);
             TS_FAIL(std::string("CommandLine::parse: ") + e.what());
@@ -120,6 +135,7 @@ class TwoRunsSuite : public CxxTest::TestSuite {
         for (int run = 1; run <= 2 && ok; ++run) {
             try {
                 RunContext ctx; // each run gets a fresh context: runs must not share state
+                std::filesystem::remove("tworuns.bin"); // each run must create its own output
                 run_simulation(ctx, scenarioFile);
                 (run == 1 ? run1 : run2) = captureRun(ctx, "tworuns.bin");
             } catch (const std::exception& e) {
@@ -152,10 +168,10 @@ class TwoRunsSuite : public CxxTest::TestSuite {
                     ": run1=" + hex(run1.monValues[firstDiff]) + " run2=" + hex(run2.monValues[firstDiff]));
         }
         TS_ASSERT_EQUALS(run1.surveyBytes.size(), run2.surveyBytes.size());
-        if (!run1.surveyBytes.empty()) { // sanity: run 1 produced output at all
-            TS_ASSERT(run1.surveyBytes == run2.surveyBytes);
-            // in-memory value capture must be non-empty too, else the test proves nothing
-            TS_ASSERT(!run1.monValues.empty());
-        }
+        TS_ASSERT(!run1.surveyBytes.empty());
+        TS_ASSERT(!run2.surveyBytes.empty());
+        TS_ASSERT(run1.surveyBytes == run2.surveyBytes);
+        TS_ASSERT(!run1.monValues.empty());
+        TS_ASSERT(!run2.monValues.empty());
     }
 };

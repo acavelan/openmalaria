@@ -4,7 +4,7 @@
 Runs two openMalaria binaries (old reference vs new) on:
   tier a: every test/scenario*.xml, single continuous run
   tier b: util/example/example_scenario.xml with iseed patched to each seed
-and compares output.bin bit-exactly (util/compareBin).
+and compares output.bin and any ctsout.txt byte-for-byte.
 
 Hard-fails if the reference recipe (compiler/GSL/libc/kernel) drifted: run
 with --recipe /path/recipe.json next to the reference binary.
@@ -13,7 +13,7 @@ Usage: parity.py --old OLDBIN --new NEWBIN [--recipe recipe.json]
                  [--tiers a,b] [--seeds 1-10] [-j N] [--work DIR]
 Exit: 0 all identical, 1 any mismatch, 2 setup/recipe error.
 """
-import argparse, glob, json, os, re, shutil, subprocess, sys, tempfile
+import argparse, filecmp, glob, json, os, re, shutil, subprocess, sys, tempfile
 from concurrent.futures import ThreadPoolExecutor
 
 sys.path[0] = os.path.dirname(os.path.abspath(__file__))
@@ -126,9 +126,15 @@ def main():
             odir, obin = done[label]
             nbin = os.path.join(info, "output.bin")
             ok = compareBin.compare(obin, nbin)
-            print(("PASS " if ok else "FAIL ") + label)
             if not ok:
                 fails.append("%s: output.bin differs" % label)
+            old_cts, new_cts = os.path.join(odir, "ctsout.txt"), os.path.join(info, "ctsout.txt")
+            if (os.path.isfile(old_cts) != os.path.isfile(new_cts) or
+                    (os.path.isfile(old_cts) and not filecmp.cmp(old_cts, new_cts, shallow=False))):
+                if ok:
+                    fails.append("%s: ctsout.txt differs or is missing" % label)
+                ok = False
+            print(("PASS " if ok else "FAIL ") + label)
 
     print("\n%d/%d identical; %d problems" % (len(jobs) - len(fails), len(jobs), len(fails)))
     for f in fails:
