@@ -24,7 +24,7 @@
 #define OM_INTERVENTIONS_GVI
 
 #include "core/RunContext.h"
-#include "Transmission/PerHost.h"
+#include "Transmission/VectorIntervention.h"
 #include "interventions/Interfaces.h"
 #include "util/DecayFunction.h"
 #include "util/sampler.h"

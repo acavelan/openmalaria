@@ -22,7 +22,7 @@
 
 #include "core/RunContext.h"
 #include "Clinical/DecisionTree5Day.h"
-#include "Clinical/ImmediateOutcomes.h""
+#include "Clinical/ImmediateOutcomes.h"
 #include "Clinical/CMDecisionTree.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/errors.h"

@@ -26,7 +26,7 @@
 #include "Global.h"
 #include "core/RunContext.h"
 #include "mon/Monitoring.h"
-#include <limits>
+#include "interventions/ComponentId.h"
 
 namespace scnXml{
     class DeploymentBase;
@@ -46,25 +46,14 @@ namespace OM {
 namespace Host {
     class Human;
 }
+namespace Transmission {
+    class HumanVectorInterventionComponent;
+}
 namespace interventions {
 
-/** Enumeration of all available components, in the order that these should be
- * deployed in within a single intervention. */
-namespace Component { enum Type {
-    RECRUIT_ONLY,     // selection for a sub-population (without other effects)
-    SCREEN,     // screening, e.g. as part of MSAT
-    TREAT_SIMPLE,       // treatment using the simple model (e.g. for MDA)
-    TREAT_PKPD, // treatment using the PK/PD model (e.g. MDA)
-    CM_DT,      // execute a "case management" decision tree (e.g. MSAT or more complicated things)
-    PEV,        // pre-erythrocytic vaccine
-    BSV,        // blood-stage vaccine
-    TBV,        // transmission-blocking vaccine
-    IPT,        // intermittent preventative treatment
-    ITN,        // insecticide treated net
-    IRS,        // indoor residual spraying
-    GVI,        // generic vector intervention
-    CLEAR_IMMUNITY,     // reset accumulated immunity to zero
-}; }
+/// Component::Type and ComponentId live in the leaf header ComponentId.h
+/// (included above) so Transmission/PerHost.h can use them without
+/// including this header (phase-5 cycle break).
 
 /** Specifies limits on the number of existing doses when deciding whether to
  * vaccinate a human. */
@@ -72,26 +61,6 @@ struct VaccineLimits{
     VaccineLimits() : minPrevDoses( 0 ), maxCumDoses( numeric_limits<uint32_t>::max() ) {}
     void set( const scnXml::DeploymentBase& );
     uint32_t minPrevDoses, maxCumDoses;
-};
-
-/** Essentially just an integer, used as a vector index.
- * 
- * This class wraps the integer to guard against unintended conversions to or
- * from an integer (which could be mis-use). */
-struct ComponentId{
-    explicit inline ComponentId( size_t id ) : id(id) {}
-    explicit inline ComponentId( istream& stream ){ id & stream; }
-    inline void operator& (istream& stream) { id & stream; }
-    inline void operator& (ostream& stream) const{ id & stream; }
-    inline bool operator== (const ComponentId that) const{ return id == that.id; }
-    inline bool operator< (const ComponentId that) const{ return id < that.id; }
-    
-    /// Special value indicating the whole population
-    static ComponentId wholePop() {
-        return ComponentId{ numeric_limits<uint32_t>::max() };
-    }
-    
-    size_t id;
 };
 
 /** A description of one component of a human intervention.
@@ -117,6 +86,13 @@ public:
     
     /** Get the component identifier. */
     inline ComponentId id()const{ return m_id; }
+    
+    /** Type-safe downcast seam to the vector-intervention base (phase-5:
+     * replaces the dynamic_cast in PerHost's checkpoint restore; overridden
+     * by Transmission::HumanVectorInterventionComponent, null otherwise). */
+    virtual const Transmission::HumanVectorInterventionComponent* asVectorIntervention() const{
+        return nullptr;
+    }
     
     /** Get the duration. */
     inline SimTime duration()const{ return m_duration; }
