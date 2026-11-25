@@ -26,7 +26,6 @@
 #include "Host/WithinHost/Diagnostic.h"
 #include "util/random.h"
 #include "util/CommandLine.h"
-#include "schema/healthSystem.h"
 
 #include <cmath>
 
@@ -60,23 +59,6 @@ SimTime ageLb = sim::fromYearsI(20), ageUb = sim::fromYearsI(25);
 const WithinHost::Diagnostic* neonatalDiagnostic = 0;
 
 
-void NeonatalMortality::init( const scnXml::Clinical& clinical ){
-    SimTime fiveMonths = sim::fromDays( 5 * 30 );
-    prevByGestationalAge.assign( sim::inSteps(fiveMonths), 0.0 );
-    
-    if( clinical.getNeonatalMortality().present() ){
-        neonatalDiagnostic = &WithinHost::diagnostics::get(
-            clinical.getNeonatalMortality().get().getDiagnostic() );
-    }else{
-        //NOTE: this is a compatibility option for older scenarios
-        if( CommandLine::option( CommandLine::DEPRECATION_WARNINGS ) ){
-            cerr << "Deprecation warning: specification of the diagnostic "
-                "used by the Neonatal Mortality model is recommended "
-                "(model/clinical/neonatalMortality)" << endl;
-        }
-        neonatalDiagnostic = &WithinHost::diagnostics::monitoringDiagnostic();
-    }
-}
 
 void NeonatalMortality::staticCheckpoint (istream& stream) {
     riskFromMaternalInfection & stream;

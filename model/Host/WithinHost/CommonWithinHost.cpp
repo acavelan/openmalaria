@@ -30,7 +30,6 @@
 #include "util/AgeGroupInterpolation.h"
 #include "util/random.h"
 #include "util/StreamValidator.h"
-#include "schema/scenario.h"
 
 using namespace std;
 
@@ -48,22 +47,6 @@ bool reportInfectedOrPatentInfected = false;
 
 // -----  Initialization  -----
 
-void CommonWithinHost::init( const scnXml::Scenario& scenario ){
-    const scnXml::Human human = scenario.getModel().getHuman();
-    if( !human.getWeight().present() ){
-        // Technically this is needed by the PK/PD and Molineaux models
-        throw util::xml_scenario_error( "model->human->weight element required by certain models" );
-    }
-    massByAge.set( human.getWeight().get(), "weight" );
-    hetMassMultStdDev = human.getWeight().get().getMultStdDev();
-    // hetWeightMult must be large enough that birth weight is at least 0.5 kg:
-    minHetMassMult = 0.5 / massByAge.eval( 0.0 );
-    
-    reportInfectedOrPatentInfected = mon::isUsed(mon::measure("totalInfs")) ||
-        mon::isUsed(mon::measure("totalPatentInf"));
-    
-    PkPd::LSTMModel::init( scenario );
-}
 
 CommonWithinHost::CommonWithinHost( LocalRng& rng, double comorbidityFactor ) :
         WHFalciparum( rng, comorbidityFactor )

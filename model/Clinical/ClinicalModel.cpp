@@ -31,7 +31,6 @@
 #include "util/CommandLine.h"
 #include "util/errors.h"
 #include "util/UnitParse.h"
-#include "schema/scenario.h"
 
 namespace OM { namespace Clinical {
 
@@ -49,58 +48,6 @@ util::AgeGroupInterpolator ClinicalModel::pSequelaeInpatient;
 
 // -----  static methods  -----
 
-void ClinicalModel::init( const Parameters& parameters, const scnXml::Scenario& scenario ) {
-    const scnXml::Clinical& clinical = scenario.getModel().getClinical();
-    try{
-        indirectMortBugfix = util::ModelOptions::option (util::INDIRECT_MORTALITY_FIX);
-        //NOTE: if changing XSD, this should not have a default unit:
-        healthSystemMemory = UnitParse::readShortDuration(clinical.getHealthSystemMemory(), UnitParse::STEPS);
-        oddsRatioThreshold = exp( parameters[Parameter::LOG_ODDS_RATIO_CF_COMMUNITY] );
-        InfantMortality::init( parameters );
-    }catch( const util::format_error& e ){
-        throw util::xml_scenario_error( string("model/clinical/healthSystemMemory: ").append(e.message()) );
-    }
-    
-    if (util::ModelOptions::option (util::CLINICAL_EVENT_SCHEDULER)){
-        opt_event_scheduler = true;
-        ClinicalEventScheduler::init( parameters, clinical );
-    }else{
-        if( scenario.getHealthSystem().getImmediateOutcomes().present() ){
-            opt_imm_outcomes = true;
-            
-            if( util::CommandLine::option(util::CommandLine::DEPRECATION_WARNINGS) ){
-                cerr << "Deprecation warning: healthSystem: use of ImmediateOutcomes can be replaced by the more flexible DecisionTree5Day (optional)" << endl;
-            }
-        }
-        // else: decision tree 5 day
-        
-        CM5DayCommon::init();
-    }
-}
-
-void ClinicalModel::setHS( const scnXml::HealthSystem& healthSystem ){
-    caseFatalityRate.set( healthSystem.getCFR(), "CFR" );
-    pSequelaeInpatient.set( healthSystem.getPSequelaeInpatient(), "pSequelaeInpatient" );
-    if( opt_event_scheduler ){
-        if( !healthSystem.getEventScheduler().present() ){
-            throw util::xml_scenario_error ("Expected EventScheduler "
-                "section in healthSystem data (initial or intervention)");
-        }
-        ESCaseManagement::setHealthSystem(healthSystem.getEventScheduler().get());
-    }else if( opt_imm_outcomes ){
-        if ( !healthSystem.getImmediateOutcomes().present() ){
-            throw util::xml_scenario_error ("Expected ImmediateOutcomes "
-                "section in healthSystem data (initial or intervention)");
-        }
-        ImmediateOutcomes::setHealthSystem(healthSystem.getImmediateOutcomes().get());
-    }else{
-        if( !healthSystem.getDecisionTree5Day().present() ){
-            throw util::xml_scenario_error ("Expected DecisionTree5Day "
-                "section in healthSystem data (initial or intervention)");
-        }
-        DecisionTree5Day::setHealthSystem(healthSystem.getDecisionTree5Day().get());
-    }
-}
 
 unique_ptr<ClinicalModel> ClinicalModel::createClinicalModel (double tSF) {
     if (opt_event_scheduler){

@@ -25,6 +25,8 @@
 
 #include "Clinical/CM5DayCommon.h"
 
+namespace scnXml { class HSDT5Day; }
+
 namespace OM {
 namespace Clinical {
 

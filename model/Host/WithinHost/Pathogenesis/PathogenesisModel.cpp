@@ -28,7 +28,6 @@
 #include "util/errors.h"
 #include "util/AgeGroupInterpolation.h"
 #include "Parameters.h"
-#include "schema/healthSystem.h"
 
 #include <cmath>
 using namespace std;
@@ -54,34 +53,6 @@ AgeGroupInterpolator pg_NMF_incidence;
 bool opt_predetermined_episodes = false, opt_mueller_pres_model = false;
 
 
-void PathogenesisModel::init( const Parameters& parameters, const scnXml::Clinical& clinical, bool nmfOnly ){
-    if( util::ModelOptions::option( util::NON_MALARIA_FEVERS ) ){
-        if( !clinical.getNonMalariaFevers().present() ){
-            throw util::xml_scenario_error("NonMalariaFevers element of model->clinical required");
-        }
-        const scnXml::Clinical::NonMalariaFeversType& nmfDesc = clinical.getNonMalariaFevers().get();
-        pg_NMF_incidence.set( nmfDesc.getIncidence(), "incidence" );
-    }
-    if( nmfOnly ) return;
-    
-    pg_indirRiskCoFactor = 1 - exp(-parameters[Parameter::INDIRECT_RISK_COFACTOR]);
-    pg_severeMalThreshold = parameters[Parameter::SEVERE_MALARIA_THRESHHOLD] + 1;
-    pg_comorbIntercept = 1 - exp(-parameters[Parameter::COMORBIDITY_INTERCEPT]);
-    pg_inv_critAgeComorb = 1 / parameters[Parameter::CRITICAL_AGE_FOR_COMORBIDITY];
-
-    if (util::ModelOptions::option (util::PREDETERMINED_EPISODES)) {
-        opt_predetermined_episodes = true;
-        //no separate init:
-        PyrogenPathogenesis::init( parameters );
-    } else {
-        if (util::ModelOptions::option (util::MUELLER_PRESENTATION_MODEL)){
-            opt_mueller_pres_model = true;
-            MuellerPathogenesis::init( parameters );
-        }else{
-            PyrogenPathogenesis::init( parameters );
-        }
-    }
-}
 
 PathogenesisModel* PathogenesisModel::createPathogenesisModel(double cF) {
     if (opt_predetermined_episodes) {

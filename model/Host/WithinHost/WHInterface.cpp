@@ -31,7 +31,6 @@
 #include "Host/WithinHost/Treatments.h"
 #include "util/ModelOptions.h"
 #include "util/errors.h"
-#include "schema/scenario.h"
 //using namespace std;
 
 #include <cmath>
@@ -50,42 +49,6 @@ bool opt_vivax_simple = false,
 
 // -----  static functions  -----
 
-void WHInterface::init( const OM::Parameters& parameters, const scnXml::Scenario& scenario ) {
-    reportInfectionsByGenotype = mon::isUsed(mon::measure("nInfectByGenotype")) ||
-        mon::isUsed(mon::measure("nPatentByGenotype")) ||
-        mon::isUsed(mon::measure("logDensByGenotype"));
-    
-    if( util::ModelOptions::option( util::VIVAX_SIMPLE_MODEL ) ){
-        opt_vivax_simple = true;
-        WHVivax::init( parameters, scenario.getModel() );
-    }else{
-        WHFalciparum::init( parameters, scenario.getModel() );
-        
-        if (util::ModelOptions::option (util::DUMMY_WITHIN_HOST_MODEL)) {
-            opt_dummy_whm = true;
-            DummyInfection::init ();
-        } else if (util::ModelOptions::option (util::EMPIRICAL_WITHIN_HOST_MODEL)) {
-            opt_empirical_whm = true;
-            EmpiricalInfection::init();    // 1-day time step check
-        } else if (util::ModelOptions::option (util::MOLINEAUX_WITHIN_HOST_MODEL)) {
-            opt_molineaux_whm = true;
-            MolineauxInfection::init( parameters );
-        } else if (util::ModelOptions::option (util::PENNY_WITHIN_HOST_MODEL)) {
-            opt_penny_whm = true;
-            PennyInfection::init();
-        } else {
-            DescriptiveInfection::init( parameters );      // 5-day time step check
-        }
-        opt_common_whm = opt_dummy_whm || opt_empirical_whm
-                || opt_molineaux_whm || opt_penny_whm;
-        
-        if( opt_common_whm ){
-            CommonWithinHost::init( scenario );
-        }else{
-            DescriptiveWithinHostModel::initDescriptive();
-        }
-    }
-}
 
 TreatmentId WHInterface::addTreatment(const scnXml::TreatmentOption& desc){
     return Treatments::addTreatment( desc );

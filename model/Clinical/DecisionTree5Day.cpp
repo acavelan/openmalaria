@@ -39,41 +39,6 @@ const CMDecisionTree *treeUCOfficial = 0, *treeUCSelfTreat = 0;
 
 // ———  static, init  ———
 
-void DecisionTree5Day::setHealthSystem(const scnXml::HSDT5Day& hsDescription){
-    double accessUCOfficial1 = hsDescription.getPSeekOfficialCareUncomplicated1().getValue();
-    double accessUCOfficial2 = hsDescription.getPSeekOfficialCareUncomplicated2().getValue();
-    // Note: this asymmetry is historical, and probably matters little:
-    accessUCSelfTreat[FirstLine] = hsDescription.getPSelfTreatUncomplicated().getValue();
-    accessUCSelfTreat[SecondLine] = 0.0;
-    accessUCAny[FirstLine] = accessUCOfficial1 + accessUCSelfTreat[FirstLine];
-    accessUCAny[SecondLine] = accessUCOfficial1 + accessUCSelfTreat[SecondLine];
-    accessSevere = hsDescription.getPSeekOfficialCareSevere().getValue();
-    
-    if( accessUCOfficial1 < 0.0 || accessUCSelfTreat[FirstLine] < 0.0 || accessUCAny[FirstLine] > 1.0 ||
-        accessUCOfficial2 < 0.0 || accessUCSelfTreat[SecondLine] < 0.0 || accessUCAny[SecondLine] > 1.0 ||
-        accessSevere < 0.0 || accessSevere > 1.0 )
-    {
-        throw util::xml_scenario_error ("healthSystem: "
-            "pSeekOfficialCareUncomplicated1 and pSelfTreatUncomplicated must be"
-            " at least 0 and their sum must be at most 1, and"
-            "pSeekOfficialCareUncomplicated2 and pSeekOfficialCareSevere must "
-            "be in range [0,1]");
-    }
-    
-    treeUCOfficial = &CMDecisionTree::create( hsDescription.getTreeUCOfficial(), true );
-    treeUCSelfTreat = &CMDecisionTree::create( hsDescription.getTreeUCSelfTreat(), true );
-    
-    cureRateSevere = hsDescription.getCureRateSevere().getValue();
-    treatmentSevere = WHInterface::addTreatment( hsDescription.getTreatmentSevere() );
-    
-    if( ModelOptions::option(util::VIVAX_SIMPLE_MODEL) ){
-        WithinHost::WHVivax::setHSParameters(
-            hsDescription.getLiverStageDrug().present() ?
-            &hsDescription.getLiverStageDrug().get() : 0 );
-    }else if( hsDescription.getLiverStageDrug().present() ){
-        throw util::xml_scenario_error( "health-system's liverStageDrug element only supported by vivax" );
-    }
-}
 
 
 // ———  per-human, update  ———
