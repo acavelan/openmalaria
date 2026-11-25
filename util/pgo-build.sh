@@ -22,17 +22,16 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 # Profile-guided optimisation (PGO) build of openMalaria with GCC or Clang.
-# Builds an instrumented binary, trains it on the KPI benchmark scenario
-# (util/example/example_scenario.xml — the workload we optimise for), then
-# rebuilds using that profile. Results are bit-identical to a normal Release
-# build; only speed differs.
+# Builds an instrumented binary, trains it sequentially on upstream PR-481's
+# generic six-scenario corpus, then rebuilds using that profile. Results are
+# bit-identical to a normal Release build; only speed differs.
 #
 # usage: util/pgo-build.sh [build-dir] [extra cmake args]
 # JOBS sets make parallelism (default: number of CPUs).
 #
-# Based on upstream PR-481's script, with two deliberate changes:
-#  - trains on the benchmark scenario instead of the six box scenarios;
-#  - keeps -ffp-contract=off in both phases (this project's frozen FP recipe).
+# Based on upstream PR-481's script, keeping -ffp-contract=off in both phases
+# (this project's frozen FP recipe). Missing/stale profiles are build errors,
+# not warnings that can silently turn the second pass into a non-PGO build.
 
 set -euo pipefail
 SRC=$(cd "$(dirname "$0")/.." && pwd)
@@ -43,25 +42,29 @@ JOBS=${JOBS:-$(getconf _NPROCESSORS_ONLN)}
 
 if "${CXX:-c++}" --version | grep -qi clang; then
   GEN="-fprofile-generate=$PROF -ffp-contract=off"
-  USE="-fprofile-use=$PROF/merged.profdata -Wno-profile-instr-unprofiled -Wno-profile-instr-out-of-date -ffp-contract=off"
+  USE="-fprofile-use=$PROF/merged.profdata -Werror=profile-instr-unprofiled -Werror=profile-instr-out-of-date -ffp-contract=off"
   PROFDATA=$(command -v llvm-profdata || xcrun -f llvm-profdata)
 else
   # The same build dir is reused for both phases: gcc keys profiles by object path.
   GEN="-fprofile-generate -fprofile-update=single -fprofile-dir=$PROF -ffp-contract=off"
-  USE="-fprofile-use -fprofile-partial-training -fprofile-dir=$PROF -Wno-missing-profile -ffp-contract=off"
+  USE="-fprofile-use -fprofile-partial-training -fprofile-dir=$PROF -Werror=missing-profile -ffp-contract=off"
 fi
 
 rm -rf "$PROF" && mkdir -p "$PROF"
 
-# 1. Instrumented build.
+# 1. Instrumented build (only the trained executable; unit tests would have no profile).
 cmake -S "$SRC" -B "$OUT" -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="$GEN" "$@"
-make -C "$OUT" -j"$JOBS"
+make -C "$OUT" -j"$JOBS" inlined_xsd openMalaria
 
-# 2. Training run: the benchmark scenario (profile what we measure).
+# 2. Sequential training on the generic upstream corpus, not the scored KPI.
 d=$(mktemp -d)
 cp "$OUT"/schema/scenario_current.xsd "$SRC"/schema/*.xsd "$d"/
-(cd "$d" && "$OUT/openMalaria" --resource-path "$SRC/test" \
-    --scenario "$SRC/util/example/example_scenario.xml" >/dev/null)
+SCENARIOS=(scenarioGenotypes.xml scenarioPenny.xml scenarioVecFullTest.xml \
+           scenarioNonHumanHosts.xml scenarioMSAT_HRP2.xml scenarioVivax.xml)
+for scenario in "${SCENARIOS[@]}"; do
+  (cd "$d" && "$OUT/openMalaria" --resource-path "$SRC/test" \
+      --scenario "$SRC/test/$scenario" >/dev/null)
+done
 rm -rf "$d"
 [ -n "${PROFDATA:-}" ] && "$PROFDATA" merge -output="$PROF/merged.profdata" "$PROF"/*.profraw
 
@@ -69,5 +72,5 @@ rm -rf "$d"
 # later reconfigures of this build dir keep PGO.
 make -C "$OUT" clean
 cmake -S "$SRC" -B "$OUT" -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="$USE" "$@"
-make -C "$OUT" -j"$JOBS"
+make -C "$OUT" -j"$JOBS" openMalaria
 echo "PGO build: $OUT/openMalaria"
