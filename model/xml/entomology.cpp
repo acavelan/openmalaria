@@ -61,31 +61,23 @@ namespace OM {
 namespace Transmission {
 using namespace OM::util;
 
-inline double averageEIR(const scnXml::NonVector &nonVectorData)
+// Arithmetic mean of a whole daily-EIR sequence (both overloads read it from
+// the .XML file the same way); noneMsg is the pedantic empty-vector check text.
+template<class Seq>
+static double averageEIR_seq(const Seq& daily, const char* noneMsg)
 {
-    // Calculates the arithmetic mean of the whole daily EIR vector read from the .XML file
     double valaverageEIR = 0.0;
     size_t i = 0;
-    for (const scnXml::NonVector::EIRDailySequence &daily = nonVectorData.getEIRDaily(); i < daily.size(); ++i)
-    {
-        valaverageEIR += (double)daily[i];
-    }
-    if (i == 0) throw util::xml_scenario_error("no EIRDaily values given"); // pedantic check
+    for (; i < daily.size(); ++i) valaverageEIR += (double)daily[i];
+    if (i == 0) throw util::xml_scenario_error(noneMsg);
     return valaverageEIR / i;
 }
 
+inline double averageEIR(const scnXml::NonVector &nonVectorData)
+{ return averageEIR_seq(nonVectorData.getEIRDaily(), "no EIRDaily values given"); }
+
 inline double averageEIR(const scnXml::DailyValues &vectorData)
-{
-    // Calculates the arithmetic mean of the whole daily EIR vector read from the .XML file
-    double valaverageEIR = 0.0;
-    size_t i = 0;
-    for (const scnXml::DailyValues::ValueSequence &daily = vectorData.getValue(); i < daily.size(); ++i)
-    {
-        valaverageEIR += (double)daily[i];
-    }
-    if (i == 0) throw util::xml_scenario_error("no daily values given"); // pedantic check
-    return valaverageEIR / i;
-}
+{ return averageEIR_seq(vectorData.getValue(), "no daily values given"); }
 
 TransmissionModel *createNonVectorModel(RunContext& ctx, const scnXml::Entomology &entoData)
 {
@@ -394,13 +386,8 @@ TransmissionModel *createVectorModel(RunContext& ctx, const scnXml::Entomology &
         speciesIndex[anophModel->mosq.name] = i;
     }
 
-    if (interventionMode == forcedEIR)
-    {
-        // We don't need these anymore (now we have initialisationEIR); free memory
-        // numSpecies = 0;
-        // species.clear();
-        // speciesIndex.clear();
-    }
+    // Note: in forcedEIR mode species/emergenceRateEstimators are not needed
+    // anymore (we have initialisationEIR), but interventions still use them.
 
     return new TransmissionModel(ctx, initialisationEIR, interventionMode, std::move(species), std::move(emergenceRateEstimators), speciesIndex, populationSize);
 }
@@ -475,6 +462,38 @@ TransmissionModel::TransmissionModel(RunContext& ctx, vector<double> initEIR, in
         initialKappa.assign(ctx.clock.inSteps(sim::fromYearsI(nYearsWarmupData)), 0.0);
     }
 
+// Shared loop tail of both changeEIRIntervention variants: fills
+// interventionEIR with the per-interval mean of max(daily, minEIR). The
+// days_cerr flag reproduces the extra diagnostic of the non-vector variant.
+static void fill_intervention_eir(RunContext& ctx, vector<double>& interventionEIR,
+    const scnXml::NonVector::EIRDailySequence &daily, double minEIR, bool days_cerr)
+{
+    vector<int> nDays(ctx.clock.inSteps(sim::fromDays(daily.size() - 1)) + 1, 0);
+    interventionEIR.assign(nDays.size(), 0.0);
+    size_t required_days = static_cast<size_t>((ctx.clock.end_date - ctx.clock.start_date) + 1);
+    if (daily.size() < required_days)
+    {
+        if (days_cerr)
+            cerr << "Days: " << daily.size() << "\nIntervals: " << nDays.size() << "\nRequired: " << required_days << endl;
+        throw util::xml_scenario_error("Insufficient intervention phase EIR values provided");
+    }
+    // The minimum EIR allowed in the array. The product of the average EIR and a constant.
+    for (SimTime mpcday = sim::zero(), endDay = sim::fromDays(daily.size()); mpcday < endDay; mpcday = mpcday + sim::oneDay())
+    {
+        double EIRdaily = std::max(static_cast<double>(daily[mpcday]), minEIR);
+
+        // istep is the time period to which the day is assigned.
+        size_t istep = ctx.clock.inSteps(mpcday);
+        nDays[istep]++;
+        interventionEIR[istep] += EIRdaily;
+    }
+    // divide by number of records assigned to each interval (usually one per day)
+    for (size_t i = 0; i < interventionEIR.size(); ++i)
+    {
+        interventionEIR[i] *= ctx.clock.one_TS() / static_cast<double>(nDays[i]);
+    }
+}
+
 void TransmissionModel::changeEIRIntervention_nonVector(const scnXml::NonVector &nonVectorData)
     {
         // Note: requires ctx.clock.interv >= sim::zero(), but this can only be
@@ -484,31 +503,10 @@ void TransmissionModel::changeEIRIntervention_nonVector(const scnXml::NonVector 
         if (nSpore != sim::fromDays(nonVectorData.getEipDuration()))
             throw util::xml_scenario_error("change-of-EIR intervention cannot change EIP duration");
 
-        const scnXml::NonVector::EIRDailySequence &daily = nonVectorData.getEIRDaily();
-        vector<int> nDays(ctx.clock.inSteps(sim::fromDays(daily.size() - 1)) + 1, 0);
-        interventionEIR.assign(nDays.size(), 0.0);
-        size_t required_days = static_cast<size_t>((ctx.clock.end_date - ctx.clock.start_date) + 1);
-        if (daily.size() < required_days)
-        {
-            cerr << "Days: " << daily.size() << "\nIntervals: " << nDays.size() << "\nRequired: " << required_days << endl;
-            throw util::xml_scenario_error("Insufficient intervention phase EIR values provided");
-        }
-        // The minimum EIR allowed in the array. The product of the average EIR and a constant.
-        double minEIR = min_EIR_mult * averageEIR(nonVectorData);
-        for (SimTime mpcday = sim::zero(), endDay = sim::fromDays(daily.size()); mpcday < endDay; mpcday = mpcday + sim::oneDay())
-        {
-            double EIRdaily = std::max(static_cast<double>(daily[mpcday]), minEIR);
-
-            // istep is the time period to which the day is assigned.
-            size_t istep = ctx.clock.inSteps(mpcday);
-            nDays[istep]++;
-            interventionEIR[istep] += EIRdaily;
-        }
-        // divide by number of records assigned to each interval (usually one per day)
-        for (size_t i = 0; i < interventionEIR.size(); ++i)
-        {
-            interventionEIR[i] *= ctx.clock.one_TS() / static_cast<double>(nDays[i]);
-        }
+        // EIRDaily is schema-required (minOccurs=1), so computing the average
+        // before the insufficient-days check cannot change which error is seen.
+        fill_intervention_eir(ctx, interventionEIR, nonVectorData.getEIRDaily(),
+            min_EIR_mult * averageEIR(nonVectorData), true);
 
         // I've no idea what this should be, so until someone asks it can be NaN.
         // It was -9.99 and later 0.0. It could of course be recalculated from interventionEIR.
@@ -572,39 +570,41 @@ void TransmissionModel::changeEIRIntervention_vector(const scnXml::NonVector &no
 
 namespace Anopheles {
 
+// Shared range-check + set of the four initVectorInterv decay slots (the
+// resizes stay at the call sites, before the present() checks, as before;
+// the bound pair reproduces each original check exactly -- NaN initial
+// fails none of them either way).
+template<class V, class E2>
+static void set_interv_decay(SimClock& clock, V& slot, size_t instance, const E2& elt2,
+    double lo, double hi, const char* rangeMsg, const char* tag)
+{
+    double initial = elt2.getInitial();
+    if (initial < lo || initial > hi) throw util::xml_scenario_error(rangeMsg);
+    slot[instance].set(clock, initial, elt2.getDecay(), tag);
+}
+
 void AnophelesModel::initVectorInterv(const scnXml::VectorSpeciesIntervention &elt, size_t instance)
 {
     if (emergenceReduction.size() <= instance) emergenceReduction.resize(instance + 1);
-
     if (elt.getEmergenceReduction().present())
-    {
-        const scnXml::EmergenceReduction &elt2 = elt.getEmergenceReduction().get();
-        if (elt2.getInitial() > 1.0) throw util::xml_scenario_error("emergenceReduction intervention: initial effect must be ≤ 1");
-        emergenceReduction[instance].set(ctx.clock, elt2.getInitial(), elt2.getDecay(), "emergenceReduction");
-    }
+        set_interv_decay(ctx.clock, emergenceReduction, instance, elt.getEmergenceReduction().get(),
+            -numeric_limits<double>::infinity(), 1.0,
+            "emergenceReduction intervention: initial effect must be ≤ 1", "emergenceReduction");
     if (probAdditionalDeathSugarFeedingIntervs.size() <= instance) probAdditionalDeathSugarFeedingIntervs.resize(instance + 1);
     if (seekingDeathRateIntervs.size() <= instance) seekingDeathRateIntervs.resize(instance + 1);
     if (probDeathOvipositingIntervs.size() <= instance) probDeathOvipositingIntervs.resize(instance + 1);
 
     if (elt.getProbAdditionalDeathSugarFeeding().present())
-    {
-        const scnXml::ProbAdditionalDeathSugarFeeding &elt2 = elt.getProbAdditionalDeathSugarFeeding().get();
-        if (elt2.getInitial() < -1.0) throw util::xml_scenario_error("probAdditionalDeathSugarFeeding intervention: initial effect must be ≥ -1");
-        probAdditionalDeathSugarFeedingIntervs[instance].set(ctx.clock, elt2.getInitial(), elt2.getDecay(), "seekingDeathRateIncrease");
-    }
+        set_interv_decay(ctx.clock, probAdditionalDeathSugarFeedingIntervs, instance, elt.getProbAdditionalDeathSugarFeeding().get(),
+            -1.0, numeric_limits<double>::infinity(),
+            "probAdditionalDeathSugarFeeding intervention: initial effect must be ≥ -1", "seekingDeathRateIncrease");
     if (elt.getSeekingDeathRateIncrease().present())
-    {
-        const scnXml::SeekingDeathRateIncrease &elt2 = elt.getSeekingDeathRateIncrease().get();
-        if (elt2.getInitial() < -1.0) throw util::xml_scenario_error("seekingDeathRateIncrease intervention: initial effect must be ≥ -1");
-        seekingDeathRateIntervs[instance].set(ctx.clock, elt2.getInitial(), elt2.getDecay(), "seekingDeathRateIncrease");
-    }
+        set_interv_decay(ctx.clock, seekingDeathRateIntervs, instance, elt.getSeekingDeathRateIncrease().get(),
+            -1.0, numeric_limits<double>::infinity(),
+            "seekingDeathRateIncrease intervention: initial effect must be ≥ -1", "seekingDeathRateIncrease");
     if (elt.getProbDeathOvipositing().present())
-    {
-        const scnXml::ProbDeathOvipositing &elt2 = elt.getProbDeathOvipositing().get();
-        if (elt2.getInitial() < 0.0 || elt2.getInitial() > 1.0)
-            throw util::xml_scenario_error("probDeathOvipositing intrevention: initial effect must be in range [0,1]");
-        probDeathOvipositingIntervs[instance].set(ctx.clock, elt2.getInitial(), elt2.getDecay(), "probDeathOvipositing");
-    }
+        set_interv_decay(ctx.clock, probDeathOvipositingIntervs, instance, elt.getProbDeathOvipositing().get(),
+            0.0, 1.0, "probDeathOvipositing intrevention: initial effect must be in range [0,1]", "probDeathOvipositing");
 }
 void AnophelesModel::initVectorTrap(const scnXml::Description1 &desc, size_t instance)
 {
@@ -620,38 +620,13 @@ void AnophelesModel::changeEIRIntervention(const scnXml::NonVector &nonVectorDat
     // assert(nonVectorData.getEIRDaily().present()); // XML loading code should enforce this
     const scnXml::NonVector::EIRDailySequence &daily = nonVectorData.getEIRDaily();
 
-    // const scnXml::DailyValues &seasM = seasonality.getDailyValues().get();
-    // const scnXml::DailyValues::ValueSequence &daily = seasM.getValue();
-
     // The minimum EIR allowed in the array. The product of the average EIR and a constant.
     double minEIR = 0.01 * averageEIR(nonVectorData);
 
     if (daily.size() < static_cast<size_t>(sim::oneYear()))
         throw util::xml_scenario_error("entomology.anopheles.seasonality.dailyValues insufficient daily data for a year");
 
-    vector<int> nDays(ctx.clock.inSteps(sim::fromDays(daily.size() - 1)) + 1, 0);
-
-    interventionEIR.assign(nDays.size(), 0.0);
-
-    size_t required_days = static_cast<size_t>((ctx.clock.end_date - ctx.clock.start_date) + 1);
-
-    if (daily.size() < required_days)
-        throw util::xml_scenario_error("Insufficient intervention phase EIR values provided");
-
-    for (SimTime mpcday = sim::zero(), endDay = sim::fromDays(daily.size()); mpcday < endDay; mpcday = mpcday + sim::oneDay())
-    {
-        double EIRdaily = std::max(static_cast<double>(daily[mpcday]), minEIR);
-
-        // istep is the time period to which the day is assigned.
-        size_t istep = ctx.clock.inSteps(mpcday);
-        nDays[istep]++;
-        interventionEIR[istep] += EIRdaily;
-    }
-    // divide by number of records assigned to each interval (usually one per day)
-    for (size_t i = 0; i < interventionEIR.size(); ++i)
-    {
-        interventionEIR[i] *= ctx.clock.one_TS() / static_cast<double>(nDays[i]);
-    }
+    fill_intervention_eir(ctx, interventionEIR, daily, minEIR, false);
 }
 
 }

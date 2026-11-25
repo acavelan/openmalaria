@@ -46,9 +46,11 @@
 #include "sim.h"
 #include "util/UnitParse.h"
 #include "util/errors.h"
+#include "xml/latentP.h"
 #include "schema/scenario.h"
 
 #include <cassert>
+#include <algorithm>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -134,19 +136,7 @@ void WHInterface::initFalciparum( RunContext& ctx, const OM::Parameters& paramet
     Pathogenesis::PathogenesisModel::init( ctx, parameters, model.getClinical(), false );
     
     // Default value to use if no <parameters> element is present in XML.
-    SimTime latentP = UnitParse::readShortDuration(ctx.clock, "15d", UnitParse::DAYS);
-    try
-    {
-        if (model.getParameters().present())
-        {
-            latentP = UnitParse::readShortDuration(ctx.clock, 
-                model.getParameters().get().getLatentp(), UnitParse::NONE);
-        }
-    }
-    catch( const util::format_error& e )
-    {
-            throw util::xml_scenario_error( string("model/parameters/latentP: ").append(e.message()) );
-    }
+    SimTime latentP = read_latentP( ctx.clock, model );
 
     Infection::init( latentP );
 }
@@ -205,15 +195,6 @@ struct LocusSet{
     Genotypes& st;
 };
 
-}
-
-// utility function: does a vector contain an element?
-template<class T>
-bool contains(const vector<T>& vec, const T& x){
-    for( auto it = vec.begin(), end = vec.end(); it != end; ++it ){
-        if( *it == x ) return true;
-    }
-    return false;
 }
 
 void Genotypes::init( Genotypes& state, const scnXml::Scenario& scenario ){
@@ -312,7 +293,7 @@ void Genotypes::init( Genotypes& state, const scnXml::Scenario& scenario ){
         for( size_t i = 0; loci.size() < longest.size(); ++i ){
             assert( i < allele_codes.size() );
             const string& locus = allele_codes[i].first;
-            if( !contains(loci, locus) ){
+            if( std::find(loci.begin(), loci.end(), locus) == loci.end() ){
                 loci.push_back( locus );
             }
         }
@@ -490,6 +471,22 @@ void diagnostics::init( RunContext& ctx, const Parameters& parameters, const scn
     }
 }
 }
+}
+
+namespace OM {
+
+SimTime read_latentP( const SimClock& clock, const scnXml::Model& model ){
+    SimTime latentP = UnitParse::readShortDuration(clock, "15d", UnitParse::DAYS);
+    try{
+        if( model.getParameters().present() )
+            latentP = UnitParse::readShortDuration(clock,
+                model.getParameters().get().getLatentp(), UnitParse::NONE);
+    }catch( const util::format_error& e ){
+        throw util::xml_scenario_error( string("model/parameters/latentP: ").append(e.message()) );
+    }
+    return latentP;
+}
+
 }
 
 // ———  SimClock::init: scenario-level reading  ———

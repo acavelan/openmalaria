@@ -204,35 +204,21 @@ unique_ptr<DecayFunction> DecayFunction::makeObject(
         const scnXml::DecayFunction::DecaySequence& decaySequence = elt.getDecay();
         if(decaySequence.size() != 1)
             throw util::xml_scenario_error("The Emax function expects exactly one user function, but " + to_string(decaySequence.size()) +"  were given.");
-        if(!elt.getEmax().present())
-            throw util::xml_scenario_error("Emax function: the Emax parameter is not declared");
-        if(!elt.getIC50().present())
-            throw util::xml_scenario_error("Emax function: the IC50 parameter is not declared");
-        if(!elt.getSlope().present())
-            throw util::xml_scenario_error("Emax function: the Slope parameter is not declared");
-        if(!elt.getInitialConcentration().present())
-            throw util::xml_scenario_error("Emax function: the InitialConcentration parameter is not declared");
+        auto need = [](bool have, const char* msg){ if(!have) throw util::xml_scenario_error(msg); };
+        need(elt.getEmax().present(), "Emax function: the Emax parameter is not declared");
+        need(elt.getIC50().present(), "Emax function: the IC50 parameter is not declared");
+        need(elt.getSlope().present(), "Emax function: the Slope parameter is not declared");
+        need(elt.getInitialConcentration().present(), "Emax function: the InitialConcentration parameter is not declared");
         o->f1 = makeObject(clock, decaySequence[0], "Emax::f");
         o->Emax = elt.getEmax().get();
         const double rawIC50 = elt.getIC50().get();
         o->slope = elt.getSlope().get();
         o->initialConcentration = elt.getInitialConcentration().get();
-        if (o->Emax < 0.0 || o->Emax > 1.0) {
-            throw util::xml_scenario_error(
-                "Emax function: Emax must be in [0, 1], got " + std::to_string(o->Emax));
-        }
-        if (rawIC50 <= 0.0) {
-            throw util::xml_scenario_error(
-                "Emax function: IC50 must be > 0, got " + std::to_string(rawIC50));
-        }
-        if (o->slope <= 0.0) {
-            throw util::xml_scenario_error(
-                "Emax function: Slope must be > 0, got " + std::to_string(o->slope));
-        }
-        if (o->initialConcentration < 0.0) {
-            throw util::xml_scenario_error(
-                "Emax function: InitialConcentration must be >= 0, got " + std::to_string(o->initialConcentration));
-        }
+        auto chk = [](bool bad, const string& msg){ if(bad) throw util::xml_scenario_error(msg); };
+        chk(o->Emax < 0.0 || o->Emax > 1.0, "Emax function: Emax must be in [0, 1], got " + std::to_string(o->Emax));
+        chk(rawIC50 <= 0.0, "Emax function: IC50 must be > 0, got " + std::to_string(rawIC50));
+        chk(o->slope <= 0.0, "Emax function: Slope must be > 0, got " + std::to_string(o->slope));
+        chk(o->initialConcentration < 0.0, "Emax function: InitialConcentration must be >= 0, got " + std::to_string(o->initialConcentration));
         // Store IC50^slope once since compute() evaluates this repeatedly.
         o->IC50 = std::pow(rawIC50, o->slope);
         break;
@@ -503,21 +489,11 @@ namespace OM { namespace util {
             throw xml_scenario_error( "Penny model option used without PENNY_WITHIN_HOST_MODEL option" );
         
         if( clock.one_TS() == sim::fromDays(5) ){
-            // 5 day TS is okay; some tests specific to this TS:
-            bitset<NUM_OPTIONS> require1DayTS;
-            require1DayTS
-                .set( CLINICAL_EVENT_SCHEDULER );
-            
-            for(size_t i = 0; i < NUM_OPTIONS; ++i) {
-                if (options [i] && require1DayTS[i]) {
-                    ostringstream msg;
-                    msg << "Model option " << codeMap.toString(OptionCodes(i)) << " is only compatible with a 1-day time step.";
-                    throw xml_scenario_error (msg.str());
-                }
-            }
-        }else if( clock.one_TS() == sim::fromDays(1) ){
-            // 1 day TS is also okay
-        }else{
+            // 5 day TS is okay; the only option with a 1-day-TS requirement:
+            if (options[CLINICAL_EVENT_SCHEDULER])
+                throw xml_scenario_error( "Model option CLINICAL_EVENT_SCHEDULER is only compatible with a 1-day time step." );
+        }else if( clock.one_TS() != sim::fromDays(1) ){
+            // 1 day TS is also okay; anything else is not supported
             ostringstream msg;
             msg << "Time step set to " << clock.one_TS() << " days but only 1 and 5 days are supported.";
             throw xml_scenario_error (msg.str());
