@@ -71,31 +71,19 @@ void PerHost::update(Human& human) { iv_update(*ctx, human); }
 // (easily large enough for conceivable Weibull params that the value is 0.0 when
 // rounded to a double. Performance-wise it's perhaps slightly slower than using
 // an if() when interventions aren't present.
-// parity: c — history-ordered iv-record FP product — multiply in vector order, not reassociated
+// parity: c — IvState.h folds preserve history order and *= order.
 double PerHost::entoAvailabilityHetVecItv(size_t species) const {
-    double alpha_i = anoph_ento_avail()[species];
-    for (const IvRecord& r : cols->iv[row])
-        alpha_i *= iv_rel_attractiveness(*ctx, r, species);
-    return alpha_i;
+    return iv_rel_attractiveness(*ctx, cols->iv[row], anoph_ento_avail()[species], species);
 }
 double PerHost::probMosqBiting(size_t species) const {
-    double P_B_i = anoph_prob_biting()[species];
-    for (const IvRecord& r : cols->iv[row])
-        P_B_i *= iv_preprandial_survival(*ctx, r, species);
-    return P_B_i;
+    return iv_preprandial_survival(*ctx, cols->iv[row], anoph_prob_biting()[species], species);
 }
 double PerHost::probMosqResting(size_t species) const {
-    double pRest = anoph_prob_resting()[species];
-    for (const IvRecord& r : cols->iv[row])
-        pRest *= iv_postprandial_survival(*ctx, r, species);
-    return pRest;
+    return iv_postprandial_survival(*ctx, cols->iv[row], anoph_prob_resting()[species], species);
 }
 
 double PerHost::relMosqFecundity(size_t species) const {
-    double relFecundity = 1.0;
-    for (const IvRecord& r : cols->iv[row])
-        relFecundity *= iv_rel_fecundity(*ctx, r, species);
-    return relFecundity;
+    return iv_rel_fecundity(*ctx, cols->iv[row], 1.0, species);
 }
 
 bool PerHost::hasActiveInterv(Component::Type type) const {

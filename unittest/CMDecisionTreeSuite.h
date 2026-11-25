@@ -49,8 +49,8 @@ class CMDecisionTreeSuite : public CxxTest::TestSuite {
         human.reset(UnittestUtil::createHuman(UnittestUtil::clock().nowOrTs0()).release());
 
         ETS_ASSERT(human.get() != 0);
-        UnittestUtil::setHumanWH(*human, UnitTest::makeWHMock(UnittestUtil::ctx()));
-        whm = static_cast<WHMockState*>(UnittestUtil::ctx().whMock->state);
+        wh = UnittestUtil::setHumanWH(*human, UnitTest::makeWHMock(UnittestUtil::ctx()));
+        whm = &UnitTest::whMockState(*wh);
         ETS_ASSERT(whm != 0);
 
         ageYears = 21; // any real age will do for most tests
@@ -61,6 +61,7 @@ class CMDecisionTreeSuite : public CxxTest::TestSuite {
     }
     void tearDown() {
         human.reset();
+        wh = nullptr;
         whm = nullptr;
         UnittestUtil::ctx().drugs.clear();
         UnittestUtil::ctx().treatments.clear();
@@ -382,6 +383,16 @@ class CMDecisionTreeSuite : public CxxTest::TestSuite {
         TS_ASSERT_EQUALS(out.screened, false); // golden (pre-rewrite quirk)
     }
 
+    void testMockStateIsPerInstance() {
+        auto second = UnitTest::makeWHMock(UnittestUtil::ctx());
+        WHMockState& secondState = UnitTest::whMockState(*second);
+
+        human->withinHostModel->treatment(*human, TreatmentId(0));
+
+        TS_ASSERT_EQUALS(whm->nTreatments, 1);
+        TS_ASSERT_EQUALS(secondState.nTreatments, 0);
+    }
+
     void testDosing() {
         scnXml::DTTreatPKPD treat1("sched1", "dosage1");
         scnXml::DecisionTree dt1;
@@ -404,6 +415,7 @@ class CMDecisionTreeSuite : public CxxTest::TestSuite {
 
   private:
     unique_ptr<Human> human;
+    WHInterface* wh;
     WHMockState* whm;
     double ageYears;
     Episode::State pgState;

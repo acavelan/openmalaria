@@ -30,58 +30,28 @@ namespace OpenMalaria {
 namespace UnitTest {
 
 namespace {
-WHMockState* state = nullptr;
-
-void treatment(void*) { state->nTreatments += 1; }
-
-bool treatSimple(void*, SimTime timeLiver, SimTime timeBlood) {
-    state->nTreatments += 1;
-    state->lastTimeLiver = timeLiver;
-    state->lastTimeBlood = timeBlood;
-    return timeBlood != zero();
-}
-
-void treatPkPd(void*, RunContext& ctx, size_t schedule, size_t dosages, double age, double delay_d) {
-    state->nTreatments += 1;
-    state->pkpd.prescribe(ctx, schedule, dosages, age, numeric_limits<double>::quiet_NaN(), delay_d);
-}
-
-double getTotalDensity(const void*) { return state->totalDensity; }
-
-bool diagnosticResult(const void*, LocalRng& rng, const Diagnostic& diagnostic) {
-    return diagnostic.isPositive(rng, state->totalDensity, numeric_limits<double>::quiet_NaN());
-}
-
-RunContext::WHMockHooks hooks = {nullptr, &treatment, &treatSimple, &treatPkPd, &getTotalDensity, &diagnosticResult};
-
-/** Within-host model for unit tests (see WHMockState): treatment/treatSimple/
- * treatPkPd/density/diagnostic run through the hook table on RunContext
- * (installed by makeWHMock); everything else behaves exactly as the old
- * Kind::Mock dispatch branch did — throws unimplemented_exception. No
- * infections, no draws, no state beyond the hook table. */
+/** Within-host model for unit tests; unneeded operations throw just as the
+ * old Kind::Mock dispatch branch did. Each instance owns its test state. */
 class WHMock final : public WHInterface {
   public:
     explicit WHMock(RunContext& ctx) : WHInterface(ctx, Kind::Mock) {}
 
-    void treatment(Human&, TreatmentId) override {
-        const RunContext::WHMockHooks* h = ctx.whMock;
-        h->treatment(h->state);
-    }
+    WHMockState state;
+
+    void treatment(Human&, TreatmentId) override { state.nTreatments += 1; }
     bool treatSimple(Human&, SimTime timeLiver, SimTime timeBlood) override {
-        const RunContext::WHMockHooks* h = ctx.whMock;
-        return h->treatSimple(h->state, timeLiver, timeBlood);
+        state.nTreatments += 1;
+        state.lastTimeLiver = timeLiver;
+        state.lastTimeBlood = timeBlood;
+        return timeBlood != zero();
     }
     void treatPkPd(size_t schedule, size_t dosages, double age, double delay_d) override {
-        const RunContext::WHMockHooks* h = ctx.whMock;
-        h->treatPkPd(h->state, ctx, schedule, dosages, age, delay_d);
+        state.nTreatments += 1;
+        state.pkpd.prescribe(ctx, schedule, dosages, age, numeric_limits<double>::quiet_NaN(), delay_d);
     }
-    double getTotalDensity() const override {
-        const RunContext::WHMockHooks* h = ctx.whMock;
-        return h->getTotalDensity(h->state);
-    }
+    double getTotalDensity() const override { return state.totalDensity; }
     bool diagnosticResult(LocalRng& rng, const Diagnostic& diagnostic) const override {
-        const RunContext::WHMockHooks* h = ctx.whMock;
-        return h->diagnosticResult(h->state, rng, diagnostic);
+        return diagnostic.isPositive(rng, state.totalDensity, numeric_limits<double>::quiet_NaN());
     }
 
     double probTransmissionToMosquito(vector<double>&, vector<double>&) const override {
@@ -102,13 +72,9 @@ class WHMock final : public WHInterface {
 };
 }
 
-unique_ptr<WHInterface> makeWHMock(RunContext& ctx) {
-    delete state;
-    state = new WHMockState();
-    hooks.state = state;
-    ctx.whMock = &hooks;
-    return unique_ptr<WHInterface>(new WHMock(ctx));
-}
+unique_ptr<WHInterface> makeWHMock(RunContext& ctx) { return std::make_unique<WHMock>(ctx); }
+
+WHMockState& whMockState(WHInterface& mock) { return static_cast<WHMock&>(mock).state; }
 
 }
 }

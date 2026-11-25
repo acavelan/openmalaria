@@ -217,8 +217,7 @@ class VivaxBrood {
  *                                        the Dummy/Empirical/Molineaux/Penny
  *                                        infection variants
  *   WHDescriptive  DescriptiveWithinHost.cpp  the original descriptive model
- *   WHMock         unittest/WHMock.h    unit-test backend (installs the hook
- *                                        table on RunContext::WHMockHooks)
+ *   WHMock         unittest/WHMock.cpp  unit-test backend owning its state
  * WHCommon and WHDescriptive share the P. falciparum immunity machinery in
  * the intermediate WHFalciparum layer (WHFalciparum.cpp).
  *

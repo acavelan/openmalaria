@@ -44,11 +44,6 @@
 
 namespace OpenMalaria {
 
-void checkpoint(Archive& a, InfectionIncidenceModel& m) {
-    a.value(m.m_pInfected);
-    a.value(m.m_cumulativeEIRa);
-}
-
 void checkpoint(Archive& a, VivaxBrood& b) {
     a.vector(b.releaseDates);
     a.value(b.bloodStageClearDate);
@@ -392,7 +387,8 @@ void ckHuman(Archive& a, RunContext& ctx, Human& h) {
     a.vector(c.anoph_prob_resting[r]);
     a.value(c.rel_avail_het[r]);
     a.value(c.outside_trans[r]);
-    checkpoint(a, *h.infIncidence);
+    a.value(h.p_infected);
+    a.value(h.cumulative_eir_a);
     ckWH(a, ctx, *h.withinHostModel, h.rng());
     checkpoint(a, *h.clinicalModel);
     // parity: order — this human's RNG last: everything above may create
