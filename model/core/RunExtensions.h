@@ -88,7 +88,7 @@ struct RunExtensions {
     /// Continuous interventions, sorted by deployment age (weakly increasing).
     std::vector<interventions::ContinuousHumanDeployment> continuous;
     /// All timed interventions, sorted (time weakly increasing), sentinel last.
-    std::vector<std::unique_ptr<interventions::TimedDeployment>> timed;
+    std::vector<interventions::TimedDeployment> timed;
     uint32_t nextTimed = 0;
     /// Imported infections (not really an intervention; schema association).
     OM::Host::ImportedInfections importedInfections;

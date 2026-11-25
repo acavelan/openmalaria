@@ -225,7 +225,7 @@ inline const DrawSpec* schedule(size_t& nOut) {
 }
 
 /// Deterministic gsl_cdf_ugaussian_Pinv spot values (used at random.h:192 and
-/// interventions/Deployments.h:271). Draw-independent: no RNG state consumed.
+/// interventions/Deployments.h:195). Draw-independent: no RNG state consumed.
 inline const double* pinv_spots(size_t& nOut) {
     static const double U[] = {
         1e-6, 1e-4, 0.001, 0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99, 0.999, 0.999999
