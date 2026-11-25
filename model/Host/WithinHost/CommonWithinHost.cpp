@@ -21,7 +21,6 @@
  */
 
 #include "RunContext.h"
-#include "util/checkpoint.h"
 #include "Host/Human.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "Host/WithinHost/Diagnostic.h"
@@ -361,23 +360,5 @@ bool WHInterface::summarize_common( Host::Human& human )const{
 }
 
 
-void WHInterface::checkpoint_common (istream& stream) {
-    checkpoint_falciparum (stream);
-    hetMassMultiplier & stream;
-    pkpdModel.checkpoint(ctx, stream);
-    for(int i = 0; i < numInfs; ++i) {
-        infections.push_back (ctx.checkpointedInfection (ctx, stream));
-    }
-    assert( numInfs == static_cast<int>(infections.size()) );
-}
-
-void WHInterface::checkpoint_common (ostream& stream) {
-    checkpoint_falciparum (stream);
-    hetMassMultiplier & stream;
-    pkpdModel.checkpoint(stream);
-    for(auto inf = infections.begin(); inf != infections.end(); ++inf) {
-        (**inf) & stream;
-    }
-}
 }
 }

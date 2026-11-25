@@ -23,7 +23,6 @@
 // LSTMDrug Conversion kind (was LSTMDrugConversion; hierarchy collapsed phase 4b):
 // two 1-compartment models with conversion (parent typeData, metaboliteData).
 #include "PkPd/LSTMDrug.h"
-#include "util/checkpoint.h"
 #include "PkPd/LSTMDrugType.h"
 #include "Host/WithinHost/Infection/Infection.h"
 #include "util/errors.h"
@@ -280,18 +279,6 @@ void LSTMDrug::updateConcentration_conversion( double body_mass ){
         qtyG = qtyP = qtyM = 0.0;
     }
 }
-
-template<class S> void LSTMDrug::checkpoint_conversion(S& stream){
-    qtyG & stream;
-    qtyP & stream;
-    qtyM & stream;
-    nka & stream;
-    nkP_sample & stream;
-    nconv_sample & stream;
-    nkM_sample & stream;
-}
-template void LSTMDrug::checkpoint_conversion(std::ostream&);
-template void LSTMDrug::checkpoint_conversion(std::istream&);
 
 }
 }

@@ -21,7 +21,6 @@
  */
 
 #include "RunContext.h"
-#include "util/checkpoint.h"
 #include "Host/NeonatalMortality.h"
 #include "Population.h"
 #include "Host/WithinHost/WHInterface.h"
@@ -61,15 +60,6 @@ SimTime ageLb = sim::fromYearsI(20), ageUb = sim::fromYearsI(25);
 const WithinHost::Diagnostic* neonatalDiagnostic = 0;
 
 
-
-void NeonatalMortality::staticCheckpoint (istream& stream) {
-    riskFromMaternalInfection & stream;
-    prevByGestationalAge & stream;
-}
-void NeonatalMortality::staticCheckpoint (ostream& stream) {
-    riskFromMaternalInfection & stream;
-    prevByGestationalAge & stream;
-}
 
 bool NeonatalMortality::eventNeonatalMortality(LocalRng& rng) {
   // parity: order — local RNG stream: draw call order fixes stream state

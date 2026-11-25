@@ -42,16 +42,14 @@ namespace Continuous {
      *  (1) frequency of and which data is output should be controllable
      *  (2) format should be compatible with LiveGraph and (German) Excel.
      */
-	/** Load XML description of options. If resuming from a checkpoint,
-	 * append to output; if not, make sure it's not there (on boinc we
-	 * assume we shouldn't overwrite existing files for security reasons).
-	 * 
-	 * Callbacks should be registered before init() is called. */
-	void init (RunContext& ctx, const scnXml::Monitoring& monitoring, bool isCheckpoint);
+	/** Load XML description of options and open the continuous-output file.
+	 *
+	 * Callbacks should be registered before init() is called.
+	 * @param isCheckpoint  Resuming: reopen the existing output file without
+	 * truncating or rewriting the header (the checkpoint read seeks it). */
+	void init (RunContext& ctx, const scnXml::Monitoring& monitoring,
+	    bool isCheckpoint=false);
 
-    void checkpoint(RunContext& ctx, ostream& stream);
-    void checkpoint(RunContext& ctx, istream& stream);
-        
 	/** Register a callback function which produces output.
 	 *
 	 * This function will be called to generate output, if enabled in XML.

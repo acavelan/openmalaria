@@ -121,11 +121,6 @@ void initMainSim(RunContext& ctx);
 void concludeSurvey(RunContext& ctx);
 void writeSurveyData(RunContext& ctx);
 
-template <typename Stream>
-void checkpoint(RunContext& ctx, Stream& stream);
-extern template void checkpoint<std::ostream>(RunContext&, std::ostream& stream);
-extern template void checkpoint<std::istream>(RunContext&, std::istream& stream);
-
 // ----- direct recording API -----
 
 void recordStat(RunContext& ctx, Measure measure, double val, size_t species = 0, size_t genotype = 0);

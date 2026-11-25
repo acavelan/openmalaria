@@ -101,10 +101,6 @@ public:
      */
     void update(RunContext& ctx, const Host::Human& human, Episode::State newState);
     
-    /// Checkpointing
-    void operator& (istream& stream);
-    void operator& (ostream& stream);	///< ditto
-    
     /// Time of event, potentially never
     SimTime time = sim::never();
     /// Survey during which the event occured

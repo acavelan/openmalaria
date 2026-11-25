@@ -154,10 +154,6 @@ format_error::format_error(const string& msg) :
     xml_scenario_error(msg)
 {}
 
-checkpoint_error::checkpoint_error(const string& msg) :
-    traced_exception(msg, 0, 0, Error::Checkpoint)
-{}
-
 cmd_exception::cmd_exception(const string& msg, int code) :
     base_exception(msg, code)
 {}

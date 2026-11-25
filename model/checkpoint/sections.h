@@ -20,23 +20,27 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#ifndef Hmod_GeneralCheckpoint_H
-#define Hmod_GeneralCheckpoint_H
+#ifndef Hmod_checkpoint_sections
+#define Hmod_checkpoint_sections
 
-#include "Clock.h"
-#include "Population.h"
-#include "Transmission/transmission.h"
+// Module-private section functions (one per wire section; the Archive
+// carries the direction — write each field exactly once, in this order:
+// see checkpoint.cpp for the full table of contents).
 
-namespace OM
-{
-    class RunContext;
-    /** @brief checkpointing functions
-    *
-    * readCheckpoint/writeCheckpoint prepare to read/write the file,
-    * and read/write read and write the actual data. */
-    void writeCheckpoint(RunContext& ctx, const bool startedFromCheckpoint, const string &checkpointFileName, SimTime &endTime, SimTime &estEndTime, Population &population, Transmission::TransmissionModel &transmission);
+#include "Stream.h"
 
-    void readCheckpoint(RunContext& ctx, const string &checkpointFileName, SimTime &endTime, SimTime &estEndTime, Population &population, Transmission::TransmissionModel &transmission);
-}
+namespace OM {
+class RunContext;
+class Population;
+namespace Transmission { class TransmissionModel; }
 
+namespace checkpoint {
+
+void ckStatics (Archive&, RunContext&);
+void ckMonitoring (Archive&, RunContext&);
+void ckTransmission (Archive&, RunContext&, Transmission::TransmissionModel&);
+void ckHumans (Archive&, RunContext&, Population&);
+
+} // namespace checkpoint
+} // namespace OM
 #endif

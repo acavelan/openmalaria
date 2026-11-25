@@ -25,7 +25,6 @@
 
 #include "Clock.h"
 #include "util/errors.h"
-#include "util/checkpoint_containers.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846

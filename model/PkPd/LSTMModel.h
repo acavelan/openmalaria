@@ -23,6 +23,8 @@
 #ifndef Hmod_LSTMPkPdModel
 #define Hmod_LSTMPkPdModel
 
+#include <list>
+#include <memory>
 #include "PkPd/LSTMDrug.h"
 
 class UnittestUtil;
@@ -49,14 +51,6 @@ struct MedicateData {
     
     /// Set from an XML element (defined in model/xml/pharmacology.cpp).
     void load( DrugRegistry& drugs, const scnXml::PKPDMedication& med );
-    
-    /// Checkpointing
-    template<class S>
-    void operator& (S& stream) {
-        drug & stream;
-        qty & stream;
-        time & stream;
-    }
     
 public:
     
@@ -87,10 +81,6 @@ class LSTMModel {
 public:
     /// Static initialisation
     static void init ( RunContext& ctx, const scnXml::Scenario& scenario );
-    
-    /// Checkpointing (called by the owning within-host model)
-    void checkpoint (RunContext& ctx, istream& stream);
-    void checkpoint (ostream& stream);
     
     /** Prescribe a patient a course of drugs, via the Pk/Pd model
      * 

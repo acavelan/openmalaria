@@ -40,7 +40,7 @@
 
 #include "util/mod.h"
 
-// Old sim.h included checkpoint.h via Global.h before SimTime was needed;
+// Old sim.h included its header chain before SimTime was needed;
 // keep the whole-tree forward declarations the old sim.h provided:
 namespace scnXml {
     class Scenario;

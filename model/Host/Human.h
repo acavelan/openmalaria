@@ -28,7 +28,6 @@
 #include "Transmission/PerHost.h"
 #include "InfectionIncidenceModel.h"
 #include "interventions/HumanComponents.h"
-#include "util/checkpoint_containers.h"
 #include <map>
 
 namespace OM {
@@ -106,10 +105,8 @@ public:
     void updateCohortSet();
 
     /** Checkpoint (read) */
-    void checkpoint(istream &stream);
 
     /** Checkpoint (write) */
-    void checkpoint(ostream &stream);
 
     /** Contains per-species vector data (VectorModel only). */
     Transmission::PerHost perHostTransmission;

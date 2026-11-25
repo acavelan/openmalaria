@@ -177,7 +177,7 @@ def runScenario(options,omOptions,name):
         print("\033[0;32m  "+(" ".join(cmd))+"\033[0;00m")
         return 0
     
-    # Run from a temporary directory, so checkpoint files won't conflict
+    # Run from a temporary directory, so output files won't conflict
     simDir = tempfile.mkdtemp(prefix=tmpprefix+'-', dir=testBuildDir)
     outputFile=os.path.join(simDir,"output.txt")
     outputGzFile=os.path.join(simDir,"output.txt.gz")
@@ -185,7 +185,6 @@ def runScenario(options,omOptions,name):
     outputBinGzFile=os.path.join(simDir,"output.bin.gz")
     ctsoutFile=os.path.join(simDir,"ctsout.txt")
     ctsoutGzFile=os.path.join(simDir,"ctsout.txt.gz")
-    checkFile=os.path.join(simDir,"checkpoint")
     
     # Link or copy required files. The schema file needs to be available in the
     # working directory, while other files are found via the resource path.
@@ -196,59 +195,43 @@ def runScenario(options,omOptions,name):
         print(time.strftime("\033[0;33m%a, %d %b %Y %H:%M:%S")+"\t\033[1;33m%s" % scenarioSrc)
     
     startTime=time.time()
-    lastCheckpoint=None
-    # While no output.txt file and cmd exits successfully:
-    while (not os.path.isfile(outputFile)):
-        if options.logging:
-            print("\033[0;32m  "+(" ".join(cmd))+"\033[0;00m")
-        ret=subprocess.call (cmd, shell=False, cwd=simDir)
-        if ret != 0:
-            print("\033[1;31mNon-zero exit status: " + str(ret))
-            break
-        
-        # check for output.txt.gz in place of output.txt and uncompress:
-        if (os.path.isfile(outputGzFile)) and (not os.path.isfile(outputFile)):
-            f_in = gzip.open(outputGzFile, 'rb')
-            f_out = open(outputFile, 'wb')
-            f_out.writelines(f_in)
-            f_out.close()
-            f_in.close()
-            os.remove(outputGzFile)
+    if options.logging:
+        print("\033[0;32m  "+(" ".join(cmd))+"\033[0;00m")
+    ret=subprocess.call (cmd, shell=False, cwd=simDir)
+    if ret != 0:
+        print("\033[1;31mNon-zero exit status: " + str(ret))
 
-        if options.binary and not os.path.isfile(outputFile):
-            for binaryFile in (outputBinFile, outputBinGzFile):
-                if os.path.isfile(binaryFile):
-                    binaryToText(binaryFile, outputFile)
-                    os.remove(binaryFile)
-                    break
-        
-        # check for ctsout.txt.gz in place of ctsout.txt and uncompress:
-        if (os.path.isfile(ctsoutGzFile)) and (not os.path.isfile(ctsoutFile)):
-            f_in = gzip.open(ctsoutGzFile, 'rb')
-            f_out = open(ctsoutFile, 'wb')
-            f_out.writelines(f_in)
-            f_out.close()
-            f_in.close()
-            os.remove(ctsoutGzFile)
-        
-        # if the checkpoint file hasn't been updated, stop
-        if not os.path.isfile(checkFile):
-            break
+    # check for output.txt.gz in place of output.txt and uncompress:
+    if (os.path.isfile(outputGzFile)) and (not os.path.isfile(outputFile)):
+        f_in = gzip.open(outputGzFile, 'rb')
+        f_out = open(outputFile, 'wb')
+        f_out.writelines(f_in)
+        f_out.close()
+        f_in.close()
+        os.remove(outputGzFile)
 
-        with open(checkFile) as f:
-            checkpoint=f.read().strip()
+    if options.binary and not os.path.isfile(outputFile):
+        for binaryFile in (outputBinFile, outputBinGzFile):
+            if os.path.isfile(binaryFile):
+                binaryToText(binaryFile, outputFile)
+                os.remove(binaryFile)
+                break
 
-        if checkpoint == lastCheckpoint:
-            break
-
-        lastCheckpoint=checkpoint
+    # check for ctsout.txt.gz in place of ctsout.txt and uncompress:
+    if (os.path.isfile(ctsoutGzFile)) and (not os.path.isfile(ctsoutFile)):
+        f_in = gzip.open(ctsoutGzFile, 'rb')
+        f_out = open(ctsoutFile, 'wb')
+        f_out.writelines(f_in)
+        f_out.close()
+        f_in.close()
+        os.remove(ctsoutGzFile)
     
     if ret == 0 and options.logging:
         print("\033[0;33mDone in " + str(time.time()-startTime) + " seconds")
     
     if options.cleanup:
         os.remove(scenario_xsd)
-        for f in (glob.glob(os.path.join(simDir,"checkpoint*")) + glob.glob(os.path.join(simDir,"seed?")) + [os.path.join(simDir,"init_data.xml"),os.path.join(simDir,"scenario.sum")]):
+        for f in (glob.glob(os.path.join(simDir,"seed?")) + [os.path.join(simDir,"init_data.xml"),os.path.join(simDir,"scenario.sum")]):
             if os.path.isfile(f):
                 os.remove(f)
     
@@ -343,7 +326,7 @@ You can pass options to openMalaria by first specifying -- (to end options passe
     parser.add_option("-n","--dry-run", action="store_false", dest="run", default=True,
 		    help="Don't actually run openMalaria, just output the commandline.")
     parser.add_option("-c","--dont-cleanup", action="store_false", dest="cleanup", default=True,
-		    help="Don't clean up expected files from the temparary dir (checkpoint files, schema, etc.)")
+		    help="Don't clean up expected files from the temparary dir (schema, etc.)")
     parser.add_option("-C","--no-compare", action="store_false", dest="compare", default=True,
                       help="Don't compare output after running; instead just copy outputs to test/outputXX.txt and test/ctsoutXX.txt")
     parser.add_option("-b","--binary", action="store_true", default=False,

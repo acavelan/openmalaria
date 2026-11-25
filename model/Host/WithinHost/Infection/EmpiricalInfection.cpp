@@ -21,7 +21,6 @@
  */
 
 #include "Host/WithinHost/Infection/Infection.h"
-#include "util/checkpoint.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -71,14 +70,10 @@ static double sampleSubPatentValue(LocalRng& rng, double mu, double sigma, doubl
 Infection* createEmpiricalInfection (RunContext& ctx, LocalRng& rng, uint32_t protID, int origin) {
     return infection_new (ctx, rng, protID, origin, Infection::Kind::Empirical);
 }
-Infection* checkpointedEmpiricalInfection (RunContext& ctx, istream& stream) {
-    return infection_new_checkpointed (ctx, stream, Infection::Kind::Empirical);
-}
 
 
 void infection_init_empirical(RunContext& ctx){
     ctx.createInfection = &createEmpiricalInfection;
-    ctx.checkpointedInfection = &checkpointedEmpiricalInfection;
     
   // alpha1 corresponds to 1 day before first patent, alpha2 2 days before first patent etc.
   _alpha1=0.2647;
@@ -255,19 +250,5 @@ static double getInflatedDensity(LocalRng& rng, double nonInflatedDensity){
 }
 
 // -----  checkpointing  -----
-
-void read_empirical (Infection& inf, istream& stream) {
-    inf.empirical = std::make_unique<Infection::EmpiricalData>();
-    inf.empirical->_laggedLogDensities[0] & stream;
-    inf.empirical->_laggedLogDensities[1] & stream;
-    inf.empirical->_laggedLogDensities[2] & stream;
-    inf.empirical->_patentGrowthRateMultiplier & stream;
-}
-void checkpoint_empirical (Infection& inf, ostream& stream) {
-    inf.empirical->_laggedLogDensities[0] & stream;
-    inf.empirical->_laggedLogDensities[1] & stream;
-    inf.empirical->_laggedLogDensities[2] & stream;
-    inf.empirical->_patentGrowthRateMultiplier & stream;
-}
 
 } }

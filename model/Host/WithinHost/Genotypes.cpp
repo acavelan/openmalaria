@@ -21,7 +21,6 @@
  */
 
 #include "Host/WithinHost/Genotypes.h"
-#include "util/checkpoint.h"
 #include "util/random.h"
 #include "util/errors.h"
 #include "util/vectors.h"
@@ -76,7 +75,7 @@ uint32_t Genotypes::sampleGenotype( LocalRng& rng, vector<double>& genotype_weig
         assert( it != cum_initial_freqs.end() );
         return it->second;
     }else{
-        assert( state.current_mode == SAMPLE_TRACKING );
+        assert( current_mode == SAMPLE_TRACKING );
         assert( genotype_weights.size() == N_genotypes );
         double weight_sum = util::vectors::sum( genotype_weights );
         assert( weight_sum >= 0.0 && weight_sum < 1e5 );        // possible loss of precision or other error
@@ -102,19 +101,6 @@ double Genotypes::initialFreq( size_t genotype ) const {
 
 
 // ———  checkpointing  ———
-
-void Genotypes::staticCheckpoint( Genotypes& state, ostream& stream ){
-    int t = state.current_mode;
-    t & stream;
-}
-void Genotypes::staticCheckpoint( Genotypes& state, istream& stream ){
-    int t;
-    t & stream;
-    state.current_mode = static_cast<SampleMode>(t);
-    assert( state.current_mode == SAMPLE_FIRST ||
-        state.current_mode == SAMPLE_INITIAL ||
-        state.current_mode == SAMPLE_TRACKING );
-}
 
 }
 }

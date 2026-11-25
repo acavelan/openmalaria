@@ -72,14 +72,14 @@ namespace OM { namespace util {
         Assertion,
         /// any error from Code Synthesis's XSD
         XSD,
-        /// any checkpointing error (these don't occur often enough to need segregating here)
-        Checkpoint,
         /// invalid scenario file
         XmlScenario,
         GSL,
         FileExists,		// wanted to create a file but it already exists!
         FileIO,			// any other file read/write error
         EffectiveEIR,
+        /// bad/incompatible checkpoint file
+        Checkpoint,
         NumNewInfections,
         InitialKappa,
         VectorWarmup,
@@ -190,14 +190,6 @@ namespace OM { namespace util {
     class format_error : public xml_scenario_error {
     public:
         explicit format_error (const string& what_arg);
-    };
-    
-    /** Thrown to indicate an error while loading/saving a checkpoint.
-    *
-    * Prepends "Error reading checkpoint: " to the message. */
-    class checkpoint_error : public traced_exception {
-    public:
-        explicit checkpoint_error(const string& msg);
     };
     
     /** Thrown due to command-line error or to halt, when a command-line

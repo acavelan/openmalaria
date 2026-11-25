@@ -36,15 +36,6 @@ namespace interventions
 
 // static functions:
 
-void InterventionManager::checkpoint (RunContext& ctx, std::istream& stream) {
-    using namespace OM::util::checkpoint;
-    (*ctx.importedInfections) & stream;
-}
-void InterventionManager::checkpoint (RunContext& ctx, std::ostream& stream) {
-    using namespace OM::util::checkpoint;
-    (*ctx.importedInfections) & stream;
-}
-
 ComponentId InterventionManager::getComponentId(RunContext& ctx, const string textId)
 {
     auto it = ctx.identifierMap.find(textId);

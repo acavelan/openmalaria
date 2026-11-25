@@ -21,7 +21,6 @@
  */
 
 #include "Host/WithinHost/Infection/Infection.h"
-#include "util/checkpoint.h"
 #include "Host/WithinHost/WHInterface.h"
 #include "util/random.h"
 #include "util/errors.h"
@@ -149,13 +148,8 @@ Infection* createPennyInfection (RunContext& ctx, LocalRng& rng, uint32_t protID
     return infection_new (ctx, rng, protID, origin, Infection::Kind::Penny);
 }
 
-Infection* checkpointedPennyInfection (RunContext& ctx, istream& stream) {
-    return infection_new_checkpointed (ctx, stream, Infection::Kind::Penny);
-}
-
 void infection_init_penny(RunContext& ctx) {
     ctx.createInfection = &createPennyInfection;
-    ctx.checkpointedInfection = &checkpointedPennyInfection;
 
     if(util::ModelOptions::option (util::IMMUNE_THRESHOLD_GAMMA)) {
         immune_threshold_gamma = true;
@@ -341,41 +335,6 @@ static double getClonalSummation(Infection& inf, int ageDays) {
     return penny->clonalSummation;
 }
 
-
-void read_penny (Infection& inf, istream& stream) {
-    inf.penny = std::make_unique<Infection::PennyData>();
-    auto* penny = inf.penny.get();
-    constexpr int delta_C = Infection::delta_C;
-    constexpr int delta_V = Infection::delta_V;
-    for(int i=0; i<delta_C; ++i){
-        penny->cirDensities[i] & stream;
-    }
-    for(int i=0; i<delta_V; ++i){
-        penny->seqDensities[i] & stream;
-    }
-    penny->threshold_N & stream;
-    penny->threshold_V & stream;
-    penny->threshold_C & stream;
-    penny->variantSpecificSummation & stream;
-    penny->clonalSummation & stream;
-}
-
-void checkpoint_penny (Infection& inf, ostream& stream) {
-    auto* penny = inf.penny.get();
-    constexpr int delta_C = Infection::delta_C;
-    constexpr int delta_V = Infection::delta_V;
-    for(int i=0; i<delta_C; ++i){
-        penny->cirDensities[i] & stream;
-    }
-    for(int i=0; i<delta_V; ++i){
-        penny->seqDensities[i] & stream;
-    }
-    penny->threshold_N & stream;
-    penny->threshold_V & stream;
-    penny->threshold_C & stream;
-    penny->variantSpecificSummation & stream;
-    penny->clonalSummation & stream;
-}
 
 }
 }

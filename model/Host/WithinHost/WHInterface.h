@@ -54,6 +54,7 @@ class UnittestUtil;
 class InfectionImmunitySuite;
 
 namespace OM {
+namespace checkpoint { class Archive; }
 namespace Host {
     class Human;
 }
@@ -126,9 +127,7 @@ public:
     VivaxBrood( RunContext& ctx, LocalRng& rng, int origin, WHInterface *host );
     ~VivaxBrood();
     /** Save a checkpoint. */
-    void checkpoint( ostream& stream );
     /** Create from checkpoint. */
-    VivaxBrood( RunContext& ctx, istream& stream );
     
     struct UpdResult{
         UpdResult() : newPrimaryBS(false), newRelapseBS(false), newRelapsebBS(false), newBS(false) {}
@@ -161,7 +160,10 @@ public:
     
     /** Fully clear liver stage parasites. */
     void treatmentLS();
-    
+
+    /// Save/restore wire state (model/checkpoint/humans.cpp).
+    void checkpoint (checkpoint::Archive& a);
+
 private:
     
     // list of times at which the merozoite and hypnozoites release, ordered by
@@ -253,11 +255,6 @@ public:
     WHInterface(WHInterface&&);
     WHInterface& operator=(WHInterface&&) = delete;    // ctx reference member
 
-    /// Checkpointing
-    template<class S>
-    void operator& (S& stream) {
-        checkpoint (stream);
-    }
     //@}
 
     /** Return the infectiousness of this human to biting mosquitoes.
@@ -413,20 +410,6 @@ public:	// simple data + per-kind fragments (test suites and WH models touch the
     void clearImmunity_falciparum();
     //@}
 
-    /// @brief Checkpointing chains (kind-dispatched; wire format frozen)
-    //@{
-    void checkpoint (istream& stream);
-    void checkpoint (ostream& stream);
-    void checkpoint_falciparum (istream& stream);
-    void checkpoint_falciparum (ostream& stream);
-    void checkpoint_common (istream& stream);
-    void checkpoint_common (ostream& stream);
-    void checkpoint_descriptive (istream& stream);
-    void checkpoint_descriptive (ostream& stream);
-    void checkpoint_vivax (istream& stream);
-    void checkpoint_vivax (ostream& stream);
-    /// Descriptive kind: load one infection from a checkpoint.
-    void loadInfection_descriptive(istream& stream);
     //@}
 
     /// @brief Shared P. falciparum immunity model
