@@ -189,7 +189,7 @@ public:
                             // Apply the Gaussian copula transformation for correlation
                             const ComponentId cid = subPop;
 
-                            /** human.rng.gauss(0.0, 1.0) is calculated once per component and per human. Re-deployment of
+                            /** human.rng().gauss(0.0, 1.0) is calculated once per component and per human. Re-deployment of
                              * the same component on the same human must use the same gaussian sample. Therefore we store
                              * this value in the human the first time it is calculated. */
                             double g = 0.0;
@@ -198,7 +198,7 @@ public:
                                 g = it->second;
                             else
                             {
-                                g = human.rng.gauss(0.0, 1.0);
+                                g = human.rng().gauss(0.0, 1.0);
                                 human.perHostTransmission.copulaGaussianSamples[cid] = g;
                             }
                             const double yy = coverageCorr * xx + g * sqrt(1 - coverageCorr * coverageCorr);
@@ -213,7 +213,7 @@ public:
                             probability = gsl_cdf_beta_Pinv(uy, alpha, beta);
                         }
                         else // Gamma with CV=0
-                            probability = human.rng.beta(alpha, beta);
+                            probability = human.rng().beta(alpha, beta);
                     }
                     catch (const std::exception& e) {
                         std::ostringstream oss;
@@ -227,7 +227,7 @@ public:
                 if( availability >= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, minAvailability) && availability <= Transmission::PerHostAnophParams::getEntoAvailabilityPercentile(ctx, maxAvailability) ) {
                     if( subPop == ComponentId::wholePop() || (human.isInSubPop( subPop ) != complement) ){
                         // parity: a — deploy short-circuit: RNG draw is the LAST test of the deploy condition; filter/age/cohort checks must precede it (plan §3a)
-                        if( human.rng.bernoulli( probability ) ){
+                        if( human.rng().bernoulli( probability ) ){
                             deployToHuman( human, mon::Deploy::TIMED );
                         }
                     }
@@ -302,7 +302,7 @@ public:
             cerr << "cum deployment: prop protected " << propProtected << "; additionalCoverage " << additionalCoverage << "; total " << total << endl;
             for(Human* human : unprotected) {
                 // parity: a — deploy short-circuit: RNG draw is the LAST test of the deploy condition; filter/age/cohort checks must precede it (plan §3a)
-                if( human->rng.uniform_01() < additionalCoverage ){
+                if( human->rng().uniform_01() < additionalCoverage ){
                     deployToHuman( *human, mon::Deploy::TIMED );
                 }
             }
@@ -390,7 +390,7 @@ public:
                         (human.isInSubPop( subPop ) != complement)
                     ) &&
                     // parity: a — deploy short-circuit: RNG draw is the LAST test of the deploy condition; filter/age/cohort checks must precede it (plan §3a)
-                    human.rng.uniform_01() < coverage )     // RNG call should be last test
+                    human.rng().uniform_01() < coverage )     // RNG call should be last test
                 {
                     deployToHuman( human, mon::Deploy::CTS );
                 }

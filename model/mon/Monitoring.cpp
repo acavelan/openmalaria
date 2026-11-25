@@ -336,13 +336,13 @@ void recordStat(RunContext& ctx, Measure measure, double val, size_t species, si
 { recordValue(ctx, measure, statSurveyNumber(ctx), 0, 0, species, genotype, 0, val); }
 
 void recordStat(Measure measure, const Host::Human& human, double val, size_t species, size_t genotype, size_t drug)
-{ recordValue(*human.ctx, measure, statSurveyNumber(*human.ctx), human.monitoringAgeGroup, human.getCohortSet(), species, genotype, drug, val); }
+{ recordValue(*human.ctx, measure, statSurveyNumber(*human.ctx), human.monitoringAgeGroup(), human.getCohortSet(), species, genotype, drug, val); }
 
 void recordEvent(RunContext& ctx, Measure measure, size_t survey, size_t age, uint32_t cohort)
 { recordValue(ctx, measure, survey, age, cohort, 0, 0, 0, 1.0); }
 
 void recordEvent(Measure measure, const Host::Human& human, double val, int outId)
-{ recordValue(*human.ctx, measure, eventSurveyNumber(*human.ctx), human.monitoringAgeGroup, human.getCohortSet(), 0, 0, 0, val, outId); }
+{ recordValue(*human.ctx, measure, eventSurveyNumber(*human.ctx), human.monitoringAgeGroup(), human.getCohortSet(), 0, 0, 0, val, outId); }
 
 void recordDeploy(Measure timedMeasure, Measure ctsMeasure, const Host::Human& human, Deploy::Method method, double val)
 {
@@ -406,7 +406,7 @@ void writeSurveyData(RunContext& ctx)
     }
 }
 
-void updateAgeGroup(RunContext& ctx, size_t& index, SimTime age)
+void updateAgeGroup(RunContext& ctx, uint16_t& index, SimTime age)
 {
     auto& runtime = ctx.ext->monitoring;
     while (age >= runtime.ageGroupUpperBound[index]) {

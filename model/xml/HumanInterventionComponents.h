@@ -194,7 +194,7 @@ void TriggeredDeployments::SubList::deploy( RunContext& ctx, Host::Human& human,
     SimTime age = human.age(ctx.clock.nowOrTs1());
     if( age >= minAge && age < maxAge ){
         // parity: order — per-host Xoshiro stream: this call’s position in the draw sequence fixes the host RNG state
-        if( coverage >= 1.0 || human.rng.bernoulli( coverage ) ){
+        if( coverage >= 1.0 || human.rng().bernoulli( coverage ) ){
             HumanIntervention::deploy( ctx, human, method, vaccLimits );
         }
     }
@@ -235,7 +235,7 @@ public:
     
     void deploy( RunContext& ctx, Human& human, mon::Deploy::Method method, VaccineLimits vaccLimits ) const{
         mon::recordDeploy(mon::measure("nMassScreenings"), mon::measure("nCtsScreenings"), human, method);
-        if( human.withinHostModel->diagnosticResult(human.rng, diagnostic) ){
+        if( human.withinHostModel->diagnosticResult(human.rng(), diagnostic) ){
             positive.deploy( ctx, human, method, vaccLimits );
         }else{
             negative.deploy( ctx, human, method, vaccLimits );

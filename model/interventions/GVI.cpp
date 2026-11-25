@@ -34,7 +34,7 @@ namespace OM { namespace interventions {
 
 
 void GVIComponent::deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
-    human.perHostTransmission.deployComponent(ctx, human.rng, *this);
+    human.perHostTransmission.deployComponent(ctx, human.rng(), *this);
     mon::recordDeploy(mon::measure("nMassGVI"), mon::measure("nCtsGVI"), human, method);
 }
 

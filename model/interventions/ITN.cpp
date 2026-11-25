@@ -151,7 +151,7 @@ double factors::RelativeAttractiveness::relativeAttractiveness (
 // —————  main, public classes  —————
 
 void ITNComponent::deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
-    human.perHostTransmission.deployComponent( ctx, human.rng, *this );
+    human.perHostTransmission.deployComponent( ctx, human.rng(), *this );
     mon::recordDeploy(mon::measure("nMassITNs"), mon::measure("nEPI_ITNs"), human, method);
 }
 
@@ -221,14 +221,14 @@ void HumanITN::update(Host::Human& human){
         int newHoles = 0;
         if( holeRate > 0)
             // parity: e — per-update hole/rip Poisson draw counts frozen (≤1+1 draws per protected human-day; skip when rates 0) (plan §3e)
-            newHoles = human.rng.poisson( holeRate );
+            newHoles = human.rng().poisson( holeRate );
 
         nHoles += newHoles;
         holeIndex += newHoles;
 
         double lambda = nHoles * ripRate;
         if (lambda > 0)
-            holeIndex += params.ripFactor * human.rng.poisson( lambda );
+            holeIndex += params.ripFactor * human.rng().poisson( lambda );
     }
 }
 

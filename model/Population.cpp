@@ -68,7 +68,7 @@ void Population::createInitialHumans()
         while (cumulativePop < targetPop) {
             SimTime dob = sim::zero() - ctx.clock.fromTS(iage);
             util::streamValidate( dob );
-            humans.push_back( Host::Human (ctx, dob) );
+            humans.push_back( Host::Human (ctx, dob, cols) );
             ++cumulativePop;
         }
     }
@@ -84,28 +84,41 @@ void Population::update()
     // size is assumed to be the _actual and exact_ population size by other code.
     int cumPop = 0;
 
-    for (auto it = humans.begin(); it != humans.end();) {
-        bool isDead = it->isDead();
+    // NOTE: during compaction the Human::row of elements after an erase is
+    // stale (renumbered after this loop), so per-host state must be read here
+    // through POSITION (cols[i]) — human accessors would read the wrong row.
+    for (size_t i = 0; i < humans.size(); ) {
+        bool isDead = cols.death[i] != sim::never();
 
         // if (Actual number of people so far > target population size for this age)
         // "outmigrate" some to maintain population shape
         //NOTE: better to use age(ctx.clock.ts0())? Possibly, but the difference will not be very significant.
         // Also see targetPop = ... comment above
-        bool outmigrate = cumPop >= AgeStructure::targetCumPop(ctx, ctx.clock.inSteps(it->age(ctx.clock.ts1())), size);
-        
+        SimTime age1 = ctx.clock.ts1() - cols.dob[i];
+        bool outmigrate = cumPop >= AgeStructure::targetCumPop(ctx, ctx.clock.inSteps(age1), size);
+
         if( isDead || outmigrate ){
-            it = humans.erase (it);
+            // mirror the removal into the SoA columns (same index)
+            cols.erase_at( i );
+            humans.erase( humans.begin() + i );
             continue;
         }
         ++cumPop;
-        ++it;
+        ++i;
     } // end of per-human updates
+
+    // Erasing shifted rows 1..n left; renumber so Human::row matches position
+    // again (newborns below append at the correct index themselves).
+    // Erasing shifted rows 1..n left; renumber so Human::row matches position
+    // again (newborns below append at the correct index themselves).
+    for( size_t i = 0; i < humans.size(); ++i )
+        humans[i].set_row( i );
 
     // increase population size to targetPop
     recentBirths += (size - cumPop);
     while (cumPop < (int)size) {
         // humans born at end of this time step = beginning of next, hence ts1
-        humans.push_back( Host::Human (ctx, ctx.clock.ts1()) );
+        humans.push_back( Host::Human (ctx, ctx.clock.ts1(), cols) );
         ++cumPop;
     }
 }
@@ -116,7 +129,7 @@ void Population::checkpoint(istream& stream)
     recentBirths & stream;
 
     for(size_t i = 0; i < size && !stream.eof(); ++i) {
-        humans.push_back( Host::Human (ctx, sim::zero()) );
+        humans.push_back( Host::Human (ctx, sim::zero(), cols) );
         humans.back().checkpoint(stream);
     }
     if (humans.size() != size)
@@ -176,7 +189,7 @@ void ctsPatentHosts (RunContext& ctx, Population &population, ostream& stream){
     int patent = 0;
     for(Host::Human &human : population.humans) {
         auto diag = WithinHost::diagnostics::monitoringDiagnostic( ctx );
-        if( human.withinHostModel->diagnosticResult(human.rng, diag) )
+        if( human.withinHostModel->diagnosticResult(human.rng(), diag) )
             ++patent;
     }
     stream << '\t' << patent;

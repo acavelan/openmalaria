@@ -34,7 +34,7 @@
 namespace OM { namespace interventions {
 
 void IRSComponent::deploy( RunContext& ctx, Host::Human& human, mon::Deploy::Method method, VaccineLimits )const{
-    human.perHostTransmission.deployComponent(ctx, human.rng, *this);
+    human.perHostTransmission.deployComponent(ctx, human.rng(), *this);
     mon::recordDeploy(mon::measure("nMassIRS"), mon::measure("nCtsIRS"), human, method);
 }
 

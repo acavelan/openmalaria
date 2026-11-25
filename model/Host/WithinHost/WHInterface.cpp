@@ -200,7 +200,7 @@ InfectionOrigin WHInterface::getInfectionOrigin() const{
 void WHInterface::checkpoint (istream& stream) {
     numInfs & stream;
 
-    if (numInfs > MAX_INFECTIONS)
+    if (numInfs > SlotAllocator::MAX_INFECTIONS)
         throw util::checkpoint_error("numInfs: " + to_string(numInfs));
     
     switch( m_kind ){
