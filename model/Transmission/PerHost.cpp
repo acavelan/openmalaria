@@ -21,10 +21,10 @@
  */
 
 #include "Transmission/PerHost.h"
-#include "Transmission/VectorIntervention.h"
 #include "core/RunExtensions.h"
 #include "Transmission/TransmissionModel.h"
-#include "interventions/InterventionManager.h"
+#include "Host/Human.h"
+#include "interventions/IvState.h"
 #include "util/errors.h"
 #include "util/checkpoint.h"
 
@@ -46,10 +46,6 @@ PerHost::PerHost ()
     // are now the column defaults in append_row.
 }
 
-PerHost::~PerHost() = default;
-PerHost::PerHost( PerHost&& ) = default;
-PerHost& PerHost::operator= ( PerHost&& ) = default;
-
 void PerHost::initialise (RunContext& ctx, LocalRng& rng, double availabilityFactor) {
     rel_avail_het() = availabilityFactor;
     anoph_ento_raw().resize(PerHostAnophParams::numSpecies(ctx));
@@ -69,97 +65,51 @@ void PerHost::initialise (RunContext& ctx, LocalRng& rng, double availabilityFac
 }
 
 void PerHost::update(Host::Human& human){
-    for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        (*iter)->update(human);
-    }
+    interventions::iv_update( *ctx, human );
 }
 
-void PerHost::deployComponent( RunContext& ctx, LocalRng& rng, const HumanVectorInterventionComponent& params ){
-    // This adds per-host per-intervention details to the host's data set.
-    // This data is never removed since it can contain per-host heterogeneity samples.
-    for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        if( (*iter)->id() == params.id() ){
-            // already have a deployment for that description; just update it
-            (*iter)->redeploy( rng, params );
-            return;
-        }
-    }
-    // no deployment for that description: must make a new one
-    activeComponents.push_back( params.makeHumanPart(ctx, rng) );
-}
+// Note: deployment goes straight to interventions::iv_deploy (record list on
+// HumanColumns.iv); update and the effect accessors below multiply over
+// those records in list order.
 
 // Note: in the case an intervention is not present, we can use the approximation
 // of Weibull decay over the time span now - sim::never()
 // (easily large enough for conceivable Weibull params that the value is 0.0 when
 // rounded to a double. Performance-wise it's perhaps slightly slower than using
 // an if() when interventions aren't present.
-// parity: c — history-ordered activeComponents FP product — multiply in vector order, not reassociated
+// parity: c — history-ordered iv-record FP product — multiply in vector order, not reassociated
 double PerHost::entoAvailabilityHetVecItv (size_t species) const {
     double alpha_i = anoph_ento_avail()[species];
-    for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        alpha_i *= (*iter)->relativeAttractiveness( species );
-    }
+    for( const IvRecord& r : cols->iv[row] )
+        alpha_i *= interventions::iv_rel_attractiveness( *ctx, r, species );
     return alpha_i;
 }
 double PerHost::probMosqBiting (size_t species) const {
     double P_B_i = anoph_prob_biting()[species];
-    for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        P_B_i *= (*iter)->preprandialSurvivalFactor( species );
-    }
+    for( const IvRecord& r : cols->iv[row] )
+        P_B_i *= interventions::iv_preprandial_survival( *ctx, r, species );
     return P_B_i;
 }
 double PerHost::probMosqResting (size_t species) const {
     double pRest = anoph_prob_resting()[species];
-    for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        pRest *= (*iter)->postprandialSurvivalFactor( species );
-    }
+    for( const IvRecord& r : cols->iv[row] )
+        pRest *= interventions::iv_postprandial_survival( *ctx, r, species );
     return pRest;
 }
 
 double PerHost::relMosqFecundity (size_t species) const {
     double relFecundity = 1.0;
-    for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        relFecundity *= (*iter)->relFecundity( species );
-    }
+    for( const IvRecord& r : cols->iv[row] )
+        relFecundity *= interventions::iv_rel_fecundity( *ctx, r, species );
     return relFecundity;
 }
 
 bool PerHost::hasActiveInterv(interventions::Component::Type type) const{
-    for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        if( (*iter)->isDeployed() ){
-            if( interventions::InterventionManager::getComponent( *ctx, (*iter)->id() ).componentType() == type )
-                return true;
-        }
-    }
+    // kind is recorded on the record: no component-registry lookup needed
+    for( const IvRecord& r : cols->iv[row] )
+        if( r.kind == type && r.deploy != sim::never() )
+            return true;
     return false;
-}
-
-void PerHost::checkpointIntervs( ostream& stream ){
-    activeComponents.size() & stream;
-    for( auto iter = activeComponents.begin(); iter != activeComponents.end(); ++iter ){
-        *iter & stream;
-    }
-}
-void PerHost::checkpointIntervs( istream& stream ){
-    size_t l;
-    l & stream;
-    validateListSize(l);
-    activeComponents.clear();
-    for( size_t i = 0; i < l; ++i ){
-        interventions::ComponentId id( stream );
-        try{
-            const interventions::HumanInterventionComponent& gen_params =
-                interventions::InterventionManager::getComponent( *ctx, id );   // may throw
-            const HumanVectorInterventionComponent *params =
-                gen_params.asVectorIntervention();   // declared seam (was dynamic_cast)
-            if( params == 0 )
-                throw util::base_exception( "" );       // see catch block below
-            activeComponents.push_back( params->makeHumanPart( *ctx, stream, id ) );
-        }catch( util::base_exception& e ){
-            // two causes, both boil down to index being wrong
-            throw util::checkpoint_error( "bad value in checkpoint file" );
-        }
-    }
 }
 
 }

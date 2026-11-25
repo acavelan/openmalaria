@@ -24,6 +24,7 @@
 #define Hmod_interventions_Vaccine
 
 #include "interventions/HumanComponents.h"
+#include "humans/HostColumns.h"  // VacRecord
 namespace scnXml
 {
     class VaccineDescription;
@@ -92,10 +93,30 @@ private:
     /** Until the monitoring system is updated, only one type of vaccination
      * delivery can be reported. This is whichever is first configured. */
 
-
-    friend class PerHumanVaccine;
-    friend class PerEffectPerHumanVaccine;
+    // per-human state is the VacRecord column (humans/HostColumns.h); these
+    // free functions (below, same file) read it and the registries:
+    friend double vaccine_factor( RunContext&, const std::vector<VacRecord>&, Vaccine::Types, uint32_t );
+    friend bool vaccinate( RunContext&, Host::Human&, ComponentId, VaccineLimits );
+    friend void vac_checkpoint( RunContext&, std::vector<VacRecord>&, ostream& );
+    friend void vac_checkpoint( RunContext&, std::vector<VacRecord>&, istream& );
 };
+
+/** Get one minus the (decayed) efficacy of the given vaccine type: product
+ * over this human's matching dose records in insertion order (parity: c;
+ * 1 for no effect, 0 for full effect). Implements Human::vaccine_factor. */
+double vaccine_factor( RunContext& ctx, const std::vector<VacRecord>& vac,
+                       Vaccine::Types type, uint32_t genotype );
+
+/** Vaccinate unless the passed VaccineLimits specify not to (draw order:
+ * first dose per component takes a decay het sample BEFORE the per-genotype
+ * efficacy draws). Record list order never changes.
+ * @returns true when the vaccine is administered */
+bool vaccinate( RunContext& ctx, Host::Human& human, ComponentId componentId,
+                VaccineLimits vaccLimits );
+
+/// Dose-record checkpointing (wire NOT frozen: uniform record layout).
+void vac_checkpoint( RunContext& ctx, std::vector<VacRecord>& vac, ostream& stream );
+void vac_checkpoint( RunContext& ctx, std::vector<VacRecord>& vac, istream& stream );
 
 }
 }

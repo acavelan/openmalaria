@@ -26,6 +26,7 @@
 #include "core/RunContext.h"
 #include "Transmission/VectorIntervention.h"
 #include "interventions/Interfaces.h"
+#include "interventions/IvState.h"
 #include "util/DecayFunction.h"
 #include "util/sampler.h"
 namespace scnXml
@@ -37,7 +38,6 @@ namespace scnXml
 namespace OM { namespace interventions {
     using util::DecayFunction;
     using util::LocalRng;
-    using Transmission::PerHostInterventionData;
 
 /** Constant parameters for generic vector intervention model. */
 class GVIComponent : public Transmission::HumanVectorInterventionComponent {
@@ -56,8 +56,13 @@ public:
     
     virtual void print_details( std::ostream& out )const;
     
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(RunContext& ctx, LocalRng& rng) const;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( RunContext& ctx, istream& stream, ComponentId ) const;
+    // parameters are read by the iv_* record functions (interventions/IvState)
+    friend void iv_deploy( RunContext&, Host::Human&, const Transmission::HumanVectorInterventionComponent& );
+    friend double iv_rel_attractiveness( RunContext&, const IvRecord&, size_t );
+    friend double iv_preprandial_survival( RunContext&, const IvRecord&, size_t );
+    friend double iv_postprandial_survival( RunContext&, const IvRecord&, size_t );
+    friend double iv_rel_fecundity( RunContext&, const IvRecord&, size_t );
+    friend void iv_checkpoint( RunContext&, std::vector<IvRecord>&, istream& );
     
 private:
     /** Per mosquito-species parameters for generic vector intervention model. */
@@ -85,7 +90,10 @@ private:
         double postprandialKilling;
         double fecundityReduction;
         
-        friend class HumanGVI;
+        friend double iv_rel_attractiveness( RunContext&, const IvRecord&, size_t );
+        friend double iv_preprandial_survival( RunContext&, const IvRecord&, size_t );
+        friend double iv_postprandial_survival( RunContext&, const IvRecord&, size_t );
+        friend double iv_rel_fecundity( RunContext&, const IvRecord&, size_t );
     };
     
     unique_ptr<DecayFunction> decay;
@@ -93,47 +101,6 @@ private:
     
     // This is sparse vector: only indexes corresponding to a GVI component are used
     // No memory management
-    
-    friend class HumanGVI;
-};
-
-/** Low-level (generic) vector intervention model. Has three effects:
- * deterrency, pre-prandial killing and post-prandial killing.
- * 
- * This is the per-host (but not per vector) part.
- */
-class HumanGVI : public PerHostInterventionData {
-public:
-    HumanGVI( RunContext& ctx, LocalRng& rng, const GVIComponent& params );
-    HumanGVI( RunContext& ctx, istream& stream, ComponentId );
-    
-    virtual void redeploy( LocalRng& rng, const Transmission::HumanVectorInterventionComponent& );
-    
-    /** This is the survival factor of the effect. */
-    inline double getEffectSurvival(const GVIComponent& params)const{
-        SimTime age = ctx.clock.nowOrTs1() - deployTime;  // implies age 1 TS on first use
-        return decayHet->eval( age );
-    }
-    
-    virtual void update(Host::Human& human);
-    
-    /// Get deterrency. See ComponentParams::effect for a more detailed description.
-    virtual double relativeAttractiveness(size_t speciesIndex) const;
-    /// Get killing effect on mosquitoes before they've eaten.
-    /// See ComponentParams::effect for a more detailed description.
-    virtual double preprandialSurvivalFactor(size_t speciesIndex) const;
-    /// Get killing effect on mosquitoes after they've eaten.
-    /// See ComponentParams::effect for a more detailed description.
-    virtual double postprandialSurvivalFactor(size_t speciesIndex) const;
-    /// Get the mosquito fecundity multiplier (1 for no effect).
-    virtual double relFecundity(size_t speciesIndex) const;
-    
-protected:
-    virtual void checkpoint( ostream& stream );
-    
-private:
-    // this parameter is sampled on first deployment, but never resampled for the same human:
-    unique_ptr<DecayFunction> decayHet;
 };
 
 } }

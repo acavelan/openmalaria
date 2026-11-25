@@ -26,6 +26,7 @@
 #include "core/RunContext.h"
 #include "util/DecayFunction.h"
 #include "Transmission/VectorIntervention.h"
+#include "interventions/IvState.h"
 #include "util/sampler.h"
 namespace scnXml
 {
@@ -43,7 +44,6 @@ namespace interventions {
     using util::NormalSampler;
     using util::Sampler;
     using util::LocalRng;
-    using Transmission::PerHostInterventionData;
 
 
 // —————  utility classes (internal use only)  —————
@@ -166,10 +166,15 @@ public:
     
     virtual void print_details( std::ostream& out )const;
     
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart(RunContext& ctx, LocalRng& rng) const;
-    virtual unique_ptr<PerHostInterventionData> makeHumanPart( RunContext& ctx, istream& stream, ComponentId id ) const;
-    
-    const ITNComponent* asITNComponent() const override { return this; }
+    // parameters are read by the iv_* record functions (interventions/IvState)
+    friend void iv_deploy( RunContext&, Host::Human&, const Transmission::HumanVectorInterventionComponent& );
+    friend void iv_update( RunContext&, Host::Human& );
+    friend double iv_rel_attractiveness( RunContext&, const IvRecord&, size_t );
+    friend double iv_preprandial_survival( RunContext&, const IvRecord&, size_t );
+    friend double iv_postprandial_survival( RunContext&, const IvRecord&, size_t );
+    friend double iv_rel_fecundity( RunContext&, const IvRecord&, size_t );
+    friend void iv_checkpoint( RunContext&, std::vector<IvRecord>&, ostream& );
+    friend void iv_checkpoint( RunContext&, std::vector<IvRecord>&, istream& );
     
 private:
     /** Per mosquito-species parameters for extended ITN model. */
@@ -214,8 +219,6 @@ private:
         factors::SurvivalFactor preprandialKillingEffect;
         factors::SurvivalFactor postprandialKillingEffect;
         factors::SurvivalFactor relFecundityEffect;
-        
-        friend class HumanITN;
     };
 
     NormalSampler initialInsecticide;
@@ -229,59 +232,6 @@ private:
     
     // This is sparse vector: only indexes corresponding to ITN components are
     // used. No memory management.
-    
-    friend class HumanITN;
-};
-
-/** Extended ITN model by OB.
- * 
- * Each instance describes a hypothetical net (or no net).
- */
-class HumanITN : public PerHostInterventionData {
-public:
-    HumanITN( RunContext& ctx, LocalRng& rng, const ITNComponent& params );
-    HumanITN( RunContext& ctx, istream& stream, ComponentId id );
-    
-    virtual void redeploy(LocalRng& rng, const Transmission::HumanVectorInterventionComponent& params);
-    
-    inline double getHoleIndex()const{
-        return holeIndex;
-    }
-    inline double getInsecticideContent(const ITNComponent& params)const{
-            SimTime age = ctx.clock.nowOrTs1() - deployTime;  // implies age 1 TS on first use
-        double effectSurvival = insecticideDecayHet->eval( age );
-        return initialInsecticide * effectSurvival;
-    }
-    
-    /// Call once per time step to update holes
-    virtual void update(Host::Human& human);
-    
-    /// Get deterrency. See ComponentParams::effect for a more detailed description.
-    virtual double relativeAttractiveness(size_t speciesIndex) const;
-    /// Get killing effect on mosquitoes before they've eaten.
-    /// See ComponentParams::effect for a more detailed description.
-    virtual double preprandialSurvivalFactor(size_t speciesIndex) const;
-    /// Get killing effect on mosquitoes after they've eaten.
-    /// See ComponentParams::effect for a more detailed description.
-    virtual double postprandialSurvivalFactor(size_t speciesIndex) const;
-    /// Get the mosquito fecundity multiplier (1 for no effect).
-    virtual double relFecundity(size_t speciesIndex) const;
-    
-protected:
-    virtual void checkpoint( ostream& stream );
-    
-private:
-    // these parameters express the current state of the net:
-    SimTime disposalTime = sim::never();	// time at which net will be disposed of (if it's not already been replaced)
-    int nHoles;				// total number of holes
-    double holeIndex;		// a measure of both the number and size of holes
-    double initialInsecticide;	// units: mg/m²
-    
-    // these parameters are sampled from log-normal per net, but thereafter constant:
-    double holeRate;	// rate at which new holes are created (holes/time-step)
-    double ripRate;		// rate at which holes are enlarged (rips/hole/time-step)
-    unique_ptr<DecayFunction> insecticideDecayHet;
-
 };
 
 } }
