@@ -429,6 +429,10 @@ void TransmissionModel::vectorUpdate_vector(const vector<Host::Human> &populatio
         const OM::Transmission::PerHost &host = human.perHostTransmission;
         WithinHost::WHInterface &whm = *human.withinHostModel;
 
+        // p7b B4 hoist: vaccine_factor is pure over the host's vac column (frozen
+        // while the population is scanned) and returns 1.0 when it is empty — the
+        // per-species × per-genotype calls collapse to one check per host.
+        const bool anyVac = human.has_vaccines();
         probTransmission_i.assign(nGenotypes, 0.0);
         probTransmission_l.assign(nGenotypes, 0.0);
         whm.probTransmissionToMosquito(probTransmission_i, probTransmission_l);
@@ -444,7 +448,7 @@ void TransmissionModel::vectorUpdate_vector(const vector<Host::Human> &populatio
             sigma_df[s] += df;
             for (size_t g = 0; g < nGenotypes; ++g)
             {
-                const double tbvFac = human.vaccine_factor(interventions::Vaccine::TBV, opt_vaccine_genotype? g : 0);
+                const double tbvFac = anyVac ? human.vaccine_factor(interventions::Vaccine::TBV, opt_vaccine_genotype? g : 0) : 1.0;
                 sigma_dif_i[s][g] += df * probTransmission_i[g] * tbvFac;
                 sigma_dif_l[s][g] += df * probTransmission_l[g] * tbvFac;
             }

@@ -355,12 +355,14 @@ public:
 
             // Only to be consistent with old simulation runs when set to false
             // Setting this option to true will only affect reporting
+            // p7b B4 hoist: pure + empty⇒1.0 (see vectorUpdate_vector).
+            const bool anyVac = human.has_vaccines();
             if (opt_vaccine_genotype == false)
-                riskTrans = avail * pTransmit * human.vaccine_factor(interventions::Vaccine::TBV);
+                riskTrans = avail * pTransmit * (anyVac ? human.vaccine_factor(interventions::Vaccine::TBV) : 1.0);
             else
             {
                 for (size_t g = 0; g < ctx.genotypes.N(); ++g)
-                    riskTrans += (probTransGenotype_i[g] + probTransGenotype_l[g]) * human.vaccine_factor(interventions::Vaccine::TBV, g);
+                    riskTrans += (probTransGenotype_i[g] + probTransGenotype_l[g]) * (anyVac ? human.vaccine_factor(interventions::Vaccine::TBV, g) : 1.0);
                 riskTrans *= avail;
             }
 

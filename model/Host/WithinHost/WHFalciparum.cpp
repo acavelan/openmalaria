@@ -175,7 +175,12 @@ double WHInterface::probTransmissionToMosquito_falciparum(vector<double> &probTr
     const size_t n = ctx.genotypes.N();
 
     // Sum lagged densities across genotypes:
-    vector<double> y_lag_g_i(n), y_lag_g_l(n);
+    // ponytail: reused scratch (83M/2 allocs-per-host-tick mallocs eliminated). Value-identical:
+    // compute_y_lag overwrites all n entries before any read; nothing escapes; n fixed per run
+    // (genotypes.N()) and TwoRunsSuite (two runs, one process) proves nothing leaks across runs.
+    static std::vector<double> y_lag_g_i, y_lag_g_l;
+    y_lag_g_i.resize(n);
+    y_lag_g_l.resize(n);
     const double y_lag_sum_i = compute_y_lag(ctx.clock, ctx.genotypes, m_y_lag_i, y_lag_len, y_lag_g_i);
     const double y_lag_sum_l = compute_y_lag(ctx.clock, ctx.genotypes, m_y_lag_l, y_lag_len, y_lag_g_l);
     const double y_lag_sum = y_lag_sum_i + y_lag_sum_l;

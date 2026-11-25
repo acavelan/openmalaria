@@ -138,6 +138,10 @@ public:
     double vaccine_factor( interventions::Vaccine::Types type,
                            uint32_t genotype = 0 ) const;
 
+    /** True if this human has any vaccine dose record. vaccine_factor() returns
+     * exactly 1.0 when false (empty product), so hot loops can hoist the call. */
+    inline bool has_vaccines() const { return !cols->vac[row].empty(); }
+
     /** Monitoring age group (column row; accessor keeps read/write syntax). */
     inline uint16_t& monitoringAgeGroup();
     /// ditto (read-only use, e.g. episode recording)
