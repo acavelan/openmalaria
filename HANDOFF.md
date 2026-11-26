@@ -8,6 +8,8 @@ fresh A0 parity **63/63**. Native macOS ASan relocation regression is red→gree
 **Zero numerical allowance:** the initial tolerance was rejected and removed.
 Independent frozen references were captured from original sources on all five CI
 platforms; selection/provenance are in `unittest/goldens/platforms/README.md`.
+**GitHub: all five platforms passed 65/65 tests** on `6cf656ca`, including resume:
+[verified run](https://github.com/acavelan/openmalaria/actions/runs/45778596318).
 Full details and diagnostic CI links are in the final `PERF.md` sections.
 Current LOC: **15,599 model / 3,558 XML / 3,649 unittest C++**. Prior performance measurements
 below remain historical; this is a correctness/CI repair.

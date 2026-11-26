@@ -714,4 +714,10 @@ the original-platform fixture, then passes with its independently frozen native
 fixture. The new overlay harness check fails before implementation and passes
 afterward. A **one-ULP stored Gaussian-value mutation fails** the bitwise check.
 Local native GCC and Ubuntu 22.04 each pass **65/65 CTest** with zero tolerance.
-Full GitHub matrix verification follows on the published follow-up commit.
+**GitHub verification passed** on `6cf656caea0e062a2d56b5d0fa296163ae1eaf75`:
+[run 45778596318](https://github.com/acavelan/openmalaria/actions/runs/45778596318).
+Ubuntu 22.04, Ubuntu 24.04, Ubuntu 24.04 ARM, macOS 15 and macOS 26 each passed
+**65/65 CTest**, including all 12 resume scenarios. Every job's configure log
+confirms its explicit frozen platform baseline and **zero tolerance**.
+Full logs and job metadata: `bitexact-ci-full.log` and `bitexact-ci-result.json`
+under `/tmp/opencode/ci-repair-20261126/`.
