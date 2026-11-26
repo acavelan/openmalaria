@@ -242,6 +242,11 @@ template <class T> struct RNG {
     RNG(const RNG&) = delete;
     RNG& operator=(const RNG&) = delete;
 
+    // GSL views point into this object: relocation must call the move ctor.
+    // A user-provided destructor prevents affected AppleClang/libc++ builds
+    // from incorrectly treating this self-referential type as byte-relocatable.
+    ~RNG() {}
+
     /// Allow moving, with explicit functions
     RNG(RNG&& other) : m_rng(std::move(other.m_rng)) {
         m_gsl_type = other.m_gsl_type;

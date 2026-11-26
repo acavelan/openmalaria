@@ -210,7 +210,7 @@ inline const double* pinv_spots(size_t& nOut) {
 }
 
 /// Draw the next value of series s from rng.
-inline double golden_draw(Rng& rng, const DrawSpec& s) {
+template <class R> inline double golden_draw(R& rng, const DrawSpec& s) {
     using std::strcmp;
     if (!strcmp(s.dist, "uniform_01"))
         return rng.uniform_01();

@@ -116,7 +116,7 @@ class TwoRunsSuite : public CxxTest::TestSuite {
 
     void testCaptureRejectsMissingOrEmptyOutput() {
         RunContext ctx;
-        const auto path = std::filesystem::temp_directory_path() / "om-tworuns-empty.bin";
+        const auto path = std::filesystem::current_path() / "om-tworuns-empty.bin";
         std::filesystem::remove(path);
         TS_ASSERT_THROWS(captureRun(ctx, path.string()), const std::runtime_error&);
         { std::ofstream empty(path, std::ios::binary); }
@@ -132,10 +132,10 @@ class TwoRunsSuite : public CxxTest::TestSuite {
         TS_ASSERT(std::filesystem::exists(scenario));
         TS_ASSERT(std::filesystem::exists(xsd));
 
-        // isolated cwd: survey/ctsout files land here; XSD must sit next to cwd
+        // Build-local cwd: separate builds must not delete each other's outputs.
         std::error_code ec;
         const std::filesystem::path oldCwd = std::filesystem::current_path();
-        std::filesystem::path work = std::filesystem::temp_directory_path() / "om-tworuns";
+        std::filesystem::path work = oldCwd / "om-tworuns";
         std::filesystem::remove_all(work, ec);
         std::filesystem::create_directories(work);
         std::filesystem::copy_file(xsd, work / "scenario_current.xsd");

@@ -111,3 +111,27 @@ Triage — `DescriptiveInfectionSuite.h` (revived):
 - JSON datasets classified: **27** → harvested-as-new: **3** (the three `fixtures/*.csv`), duplicates-of-repo-goldens: **5 groups**, Rust-only/analytical: **12**, excluded-unproven: **1** (g6 pairs).
 - Repo reference datasets inventoried: **11** (Table B, incl. 2 RNG suites skipped by instruction).
 - Gap areas after 2026-11-19: **1 hard gap** (CalcNvO-linear) + **2 soft gaps** (full-res ctsout; wider-measure ensembles) + **1 new soft gap** (DescriptiveInfection::determineDensities trajectory golden). Percentile table and CFR gaps closed in-process; RNG distribution/state locking added.
+
+## Cross-platform CI correction (2026-11-26)
+
+The original CSV and percentile literals above are unchanged. They were generated
+with one x86-64 GSL/libm build, whose transcendental results are not bit-identical
+across OS/library/architecture combinations. Native probes found two one-ULP
+exponential differences on Ubuntu 22.04; ARM Linux/macOS differences reached
+`7.25e-15 * max(1, abs(expected))` (55 ULPs in one log-normal draw).
+All 14,012 rows retained exactly the same RNG states on those platforms.
+
+`RngGoldenSuite` now compares the **real model wrappers** with the frozen GSL
+adapter bit-for-bit for every draw, on the same platform. All four state words,
+uniform draws and discrete samples still match the CSV exactly. Only the
+cross-platform transcendental comparisons allow
+`64 * double_epsilon * max(1, abs(expected))` (approximately `1.42e-14` scaled).
+The percentile test likewise compares the model bit-for-bit with an independent,
+same-platform gamma/order-statistic reference and uses that bound for the stored
+table. CFR literals remain bit-exact. This does not relax same-platform T1 parity
+or permit changes in RNG consumption.
+
+Additional regressions exercise GSL draws after forced RNG-vector relocation and
+the initial clinical state. The former catches stale self-pointers even when the
+engine's raw checkpoint bytes still match; the latter catches an uninitialized
+enum previously read during checkpoint restore.

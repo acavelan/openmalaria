@@ -30,7 +30,8 @@
  *    MasterRng(0,0)-seeded 100-entry ento-availability percentile table
  *    (PerHost.h:82-111; main.cpp calls it before the sim, and interventions
  *    interpolate on it). Pinned bit-exactly for one species with
- *    availability distr=gamma CV=0.3, factor 1.0.
+ *    availability distr=gamma CV=0.3, factor 1.0. Bit-exact against the
+ *    same-platform GSL reference; the stored x86-64 table allows libm rounding.
  * 2. ClinicalModel::getCommunityCFR() (ClinicalModel.cpp:115-118) — the
  *    community-vs-hospital CFR map x·θ/(1−cfr+x). It reads the file-global
  *    oddsRatioThreshold (ClinicalModel.cpp:45, external
@@ -43,6 +44,7 @@
 #include "Clinical/ClinicalModel.h"
 #include "UnittestUtil.h"
 #include "util/ModelOptions.h"
+#include "golden-gen/RngGoldenAdapter.h"
 #include <cstring>
 #include <limits>
 
@@ -56,6 +58,11 @@ extern double oddsRatioThreshold;
 
 class PercentileCFRSuite : public CxxTest::TestSuite {
   public:
+    void testNewClinicalModelState() {
+        auto clinical = std::make_unique<CMImmediateOutcomes>(UnittestUtil::ctx(), 1.0);
+        TS_ASSERT_EQUALS(clinical->latestState, NONE);
+    }
+
     void testEntoAvailabilityPercentiles() {
         UnittestUtil::initTime(5);
         UnittestUtil::DescriptiveInfection_init(); // = ModelOptions::reset()
@@ -180,10 +187,24 @@ class PercentileCFRSuite : public CxxTest::TestSuite {
             1.7063221886130431,
             1.8280769186712187,
         };
+        // Independent reference for the fixed gamma fixture: baseline seed,
+        // k=1/CV², theta=mean/k, 100k draws, sorted order statistics.
+        // Local GSL/libm rounding is shared; model sampling and percentile
+        // selection must agree bit-for-bit, even off the CSV's platform.
+        MasterRng master(0, 0);
+        LocalRng initial(master);
+        const auto& s = initial.m_rng.s;
+        GoldenRng::Rng reference(s[0], s[1], s[2], s[3]);
+        const double k = 1.0 / (0.3 * 0.3);
+        std::vector<double> samples(100000);
+        for (double& x : samples) x = reference.gamma(k, 1.0 / k);
+        std::sort(samples.begin(), samples.end());
         for (int p = 0; p < 100; ++p) {
             double v = PerHostAnophParams::getEntoAvailabilityPercentile(UnittestUtil::ctx(), p);
-            if (!(std::memcmp(&v, &GOLDEN[p], sizeof(double)) == 0))
-                TS_FAIL("percentile mismatch");
+            double expected = p == 0 ? 0.0 : samples[p * 1000];
+            TSM_ASSERT_SAME_DATA("same-platform percentile mismatch", &v, &expected, sizeof(double));
+            TS_ASSERT_DELTA(v, GOLDEN[p],
+                64 * std::numeric_limits<double>::epsilon() * std::max(1.0, std::abs(GOLDEN[p])));
         }
         TS_ASSERT_EQUALS(PerHostAnophParams::getEntoAvailabilityPercentile(UnittestUtil::ctx(), 100),
                          std::numeric_limits<double>::max());

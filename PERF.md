@@ -618,3 +618,51 @@ removal of the whole-map allocation/copy, and −7 model LOC; no standalone spee
 Completed logs: `bench-final-{2k,5k,10k,Genotypes,Penny,MSAT_HRP2,TBV,VecFullTest,NonHumanHosts,Molineaux}.log`,
 `bench-final-summary.log`, `bench-final-rest-summary.log`. Machine-readable medians, MAD
 and all five retained samples are in `final-benchmark-results.json`, alongside the logs.
+
+## CI portability repair (2026-11-26)
+
+| change | model LOC | XML LOC | unittest LOC | performance | readability / correctness |
+|---|---:|---:|---:|---|---|
+| portable reference checks, RNG relocation fix, initialized clinical state, supported macOS runner | **15,599 (+1)** / 113 files | **3,558 (0)** / 10 | **3,737 (+54)** / 30 | correctness/CI repair; no new timing claim | same-platform bit-exact checks now exercise the real RNG wrappers; cross-platform libm rounding is separately bounded; implicit relocation hazard documented |
+
+GitHub failures had three independent causes:
+
+- **Cross-platform goldens:** Ubuntu 22.04 differed in two exponential values by one ULP.
+  Native ARM Linux/macOS probes found scaled differences up to `7.25e-15` while all
+  14,012 post-draw states matched. Stored fixtures are untouched. Real model wrappers
+  now match the frozen adapter **bit-for-bit** on each platform; RNG states, uniforms,
+  discrete samples and CFR remain exact. Cross-platform transcendental values alone
+  allow `64 * epsilon * max(1, abs(expected))`. Percentiles additionally have an
+  independent same-platform, bit-exact gamma/order-statistic reference.
+- **macOS resume crash:** AppleClang 17/libc++ reported `RNG<Xoshiro256P>` as trivially
+  relocatable despite its self-referential GSL pointers and custom move constructor.
+  Vector growth byte-copied stale pointers; ASan identified a heap-use-after-free.
+  A user-provided empty RNG-wrapper destructor makes relocation call the existing
+  move constructor. The native probe changed from `trivially relocatable=1` + ASan
+  failure to `0` + correct draws. Engine arithmetic, seeding and draw order are intact.
+  UBSan also exposed an uninitialized `ClinicalModel::latestState` during restore;
+  its default is now `NONE`, with a regression assertion.
+- **Unavailable runner:** GitHub retired macOS 14. The matrix now tests macOS 15/26
+  alongside Ubuntu 22.04, 24.04 and 24.04 ARM. Dependency installation errors propagate;
+  ordinary GCC/Clang CMake builds now enforce `-ffp-contract=off`, as gate/PGO builds did.
+
+Concurrent local builds also exposed the two-runs suite deleting another build's
+shared temporary directory. Its scratch files now live under the test working directory.
+
+Validation before publishing: GCC Release **65/65 CTest**, **101 unit tests**; Clang
+ASan/UBSan unit suite and all **12 resume cases** passed (leak detection disabled).
+Concurrent GCC/sanitized unit runs passed after the scratch-directory fix.
+Strict freshly rebuilt A0 parity: **63/63 identical**, including example@2000 seeds
+1–10. The reference source is still `cfc3c8e0`; compiler/GSL and library hash match the
+original recipe, but the kernel is now `7.3.5-arch1-1`, so the new build has its own
+recipe and binary hashes. No historical binary was silently relabelled.
+Mutation checks reject a changed CSV state word, a changed numeric fixture, and a
+**one-ULP change to the real Gaussian wrapper**.
+
+Native diagnostic runs:
+[failure/backtrace](https://github.com/acavelan/openmalaria/actions/runs/45772786232),
+[isolated relocation failure](https://github.com/acavelan/openmalaria/actions/runs/45773851567),
+[relocation fix](https://github.com/acavelan/openmalaria/actions/runs/45774158157).
+The full five-platform release matrix runs on the fixing commit.
+Local logs, fresh A0 recipe/binary hashes and probes:
+`/tmp/opencode/ci-repair-20261126/`.

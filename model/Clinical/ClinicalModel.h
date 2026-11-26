@@ -161,7 +161,7 @@ public:
     double m_treatmentSeekingFactor;
     /** Last episode; report to survey pending a new episode or human's death. */
     Episode latestReport;
-    Episode::State latestState;
+    Episode::State latestState = NONE;
 
     
     /** Can indicate that the individual is dead or about to die.

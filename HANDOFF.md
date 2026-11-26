@@ -1,4 +1,15 @@
-# MAIN-SESSION STATUS (2026-11-25, authoritative)
+# CI PORTABILITY FOLLOW-UP (2026-11-26)
+
+`rewrite`: fixed AppleClang/libc++ RNG relocation (stale GSL pointers), initialized
+clinical state, portable numerical-reference checks, build-local test scratch space
+and the retired macOS runner. Ordinary builds now enforce `-ffp-contract=off`.
+Local gates: CTest **65/65**, **101 unit tests**, sanitized unit/resume checks and
+fresh A0 parity **63/63**. Native macOS ASan relocation regression is red→green.
+Full details, numerical bounds and diagnostic CI links are in the final `PERF.md` section.
+Current LOC: **15,599 model / 3,558 XML / 3,737 unittest**. Prior performance measurements
+below remain historical; this is a correctness/CI repair.
+
+# MAIN-SESSION STATUS (2026-11-25, implementation/performance history)
 **Branch `rewrite`, including the reviewed follow-up to `a49f56ec`.**
 `PERF.md`'s latest ledger is authoritative for measured LOC, timings and gates;
 `RECOVERY.md` has the rebuild recipe. Earlier blocks below are historical.

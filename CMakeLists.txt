@@ -33,6 +33,11 @@ set (CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 set(CMAKE_CXX_STANDARD 20)
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  # Keep the same operation order in ordinary builds and the parity/PGO gates.
+  add_compile_options (-ffp-contract=off)
+endif ()
+
 set (OM_STD_LIBS)
 
 # Link-time optimisation for Release builds (does not change results; per upstream PR-481).
