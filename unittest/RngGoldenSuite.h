@@ -22,22 +22,22 @@
 
 #pragma once
 
-/* T2 fixture: replays unittest/goldens/rng_dist_v50.csv through the same calls
+/* T2 fixture: replays the explicitly selected frozen platform CSV through the same calls
  * that produced it (golden-gen/RngGoldenAdapter.h — a verbatim mirror of
  * model/util/random.h's GSL plumbing and distribution wrappers over
- * Xoshiro256P). State words, uniform draws and discrete samples are bit-exact.
- * Transcendental results in the CSV came from one x86-64 GSL/libm build;
- * other platforms may differ by rounding. Model wrappers must still match
- * the frozen adapter bit-for-bit on the SAME platform, on every draw.
+ * Xoshiro256P). Every stored value and state word is compared bit-for-bit.
+ * Model wrappers must also match the frozen adapter bit-for-bit on the
+ * same platform, on every draw.
  *
  * This locks the primitive layer (seeding, state advance, draw counts per
  * sampler call). When phase 9 replaces the GSL samplers with inline ports,
  * this suite is the gate: any change in per-call consumption or output bits
  * fails the same-platform comparison, per distribution and parameter set.
  *
- * Regenerate goldens only via unittest/golden-gen/build-goldens.sh (never by
- * editing the CSV). Cross-platform tolerances never apply to RNG state or
- * to the model-versus-reference comparison.
+ * The common CSV owns the schedule and states; platforms/ adds frozen value
+ * overrides only. Capture references via golden-gen/build-goldens.sh, which
+ * compiles pinned ORIGINAL sources, never the model under test.
+ * No numerical tolerance is permitted.
  */
 
 #include <cxxtest/TestSuite.h>
@@ -167,13 +167,7 @@ class RngGoldenSuite : public CxxTest::TestSuite {
                 char msg[256];
                 std::snprintf(msg, sizeof(msg), "%s(%s) draw %d", spec.dist, spec.params, d);
                 TSM_ASSERT_SAME_DATA(msg, &actual, &v, sizeof(double));
-                if (std::strcmp(spec.dist, "uniform_01") == 0 || std::strcmp(spec.dist, "poisson") == 0 ||
-                    std::strcmp(spec.dist, "binomial") == 0) {
-                    TSM_ASSERT_SAME_DATA(msg, &v, &want, sizeof(double));
-                } else {
-                    TSM_ASSERT_DELTA(msg, v, want,
-                        64 * std::numeric_limits<double>::epsilon() * std::max(1.0, std::abs(want)));
-                }
+                TSM_ASSERT_SAME_DATA(msg, &v, &want, sizeof(double));
                 for (int w = 0; w < 4; ++w) {
                     std::snprintf(msg, sizeof(msg), "%s(%s) draw %d: state word %d differs", spec.dist, spec.params, d,
                                   w);
@@ -206,8 +200,7 @@ class RngGoldenSuite : public CxxTest::TestSuite {
             double v = gsl_cdf_ugaussian_Pinv(U[i]);
             char msg[128];
             std::snprintf(msg, sizeof(msg), "ugaussian_Pinv spot %zu (%s)", i, params);
-            TSM_ASSERT_DELTA(msg, v, want,
-                64 * std::numeric_limits<double>::epsilon() * std::max(1.0, std::abs(want)));
+            TSM_ASSERT_SAME_DATA(msg, &v, &want, sizeof(double));
         }
     }
 };

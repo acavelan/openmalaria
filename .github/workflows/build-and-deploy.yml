@@ -38,6 +38,8 @@ jobs:
   build:
     needs: create_release
     runs-on: ${{ matrix.os }}
+    env:
+      OM_GOLDEN_PLATFORM: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:

@@ -9,6 +9,7 @@ import io
 import math
 import os
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -126,6 +127,26 @@ class HarnessTest(unittest.TestCase):
                                      os.path.join(self.dir.name, "b"),
                                      1e-1, 1e-6, report=io.StringIO())
         self.assertTrue(ok)
+
+    def test_platform_golden_overlay_is_exact_and_value_only(self):
+        base, overlay, output = self.p("base.csv"), self.p("overlay.csv"), self.p("output.csv")
+        original = "uniform_01,-,0,0,1,2,3,4\ngauss,mean=0;std=1,0,1,5,6,7,8\n"
+        with open(base, "w") as f:
+            f.write("# frozen schedule and states\n" + original)
+        script = os.path.join(os.path.dirname(__file__), "golden-gen", "apply-platform.py")
+        def apply(contents):
+            with open(overlay, "w") as f:
+                f.write(contents)
+            return subprocess.run([sys.executable, script, base, overlay, output],
+                                  capture_output=True, text=True)
+        row = "gauss,mean=0;std=1,0,1.0000000000000002\n"
+        result = apply(row)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        with open(output) as f:
+            self.assertEqual(f.read(), original.replace(",1,5,", ",1.0000000000000002,5,"))
+        # A typo, duplicate, or attempted RNG-state override must fail closed.
+        for invalid in (row.replace("gauss", "typo"), row + row, row.rstrip() + ",99\n"):
+            self.assertNotEqual(apply(invalid).returncode, 0)
 
 if __name__ == "__main__":
     unittest.main()

@@ -66,7 +66,29 @@ add_custom_command (OUTPUT tests.cpp
 
 # These files are needed to run various infection model tests:
 configure_file (${CMAKE_SOURCE_DIR}/test/autoRegressionParameters.csv ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
-configure_file (${CMAKE_CURRENT_SOURCE_DIR}/goldens/rng_dist_v50.csv ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
+# Explicit selection, independent of observed numerical results. CI sets this
+# environment variable to its runner label; local builds can use -D instead.
+set (OM_GOLDEN_PLATFORM "$ENV{OM_GOLDEN_PLATFORM}" CACHE STRING "Frozen numerical baseline (empty = original)")
+set (goldens ${CMAKE_CURRENT_SOURCE_DIR}/goldens)
+if (OM_GOLDEN_PLATFORM)
+  set (platform_goldens ${goldens}/platforms/${OM_GOLDEN_PLATFORM})
+  set_property (DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    ${goldens}/rng_dist_v50.csv ${platform_goldens}/rng_values.csv
+    ${CMAKE_CURRENT_SOURCE_DIR}/golden-gen/apply-platform.py)
+  execute_process (
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/golden-gen/apply-platform.py
+      ${goldens}/rng_dist_v50.csv ${platform_goldens}/rng_values.csv ${CMAKE_CURRENT_BINARY_DIR}/rng_dist_v50.csv
+    RESULT_VARIABLE golden_result)
+  if (NOT golden_result EQUAL 0)
+    message (FATAL_ERROR "Cannot load frozen numerical baseline: ${OM_GOLDEN_PLATFORM}")
+  endif ()
+else ()
+  set (platform_goldens ${goldens})
+  configure_file (${goldens}/rng_dist_v50.csv ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
+endif ()
+message (STATUS "Frozen numerical baseline: ${platform_goldens} (bit-exact, zero tolerance)")
+configure_file (${platform_goldens}/availability_percentiles.inc
+  ${CMAKE_CURRENT_BINARY_DIR}/configured/availability_percentiles.inc COPYONLY)
 configure_file (${CMAKE_CURRENT_SOURCE_DIR}/PennyCirDens.txt ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
 configure_file (${CMAKE_CURRENT_SOURCE_DIR}/PennySeqDens.txt ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
 configure_file (${CMAKE_CURRENT_SOURCE_DIR}/MolineauxCirDens.txt ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)

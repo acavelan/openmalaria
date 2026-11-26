@@ -1,12 +1,15 @@
 # CI PORTABILITY FOLLOW-UP (2026-11-26)
 
 `rewrite`: fixed AppleClang/libc++ RNG relocation (stale GSL pointers), initialized
-clinical state, portable numerical-reference checks, build-local test scratch space
+clinical state, exact per-platform numerical-reference checks, build-local test scratch space
 and the retired macOS runner. Ordinary builds now enforce `-ffp-contract=off`.
 Local gates: CTest **65/65**, **101 unit tests**, sanitized unit/resume checks and
 fresh A0 parity **63/63**. Native macOS ASan relocation regression is red→green.
-Full details, numerical bounds and diagnostic CI links are in the final `PERF.md` section.
-Current LOC: **15,599 model / 3,558 XML / 3,737 unittest**. Prior performance measurements
+**Zero numerical allowance:** the initial tolerance was rejected and removed.
+Independent frozen references were captured from original sources on all five CI
+platforms; selection/provenance are in `unittest/goldens/platforms/README.md`.
+Full details and diagnostic CI links are in the final `PERF.md` sections.
+Current LOC: **15,599 model / 3,558 XML / 3,649 unittest C++**. Prior performance measurements
 below remain historical; this is a correctness/CI repair.
 
 # MAIN-SESSION STATUS (2026-11-25, implementation/performance history)

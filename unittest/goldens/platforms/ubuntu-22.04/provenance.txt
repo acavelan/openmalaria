@@ -1,0 +1,53 @@
+baseline=cfc3c8e0caee6fdcd6b488a5ab50fdbf2b7a5a90
+rng_generator=6e24e51eb576a12fd701ab54a1b6c5dd375ca081
+flags=-O3 -DNDEBUG -ffp-contract=off; LTO/PGO disabled
+runner=ubuntu22 20261122.372.1
+Linux runnervm9f4oe 6.8.0-1073-azure #82~22.04.1-Ubuntu SMP Tue Oct 27 22:13:07 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
+Copyright (C) 2021 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+2.7.1
+PRETTY_NAME="Ubuntu 22.04.5 LTS"
+NAME="Ubuntu"
+VERSION_ID="22.04"
+VERSION="22.04.5 LTS (Jammy Jellyfish)"
+VERSION_CODENAME=jammy
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+UBUNTU_CODENAME=jammy
+	linux-vdso.so.1 (0x00007fffaf592000)
+	libgsl.so.27 => /lib/x86_64-linux-gnu/libgsl.so.27 (0x00007f8780c00000)
+	libstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007f8780800000)
+	libm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007f8780ef3000)
+	libgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f8780ed3000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f8780400000)
+	libgslcblas.so.0 => /lib/x86_64-linux-gnu/libgslcblas.so.0 (0x00007f8780bbe000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007f8780ff2000)
+9a68dab3a335ad9a23a2bc7178057b03ee6f3b9235b2002f490919179bbe564a  /lib/x86_64-linux-gnu/libgsl.so.27
+ff0825e113603c3866680d5d52216bc6d8eedf3a59f52a0aef67ff01994db128  /lib/x86_64-linux-gnu/libstdc++.so.6
+045fdb0436a8fb0d651f039e3444a9cbffc011d379c82b979cebf43571053eca  /lib/x86_64-linux-gnu/libm.so.6
+fc9d43b2f6c20e53b009238f767c5b949d202389e20de9e202ea684b4ba3729a  /lib/x86_64-linux-gnu/libgcc_s.so.1
+4ebb1967c395ca547dcfeaeeab7a2819724604a331aede44e8a749a7e1a4628e  /lib/x86_64-linux-gnu/libc.so.6
+9c331674ed65a911a7c2ac8d3503a95f944ca4bca2900c68e70d51bbe477cc04  /lib/x86_64-linux-gnu/libgslcblas.so.0
+fc0c004b6bd0e424fe0919c8389b025486c36b7c06dd21a38a728b701219d36a  /home/runner/work/_temp/baseline/rng_dist_v50.csv
+16701ca750769e9efd630b137d5ed5f942c4ceddd3eaaf6f9813962334201c47  /home/runner/work/_temp/baseline/availability_percentiles.txt
+cdf6ae45d52fcf8907c02340bab8430f1cafe1f8676ccc7ef317d95622d26ce1  /home/runner/work/_temp/baseline/source/golden-gen/RngGoldenAdapter.h
+5f8ac248621f5dd42e1b01d72b1d246b23497587fa0054714f5f67f3fca71ea3  /home/runner/work/_temp/baseline/source/golden-gen/percentiles_gen.cpp
+00a72677ad4cb69b385903b224fef6d4f8132813065bee6326ebf5eaa8805292  /home/runner/work/_temp/baseline/source/golden-gen/rng_goldens_gen.cpp
+b236e57968076502e0ba12c12d95603c36fab9d1bd36d39598ec3cc7e82c393e  /home/runner/work/_temp/baseline/source/model/util/random.h
+5fb42b01525919b7011bd802cf4d41ad0a800f92e7d45b2e7e63387cb635a7d3  /home/runner/work/_temp/baseline/source/model/util/xoshiro.h
+3ae5ca755128d72c34251975cc11fa2c589baa806313cdb9a9ae76836d9f6053  /home/runner/work/_temp/baseline/source/contrib/chacha.h
+9a68dab3a335ad9a23a2bc7178057b03ee6f3b9235b2002f490919179bbe564a  /usr/lib/x86_64-linux-gnu/libgsl.so
+
+Capture run: https://github.com/acavelan/openmalaria/actions/runs/45777510549
+Capture driver commit: 057172195d8f06b55b8e7968be7487ecdf7d9895
+a9f6a5d1a266137ec5fbb852febd56eb67fe6920e02add470d195c2fe24fb46b  unittest/goldens/rng_dist_v50.csv
+d02aa60420891e6e097eb143cd0d915e1591cc667924d8540ab1b3884e263f41  unittest/goldens/platforms/ubuntu-22.04/rng_values.csv
+c1b2cfc0cf1ac96ff9ee863e052092c701fe9b803a73f01809b4a571d0514701  unittest/goldens/platforms/ubuntu-22.04/availability_percentiles.inc
+3f16bdd3e2c6072924a081ddcc75c8765edec60b17263aeb59032a6c23db035f  /tmp/opencode/ci-repair-20261126/captured/baseline-ubuntu-22.04/expanded.csv

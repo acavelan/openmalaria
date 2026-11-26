@@ -619,7 +619,10 @@ Completed logs: `bench-final-{2k,5k,10k,Genotypes,Penny,MSAT_HRP2,TBV,VecFullTes
 `bench-final-summary.log`, `bench-final-rest-summary.log`. Machine-readable medians, MAD
 and all five retained samples are in `final-benchmark-results.json`, alongside the logs.
 
-## CI portability repair (2026-11-26)
+## CI portability repair — initial `a86e2dc9` (2026-11-26)
+
+**Historical:** the numerical tolerance in this initial attempt was rejected by
+the user. The zero-tolerance follow-up below supersedes that part of the repair.
 
 | change | model LOC | XML LOC | unittest LOC | performance | readability / correctness |
 |---|---:|---:|---:|---|---|
@@ -663,6 +666,52 @@ Native diagnostic runs:
 [failure/backtrace](https://github.com/acavelan/openmalaria/actions/runs/45772786232),
 [isolated relocation failure](https://github.com/acavelan/openmalaria/actions/runs/45773851567),
 [relocation fix](https://github.com/acavelan/openmalaria/actions/runs/45774158157).
-The full five-platform release matrix runs on the fixing commit.
+The [five-platform release matrix](https://github.com/acavelan/openmalaria/actions/runs/45775041788)
+passed on `a86e2dc9`, with the subsequently rejected tolerance.
 Local logs, fresh A0 recipe/binary hashes and probes:
 `/tmp/opencode/ci-repair-20261126/`.
+
+## CI follow-up: frozen exact native baselines (2026-11-26)
+
+User decision: **bit-exact per-platform references, zero allowance**. Removed every
+new tolerance from RNG replay, inverse-CDF spots and availability percentiles.
+The live model-versus-reference checks remain exact as well.
+
+| change | model LOC | XML LOC | unittest C++ LOC | performance | readability / correctness |
+|---|---:|---:|---:|---|---|
+| independently captured native fixtures and explicit CI selection | **15,599 (0)** / 113 files | **3,558 (0)** / 10 | **3,649 (−88)** / 31 | test/fixture-only; no runtime or timing claim | one frozen reference per platform; common immutable RNG schedule/states; no automatic re-blessing |
+
+The unittest C++ count excludes data files/scripts; 100 unchanged percentile
+literals moved to a fixture include. This is fixture organization, not a model
+LOC reduction. Model code and the exclusions (`CalcNv0`/`CalcNvO`) are unchanged
+in this follow-up; the prior 63/63 A0 model-parity result still applies.
+
+Native reference capture:
+[run 45777510549](https://github.com/acavelan/openmalaria/actions/runs/45777510549).
+Model/engines come from `cfc3c8e0`; the RNG adapter/generator is extracted from
+`6e24e51`, and the new percentile driver calls the original model directly.
+All captures use `-O3 -DNDEBUG -ffp-contract=off` without LTO/PGO.
+The original local toolchain reproduces all 14,012 original RNG rows and all
+100 original percentiles bit-for-bit.
+
+| runner | RNG values differing from original | percentile values differing | schedule/state rows matching |
+|---|---:|---:|---:|
+| Ubuntu 22.04 x86-64 | 2 | 0 | 14,012 / 14,012 |
+| Ubuntu 24.04 x86-64 | 0 | 0 | 14,012 / 14,012 |
+| Ubuntu 24.04 ARM | 1,051 | 5 | 14,012 / 14,012 |
+| macOS 15 ARM | 1,122 | 5 | 14,012 / 14,012 |
+| macOS 26 ARM | 1,122 | 5 | 14,012 / 14,012 |
+
+Stored compact fixtures reconstruct every captured row exactly. Profile selection
+is explicit (`OM_GOLDEN_PLATFORM`), independent of computed values. Missing profiles
+and malformed/duplicate/unknown overrides fail; only the value column can vary.
+All uniform/discrete expectations and CFR literals remain common and exact.
+Source, environment and artifact hashes plus reproduction instructions are under
+`unittest/goldens/platforms/`.
+
+Red→green evidence: Ubuntu 22.04 fails exact replay at exponential draw 111 against
+the original-platform fixture, then passes with its independently frozen native
+fixture. The new overlay harness check fails before implementation and passes
+afterward. A **one-ULP stored Gaussian-value mutation fails** the bitwise check.
+Local native GCC and Ubuntu 22.04 each pass **65/65 CTest** with zero tolerance.
+Full GitHub matrix verification follows on the published follow-up commit.

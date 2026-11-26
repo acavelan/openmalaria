@@ -1,0 +1,36 @@
+baseline=cfc3c8e0caee6fdcd6b488a5ab50fdbf2b7a5a90
+rng_generator=6e24e51eb576a12fd701ab54a1b6c5dd375ca081
+flags=-O3 -DNDEBUG -ffp-contract=off; LTO/PGO disabled
+runner=macos15 20261118.0550.1
+Darwin iad20-gt1019-f010e8df-ceea-4e8e-9f4e-4bb390129388-9E1E5A61CE63.local 24.6.0 Darwin Kernel Version 24.6.0: Sun Oct 11 23:44:11 PDT 2026; root:xnu-11417.140.69.713.47~2/RELEASE_ARM64_VMAPPLE arm64
+Apple clang version 17.0.0 (clang-1700.0.13.5)
+Target: arm64-apple-darwin24.6.0
+Thread model: posix
+InstalledDir: /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
+2.8
+ProductName:		macOS
+ProductVersion:		15.8.2
+BuildVersion:		24H232
+/Users/runner/work/_temp/baseline/build/rng_goldens_gen:
+	/opt/homebrew/opt/gsl/lib/libgsl.28.dylib (compatibility version 29.0.0, current version 29.0.0)
+	/opt/homebrew/opt/gsl/lib/libgslcblas.0.dylib (compatibility version 1.0.0, current version 1.0.0)
+	/opt/homebrew/opt/xerces-c/lib/libxerces-c-3.3.dylib (compatibility version 0.0.0, current version 0.0.0)
+	/usr/lib/libz.1.dylib (compatibility version 1.0.0, current version 1.2.12)
+	/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1351.0.0)
+	/usr/lib/libc++.1.dylib (compatibility version 1.0.0, current version 1900.180.0)
+d8cda1c90a4bb7515e481b403e1ab89d48f8a4e78c4917e028c9bb4dade65fb6  /Users/runner/work/_temp/baseline/rng_dist_v50.csv
+cf0d08a442339b42b1da3e230007c0269dc721a07ae842d8df28e45ed5365979  /Users/runner/work/_temp/baseline/availability_percentiles.txt
+5f8ac248621f5dd42e1b01d72b1d246b23497587fa0054714f5f67f3fca71ea3  /Users/runner/work/_temp/baseline/source/golden-gen/percentiles_gen.cpp
+00a72677ad4cb69b385903b224fef6d4f8132813065bee6326ebf5eaa8805292  /Users/runner/work/_temp/baseline/source/golden-gen/rng_goldens_gen.cpp
+cdf6ae45d52fcf8907c02340bab8430f1cafe1f8676ccc7ef317d95622d26ce1  /Users/runner/work/_temp/baseline/source/golden-gen/RngGoldenAdapter.h
+b236e57968076502e0ba12c12d95603c36fab9d1bd36d39598ec3cc7e82c393e  /Users/runner/work/_temp/baseline/source/model/util/random.h
+5fb42b01525919b7011bd802cf4d41ad0a800f92e7d45b2e7e63387cb635a7d3  /Users/runner/work/_temp/baseline/source/model/util/xoshiro.h
+3ae5ca755128d72c34251975cc11fa2c589baa806313cdb9a9ae76836d9f6053  /Users/runner/work/_temp/baseline/source/contrib/chacha.h
+5dac2d6dd69a086130a34a9847d500775e8e1d43656a7f305a3d476b405d6e23  /opt/homebrew/lib/libgsl.dylib
+
+Capture run: https://github.com/acavelan/openmalaria/actions/runs/45777510549
+Capture driver commit: 057172195d8f06b55b8e7968be7487ecdf7d9895
+a9f6a5d1a266137ec5fbb852febd56eb67fe6920e02add470d195c2fe24fb46b  unittest/goldens/rng_dist_v50.csv
+08b22c51b3d64363c536ffcb71e025fbd4391184bd0be2951469e362d8fa28d0  unittest/goldens/platforms/macos-15/rng_values.csv
+a597e944d4b1f9f8316e8a96cadec28f67a0fbb83ef3f77f637f77e8d35eb3b7  unittest/goldens/platforms/macos-15/availability_percentiles.inc
+26289e5696147da7c2aa1d33f22ab79d92ce20f539c735e9218e6be26995e5d0  /tmp/opencode/ci-repair-20261126/captured/baseline-macos-15/expanded.csv
