@@ -2,61 +2,11 @@ name: CI diagnostics
 on: [push, workflow_dispatch]
 jobs:
   diagnose:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04-arm, macos-15]
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Dependencies
+      - run: HOMEBREW_NO_AUTO_UPDATE=1 brew install gsl
+      - name: Reproduce RNG relocation
         run: |
-          if [[ "$RUNNER_OS" == Linux ]]; then
-            sudo apt-get update
-            sudo apt-get install -y build-essential cmake libgsl-dev libxerces-c-dev xsdcxx zlib1g-dev
-          else
-            HOMEBREW_NO_AUTO_UPDATE=1 brew install coreutils gsl xerces-c xsd
-            HOMEBREW_NO_AUTO_UPDATE=1 brew link --overwrite xsd
-          fi
-      - name: Measure library differences
-        run: |
-          c++ -O2 -std=c++20 -ffp-contract=off -I model -I unittest -I contrib $(gsl-config --cflags) -I"$(gsl-config --prefix)/include/gsl" unittest/golden-gen/rng_goldens_gen.cpp model/util/errors.cpp $(gsl-config --libs) -o /tmp/rng-probe
-          /tmp/rng-probe > /tmp/rng-probe.csv
-          python3 - <<'PY'
-          import csv, math, collections
-          def rows(path):
-              return list(csv.reader(line for line in open(path) if not line.startswith('#')))
-          old, new = rows('unittest/goldens/rng_dist_v50.csv'), rows('/tmp/rng-probe.csv')
-          assert len(old) == len(new)
-          counts, maxima = collections.Counter(), {}
-          for a, b in zip(old, new):
-              assert a[:3] == b[:3]
-              assert a[4:] == b[4:], (a, b)
-              x, y = float(a[3]), float(b[3])
-              if x != y:
-                  key = a[0] + '(' + a[1] + ')'
-                  counts[key] += 1
-                  maxima[key] = max(maxima.get(key, (0, '', 0)), (abs(x-y)/max(1, abs(x), abs(y)), a[2], abs(x-y)/math.ulp(x)))
-          print('All schedules and states match:', len(old))
-          print('Counts:', dict(counts))
-          print('Scaled error / draw / ULP:', maxima)
-          PY
-      - name: Build release
-        run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-g -DOM_BOXTEST_BINARY=ON
-          cmake --build build -j4
-      - name: Reproduce resume and backtrace
-        run: |
-          ctest --test-dir build -R '^Resume_1$' --output-on-failure || true
-          cat build/test/resume-1-*/err.log
-          if [[ "$RUNNER_OS" == macOS ]]; then
-            cd build/test/resume-1-*
-            lldb --batch -o run -o bt -- ../../openMalaria --scenario "$GITHUB_WORKSPACE/test/scenario1.xml" --resource-path "$GITHUB_WORKSPACE/test" --output-format bin -o out.bin --ctsout cts.txt --resume ck1 --save-to ck2 --save-at 32900
-          fi
-      - name: Sanitized resume
-        if: runner.os == 'macOS'
-        run: |
-          cmake -S . -B asan -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-g -fsanitize=address,undefined -fno-omit-frame-pointer -ffp-contract=off" -DCMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE=OFF -DOM_BOXTEST_BINARY=ON
-          cmake --build asan -j4
-          ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=print_stacktrace=1 ctest --test-dir asan -R '^Resume_1$' --output-on-failure || true
-          cat asan/test/resume-1-*/err.log
+          c++ -O2 -g -std=c++20 -fsanitize=address,undefined -ffp-contract=off -I model -I unittest -I contrib $(gsl-config --cflags) -I"$(gsl-config --prefix)/include/gsl" unittest/golden-gen/rng_relocation.cpp model/util/errors.cpp $(gsl-config --libs) -o /tmp/rng-probe
+          /tmp/rng-probe
